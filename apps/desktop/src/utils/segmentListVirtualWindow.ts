@@ -4,6 +4,7 @@ export {
   computeSegmentListVirtualWindow,
   isEditableSegmentBodyTextarea,
   isSegmentBodyTextarea,
+  resolveVirtualListScrollTopForWindow,
   scrollSegmentListIndexIntoView,
   segmentListItemStridePx,
   segmentListRangeDragExceededSlop,
@@ -29,5 +30,6 @@ export {
   SEGMENT_LIST_FILTER_INDICES_ATTR,
   SEGMENT_LIST_SCROLL_ATTR,
   resolveSegmentListRowIndexFromPoint,
+  resolveSegmentListRangeDragHoverIndex,
   writeSegmentListFilterIndices,
 } from "./segmentListScrollIntoView";

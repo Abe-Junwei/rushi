@@ -121,6 +121,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformStageHeightPx,
     tierScrollLayout: timeline.tierScrollLayout,
     seekFromTierClientX: timeline.seekFromTierClientX,
+    centerTierAtClientX: timeline.centerTierAtClientX,
     setTierScrollPx: timeline.setTierScrollPx,
     userScrubScroll: timeline.userScrubScroll,
     minimapScrubScroll: timeline.minimapScrubScroll,

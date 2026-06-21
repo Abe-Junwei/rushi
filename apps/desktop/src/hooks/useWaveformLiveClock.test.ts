@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useWaveformLiveClock } from "./useWaveformLiveClock";
 
@@ -31,16 +31,13 @@ describe("useWaveformLiveClock", () => {
     expect(result.current.displayTimeLabel).toBe("125s");
   });
 
-  it("advances visual playhead time between quantized media time samples", () => {
-    const callbacks: FrameRequestCallback[] = [];
-    let now = 0;
-    vi.spyOn(performance, "now").mockImplementation(() => now);
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      callbacks.push(cb);
-      return callbacks.length;
-    });
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
+  it("advances visual playhead time via subscribePlayheadFrame while playing", () => {
     const moves: number[] = [];
+    const subscribePlayheadFrame = (cb: (timeSec: number) => void) => {
+      cb(0.016);
+      cb(0.032);
+      return () => {};
+    };
 
     renderHook(() =>
       useWaveformLiveClock({
@@ -49,17 +46,10 @@ describe("useWaveformLiveClock", () => {
         getPlayheadTime: () => 0,
         formatMediaTime: (sec) => `${sec}`,
         durationSec: 10,
-        playbackRate: 1,
         onPlayheadMove: (timeSec) => moves.push(timeSec),
+        subscribePlayheadFrame,
       }),
     );
-
-    act(() => {
-      now = 16;
-      callbacks.shift()?.(now);
-      now = 32;
-      callbacks.shift()?.(now);
-    });
 
     expect(moves.length).toBeGreaterThanOrEqual(2);
     expect(moves[1]).toBeGreaterThan(moves[0]);

@@ -22,7 +22,6 @@ interface SegmentRowTextFieldProps {
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
   selectSegmentAt: (idx: number) => void;
-  onRevealSelectedSegment?: () => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
@@ -37,8 +36,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     selected,
     busy,
     textStyle,
-    onRevealSelectedSegment,
-    selectSegmentAt: _selectSegmentAt,
+    selectSegmentAt,
     ...controllerArgs
   } = props;
 
@@ -67,7 +65,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     onSelectionChange,
     onFocusText,
     canResizeRowHeight,
-  } = useSegmentRowTextFieldController({ ...controllerArgs, selected, busy });
+  } = useSegmentRowTextFieldController({ ...controllerArgs, selected, busy, selectSegmentAt });
   const onResizeHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     onRowHeightHandlePointerDown(e);
@@ -104,14 +102,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             disabled={busy}
             tabIndex={selected ? 0 : -1}
             onPointerDownCapture={selected ? onTextPointerDownCapture : undefined}
-            onClick={
-              selected
-                ? (e) => {
-                    e.stopPropagation();
-                    onRevealSelectedSegment?.();
-                  }
-                : undefined
-            }
             onContextMenu={onTextContextMenu}
             onFocus={selected ? onFocusText : undefined}
             onInput={
@@ -166,7 +156,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                   selected
                     ? onCorrectableSpanClick
                     : (span, event) => {
-                        _selectSegmentAt(index);
+                        selectSegmentAt(index);
                         onCorrectableSpanClick(span, event);
                       }
                 }

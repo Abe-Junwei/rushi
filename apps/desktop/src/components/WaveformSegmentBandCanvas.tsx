@@ -1,10 +1,10 @@
-import { memo, useLayoutEffect, useRef, type RefObject } from "react";
+import { memo, useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import {
-  resolveTierViewportMetrics,
+  resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
@@ -52,6 +52,36 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   tierScrollLayout,
 }: WaveformSegmentBandCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const skipIndices = useMemo(
+    () =>
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: segments.length,
+        selectedIdx,
+        selectedIndices,
+        selectionLo,
+        selectionHi,
+        selectionCount,
+        isContiguousSelection,
+        draftIdx,
+      }),
+    [
+      segments.length,
+      selectedIdx,
+      selectedIndices,
+      selectionLo,
+      selectionHi,
+      selectionCount,
+      isContiguousSelection,
+      draftIdx,
+    ],
+  );
+  const skipIndexSet = useMemo(() => new Set(skipIndices), [skipIndices]);
+  const dominantSpanSet = useMemo(
+    () => new Set(dominantSpanIndices ?? []),
+    [dominantSpanIndices],
+  );
+
   const inputRef = useRef({
     segments,
     durationSec,
@@ -63,7 +93,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectionCount,
     isContiguousSelection,
     selectedIndices,
-    dominantSpanIndices,
+    dominantSpanSet,
+    skipIndexSet,
     draftIdx,
     getPlayheadSec,
   });
@@ -78,7 +109,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectionCount,
     isContiguousSelection,
     selectedIndices,
-    dominantSpanIndices,
+    dominantSpanSet,
+    skipIndexSet,
     draftIdx,
     getPlayheadSec,
   };
@@ -96,7 +128,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     const paint = () => {
       const input = inputRef.current;
       const tierMetrics = tierMetricsRef.current;
-      const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
+      const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetricsDuringScrollFrame({
         tierScrollEl: tierMetrics.tierScrollRef.current,
         tierScrollLive: tierMetrics.tierScrollLive,
         tierScrollLayout: tierMetrics.tierScrollLayout,
@@ -131,22 +163,11 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const skipIndices = selectOverlayInteractiveSegmentIndices({
-        segmentCount: input.segments.length,
-        selectedIdx: input.selectedIdx,
-        selectedIndices: input.selectedIndices,
-        selectionLo: input.selectionLo,
-        selectionHi: input.selectionHi,
-        selectionCount: input.selectionCount,
-        isContiguousSelection: input.isContiguousSelection,
-        draftIdx: input.draftIdx,
-      });
-
       const paintBands = () => {
         drawWaveformSegmentBands({
           ctx,
           segments: input.segments,
-          dominantSpanIndices: input.dominantSpanIndices,
+          dominantSpanSet: input.dominantSpanSet,
           scrollLeftPx: leftPx,
           viewportWidthPx: widthPx,
           timelineWidthPx: input.timelineWidthPx,
@@ -158,7 +179,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           selectionHi: input.selectionHi,
           selectionCount: input.selectionCount,
           playheadSec: input.getPlayheadSec?.(),
-          skipIndices,
+          skipIndexSet: input.skipIndexSet,
         });
       };
       if (wfProfileIsActive()) wfProfileTime("segmentBands", paintBands);

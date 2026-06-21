@@ -1,4 +1,6 @@
 import type { RefObject } from "react";
+import { logRuntimeParity } from "../services/runtimeParity";
+import { isTierScrollFrameActive, readTierViewportMetricsDuringScrollFrame } from "./tierScrollFrameCoordinator";
 import { setCspLayoutRules } from "./cspElementLayout";
 
 export type TierScrollLiveRefs = {
@@ -103,4 +105,25 @@ export function resolveTierViewportMetrics(input: {
       }),
     ),
   };
+}
+
+/** Scroll-frame subscribers: prefer per-frame snapshot; fall back to DOM-first read. */
+let devWarnedMissingScrollFrameSnapshot = false;
+
+export function resolveTierViewportMetricsDuringScrollFrame(input: {
+  tierScrollEl?: HTMLElement | null;
+  tierScrollLive?: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
+}): { scrollLeftPx: number; viewportWidthPx: number } {
+  const snapshot = readTierViewportMetricsDuringScrollFrame();
+  if (snapshot) return snapshot;
+  if (isTierScrollFrameActive() && !devWarnedMissingScrollFrameSnapshot) {
+    devWarnedMissingScrollFrameSnapshot = true;
+    logRuntimeParity(
+      "waveform",
+      "scroll-frame subscriber read metrics without snapshot; falling back to DOM",
+      "WARN",
+    );
+  }
+  return resolveTierViewportMetrics(input);
 }

@@ -21,6 +21,12 @@ import {
   selectionProfileTime,
   isSelectionLatencyProfileEnabled,
 } from "../services/ui/selectionLatencyProfile";
+import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
+import {
+  shouldRevealOnSegmentSelect,
+  shouldSeekOnSegmentSelect,
+} from "../utils/selectionRevealSeekPolicy";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
@@ -106,25 +112,41 @@ export function useTranscriptionLayerSelection(opts: {
       if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
+      const idxChanged = idx !== c.selectedIdx;
+      const editorFocusGateOpen = isEditorFocusGateOpen({
+        segmentsLength: c.segments.length,
+        waveformShell: waveformShellRef.current,
+      });
+      const shouldReveal = shouldRevealOnSegmentSelect({
+        source,
+        idxChanged,
+        editorFocusGateOpen,
+      });
+      const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChanged;
       selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
       lastSegmentSelectSourceRef.current = source;
+      const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
+      const seg = plan.segment;
+      if (shouldReveal) {
+        selectionProfileTime("viewport", () => {
+          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+            start_sec: seg.start_sec,
+            end_sec: seg.end_sec,
+          });
+        });
+      }
       selectionProfileTime("flushSelectedIdx", () => {
         commitSelectedIdxUi(idx, opts, source === "waveform");
+        if (source === "waveform") {
+          flushTierScrollFrame();
+        }
       });
       if (isSelectionLatencyProfileEnabled()) {
         requestAnimationFrame(() => {
           selectionProfileMarkFirstPaint();
         });
       }
-      const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
-      const seg = plan.segment;
-      selectionProfileTime("viewport", () => {
-        scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
-        });
-      });
-      if (source !== "listKeyboard") {
+      if (shouldSeek) {
         requestAnimationFrame(() => {
           const tl = scrollFitRef.current.timeline;
           selectionProfileTime("seek", () => {

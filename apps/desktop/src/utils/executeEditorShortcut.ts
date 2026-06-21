@@ -2,7 +2,7 @@ import { requestToggleActivityInbox } from "../services/ui/activityInboxEvents";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
-import { readFocusedSegmentTextareaIdx, readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
+import { readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
 import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
@@ -27,9 +27,9 @@ export type EditorShortcutExecuteMods = {
   eventTarget?: EventTarget | null;
 };
 
-function resolveMergeAnchorIdx(ctx: TranscriptionLayerInput): number {
-  const focusIdx = readFocusedSegmentTextareaIdx(ctx.segments.length);
-  return focusIdx ?? ctx.selectedIdx;
+/** 结构操作与 focus 文本均锚定 selectedIdx（focus=selected 不变量）。 */
+function resolveSelectedSegmentIdx(ctx: TranscriptionLayerInput): number {
+  return ctx.selectedIdx;
 }
 
 export function executeEditorShortcut(
@@ -57,7 +57,7 @@ export function executeEditorShortcut(
         ctx.mergeSegmentRange(ctx.selectionLo, ctx.selectionHi);
         return true;
       }
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx >= 0 && idx < ctx.segments.length - 1) {
         ctx.mergeWithNextAt(idx);
       }
@@ -68,21 +68,21 @@ export function executeEditorShortcut(
         ctx.mergeSegmentRange(ctx.selectionLo, ctx.selectionHi);
         return true;
       }
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx > 0) {
         ctx.mergeWithPrevAt(idx);
       }
       return true;
     }
     case "segment.splitPlayhead": {
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx >= 0 && idx < ctx.segments.length) {
         ctx.splitAtPlayhead(wf.getPlayheadTime());
       }
       return true;
     }
     case "segment.focusText": {
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx >= 0 && idx < ctx.segments.length) {
         deps.focusSegmentTextarea(idx);
       }
@@ -136,14 +136,14 @@ export function executeEditorShortcut(
       void ctx.saveSegments();
       return true;
     case "workflow.confirmAdvance": {
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx < 0 || idx >= ctx.segments.length) return true;
       void (async () => {
         const ok = await ctx.confirmSegmentEditAndAdvance(idx);
         if (!ok) return;
         const ni = Math.min(idx + 1, Math.max(0, ctx.segments.length - 1));
         if (ni !== idx) {
-          deps.selectSegmentAt(ni, "listAdvance");
+          deps.selectSegmentAt(ni, "listKeyboard");
           deps.focusSegmentTextarea(ni);
           const seg = ctx.segments[ni];
           if (!seg) return;
@@ -162,7 +162,7 @@ export function executeEditorShortcut(
       ctx.closeFile();
       return true;
     case "workflow.segmentAnnotation": {
-      const idx = resolveMergeAnchorIdx(ctx);
+      const idx = resolveSelectedSegmentIdx(ctx);
       if (idx >= 0 && idx < ctx.segments.length) {
         ctx.openSegmentAnnotationDialog(idx);
       }

@@ -5,11 +5,48 @@ type TierScrollFrameSubscriber = () => void;
 const subscribers = new Set<TierScrollFrameSubscriber>();
 let frameRafId = 0;
 
+export type TierViewportMetricsSnapshot = {
+  scrollLeftPx: number;
+  viewportWidthPx: number;
+};
+
+let scrollFrameActive = false;
+let scrollFrameMetricsSnapshot: TierViewportMetricsSnapshot | null = null;
+let metricsSupplier: (() => TierViewportMetricsSnapshot | null) | null = null;
+
+export function isTierScrollFrameActive(): boolean {
+  return scrollFrameActive;
+}
+
+export function registerTierScrollFrameMetricsSupplier(
+  supplier: (() => TierViewportMetricsSnapshot | null) | null,
+): void {
+  metricsSupplier = supplier;
+}
+
+export function writeTierViewportMetricsDuringScrollFrame(snapshot: TierViewportMetricsSnapshot): void {
+  scrollFrameMetricsSnapshot = snapshot;
+}
+
+export function readTierViewportMetricsDuringScrollFrame(): TierViewportMetricsSnapshot | null {
+  return scrollFrameMetricsSnapshot;
+}
+
+export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
+  scrollFrameMetricsSnapshot = null;
+  scrollFrameActive = false;
+  metricsSupplier = null;
+}
+
 function runTierScrollFrame(): void {
   frameRafId = 0;
+  scrollFrameActive = true;
+  scrollFrameMetricsSnapshot = metricsSupplier?.() ?? null;
   for (const fn of subscribers) {
     fn();
   }
+  scrollFrameMetricsSnapshot = null;
+  scrollFrameActive = false;
 }
 
 /** Schedule one coalesced scroll frame for viewport chrome paints. */
@@ -60,4 +97,6 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
     frameRafId = 0;
   }
   subscribers.clear();
+  scrollFrameMetricsSnapshot = null;
+  metricsSupplier = null;
 }

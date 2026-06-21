@@ -18,6 +18,26 @@ export function seekFromTierClientX(args: TierScrollSeekActionArgs, clientX: num
   w.seek(w.clientXToTimeSec(clientX));
 }
 
+export function centerTierAtClientX(
+  args: TierScrollSeekActionArgs,
+  clientX: number,
+  setTierScrollImmediate: (scrollLeftPx: number) => void,
+): void {
+  const w = args.wfApiRef.current;
+  const d = args.mediaDurationSec;
+  if (!w.isReady || d <= 0) return;
+  const tier = args.tierScrollRef.current;
+  if (!tier) return;
+  const timeSec = w.clientXToTimeSec(clientX);
+  const targetScroll = scrollPxCenterTimeInViewport({
+    timeSec,
+    timelineWidthPx: Math.max(args.timelineWidthPx, 1),
+    durationSec: d,
+    viewportWidthPx: tier.clientWidth,
+  });
+  setTierScrollImmediate(targetScroll);
+}
+
 export function pickAbsoluteTimeInTierViewport(
   args: TierScrollSeekActionArgs,
   timeSec: number,

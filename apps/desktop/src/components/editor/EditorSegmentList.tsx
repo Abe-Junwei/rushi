@@ -15,6 +15,7 @@ import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppeara
 import { peekWelcomeSearchEditorHighlight } from "../../services/welcome/welcomeSearch";
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 import { logSegmentRowLayoutProbe } from "../../utils/releaseFrontendProbe";
+import { CONTROL_BTN_LINK } from "../../config/controlStyles";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -28,6 +29,7 @@ interface EditorSegmentListProps {
   filterNavRef: React.MutableRefObject<SegmentListFilterNavState>;
   filteredIndices: number[];
   filterActive: boolean;
+  onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
@@ -39,6 +41,7 @@ export function EditorSegmentList({
   filterNavRef,
   filteredIndices,
   filterActive,
+  onResetSegmentListFilter,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
   const controllerRef = useRef(c);
@@ -146,7 +149,6 @@ export function EditorSegmentList({
         onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
         onOpenContextMenu={onOpenRowContextMenu}
         onOpenTextContextMenu={onOpenTextContextMenu}
-        onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
         findReplaceHighlight={(() => {
           if (c.findReplaceEditorHighlight?.segmentIdx === segIdx) {
             return {
@@ -199,6 +201,9 @@ export function EditorSegmentList({
     ? filteredIndices.slice(virtualWindow.startIndex, virtualWindow.endIndex)
     : filteredIndices;
 
+  const showFilteredSelectedBanner =
+    filterActive && c.selectedIdx >= 0 && selectedDisplayIndex < 0;
+
   return (
     <div
       ref={segmentListRef}
@@ -212,6 +217,20 @@ export function EditorSegmentList({
         if (c.isMultiSegmentSelection) c.clearMultiSelection();
       }}
     >
+      {showFilteredSelectedBanner ? (
+        <div className="sticky top-0 z-20 mb-2 flex items-center justify-between gap-3 rounded-md bg-notion-sidebar px-3 py-2 text-sm text-notion-text">
+          <span>所选语段不在当前筛选结果中</span>
+          {onResetSegmentListFilter ? (
+            <button
+              type="button"
+              className={`shrink-0 ${CONTROL_BTN_LINK}`}
+              onClick={onResetSegmentListFilter}
+            >
+              清除过滤并定位
+            </button>
+          ) : null}
+        </div>
+      ) : null}
       {useVirtualList ? (
         <CspLayout
           layout={{
@@ -231,7 +250,8 @@ export function EditorSegmentList({
                   left: 0,
                   right: 0,
                   height: itemStridePx,
-                  overflow: "hidden",
+                  overflow: segIdx === c.selectedIdx ? "visible" : "hidden",
+                  zIndex: segIdx === c.selectedIdx ? 1 : undefined,
                   boxSizing: "border-box",
                 }}
               >

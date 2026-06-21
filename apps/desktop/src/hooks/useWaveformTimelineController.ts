@@ -11,6 +11,9 @@ import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
+import {
+  selectionSeekChromeSuppressUntil,
+} from "../utils/waveformSelectionSeekChrome";
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
 import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
@@ -33,8 +36,11 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   });
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
+  const selectionSeekChromeSuppressUntilRef = useRef(0);
   const suppressPlaybackFollowForSelectionSeek = () => {
-    playbackFollowSuppressUntilRef.current = performance.now() + 1200;
+    const until = selectionSeekChromeSuppressUntil(performance.now());
+    playbackFollowSuppressUntilRef.current = until;
+    selectionSeekChromeSuppressUntilRef.current = until;
   };
   const applyPendingViewportFitRef = useRef<(pxPerSec: number, options?: { finalize?: boolean }) => boolean>(
     () => false,
@@ -86,6 +92,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     layoutTimelineWidthPxRef: timelineWidthPxRef,
     layoutDurationSec: resolvedDurationSec || mountMediaDurationSec,
     tierScrollRef,
+    selectionSeekChromeSuppressUntilRef,
     refitFitAllPxPerSec: (viewportWidthPx) => refitFitAllPxPerSecRef.current(viewportWidthPx),
     onFitAllPxPerSecRefit: zoom.applyFitAllRefitPxPerSec,
     onZoomApplied: (pxPerSec) =>
@@ -274,6 +281,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     tierScrollLayout: scroll.tierScrollLayout,
     onTierScroll: scroll.onTierScroll,
     seekFromTierClientX: scroll.seekFromTierClientX,
+    centerTierAtClientX: scroll.centerTierAtClientX,
     setTierScrollPx: scroll.setTierScrollPx,
     userScrubScroll: scroll.userScrubScroll,
     applyWheelScrollDelta: scroll.applyWheelScrollDelta,

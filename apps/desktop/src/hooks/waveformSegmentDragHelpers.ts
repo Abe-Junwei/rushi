@@ -111,6 +111,9 @@ export function finishWaveformLassoDrag(input: {
   if (!drag.moved) {
     suppressClickAfterPointer();
     a.onFocusWaveformShell?.();
+    if (modifiers.shiftKey || modifiers.toggleKey) {
+      return true;
+    }
     if (a.isMultiSegmentSelection?.()) {
       a.onClearMultiSelection?.();
     } else {
@@ -159,7 +162,7 @@ export function finishWaveformEditDrag(input: {
 }): void {
   const { drag, timeSec, args: a, snapEnabled, ev, onSegmentPointerTap, suppressClickAfterPointer } = input;
 
-  let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
+  let clamped = drag.lastFinalizedBounds ?? boundsForOverlayDrag(drag, timeSec, a.durationSec);
   if (!clamped) return;
 
   const finalized = finalizeEditDragBounds(a, drag, clamped, snapEnabled, WAVEFORM_SEGMENT_MIN_SPAN_SEC);

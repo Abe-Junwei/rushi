@@ -54,6 +54,7 @@ export function drawWaveformSegmentBands(input: {
   ctx: CanvasRenderingContext2D;
   segments: SegmentDto[];
   dominantSpanIndices?: readonly number[];
+  dominantSpanSet?: ReadonlySet<number>;
   scrollLeftPx: number;
   viewportWidthPx: number;
   timelineWidthPx: number;
@@ -66,6 +67,7 @@ export function drawWaveformSegmentBands(input: {
   selectionCount?: number;
   playheadSec?: number;
   skipIndices?: readonly number[];
+  skipIndexSet?: ReadonlySet<number>;
 }): void {
   const {
     ctx,
@@ -101,8 +103,8 @@ export function drawWaveformSegmentBands(input: {
   const insetTop = WAVEFORM_SEGMENT_INSET_TOP_PX;
   const bandHeight = Math.max(20, heightPx - insetTop - WAVEFORM_SEGMENT_INSET_BOTTOM_PX);
   const palette = readWaveformSegmentBandPalette();
-  const dominant = new Set(input.dominantSpanIndices ?? []);
-  const skip = new Set(input.skipIndices ?? []);
+  const dominant = input.dominantSpanSet ?? new Set(input.dominantSpanIndices ?? []);
+  const skip = input.skipIndexSet ?? new Set(input.skipIndices ?? []);
 
   const useIndexWindow = segments.length >= SEGMENT_BAND_INDEX_SCAN_THRESHOLD;
   const indexFrom = useIndexWindow

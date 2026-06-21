@@ -131,15 +131,9 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
-    expect(timeline.suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.wfApiRef.current.seek.mock.invocationCallOrder[0],
-    );
-    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
-    );
-    expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeGreaterThan(
-      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
+      setSelectedIdxUi.mock.invocationCallOrder[0],
     );
 
     const lines = readRecentSelectionLatencyProfileLines();
@@ -149,7 +143,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(dataLines[0]).toMatch(/viewport=/);
   });
 
-  it("listAdvance reveals and seeks like list (Descript-style navigation)", () => {
+  it("listAdvance reveals without seek", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -171,10 +165,65 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
-    expect(timeline.suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.wfApiRef.current.seek.mock.invocationCallOrder[0],
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+  });
+
+  it("listKeyboard reveals when editor focus gate open and does not seek", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+    document.body.innerHTML = `
+      <div data-seg-row="0">
+        <textarea aria-label="语段正文" class="seg-text"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        setSelectedIdxUi,
+      }),
     );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "listKeyboard");
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    document.body.innerHTML = "";
+  });
+
+  it("listKeyboard skips reveal when editor focus gate closed", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+    document.body.innerHTML = `<button type="button">hub</button>`;
+    document.querySelector("button")!.focus();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "listKeyboard");
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    document.body.innerHTML = "";
   });
 
   it("waveform selection centers without zooming even in fit-selection layout", () => {
@@ -201,6 +250,9 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
+    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
+      setSelectedIdxUi.mock.invocationCallOrder[0],
+    );
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
       start_sec: 4,
       end_sec: 5.5,

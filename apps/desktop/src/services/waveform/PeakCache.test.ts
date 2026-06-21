@@ -46,6 +46,18 @@ describe("PeakCache", () => {
     expect(cacheA).not.toBe(cacheB);
   });
 
+  it("uses distinct resample cache entries across quantize buckets (S10)", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 1, pixelsPerSecond: 20, path: "/tmp/s10.dat" },
+    ]);
+    if (!cache) throw new Error("cache missing");
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(56);
+    cache.getWaveSurferPeaks(200);
+    expect(resampleMock).toHaveBeenCalledTimes(2);
+  });
+
   it("memoizes resample results per pxPerSec", async () => {
     const cache = await PeakCache.fromLevelUrls([
       { level: 1, pixelsPerSecond: 20, path: "/tmp/x.dat" },
@@ -160,6 +172,33 @@ describe("PeakCache", () => {
     expect(low).not.toBe(mid);
     expect(resampleMock).toHaveBeenCalledTimes(2);
     expect(low.peaks[0]?.length).not.toBe(mid.peaks[0]?.length);
+  });
+
+  it("does not share resample cache for same px/s with different layout durations", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(40, 600);
+    cache.getWaveSurferPeaks(40, 1200);
+    expect(resampleMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("shares resample cache for adjacent timeline widths within the same bucket", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    resampleMock.mockClear();
+    const a = cache.getWaveSurferPeaks(40, 600);
+    const b = cache.getWaveSurferPeaks(40, 600.025);
+    expect(a).toBe(b);
+    expect(resampleMock).toHaveBeenCalledTimes(1);
   });
 
   it("getMinimapPeaks uses coarsest loaded LOD when L0 is absent", async () => {

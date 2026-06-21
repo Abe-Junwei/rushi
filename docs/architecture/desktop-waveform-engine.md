@@ -81,26 +81,30 @@
 
 ## 点选 / 选择交互契约（统一矩阵）
 
-唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ `flushSync` 选中 → `flushTierScrollFrame`（band/overlay 同帧）→ suppress + seek → focus（仅 waveform 源）**。选中绘制与居中滚动在**同一帧**提交，避免「先暗后亮」或「先高亮再跳中央」。
+唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ `flushSync` 选中 → `flushTierScrollFrame`（band/overlay 同帧，仅 waveform 源）→ suppress + seek（仅 waveform 源）→ focus（仅 waveform 源）**。策略真源：[`selectionRevealSeekPolicy.ts`](../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) + [`editorFocusGate.ts`](../../apps/desktop/src/utils/editorFocusGate.ts)。
 
 | 入口 | 选中 | reveal/居中 | seek | suppress 跟随 | 焦点 | 走 `selectSegmentAt`? |
 |------|------|------------|------|---------------|------|----------------------|
-| 文本行点击（未选中） | ✓ | ✓ immediate | 语段头 | ✓ | textarea | ✓（`list`/`listAdvance`） |
-| 文本行再点击（已选中） | — | ✓ immediate | — | — | textarea caret | 否（`revealSelectedSegmentInViewport`） |
+| 文本行点击（未选中）L1 | ✓ | ✓ immediate | ✗ | — | textarea | ✓（`list`） |
+| 文本行再点击（已选中）T2 | — | ✗ | ✗ | — | textarea caret | 否（仅 focus） |
 | 波形语段首点 | ✓ | ✓ immediate | 语段头 | ✓ | waveform shell | ✓（`waveform`） |
 | 波形语段再点（已选中） | — | — | 钳在语段内点击点 | ✓ | waveform shell | 否（`seek-within`） |
-| 键盘 ↑↓ / Tab advance | ✓ | ✓ immediate | 语段头 | ✓ | textarea | ✓（`list`/`listAdvance`，rAF 合并） |
+| 键盘 ↑↓ / Tab advance K1 | ✓ | F3 gate（textarea/shell focused） | ✗ | — | textarea | ✓（`listKeyboard`） |
+| Tab confirmAdvance | ✓ | F3 gate | ✗（loop 偏好另走 wf） | — | textarea | ✓（`listKeyboard`） |
 | 右键菜单（列表/波形/文本） | ✓（lifecycle setState；多选命中保留） | **不 reveal** | **不 seek** | — | — | 否（band/overlay 经 React 同 commit 同帧） |
 | 框选 lasso 多选 | ✓（多选） | **不 reveal** | — | — | shell | 否（`selectSegmentIndices`） |
-| 空白点击（无拖动） | — | — | anchor 时间 | ✓（seek-blank） | shell | 否 |
-| minimap 点击 | — | `minimapScrubScroll` 直接居中 | ✓ | ✓ | — | 否 |
+| 空白点击（无拖动）B1 | — | — | anchor 时间 | ✓（seek-blank） | shell | 否 |
+| minimap 点击 M1 | — | `minimapScrubScroll` 直接居中 | ✓ | ✓ | — | 否 |
+| 时间尺 click R2 | — | `centerTierAtClientX` 滚动居中 | ✗ | ✓ | — | 否 |
 | 时间尺拖拽 | — | `userScrubScroll` 直接滚动 | — | ✓ | — | 否 |
 
 约定要点：
 
 - **右键菜单 / lasso 故意不 reveal/seek**（避免右键或批量选择时画面跳动）；其 band canvas（`useLayoutEffect` keyed on `selectedIdx` 同步重绘）与 DOM overlay 在同一 React commit 落帧，无需经选中内核也不会闪。
 - **minimap 是 scrub 控件**：经 `minimapScrubScroll` 直接跳转居中；seek 前 `suppressPlaybackFollowForSelectionSeek`，避免播放中被自动跟随回拽。
-- `listKeyboard` 源为架构守卫（`check-architecture-guard.mjs`）保留的「键盘禁用」契约位（键盘走普通 `list`，seek 由内核负责），非运行时入口。
+- **时间尺 click（R2）只滚动不 seek**：经 `centerTierAtClientX` 将点击时间居中到 tier 视口。
+- **`listKeyboard` 源**：↑↓ / Tab confirmAdvance 使用；reveal 受 F3 editor focus gate 约束；**不 seek**。
+- **focus=selected（S2′）**：快捷键锚点 `selectedIdx`；focus 非选中 textarea 时先 `selectSegmentAt(i)`。
 
 ## 语段语义真源：可见 / 可打包语段
 

@@ -4,7 +4,7 @@ import { playheadViewportLeftPx } from "../utils/waveformProjection";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
-  resolveTierViewportMetrics,
+  resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
@@ -71,7 +71,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     const el = playheadRef.current;
     const args = argsRef.current;
     if (!el || args.durationSec <= 0 || args.timelineWidthPx <= 0) return;
-    const metrics = resolveTierViewportMetrics({
+    const metrics = resolveTierViewportMetricsDuringScrollFrame({
       tierScrollEl: args.tierScrollRef?.current ?? null,
       tierScrollLive: args.tierScrollLive,
       tierScrollLayout: args.tierScrollLayout,

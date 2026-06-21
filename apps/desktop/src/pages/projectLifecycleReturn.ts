@@ -2,7 +2,6 @@ import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 import { deriveTranscribePreviewActive } from "./projectLifecycleFacades";
 import { mapEditorToolsLifecycleFields } from "./projectLifecycleEditorToolsReturn";
 import type { ProjectLifecycleReturnInput } from "./projectLifecycleReturnTypes";
-import { readFocusedSegmentTextareaIdx } from "./flushSegmentTextDrafts";
 
 export type { ProjectLifecycleReturnInput } from "./projectLifecycleReturnTypes";
 
@@ -33,7 +32,6 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     beginBusy,
     endBusy,
     selectedIdxRef,
-    getCurrentSegmentsSnapshot,
     closeGateFacade,
     exportFacade,
     transcribeJob,
@@ -123,12 +121,10 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     splitAtSelection: () => mutations.splitAtSelection(selectedIdxRef.current),
     splitAtPlayhead: mutations.splitAtPlayhead,
     mergeWithNext: () => {
-      const focusIdx = readFocusedSegmentTextareaIdx(getCurrentSegmentsSnapshot().length);
-      mutations.mergeWithNext(focusIdx ?? selectedIdxRef.current);
+      mutations.mergeWithNext(selectedIdxRef.current);
     },
     mergeWithPrev: () => {
-      const focusIdx = readFocusedSegmentTextareaIdx(getCurrentSegmentsSnapshot().length);
-      mutations.mergeWithPrev(focusIdx ?? selectedIdxRef.current);
+      mutations.mergeWithPrev(selectedIdxRef.current);
     },
     mergeWithNextAt: mutations.mergeWithNextAt,
     mergeWithPrevAt: mutations.mergeWithPrevAt,

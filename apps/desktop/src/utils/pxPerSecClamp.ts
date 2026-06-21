@@ -79,6 +79,17 @@ export function shouldZoomOnlyForSubMinFitAllPeaks(
   return requestedPeaksPxPerSec < PX_PER_SEC_MIN;
 }
 
+const PEAK_TIMELINE_WIDTH_BUCKET_PX = 100;
+
+/** Bucket timeline width for PeakCache resample keys (100px steps). */
+export function quantizeTimelineWidthPx(widthPx: number): number {
+  if (!Number.isFinite(widthPx) || widthPx <= 0) return PEAK_TIMELINE_WIDTH_BUCKET_PX;
+  return Math.max(
+    PEAK_TIMELINE_WIDTH_BUCKET_PX,
+    Math.round(widthPx / PEAK_TIMELINE_WIDTH_BUCKET_PX) * PEAK_TIMELINE_WIDTH_BUCKET_PX,
+  );
+}
+
 /** Sub-min fit-all refit: zoom in place — skip ws.load on viewport px/s drift or in-flight peaks. */
 export function shouldZoomOnlyForSubMinFitAllRefit(input: {
   requestedPeaksPxPerSec: number;

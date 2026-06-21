@@ -3,13 +3,20 @@ import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 export type SegmentOverlayPointerModifiers = {
   altKey: boolean;
   shiftKey: boolean;
+  toggleKey: boolean;
 };
 
 export function readSegmentOverlayModifiers(ev: {
   altKey: boolean;
   shiftKey: boolean;
+  metaKey?: boolean;
+  ctrlKey?: boolean;
 }): SegmentOverlayPointerModifiers {
-  return { altKey: ev.altKey, shiftKey: ev.shiftKey };
+  return {
+    altKey: ev.altKey,
+    shiftKey: ev.shiftKey,
+    toggleKey: Boolean(ev.metaKey || ev.ctrlKey),
+  };
 }
 
 /** Alt held → disable boundary snap for fine placement. */

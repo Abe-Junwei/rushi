@@ -95,4 +95,14 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     });
     expect(hits.length).toBe(1);
   });
+
+  it("does not restart playing rAF when currentTimeSec changes (S7)", async () => {
+    const source = await import("./useWaveformVisualPlayheadClock.ts?raw");
+    expect(source.default).toMatch(
+      /useEffect\(\(\) => \{[\s\S]{0,900}requestAnimationFrame\(tick\);[\s\S]{0,120}\}, \[[^\]]*input\.durationSec[^\]]*\]\);/,
+    );
+    expect(source.default).not.toMatch(
+      /useEffect\(\(\) => \{[\s\S]{0,900}requestAnimationFrame\(tick\);[\s\S]{0,120}\}, \[[^\]]*input\.currentTimeSec[^\]]*\]\);/,
+    );
+  });
 });

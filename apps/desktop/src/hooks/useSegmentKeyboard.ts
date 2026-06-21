@@ -66,9 +66,8 @@ export function useSegmentKeyboard(args: {
       const seg = c.segments[targetIdx];
       if (!seg) return;
 
-      // Match packaged behavior: keyboard navigation follows the normal list
-      // selection path; selectSegmentAt owns viewport reveal + rAF seek.
-      a.selectSegmentAtRef.current(targetIdx, "list");
+      // Keyboard navigation: listKeyboard source — reveal gated by F3, no seek.
+      a.selectSegmentAtRef.current(targetIdx, "listKeyboard");
       focusSegmentTextareaImmediate(targetIdx);
     },
     [focusSegmentTextareaImmediate],

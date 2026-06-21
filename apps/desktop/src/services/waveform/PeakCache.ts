@@ -1,5 +1,6 @@
 import type WaveformData from "waveform-data";
 import { computeTimelineWidthPx } from "../../utils/pxPerSec";
+import { quantizePxPerSecForPeaksLoad, quantizeTimelineWidthPx } from "../../utils/pxPerSecClamp";
 import {
   loadWaveformDatFromPath,
   resampleWaveformForPxPerSec,
@@ -46,7 +47,7 @@ export class PeakCache {
 
   private readonly knownLevels: Map<number, PeakLevelEntry>;
   private readonly levels: ByteBudgetLruMap<number, LoadedPeakLevel>;
-  /** Key = `${lodLevel}:${targetWidthPx}` for a given peaks-load px/s bucket. */
+  /** Key = `${lodLevel}:${quantizePxPerSec}:${quantizeTimelineWidthPx}` */
   private readonly resampleCache: ByteBudgetLruMap<string, WaveSurferPeaksBundle>;
   private readonly loadPromises = new Map<number, Promise<LoadedPeakLevel>>();
 
@@ -148,7 +149,7 @@ export class PeakCache {
         ? layoutMediaDurationSec
         : this.durationSec;
     const targetWidthPx = Math.max(1, computeTimelineWidthPx(layoutDur, pxPerSec));
-    const key = `${base.level}:${targetWidthPx}`;
+    const key = this.buildResampleCacheKey(base.level, pxPerSec, targetWidthPx);
     const cached = this.resampleCache.get(key);
     if (cached) {
       return cached;
@@ -175,7 +176,7 @@ export class PeakCache {
         ? layoutMediaDurationSec
         : this.durationSec;
     const targetWidthPx = Math.max(1, computeTimelineWidthPx(layoutDur, pxPerSec));
-    const key = `${base.level}:${targetWidthPx}`;
+    const key = this.buildResampleCacheKey(base.level, pxPerSec, targetWidthPx);
     const cached = this.resampleCache.get(key);
     if (cached) {
       return cached;
@@ -237,6 +238,10 @@ export class PeakCache {
     } catch {
       return null;
     }
+  }
+
+  private buildResampleCacheKey(level: number, pxPerSec: number, targetWidthPx: number): string {
+    return `${level}:${quantizePxPerSecForPeaksLoad(pxPerSec)}:${quantizeTimelineWidthPx(targetWidthPx)}`;
   }
 
   private storeResample(key: string, bundle: WaveSurferPeaksBundle): WaveSurferPeaksBundle {

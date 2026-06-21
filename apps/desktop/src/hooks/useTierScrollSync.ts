@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
-import { flushTierScrollFrame, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { flushTierScrollFrame, registerTierScrollFrameMetricsSupplier, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
 import { useTierScrollProgrammaticWrites, type PendingProgrammaticScrollWrite } from "./tierScrollProgrammaticWrites";
 import { useTierScrollResizeEffect } from "./useTierScrollResizeEffect";
-import { pickAbsoluteTimeInTierViewport, seekFromTierClientX } from "./tierScrollSeekActions";
+import { centerTierAtClientX, pickAbsoluteTimeInTierViewport, seekFromTierClientX } from "./tierScrollSeekActions";
 import { useTierScrollWheelMotion } from "./useTierScrollWheelMotion";
 import { useTierScrollDomActivity } from "./useTierScrollDomActivity";
 import { useTierScrollMediaResetEffect } from "./useTierScrollMediaResetEffect";
@@ -237,6 +238,15 @@ export function useTierScrollSync(args: {
       seekFromTierClientX: (clientX: number) => {
         seekFromTierClientX(argsRef.current, clientX);
       },
+      centerTierAtClientX: (clientX: number) => {
+        centerTierAtClientX(argsRef.current, clientX, (scrollLeftPx) => {
+          cancelTransientScrollMotion("pointer");
+          applyScrollLeftPx(scrollLeftPx, "program", { immediate: true });
+          tierScrollActivityRef.current.notifyScrollActivity();
+          extendPlaybackFollowSuppressForUserIntent();
+          flushTierScrollFrame();
+        });
+      },
       onPickAbsoluteTime: (t: number, mode: "seek" | "seekAndCenterViewport") => {
         pickAbsoluteTimeInTierViewport(argsRef.current, t, mode, (scrollLeftPx) => {
           applyScrollLeftPx(scrollLeftPx, "program", { immediate: true });
@@ -283,6 +293,24 @@ export function useTierScrollSync(args: {
     },
     [cancelTransientScrollMotion, programmaticWrites],
   );
+
+  useEffect(() => {
+    registerTierScrollFrameMetricsSupplier(() => {
+      const tier = argsRef.current.tierScrollRef.current;
+      if (!tier) return null;
+      return resolveTierViewportMetrics({
+        tierScrollEl: tier,
+        tierScrollLive: tierScrollMetrics.liveScrollLeftRef
+          ? { scrollLeftRef: tierScrollMetrics.liveScrollLeftRef, clientWidthRef: tierScrollMetrics.liveClientWidthRef }
+          : undefined,
+        tierScrollLayout: {
+          scrollLeftPx: tierScrollMetrics.scrollLeftPx,
+          clientWidthPx: tierScrollMetrics.clientWidthPx,
+        },
+      });
+    });
+    return () => registerTierScrollFrameMetricsSupplier(null);
+  }, [tierScrollMetrics.clientWidthPx, tierScrollMetrics.liveClientWidthRef, tierScrollMetrics.liveScrollLeftRef, tierScrollMetrics.scrollLeftPx]);
 
   return {
     ...api,

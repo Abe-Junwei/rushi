@@ -28,8 +28,8 @@ export type WaveformTimeRulerProps = {
   coordinateSpace?: "timeline" | "viewport";
   /** embedded + overlay：透明叠在波形底部，无背景条 */
   overlayOnWaveform?: boolean;
-  /** 点击时间尺（相对 tier 视口）寻位 */
-  onSeekFromTierClientX: (clientX: number) => void;
+  /** R2: click centers tier scroll at clientX — no seek. */
+  onCenterTierAtClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
   /** 播放期由 rAF 直写 playhead，避免 React 每帧重绘 */
   playheadLineRef?: React.RefObject<SVGLineElement | null>;
@@ -51,7 +51,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   currentTimeSec,
   formatMediaTime,
   disabled,
-  onSeekFromTierClientX,
+  onCenterTierAtClientX,
   onSetScrollLeftPx,
   appearance = "ink",
   coordinateSpace = "timeline",
@@ -79,7 +79,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     currentTimeSec,
     liveScrollLeftPx: metrics.liveScrollLeftPx,
     disabled,
-    onSeekFromTierClientX,
+    onCenterTierAtClientX,
     onSetScrollLeftPx,
   });
 

@@ -37,6 +37,8 @@ export type UseProjectWaveformOptions = {
   layoutTimelineWidthPxRef?: React.MutableRefObject<number>;
   /** Tier scroll container for pointer → time mapping on overlay gestures. */
   tierScrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** After reveal/flushTierScrollFrame, skip redundant seeking resync (ms timestamp). */
+  selectionSeekChromeSuppressUntilRef?: React.MutableRefObject<number>;
   /** Sticky waveform clip shell — resize sync writes width imperatively. */
   stickyShellRef?: React.RefObject<HTMLDivElement | null>;
   /** Inner stretch wrapper — temporary scaleX during viewport resize. */

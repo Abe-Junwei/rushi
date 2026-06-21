@@ -10,6 +10,7 @@ type WaveformLiveTimeRulerProps = Omit<
   isReady: boolean;
   currentTimeSec: number;
   getPlayheadTime: () => number;
+  getVisualPlayheadTimeSec?: () => number;
   subscribePlayheadFrame?: WaveformTimeRulerCanvasProps["subscribePlayheadFrame"];
 };
 
@@ -19,6 +20,7 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
   isReady,
   currentTimeSec,
   getPlayheadTime,
+  getVisualPlayheadTimeSec,
   formatMediaTime,
   durationSec,
   timelineWidthPx,
@@ -30,9 +32,11 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
     isReady,
     currentTimeSec,
     getPlayheadTime,
+    getVisualPlayheadTimeSec,
     formatMediaTime,
     durationSec,
     timelineWidthPx,
+    subscribePlayheadFrame,
   });
 
   return (

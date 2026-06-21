@@ -9,7 +9,9 @@ import {
   scrollSegmentListIndexIntoView,
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
+  resolveVirtualListScrollTopForWindow,
   resolveSegmentListRowIndexFromPoint,
+  resolveSegmentListRangeDragHoverIndex,
   isEditableSegmentBodyTextarea,
   isSegmentBodyTextarea,
   segmentListRangeDragExceededSlop,
@@ -80,6 +82,56 @@ describe("segmentListVirtualWindow", () => {
         itemStridePx: stride,
       }),
     ).toBeNull();
+  });
+
+  it("resolveVirtualListScrollTopForWindow projects pre-layout scroll target when enabled", () => {
+    const stride = 80;
+    const rowMin = 70;
+    const index = 20;
+    const viewport = 400;
+    const projected = resolveVirtualListScrollTopForWindow({
+      rootScrollTop: 0,
+      rootScrollHeight: 5000 * stride,
+      rootClientHeight: viewport,
+      scrollMetrics: { scrollTop: 0, viewportHeight: viewport },
+      selectedDisplayIndex: index,
+      rowMinHeightPx: rowMin,
+      itemStridePx: stride,
+      useSelectionProjection: true,
+    });
+    expect(projected).toBe(index * stride + rowMin - viewport);
+    expect(
+      resolveVirtualListScrollTopForWindow({
+        rootScrollTop: index * stride,
+        rootScrollHeight: 5000 * stride,
+        rootClientHeight: viewport,
+        scrollMetrics: { scrollTop: index * stride, viewportHeight: viewport },
+        selectedDisplayIndex: index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+        useSelectionProjection: true,
+      }),
+    ).toBe(index * stride);
+  });
+
+  it("resolveVirtualListScrollTopForWindow follows live scroll when projection disabled", () => {
+    const stride = 80;
+    const rowMin = 70;
+    const index = 5;
+    const viewport = 400;
+    const liveScrollTop = 8000;
+    expect(
+      resolveVirtualListScrollTopForWindow({
+        rootScrollTop: liveScrollTop,
+        rootScrollHeight: 5000 * stride,
+        rootClientHeight: viewport,
+        scrollMetrics: { scrollTop: liveScrollTop, viewportHeight: viewport },
+        selectedDisplayIndex: index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+        useSelectionProjection: false,
+      }),
+    ).toBe(liveScrollTop);
   });
 
   it("centers selected row in viewport when align is center", () => {
@@ -260,6 +312,22 @@ describe("segmentListVirtualWindow", () => {
 
     document.elementFromPoint = () => null;
     expect(resolveSegmentListRowIndexFromPoint(root, 20, 150, 100)).toBe(20);
+
+    document.body.removeChild(root);
+  });
+
+  it("resolveSegmentListRangeDragHoverIndex clamps to first/last row outside viewport (S8)", () => {
+    const root = document.createElement("div");
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    writeSegmentListFilterIndices(root, [5, 15, 25], true);
+    root.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) });
+    document.body.appendChild(root);
+
+    document.elementFromPoint = () => null;
+    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 80, 100)).toBe(5);
+    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 520, 100)).toBe(25);
 
     document.body.removeChild(root);
   });

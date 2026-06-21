@@ -1,12 +1,12 @@
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { resolveWaveformSegmentFillState } from "../utils/segmentChrome";
-import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 import { CspLayout } from "./CspLayout";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
@@ -48,8 +48,9 @@ export type WaveformSegmentOverlayProps = {
 };
 
 export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props: WaveformSegmentOverlayProps) {
+  const createPreviewRef = useRef<HTMLElement | null>(null);
+
   const {
-    createPreview,
     segmentDraftIdx,
     segmentBoundsAt,
     onShellPointerDown,
@@ -60,7 +61,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     onPointerUp,
     onPointerCancel,
     segmentOverlayGeometry,
-  } = useWaveformSegmentOverlay(props);
+  } = useWaveformSegmentOverlay(props, createPreviewRef);
 
   const {
     timelineWidthPx,
@@ -102,7 +103,6 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
   return (
     <div
       className="waveform-segment-overlay"
-      // Local interaction hints (not in editorShortcutRegistry).
       title="拖动空白：选中相交语段；空白处无命中则新建。Shift+拖扩展已有选区；Shift 允许重叠新建；⌘/Ctrl+点击切换选中"
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}
@@ -145,17 +145,15 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
           />
         );
       })}
-      {createPreview ? (
-        <CspLayout
-          className="waveform-segment-create-preview"
-          layout={computeCreatePreviewStyle({
-            createPreview,
-            timelineWidthPx,
-            durationSec,
-          })}
-          aria-hidden
-        />
-      ) : null}
+      <CspLayout
+        ref={(el) => {
+          createPreviewRef.current = el;
+          if (el) setCspLayoutRules(el, { display: "none" });
+        }}
+        className="waveform-segment-create-preview pointer-events-none absolute top-0 z-[4] h-full bg-accent-action/20"
+        layout={{ display: "none" }}
+        aria-hidden
+      />
     </div>
   );
 });

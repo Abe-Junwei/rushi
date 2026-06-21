@@ -97,7 +97,6 @@ function checkTsFile(fullPath) {
     "apps/desktop/src/pages/useSegmentAnnotationController.ts",
     "apps/desktop/src/pages/useAutoPunctuateController.ts",
     "apps/desktop/src/pages/useEditorSegmentCorrectPopover.ts",
-    "apps/desktop/src/pages/projectLifecycleReturn.ts",
     "apps/desktop/src/pages/projectSavePersistPipeline.ts",
     "apps/desktop/src/pages/useProjectSaveController.ts",
   ];
@@ -673,6 +672,11 @@ function checkSegmentListRapidSelectGuard() {
         `${scrollRel}: 选中语段后的列表滚动须与打包版本一致走同步 layout effect，禁止 timer/coalesce 延迟`,
       );
     }
+    if (!/scrollGenerationRef/.test(scrollSource)) {
+      errors.push(
+        `${scrollRel}: 列表 rAF correction 须用 scrollGeneration 跳过用户手动滚动后的误校正`,
+      );
+    }
   }
 
   const keyboardRel = 'apps/desktop/src/hooks/useSegmentKeyboard.ts';
@@ -689,14 +693,19 @@ function checkSegmentListRapidSelectGuard() {
       `${keyboardRel}: ↑↓ 键盘切换禁止复用 listAdvance 的 150ms coalesce scheduler`,
     );
   }
-  if (/selectSegmentAtRef\.current\([^)]*"listKeyboard"/.test(keyboardSource) || /\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
+  if (/selectSegmentAtRef\.current\([^)]*"list"\)/.test(keyboardSource) || /\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
     errors.push(
-      `${keyboardRel}: ↑↓ 键盘切换须走打包版本的普通 list 选择链；seek 由 selectSegmentAt 的 rAF 负责`,
+      `${keyboardRel}: ↑↓ 键盘切换须走 listKeyboard 源（F3 reveal gate，无 seek）；禁止 list 源或直接 seek`,
+    );
+  }
+  if (!/selectSegmentAtRef\.current\([^)]*"listKeyboard"/.test(keyboardSource)) {
+    errors.push(
+      `${keyboardRel}: ↑↓ 键盘切换须使用 listKeyboard 源`,
     );
   }
   if (/readStoredTabAdvanceLoopsSegment/.test(keyboardSource)) {
     errors.push(
-      `${keyboardRel}: ↑↓ 键盘切换禁止复用 Tab 听打 loop-play；仅 Tab confirmAdvance 可走 listAdvance + loop`,
+      `${keyboardRel}: ↑↓ 键盘切换禁止复用 Tab 听打 loop-play；仅 Tab confirmAdvance 可走 listKeyboard + loop`,
     );
   }
   if (!/segmentListFilterNavRef/.test(keyboardSource)) {
@@ -708,7 +717,12 @@ function checkSegmentListRapidSelectGuard() {
     const shortcutSource = fs.readFileSync(shortcutPath, 'utf-8');
     if (!/readStoredTabAdvanceLoopsSegment/.test(shortcutSource)) {
       errors.push(
-        `${shortcutRel}: Tab confirmAdvance 须在 listAdvance 后按偏好触发 loop-play 或 seek`,
+        `${shortcutRel}: Tab confirmAdvance 须在 listKeyboard 后按偏好触发 loop-play 或 seek`,
+      );
+    }
+    if (!/selectSegmentAt\([^)]*"listKeyboard"/.test(shortcutSource)) {
+      errors.push(
+        `${shortcutRel}: Tab confirmAdvance 须使用 listKeyboard 源`,
       );
     }
   }
@@ -725,6 +739,47 @@ function checkSegmentListRapidSelectGuard() {
     if (/createListAdvanceCoalescedScheduler|queueListAdvanceReveal/.test(selectionSource)) {
       errors.push(
         `${selectionRel}: 语段切换后的波形 reveal 必须即时；listAdvance 只表示不重复 zoom，禁止 150ms coalesce`,
+      );
+    }
+    if (!/shouldSeekOnSegmentSelect/.test(selectionSource)) {
+      errors.push(
+        `${selectionRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（list/listKeyboard 禁止 seek）`,
+      );
+    }
+  }
+
+  const policyRel = 'apps/desktop/src/utils/selectionRevealSeekPolicy.ts';
+  const policyPath = path.join(ROOT, policyRel);
+  if (fs.existsSync(policyPath)) {
+    const policySource = fs.readFileSync(policyPath, 'utf-8');
+    if (!/return source === "waveform"/.test(policySource)) {
+      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 仅 waveform 源可 seek`);
+    }
+  }
+
+  const rulerRel = 'apps/desktop/src/hooks/useWaveformTimeRulerInteraction.ts';
+  const rulerPath = path.join(ROOT, rulerRel);
+  if (fs.existsSync(rulerPath)) {
+    const rulerSource = fs.readFileSync(rulerPath, 'utf-8');
+    if (/onSeekFromTierClientX|seekFromTierClientX/.test(rulerSource)) {
+      errors.push(`${rulerRel}: 时间尺 click 须 centerTierAtClientX 滚动，禁止 seekFromTierClientX`);
+    }
+    if (!/onCenterTierAtClientX/.test(rulerSource)) {
+      errors.push(`${rulerRel}: 时间尺 click 须经 onCenterTierAtClientX`);
+    }
+  }
+
+  const wsEventsRel = 'apps/desktop/src/hooks/projectWaveformWaveSurferEvents.ts';
+  const wsEventsPath = path.join(ROOT, wsEventsRel);
+  if (fs.existsSync(wsEventsPath)) {
+    const wsEventsSource = fs.readFileSync(wsEventsPath, 'utf-8');
+    if (
+      /requestAnimationFrame\s*\(\s*(?:\(\)\s*=>\s*)?\{[\s\S]{0,200}requestWaveformSegmentBandPaint/.test(
+        wsEventsSource,
+      )
+    ) {
+      errors.push(
+        `${wsEventsRel}: band paint 须直接 requestWaveformSegmentBandPaint()，禁止 requestAnimationFrame 外包`,
       );
     }
   }

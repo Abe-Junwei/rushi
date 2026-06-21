@@ -3,10 +3,11 @@ import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import {
   isSegmentBodyTextarea,
   querySegmentListScrollRoot,
-  resolveSegmentListRowIndexFromPoint,
+  resolveSegmentListRangeDragHoverIndex,
   segmentListRangeDragExceededSlop,
   segmentListRangeDragVerticalIntentExceededSlop,
 } from "../utils/segmentListVirtualWindow";
+import { computeSegmentListDragAutoScrollDelta } from "../utils/segmentListDragAutoScroll";
 import { blurActiveTranscriptTextarea } from "../utils/transcriptSelection";
 
 type SelectSegmentAtRef = MutableRefObject<
@@ -27,6 +28,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
     fromTextBody: boolean;
     startClientX: number;
     startClientY: number;
+    lastClientY?: number;
   } | null>(null);
   const suppressSegmentListRowClickRef = useRef(false);
   const listSelectSourceStateRef = useRef({ lastAtMs: 0 });
@@ -58,9 +60,36 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         selectSegmentAtRef.current(idx, "list", { toggle: true });
       }
 
+      const autoScrollRafRef = { current: 0 as number | null };
+      const stopAutoScroll = () => {
+        if (autoScrollRafRef.current != null) {
+          window.cancelAnimationFrame(autoScrollRafRef.current);
+          autoScrollRafRef.current = null;
+        }
+      };
+      const tickAutoScroll = () => {
+        const drag = segmentListRangeDragRef.current;
+        const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
+        if (!drag || !scrollRoot) {
+          stopAutoScroll();
+          return;
+        }
+        const rect = scrollRoot.getBoundingClientRect();
+        const delta = computeSegmentListDragAutoScrollDelta({
+          clientY: drag.lastClientY ?? drag.startClientY,
+          rootTop: rect.top,
+          rootBottom: rect.bottom,
+        });
+        if (delta !== 0) {
+          scrollRoot.scrollTop = Math.max(0, scrollRoot.scrollTop + delta);
+        }
+        autoScrollRafRef.current = window.requestAnimationFrame(tickAutoScroll);
+      };
+
       const onMove = (ev: PointerEvent) => {
         const drag = segmentListRangeDragRef.current;
         if (!drag || ev.pointerId !== drag.pointerId) return;
+        drag.lastClientY = ev.clientY;
         if (
           !drag.moved &&
           !(drag.fromTextBody
@@ -82,9 +111,11 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         if (!drag.moved) {
           drag.moved = true;
           blurActiveTranscriptTextarea();
+          stopAutoScroll();
+          autoScrollRafRef.current = window.requestAnimationFrame(tickAutoScroll);
         }
         const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
-        const hoverIdx = resolveSegmentListRowIndexFromPoint(
+        const hoverIdx = resolveSegmentListRangeDragHoverIndex(
           scrollRoot,
           ev.clientX,
           ev.clientY,
@@ -100,6 +131,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         if (!drag || ev.pointerId !== drag.pointerId) return;
         if (drag.moved) suppressSegmentListRowClickRef.current = true;
         segmentListRangeDragRef.current = null;
+        stopAutoScroll();
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
         window.removeEventListener("pointercancel", onUp);

@@ -1,0 +1,83 @@
+import { describe, expect, it, vi } from "vitest";
+import { finishWaveformLassoDrag } from "./waveformSegmentDragHelpers";
+import type { WaveformSegmentDragArgs } from "./useWaveformSegmentDrag";
+import type { OverlayDragState } from "../utils/waveformSegmentOverlayGeometry";
+
+function makeLassoDrag(overrides: Partial<OverlayDragState> = {}): OverlayDragState {
+  return {
+    mode: "lasso",
+    pointerId: 1,
+    segmentIdx: -1,
+    anchorTimeSec: 12.5,
+    anchorClientX: 100,
+    initialStartSec: 12.5,
+    initialEndSec: 12.5,
+    moved: false,
+    ...overrides,
+  };
+}
+
+function makeArgs(overrides: Partial<WaveformSegmentDragArgs> = {}): WaveformSegmentDragArgs {
+  return {
+    disabled: false,
+    segments: [],
+    selectedIdx: 0,
+    timelineWidthPx: 1000,
+    durationSec: 600,
+    layoutHeightPx: 96,
+    laneByIndex: [],
+    laneCount: 1,
+    enableCreateRange: true,
+    clientXToTimeSec: () => 12.5,
+    onSelectSegmentAt: vi.fn(),
+    onBoundsCommit: vi.fn(),
+    seekToTime: vi.fn(),
+    onFocusWaveformShell: vi.fn(),
+    isMultiSegmentSelection: () => false,
+    ...overrides,
+  };
+}
+
+describe("finishWaveformLassoDrag", () => {
+  it("short tap with shift skips seek (H19)", () => {
+    const seekToTime = vi.fn();
+    const args = makeArgs({ seekToTime });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag(),
+      timeSec: 12.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: true, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(seekToTime).not.toHaveBeenCalled();
+  });
+
+  it("short tap with toggle skips seek", () => {
+    const seekToTime = vi.fn();
+    const args = makeArgs({ seekToTime });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag(),
+      timeSec: 12.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: true, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(seekToTime).not.toHaveBeenCalled();
+  });
+
+  it("short tap without modifier seeks when not multi-select", () => {
+    const seekToTime = vi.fn();
+    const args = makeArgs({ seekToTime });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag(),
+      timeSec: 12.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(seekToTime).toHaveBeenCalledWith(12.5);
+  });
+});

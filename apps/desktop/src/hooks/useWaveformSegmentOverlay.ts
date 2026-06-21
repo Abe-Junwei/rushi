@@ -1,8 +1,10 @@
-import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { applySegmentOverlayTap } from "../utils/waveformSegmentOverlayActions";
 import { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
 import {
+  computeCreatePreviewStyle,
   resolveSegmentBoundsAt,
   type CreateRangePreview,
   type SegmentOverlayDraft,
@@ -13,46 +15,71 @@ export type { CreateRangePreview, SegmentOverlayDraft } from "../utils/waveformS
 
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 
-export function useWaveformSegmentOverlay(args: {
-  disabled: boolean;
-  segments: SegmentDto[];
-  selectedIdx: number;
-  selectionLo?: number;
-  selectionHi?: number;
-  timelineWidthPx: number;
-  durationSec: number;
-  getPlayheadSec?: () => number;
-  layoutHeightPx: number;
-  laneByIndex: number[];
-  laneCount: number;
-  enableCreateRange: boolean;
-  clientXToTimeSec: (clientX: number) => number;
-  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
-  onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
-  getSelectedIndices?: () => ReadonlySet<number>;
-  onBeginBoundsEdit?: () => void;
-  onFocusWaveformShell?: () => void;
-  onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  onCreateRange?: (
-    startSec: number,
-    endSec: number,
-    options?: { overlapPolicy?: SegmentOverlapPolicy },
-  ) => void;
-  onSelectTimeRange?: (startSec: number, endSec: number) => void;
-  onPlaySegment?: (idx: number) => void;
-  seekToTime: (timeSec: number) => void;
-  suppressPlaybackFollowForSelectionSeek?: () => void;
-  onDraftIdxChange?: (idx: number | null) => void;
-  onClearMultiSelection?: () => void;
-  isMultiSegmentSelection?: () => boolean;
-}) {
+export function useWaveformSegmentOverlay(
+  args: {
+    disabled: boolean;
+    segments: SegmentDto[];
+    selectedIdx: number;
+    selectionLo?: number;
+    selectionHi?: number;
+    timelineWidthPx: number;
+    durationSec: number;
+    getPlayheadSec?: () => number;
+    layoutHeightPx: number;
+    laneByIndex: number[];
+    laneCount: number;
+    enableCreateRange: boolean;
+    clientXToTimeSec: (clientX: number) => number;
+    onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+    onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
+    getSelectedIndices?: () => ReadonlySet<number>;
+    onBeginBoundsEdit?: () => void;
+    onFocusWaveformShell?: () => void;
+    onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
+    onCreateRange?: (
+      startSec: number,
+      endSec: number,
+      options?: { overlapPolicy?: SegmentOverlapPolicy },
+    ) => void;
+    onSelectTimeRange?: (startSec: number, endSec: number) => void;
+    onPlaySegment?: (idx: number) => void;
+    seekToTime: (timeSec: number) => void;
+    suppressPlaybackFollowForSelectionSeek?: () => void;
+    onDraftIdxChange?: (idx: number | null) => void;
+    onClearMultiSelection?: () => void;
+    isMultiSegmentSelection?: () => boolean;
+  },
+  createPreviewRef: RefObject<HTMLElement | null>,
+) {
   const argsRef = useRef(args);
   argsRef.current = args;
 
   const [segmentDraft, setSegmentDraft] = useState<SegmentOverlayDraft | null>(null);
-  const [createPreview, setCreatePreview] = useState<CreateRangePreview | null>(null);
 
   const segmentDraftIdx = segmentDraft?.idx ?? null;
+
+  const updateCreatePreview = useCallback(
+    (preview: CreateRangePreview | null) => {
+      const el = createPreviewRef.current;
+      if (!el) return;
+      if (!preview) {
+        setCspLayoutRules(el, { display: "none" });
+        return;
+      }
+      const a = argsRef.current;
+      const layout = computeCreatePreviewStyle({
+        createPreview: preview,
+        timelineWidthPx: a.timelineWidthPx,
+        durationSec: a.durationSec,
+      });
+      setCspLayoutRules(el, {
+        display: "block",
+        left: layout.left,
+        width: layout.width,
+      });
+    },
+    [createPreviewRef],
+  );
 
   useLayoutEffect(() => {
     argsRef.current.onDraftIdxChange?.(segmentDraftIdx);
@@ -81,7 +108,7 @@ export function useWaveformSegmentOverlay(args: {
     );
   }, []);
 
-  const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, setCreatePreview, onSegmentPointerTap);
+  const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, updateCreatePreview, onSegmentPointerTap);
   const { suppressClickAfterPointer } = drag;
 
   const onSegmentClick = useCallback(
@@ -124,7 +151,6 @@ export function useWaveformSegmentOverlay(args: {
   );
 
   return {
-    createPreview,
     segmentDraftIdx,
     segmentBoundsAt,
     onShellPointerDown: drag.onShellPointerDown,

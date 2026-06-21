@@ -13,6 +13,7 @@ interface EditorSegmentWorkbenchProps {
   appearance: AppearanceApi;
   filteredIndices: number[];
   filterActive: boolean;
+  onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
@@ -21,6 +22,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   appearance: a,
   filteredIndices,
   filterActive,
+  onResetSegmentListFilter,
   onOpenSegmentContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
@@ -33,6 +35,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         filterNavRef={tx.segmentListFilterNavRef}
         filteredIndices={filteredIndices}
         filterActive={filterActive}
+        onResetSegmentListFilter={onResetSegmentListFilter}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       />
       <ResizeBottomHit
@@ -56,6 +59,7 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.segments.length === next.controller.segments.length &&
     prev.filteredIndices === next.filteredIndices &&
     prev.filterActive === next.filterActive &&
+    prev.onResetSegmentListFilter === next.onResetSegmentListFilter &&
     prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
     prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&
     prev.controller.updateSegmentText === next.controller.updateSegmentText &&

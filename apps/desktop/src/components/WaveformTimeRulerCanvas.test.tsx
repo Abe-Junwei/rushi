@@ -61,7 +61,7 @@ describe("WaveformTimeRulerCanvas", () => {
         tierScrollLayout={{ scrollLeftPx: 1000, clientWidthPx: 500 }}
         currentTimeSec={50}
         formatMediaTime={(sec) => `${sec}`}
-        onSeekFromTierClientX={vi.fn()}
+        onCenterTierAtClientX={vi.fn()}
         onSetScrollLeftPx={vi.fn()}
       />,
     );
@@ -104,7 +104,7 @@ describe("WaveformTimeRulerCanvas", () => {
         tierScrollLayout={{ scrollLeftPx: 1000, clientWidthPx: 500 }}
         currentTimeSec={50}
         formatMediaTime={(sec) => `${sec}`}
-        onSeekFromTierClientX={vi.fn()}
+        onCenterTierAtClientX={vi.fn()}
         onSetScrollLeftPx={vi.fn()}
       />,
     );
@@ -153,7 +153,7 @@ describe("WaveformTimeRulerCanvas", () => {
         tierScrollLayout={{ scrollLeftPx: 0, clientWidthPx: 0 }}
         currentTimeSec={0}
         formatMediaTime={(sec) => `${sec}`}
-        onSeekFromTierClientX={vi.fn()}
+        onCenterTierAtClientX={vi.fn()}
         onSetScrollLeftPx={vi.fn()}
       />,
     );

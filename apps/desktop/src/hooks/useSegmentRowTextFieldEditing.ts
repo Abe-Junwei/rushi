@@ -26,6 +26,7 @@ export function useSegmentRowTextFieldEditing({
   editorRef,
   onSegmentRowHeightPointerDown,
   updateSegmentText,
+  selectSegmentAt,
   onTextareaKeyDown,
   spansForText,
   onOpenTextContextMenu,
@@ -191,9 +192,12 @@ export function useSegmentRowTextFieldEditing({
 
   const onFocusText = useCallback(() => {
     if (busy) return;
+    if (!selected) {
+      selectSegmentAt(i);
+    }
     isFocusedRef.current = true;
     setIsTextareaFocused(true);
-  }, [busy]);
+  }, [busy, i, selectSegmentAt, selected]);
 
   return {
     draftKey,

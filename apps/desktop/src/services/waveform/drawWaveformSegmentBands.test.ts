@@ -74,6 +74,36 @@ describe("drawWaveformSegmentBands", () => {
     expect(fillRectCalls).toBe(0);
   });
 
+  it("respects skipIndexSet the same as skipIndices (S10 external Set)", () => {
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: () => {},
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [{ idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" }],
+      scrollLeftPx: 0,
+      viewportWidthPx: 800,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+      skipIndexSet: new Set([0]),
+    });
+
+    expect(fillRectCalls).toBe(0);
+  });
+
   it("finds visible index window on sorted segments", () => {
     const segments = Array.from({ length: 500 }, (_, i) => ({
       idx: i,

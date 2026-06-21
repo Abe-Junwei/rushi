@@ -126,6 +126,22 @@ _Avoid_: 方言下拉（泛指全量）, language 自由文本（v1）
 波形区水平滚动容器；`tierScrollRef.scrollLeft` 为 UI 滚动真源；WaveSurfer 镜像而非反向真源。
 _Avoid_: canvas scroll, WS scroll（作真源时）
 
+**Selection reveal**（选中 reveal）:
+选中语段变更后，将 waveform tier 滚到使该语段在视口居中（或可见）；与 seek（移动播放头）分离。
+_Avoid_: 选中即 seek, fit viewport（未说明仅 tier 滚动时）
+
+**Editor focus gate**（编辑聚焦门闩）:
+Selection reveal 仅在 **语段 textarea** 或 **waveform shell** 任一持有焦点时发生；焦点在 Hub、工具栏、侧栏等主壳层时，选中变更不触发 reveal。
+_Avoid_: 全局选中即滚波形, listKeyboard（作 reveal 门闩名）
+
+**Focus–selection lock**（focus=selected）:
+语段 textarea 焦点与 `selectedIdx` 保持一致；结构快捷键（合并/拆分/Tab 进句/标注等）锚定 **selectedIdx**；非选中行 textarea 不得保持 focus（失选 blur）；若 focus 落入非选中行则先 `selectSegmentAt` 对齐。
+_Avoid_: focus 段与 selected 段双轨, mergeAnchor 读 focus 优先于 selected
+
+**Waveform scrub seek**（波形 scrub _seek）:
+允许移动播放头的波形侧手势：**语段色带点击**（含段内再点）、**minimap 点击**、**主波形空白单击**；**不含**列表/键盘/Tab 导航，**不含**时间尺单击（时间尺单击只滚 tier）。
+_Avoid_: 选中即 seek, 时间尺 seek（v0.1.8+ 产品矩阵）
+
 **Segment band** / **Segment overlay**:
 Canvas 语段色带（display）与 DOM 交互层（选中、拖拽）；非 WaveSurfer Regions。
 _Avoid_: region, marker（WS 语境）

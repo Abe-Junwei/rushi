@@ -75,20 +75,23 @@ function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]
 }
 
 describe("executeEditorShortcut", () => {
-  it("splits at playhead for focused segment index, not only selectedIdx", () => {
+  it("splits at playhead for selectedIdx even when another textarea is focused", () => {
     const splitAtPlayhead = vi.fn();
-    const ctx = makeCtx({ selectedIdx: 0, splitAtPlayhead });
+    const mergeWithNextAt = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0, splitAtPlayhead, mergeWithNextAt });
     document.body.innerHTML = `
       <div data-seg-row="1">
         <textarea aria-label="语段正文"></textarea>
       </div>
     `;
-    const textarea = document.querySelector("textarea")!;
-    textarea.focus();
+    document.querySelector("textarea")!.focus();
 
     executeEditorShortcut("segment.splitPlayhead", makeDeps({ ctx }));
-
     expect(splitAtPlayhead).toHaveBeenCalledWith(1.5);
+
+    executeEditorShortcut("segment.mergeNext", makeDeps({ ctx }));
+    expect(mergeWithNextAt).toHaveBeenCalledWith(0);
+
     document.body.innerHTML = "";
   });
 
@@ -139,7 +142,7 @@ describe("executeEditorShortcut", () => {
     window.removeEventListener("rushi:activity-inbox-toggle", onToggle);
   });
 
-  it("opens annotation dialog for focused segment", () => {
+  it("opens annotation dialog for selectedIdx, not focused textarea row", () => {
     const openSegmentAnnotationDialog = vi.fn();
     const ctx = makeCtx({ openSegmentAnnotationDialog, selectedIdx: 0 });
     document.body.innerHTML = `
@@ -151,11 +154,11 @@ describe("executeEditorShortcut", () => {
 
     executeEditorShortcut("workflow.segmentAnnotation", makeDeps({ ctx }));
 
-    expect(openSegmentAnnotationDialog).toHaveBeenCalledWith(1);
+    expect(openSegmentAnnotationDialog).toHaveBeenCalledWith(0);
     document.body.innerHTML = "";
   });
 
-  it("confirmAdvance uses listAdvance after save", async () => {
+  it("confirmAdvance uses listKeyboard after save", async () => {
     vi.spyOn(waveformPrefs, "readStoredTabAdvanceLoopsSegment").mockReturnValue(false);
     const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
     const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
@@ -183,7 +186,7 @@ describe("executeEditorShortcut", () => {
 
     await vi.waitFor(() => {
       expect(confirmSegmentEditAndAdvance).toHaveBeenCalledWith(0);
-      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listAdvance");
+      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
       expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
       expect(wf.seek).not.toHaveBeenCalled();
       expect(wf.playSegmentAtIndex).not.toHaveBeenCalled();

@@ -11,6 +11,7 @@ export type SegmentRowTextFieldEditingArgs = {
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
   updateSegmentText: (idx: number, text: string) => void;
+  selectSegmentAt: (idx: number) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   spansForText: (text: string) => CorrectableSpan[];
   onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;

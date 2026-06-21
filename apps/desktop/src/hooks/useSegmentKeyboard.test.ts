@@ -156,7 +156,7 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.preserveLoopForNextSegmentSelect).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
@@ -184,8 +184,8 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
@@ -205,7 +205,7 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
   });
@@ -228,7 +228,7 @@ describe("useSegmentKeyboard", () => {
     flushAdvanceRaf();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
@@ -290,6 +290,6 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
   });
 });

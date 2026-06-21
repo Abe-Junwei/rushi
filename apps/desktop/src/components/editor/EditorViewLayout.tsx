@@ -109,6 +109,7 @@ export function EditorViewLayout({
           appearance={appearance}
           filteredIndices={segmentFilter.filteredIndices}
           filterActive={segmentFilter.isActive}
+          onResetSegmentListFilter={segmentFilter.resetFilter}
           onOpenSegmentContextMenu={onOpenSegmentContextMenu}
         />
       </main>

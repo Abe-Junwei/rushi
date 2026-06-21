@@ -9,6 +9,7 @@ import {
   annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
   maybePinSegmentListVirtualWindow,
+  resolveVirtualListScrollTopForWindow,
   scrollSegmentListIndexIntoView,
   scrollSegmentRowIntoViewContainer,
   SEGMENT_LIST_VIRTUAL_OVERSCAN,
@@ -71,6 +72,11 @@ export function useEditorSegmentListScroll({
   const [scrollEpoch, setScrollEpoch] = useState(0);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
+  const prevSelectedDisplayIndexRef = useRef(selectedDisplayIndex);
+  const selectionScrollProjectionRef = useRef(false);
+  const scrollGenerationRef = useRef(0);
+  const suppressScrollGenerationBumpRef = useRef(false);
+  const layoutScrollCorrectionRef = useRef<{ generation: number } | null>(null);
 
   const rowMinHeightPx = segmentListRowMinHeightPx(transcriptRowHeightPx);
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
@@ -103,9 +109,30 @@ export function useEditorSegmentListScroll({
     [scheduleScrollEpochBump, segmentListRef, useVirtualList],
   );
 
+  const writeScrollTop = useCallback(
+    (root: HTMLElement, scrollTop: number) => {
+      suppressScrollGenerationBumpRef.current = true;
+      root.scrollTop = scrollTop;
+      suppressScrollGenerationBumpRef.current = false;
+    },
+    [],
+  );
+
   const handleScroll = useCallback(() => {
+    if (!suppressScrollGenerationBumpRef.current) {
+      scrollGenerationRef.current += 1;
+    }
+    selectionScrollProjectionRef.current = false;
     bumpScrollEpoch();
   }, [bumpScrollEpoch]);
+
+  if (prevSelectedDisplayIndexRef.current !== selectedDisplayIndex) {
+    selectionScrollProjectionRef.current = true;
+    prevSelectedDisplayIndexRef.current = selectedDisplayIndex;
+    if (useVirtualList) {
+      scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
+    }
+  }
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
@@ -146,16 +173,28 @@ export function useEditorSegmentListScroll({
       });
     });
     if (nextScrollTop != null) {
-      root.scrollTop = nextScrollTop;
+      layoutScrollCorrectionRef.current = { generation: scrollGenerationRef.current };
+      writeScrollTop(root, nextScrollTop);
       bumpScrollEpoch();
       window.requestAnimationFrame(() => {
+        if (layoutScrollCorrectionRef.current?.generation !== scrollGenerationRef.current) {
+          selectionScrollProjectionRef.current = false;
+          return;
+        }
         const corrected = selectionProfileTime("listScrollCorrect", () =>
           scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
         );
-        if (corrected == null) return;
-        if (Math.abs(corrected - root.scrollTop) < 1) return;
-        root.scrollTop = corrected;
+        if (corrected == null) {
+          selectionScrollProjectionRef.current = false;
+          return;
+        }
+        if (Math.abs(corrected - root.scrollTop) < 1) {
+          selectionScrollProjectionRef.current = false;
+          return;
+        }
+        writeScrollTop(root, corrected);
         bumpScrollEpoch();
+        selectionScrollProjectionRef.current = false;
       });
       return;
     }
@@ -163,10 +202,17 @@ export function useEditorSegmentListScroll({
     const corrected = selectionProfileTime("listScrollCorrect", () =>
       scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
     );
-    if (corrected == null) return;
-    if (Math.abs(corrected - root.scrollTop) < 1) return;
-    root.scrollTop = corrected;
+    if (corrected == null) {
+      selectionScrollProjectionRef.current = false;
+      return;
+    }
+    if (Math.abs(corrected - root.scrollTop) < 1) {
+      selectionScrollProjectionRef.current = false;
+      return;
+    }
+    writeScrollTop(root, corrected);
     bumpScrollEpoch();
+    selectionScrollProjectionRef.current = false;
   }, [
     bumpScrollEpoch,
     currentFileId,
@@ -176,10 +222,12 @@ export function useEditorSegmentListScroll({
     segmentListRef,
     selectedDisplayIndex,
     selectedIdx,
+    writeScrollTop,
   ]);
 
   useLayoutEffect(() => {
     lastSelectedScrollKeyRef.current = null;
+    selectionScrollProjectionRef.current = false;
   }, [currentFileId]);
 
   useLayoutEffect(() => {
@@ -199,17 +247,28 @@ export function useEditorSegmentListScroll({
         totalHeightPx: 0,
       };
     }
-    const { scrollTop, viewportHeight } = scrollMetricsRef.current;
+    const scrollMetrics = scrollMetricsRef.current;
+    const root = segmentListRef.current;
+    const scrollTop = resolveVirtualListScrollTopForWindow({
+      rootScrollTop: root?.scrollTop ?? scrollMetrics.scrollTop,
+      rootScrollHeight: root?.scrollHeight ?? 0,
+      rootClientHeight: root?.clientHeight ?? 0,
+      scrollMetrics,
+      selectedDisplayIndex,
+      rowMinHeightPx,
+      itemStridePx,
+      useSelectionProjection: selectionScrollProjectionRef.current,
+    });
     const base = computeSegmentListVirtualWindow({
       scrollTop,
-      viewportHeight,
+      viewportHeight: scrollMetrics.viewportHeight,
       itemStridePx,
       totalCount: displayCount,
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
     if (selectedDisplayIndex < 0) return base;
     return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
-      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
+      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN + 1,
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps -- scrollEpoch intentionally triggers recomputation so virtualWindow reads the latest scrollMetricsRef
   }, [scrollEpoch, useVirtualList, itemStridePx, displayCount, selectedDisplayIndex]);

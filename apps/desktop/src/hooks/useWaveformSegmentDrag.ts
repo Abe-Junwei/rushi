@@ -57,7 +57,7 @@ export type WaveformSegmentDragArgs = {
 export function useWaveformSegmentDrag(
   argsRef: React.MutableRefObject<WaveformSegmentDragArgs>,
   applySegmentDraft: (draft: SegmentOverlayDraft | null) => void,
-  setCreatePreview: React.Dispatch<React.SetStateAction<CreateRangePreview | null>>,
+  updateCreatePreview: (preview: CreateRangePreview | null) => void,
   onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
 ) {
   const dragRef = useRef<OverlayDragState | null>(null);
@@ -80,7 +80,7 @@ export function useWaveformSegmentDrag(
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
       if (drag.mode === "lasso") {
-        setCreatePreview(null);
+        updateCreatePreview(null);
         applySegmentDraft(null);
         finishWaveformLassoDrag({
           drag,
@@ -104,7 +104,7 @@ export function useWaveformSegmentDrag(
         suppressClickAfterPointer,
       });
     },
-    [applySegmentDraft, argsRef, setCreatePreview, suppressClickAfterPointer],
+    [applySegmentDraft, argsRef, updateCreatePreview, suppressClickAfterPointer],
   );
 
   const onSegmentPointerDown = useCallback(
@@ -185,7 +185,7 @@ export function useWaveformSegmentDrag(
           moved: false,
           baseIndices,
         };
-        setCreatePreview({ startSec: timeSec, endSec: timeSec });
+        updateCreatePreview({ startSec: timeSec, endSec: timeSec });
         ev.currentTarget.setPointerCapture(ev.pointerId);
         return;
       }
@@ -194,7 +194,7 @@ export function useWaveformSegmentDrag(
       a.suppressPlaybackFollowForSelectionSeek?.();
       a.seekToTime(timeSec);
     },
-    [argsRef, onSegmentPointerDown, setCreatePreview],
+    [argsRef, onSegmentPointerDown, updateCreatePreview],
   );
 
   const onPointerMove = useCallback(
@@ -212,7 +212,7 @@ export function useWaveformSegmentDrag(
           drag.moved = true;
         }
         const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-        setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
+        updateCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
         return;
       }
 
@@ -229,9 +229,10 @@ export function useWaveformSegmentDrag(
           snapEnabled,
           SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
         ) ?? clamped;
+      drag.lastFinalizedBounds = clamped;
       applySegmentDraft({ idx: drag.segmentIdx, ...clamped });
     },
-    [applySegmentDraft, argsRef, setCreatePreview],
+    [applySegmentDraft, argsRef, updateCreatePreview],
   );
 
   const onPointerUp = useCallback(
@@ -253,14 +254,20 @@ export function useWaveformSegmentDrag(
         /* noop */
       }
       const a = argsRef.current;
-      setCreatePreview(null);
+      updateCreatePreview(null);
       applySegmentDraft(null);
 
       if (drag.mode === "lasso") {
         if (!drag.moved) {
-          suppressClickAfterPointer();
-          a.onFocusWaveformShell?.();
-          a.seekToTime(drag.anchorTimeSec);
+          const modifiers = readSegmentOverlayModifiers(ev);
+          finishWaveformLassoDrag({
+            drag,
+            timeSec: a.clientXToTimeSec(ev.clientX),
+            args: a,
+            snapEnabled: isSegmentSnapEnabled(modifiers),
+            modifiers,
+            suppressClickAfterPointer,
+          });
         }
         return;
       }
@@ -277,7 +284,7 @@ export function useWaveformSegmentDrag(
         }
       }
     },
-    [applySegmentDraft, argsRef, setCreatePreview, suppressClickAfterPointer],
+    [applySegmentDraft, argsRef, updateCreatePreview, suppressClickAfterPointer],
   );
 
   return {

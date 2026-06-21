@@ -66,6 +66,7 @@ function createTranscriptionLayer() {
     handleToggleSelectedWaveformLoop: vi.fn(),
     handleToggleSelectedWaveformPlay: vi.fn(),
     seekFromTierClientX: vi.fn(),
+    centerTierAtClientX: vi.fn(),
     setTierScrollPx: vi.fn(),
   };
 }

@@ -39,7 +39,6 @@ export type SegmentTextListRowProps = {
     pointerTimeSec: number,
     selectionText: string,
   ) => void;
-  onRevealSelectedSegment?: () => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
   correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
@@ -100,7 +99,6 @@ function segmentTextListRowPropsEqual(
     prev.onSegmentRowHeightPointerDown === next.onSegmentRowHeightPointerDown &&
     prev.onOpenContextMenu === next.onOpenContextMenu &&
     prev.onOpenTextContextMenu === next.onOpenTextContextMenu &&
-    prev.onRevealSelectedSegment === next.onRevealSelectedSegment &&
     prev.spansForText === next.spansForText &&
     prev.onCorrectableSpanClick === next.onCorrectableSpanClick &&
     prev.onOpenAnnotation === next.onOpenAnnotation
@@ -129,7 +127,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onTextareaKeyDown,
   onOpenContextMenu,
   onOpenTextContextMenu,
-  onRevealSelectedSegment,
   findReplaceHighlight,
   correctionRulesHighlight,
   spansForText,
@@ -166,13 +163,12 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       }
       if (selected) {
         editorRef.current?.focusEditor();
-        onRevealSelectedSegment?.();
         return;
       }
       focusOnSelectRef.current = true;
       selectSegmentAt(i);
     },
-    [busy, consumeRowRangeClickSuppress, i, onRevealSelectedSegment, selectSegmentAt, selected],
+    [busy, consumeRowRangeClickSuppress, i, selectSegmentAt, selected],
   );
 
   const onRowPointerDown = useCallback(
@@ -252,7 +248,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         onSegmentRowHeightPointerDown={onSegmentRowHeightPointerDown}
         onRowRangePointerDown={onRowRangePointerDown}
         selectSegmentAt={selectSegmentAt}
-        onRevealSelectedSegment={onRevealSelectedSegment}
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}
         findReplaceHighlight={findReplaceHighlight}

@@ -12,6 +12,7 @@ export type SegmentRowTextFieldControllerArgs = {
   editorRef?: React.RefObject<{ focusEditor: () => void } | null>;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
+  selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;

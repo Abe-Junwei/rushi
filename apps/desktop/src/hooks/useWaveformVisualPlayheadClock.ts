@@ -31,20 +31,12 @@ export function useWaveformVisualPlayheadClock(input: {
   playbackRate: number;
   getPlayheadTime: () => number;
 }) {
-  const {
-    isPlaying,
-    isReady,
-    durationSec,
-    currentTimeSec,
-    playbackRate,
-    getPlayheadTime,
-  } = input;
   const argsRef = useRef(input);
   argsRef.current = input;
 
-  const visualTimeSecRef = useRef(currentTimeSec);
+  const visualTimeSecRef = useRef(input.currentTimeSec);
   const clockStateRef = useRef<VisualPlayheadClockState>(
-    createVisualPlayheadClockState(currentTimeSec),
+    createVisualPlayheadClockState(input.currentTimeSec),
   );
   const subscribersRef = useRef<Set<PlayheadFrameSubscriber>>(new Set());
 
@@ -73,16 +65,20 @@ export function useWaveformVisualPlayheadClock(input: {
     for (const sub of ordered) sub.cb(timeSec);
   }, []);
 
+  // Paused / seek: sync clock from WaveSurfer commits without restarting the playing rAF loop.
   useEffect(() => {
     const a = argsRef.current;
     if (!a.isReady) {
       syncPausedTime(0);
       return;
     }
-    if (!a.isPlaying) {
-      syncPausedTime(a.currentTimeSec);
-      return;
-    }
+    if (a.isPlaying) return;
+    syncPausedTime(a.currentTimeSec);
+  }, [input.currentTimeSec, input.isPlaying, input.isReady, syncPausedTime]);
+
+  useEffect(() => {
+    const a = argsRef.current;
+    if (!a.isReady || !a.isPlaying) return;
 
     syncPausedTime(a.getPlayheadTime());
     let rafId = 0;
@@ -104,7 +100,7 @@ export function useWaveformVisualPlayheadClock(input: {
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [currentTimeSec, durationSec, getPlayheadTime, isPlaying, isReady, notifyPlayheadFrame, playbackRate, syncPausedTime]);
+  }, [input.durationSec, input.getPlayheadTime, input.isPlaying, input.isReady, input.playbackRate, notifyPlayheadFrame, syncPausedTime]);
 
   return {
     visualTimeSecRef,

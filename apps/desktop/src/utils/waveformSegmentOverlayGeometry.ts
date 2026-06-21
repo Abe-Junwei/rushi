@@ -24,6 +24,7 @@ export type OverlayDragState = {
   initialEndSec: number;
   moved: boolean;
   baseIndices?: Set<number>;
+  lastFinalizedBounds?: { startSec: number; endSec: number };
 };
 
 /** 语段条渲染边界：拖拽 draft 优先于 committed segment。 */

@@ -185,8 +185,14 @@
 
 /* 语段行：主题 accent 选中 + 左缘指示条，无四周边框 */
 .workspace [data-seg-row].seg-row-selected {
+  position: relative;
+  z-index: 1;
   border-color: transparent;
   background: var(--segment-fill-selected-list);
+}
+
+.workspace [data-seg-row].seg-row-selected .segment-row-text-body {
+  overflow: visible;
 }
 
 .workspace [data-seg-row].seg-row-selected::before {

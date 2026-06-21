@@ -6,7 +6,7 @@ import {
 } from "../services/waveform/drawWaveformTimeRuler";
 import { useWaveformTimeRulerInteraction } from "../hooks/useWaveformTimeRulerInteraction";
 import {
-  resolveTierViewportMetrics,
+  resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
@@ -35,7 +35,8 @@ export type WaveformTimeRulerCanvasProps = {
   disabled?: boolean;
   /** Local ruler repaint only — must not call flushTierScrollFrame (scroll snap-back). */
   subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
-  onSeekFromTierClientX: (clientX: number) => void;
+  /** R2: click centers tier scroll — no seek. */
+  onCenterTierAtClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
 };
 
@@ -60,7 +61,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   formatMediaTime,
   disabled,
   subscribePlayheadFrame,
-  onSeekFromTierClientX,
+  onCenterTierAtClientX,
   onSetScrollLeftPx,
 }: WaveformTimeRulerCanvasProps) {
   const shellRef = useRef<HTMLDivElement | null>(null);
@@ -93,7 +94,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   const liveScrollLeftRef = useRef(0);
   const getLiveScrollLeftPx = useCallback(() => {
     const tierMetrics = tierMetricsRef.current;
-    return resolveTierViewportMetrics({
+    return resolveTierViewportMetricsDuringScrollFrame({
       tierScrollEl: tierMetrics.tierScrollRef.current,
       tierScrollLive: tierMetrics.tierScrollLive,
       tierScrollLayout: tierMetrics.tierScrollLayout,
@@ -105,7 +106,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     liveScrollLeftPx: liveScrollLeftRef.current,
     getLiveScrollLeftPx,
     disabled,
-    onSeekFromTierClientX,
+    onCenterTierAtClientX,
     onSetScrollLeftPx,
   });
   inputRef.current.interactionActive = interactionActive;
@@ -122,7 +123,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     const paint = () => {
       const input = inputRef.current;
       const tierMetrics = tierMetricsRef.current;
-      const metrics = resolveTierViewportMetrics({
+      const metrics = resolveTierViewportMetricsDuringScrollFrame({
         tierScrollEl: tierMetrics.tierScrollRef.current,
         tierScrollLive: tierMetrics.tierScrollLive,
         tierScrollLayout: tierMetrics.tierScrollLayout,

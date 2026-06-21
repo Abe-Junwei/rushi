@@ -9,6 +9,7 @@ import {
 } from "../services/waveform/waveformSurferProgressCoverage";
 
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
+import { shouldCoalesceSelectionSeekChrome } from "../utils/waveformSelectionSeekChrome";
 
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
@@ -58,13 +59,8 @@ export function bindProjectWaveformWaveSurferEvents(
   void _pendingScrollLeftRef;
   void _scrollNotifyRafRef;
 
-  let segmentBandPaintRaf = 0;
   const scheduleSegmentBandPaint = () => {
-    if (segmentBandPaintRaf) return;
-    segmentBandPaintRaf = requestAnimationFrame(() => {
-      segmentBandPaintRaf = 0;
-      requestWaveformSegmentBandPaint();
-    });
+    requestWaveformSegmentBandPaint();
   };
 
   return [
@@ -120,12 +116,14 @@ export function bindProjectWaveformWaveSurferEvents(
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
       setCurrentTime(t);
+      const suppressUntilMs = optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
+      if (shouldCoalesceSelectionSeekChrome(performance.now(), suppressUntilMs)) {
+        // reveal + flushTierScrollFrame already synced tier chrome; skip double resync rAF chain.
+        requestWaveformSegmentBandPaint();
+        return;
+      }
       scheduleSegmentBandPaint();
       queueMicrotask(() => syncTierScrollAfterRenderRef.current());
-      requestAnimationFrame(() => {
-        if (disposed()) return;
-        syncTierScrollAfterRenderRef.current();
-      });
     }),
     ws.on("scroll", () => {
       if (disposed()) return;

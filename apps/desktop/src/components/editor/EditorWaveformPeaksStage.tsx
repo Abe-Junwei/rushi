@@ -218,10 +218,11 @@ export function EditorWaveformPeaksStage({
                     isReady={tx.isReady}
                     currentTimeSec={tx.currentTime}
                     getPlayheadTime={tx.getPlayheadTime}
+                    getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
                     formatMediaTime={tx.formatMediaTime}
                     subscribePlayheadFrame={tx.subscribePlayheadFrame}
                     disabled={stripDisabled}
-                    onSeekFromTierClientX={tx.seekFromTierClientX}
+                    onCenterTierAtClientX={tx.centerTierAtClientX}
                     onSetScrollLeftPx={tx.userScrubScroll}
                 />
               </div>

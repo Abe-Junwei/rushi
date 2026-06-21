@@ -70,6 +70,43 @@ function clampSegmentListScrollTop(
   return Math.round(Math.min(max, Math.max(0, scrollTop)));
 }
 
+/** 选中换行时 layout 尚未写 scrollTop；仅在选择变更首帧启用投影（见 useEditorSegmentListScroll）。 */
+export function resolveVirtualListScrollTopForWindow(input: {
+  rootScrollTop: number;
+  rootScrollHeight: number;
+  rootClientHeight: number;
+  scrollMetrics: { scrollTop: number; viewportHeight: number };
+  selectedDisplayIndex: number;
+  rowMinHeightPx: number;
+  itemStridePx: number;
+  /** 仅选中变更触发的首帧为 true；用户手动滚动须为 false。 */
+  useSelectionProjection?: boolean;
+}): number {
+  const {
+    rootScrollTop,
+    rootScrollHeight,
+    rootClientHeight,
+    scrollMetrics,
+    selectedDisplayIndex,
+    rowMinHeightPx,
+    itemStridePx,
+    useSelectionProjection = false,
+  } = input;
+  if (!useSelectionProjection || selectedDisplayIndex < 0) return scrollMetrics.scrollTop;
+  const viewportHeight = rootClientHeight > 0 ? rootClientHeight : scrollMetrics.viewportHeight;
+  const maxScrollTop = Math.max(0, rootScrollHeight - rootClientHeight);
+  const projected = scrollSegmentListIndexIntoView({
+    scrollTop: rootScrollTop,
+    viewportHeight,
+    index: selectedDisplayIndex,
+    rowMinHeightPx,
+    itemStridePx,
+    align: "minimal",
+    maxScrollTop,
+  });
+  return projected ?? scrollMetrics.scrollTop;
+}
+
 export function scrollSegmentListIndexIntoView(input: {
   scrollTop: number;
   viewportHeight: number;

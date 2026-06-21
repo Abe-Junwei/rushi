@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import { shouldRevealOnSegmentSelect, shouldSeekOnSegmentSelect } from "./selectionRevealSeekPolicy";
+
+describe("selectionRevealSeekPolicy", () => {
+  it("only waveform seeks on segment select", () => {
+    expect(shouldSeekOnSegmentSelect("waveform")).toBe(true);
+    expect(shouldSeekOnSegmentSelect("list")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("listAdvance")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(false);
+  });
+
+  it("list sources reveal when idx changes", () => {
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "list",
+        idxChanged: true,
+        editorFocusGateOpen: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "listAdvance",
+        idxChanged: true,
+        editorFocusGateOpen: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("listKeyboard reveals only when editor focus gate is open", () => {
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "listKeyboard",
+        idxChanged: true,
+        editorFocusGateOpen: true,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "listKeyboard",
+        idxChanged: true,
+        editorFocusGateOpen: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("no reveal or seek when idx unchanged", () => {
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "waveform",
+        idxChanged: false,
+        editorFocusGateOpen: true,
+      }),
+    ).toBe(false);
+  });
+});

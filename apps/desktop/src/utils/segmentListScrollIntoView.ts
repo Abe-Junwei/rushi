@@ -133,6 +133,28 @@ export function resolveSegmentListRowIndexFromPoint(
   return displayIndexToSegmentIdx(filteredIndices, clampedDisplay);
 }
 
+/** Range drag: clamp hover to first/last row when pointer leaves the list viewport. */
+export function resolveSegmentListRangeDragHoverIndex(
+  scrollRoot: HTMLElement | null,
+  clientX: number,
+  clientY: number,
+  fallbackSegmentCount: number,
+): number | null {
+  const { filteredIndices, displayCount } = resolveSegmentListDisplayCount(
+    scrollRoot,
+    fallbackSegmentCount,
+  );
+  if (!scrollRoot || displayCount <= 0) return null;
+
+  const rect = scrollRoot.getBoundingClientRect();
+  if (clientY >= rect.top && clientY <= rect.bottom) {
+    return resolveSegmentListRowIndexFromPoint(scrollRoot, clientX, clientY, fallbackSegmentCount);
+  }
+
+  const clampedDisplay = clientY < rect.top ? 0 : displayCount - 1;
+  return displayIndexToSegmentIdx(filteredIndices, clampedDisplay);
+}
+
 function clampSegmentListScrollTop(
   scrollTop: number,
   maxScrollTop: number | undefined,
