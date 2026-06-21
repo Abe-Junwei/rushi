@@ -6,6 +6,8 @@ use super::postprocess_segment_ops::{
 use serde::Deserialize;
 
 pub const MAX_EXPORT_POLISH_INPUT_CHARS: usize = 120_000;
+/// 语段行间分隔（ASCII RS）；与 TS `EXPORT_POLISH_LINE_SEPARATOR` 一致。
+pub const EXPORT_POLISH_LINE_SEPARATOR: char = '\u{001e}';
 #[cfg(test)]
 pub const MAX_PARAGRAPHS: usize = 500;
 /// 超过此行数则拆成多批 LLM 请求（避免输出 token 截断）。
@@ -21,6 +23,21 @@ pub struct ExportPolishParsed {
     pub break_after_line: Vec<usize>,
 }
 
+pub fn lines_from_export_polish_body(body: &str) -> Vec<String> {
+    if body.is_empty() {
+        return vec![];
+    }
+    if body.contains(EXPORT_POLISH_LINE_SEPARATOR) {
+        return body
+            .split(EXPORT_POLISH_LINE_SEPARATOR)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_string)
+            .collect();
+    }
+    non_empty_lines_from_body(body)
+}
+
 pub fn non_empty_lines_from_body(body: &str) -> Vec<String> {
     body.split('\n')
         .map(str::trim)
@@ -31,17 +48,54 @@ pub fn non_empty_lines_from_body(body: &str) -> Vec<String> {
 
 /// 按语段行切分正文；不超过阈值时返回单元素。
 pub fn plan_export_polish_batch_bodies(body: &str) -> Vec<String> {
-    let lines = non_empty_lines_from_body(body);
+    let lines = lines_from_export_polish_body(body);
+    plan_export_polish_batch_lines(&lines)
+        .into_iter()
+        .map(|chunk| chunk.join(&EXPORT_POLISH_LINE_SEPARATOR.to_string()))
+        .collect()
+}
+
+pub fn plan_export_polish_batch_lines(lines: &[String]) -> Vec<Vec<String>> {
     if lines.is_empty() {
         return vec![];
     }
     if lines.len() <= EXPORT_POLISH_BATCH_LINE_THRESHOLD {
-        return vec![lines.join("\n")];
+        return vec![lines.to_vec()];
     }
     lines
         .chunks(EXPORT_POLISH_BATCH_MAX_LINES)
-        .map(|chunk| chunk.join("\n"))
+        .map(|chunk| chunk.to_vec())
         .collect()
+}
+
+/// 将单批 LLM 返回行数对齐到输入语段行数；缺失行回退为原文，避免导出缺段。
+pub fn align_punct_lines_to_batch(
+    punct_lines: &mut Vec<String>,
+    expected: usize,
+    batch_body: &str,
+) {
+    if expected == 0 {
+        punct_lines.retain(|s| !s.trim().is_empty());
+        return;
+    }
+    let originals = lines_from_export_polish_body(batch_body);
+    while punct_lines.len() < expected {
+        let idx = punct_lines.len();
+        punct_lines.push(originals.get(idx).cloned().unwrap_or_default());
+    }
+    if punct_lines.len() > expected {
+        let tail: String = punct_lines.split_off(expected - 1).join("");
+        if let Some(last) = punct_lines.last_mut() {
+            last.push_str(&tail);
+        }
+    }
+    for i in 0..expected {
+        if punct_lines.get(i).is_some_and(|s| s.trim().is_empty()) {
+            if let Some(orig) = originals.get(i).filter(|s| !s.trim().is_empty()) {
+                punct_lines[i] = orig.clone();
+            }
+        }
+    }
 }
 
 /// 合并各批润色结果；`break_after_line` 转为全文 0 起下标。
@@ -92,7 +146,7 @@ pub fn default_export_polish_instructions_template() -> String {
 ## break_after_line
 语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。**尽量少分段**（建议全文不超过 12 段、相邻分段至少间隔 8 行语段）；分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{rule_hints}
 
-输入（{line_count} 行，行间 \n）：
+输入（{line_count} 行，语段之间以 Unicode RS「␞」分隔，语段内换行保留）：
 {body}"#
         .to_string()
 }
@@ -207,7 +261,7 @@ struct ExportPolishPayload {
 }
 
 pub fn count_body_lines(body: &str) -> usize {
-    non_empty_lines_from_body(body).len()
+    lines_from_export_polish_body(body).len()
 }
 
 fn finish_export_polish_payload(
@@ -342,14 +396,29 @@ fn infer_break_after_from_paragraphs(line_count: usize, paragraphs: &[String]) -
     breaks
 }
 
-fn normalize_lines(rows: Vec<String>, _expected: usize) -> Result<Vec<String>, String> {
-    let lines: Vec<String> = rows
+fn normalize_lines(rows: Vec<String>, expected: usize) -> Result<Vec<String>, String> {
+    let mut lines: Vec<String> = rows
         .into_iter()
         .map(|p| p.trim().replace("\r\n", "\n"))
-        .filter(|p| !p.is_empty())
         .collect();
-    if lines.is_empty() {
+    if lines.is_empty() && expected > 0 {
         return Err("润色 lines 为空，请重试。".into());
+    }
+    if expected > 0 {
+        if lines.len() > expected {
+            let tail: String = lines.split_off(expected - 1).join("");
+            if let Some(last) = lines.last_mut() {
+                last.push_str(&tail);
+            }
+        }
+        while lines.len() < expected {
+            lines.push(String::new());
+        }
+    } else {
+        lines.retain(|p| !p.is_empty());
+        if lines.is_empty() {
+            return Err("润色 lines 为空，请重试。".into());
+        }
     }
     Ok(lines)
 }
@@ -393,7 +462,8 @@ mod tests {
             serde_json::to_string(&rows).unwrap()
         );
         let out = parse_export_polish_json(&raw, 176).unwrap();
-        assert_eq!(out.punct_lines.len(), 175);
+        assert_eq!(out.punct_lines.len(), 176);
+        assert_eq!(out.punct_lines[175], "");
     }
 
     #[test]
@@ -447,11 +517,26 @@ mod tests {
     #[test]
     fn plan_batches_splits_over_threshold() {
         let lines: Vec<String> = (0..250).map(|i| format!("行{i}")).collect();
-        let body = lines.join("\n");
+        let body = lines.join(&EXPORT_POLISH_LINE_SEPARATOR.to_string());
         let batches = plan_export_polish_batch_bodies(&body);
         assert_eq!(batches.len(), 2);
         assert_eq!(count_body_lines(&batches[0]), 180);
         assert_eq!(count_body_lines(&batches[1]), 70);
+    }
+
+    #[test]
+    fn lines_from_body_preserves_in_segment_newlines() {
+        let body = format!("a{}b\nc", EXPORT_POLISH_LINE_SEPARATOR);
+        assert_eq!(lines_from_export_polish_body(&body), vec!["a", "b\nc"]);
+        assert_eq!(count_body_lines(&body), 2);
+    }
+
+    #[test]
+    fn align_punct_lines_fills_empty_from_originals() {
+        let batch = format!("甲{}乙", EXPORT_POLISH_LINE_SEPARATOR);
+        let mut lines = vec!["甲。".to_string(), String::new()];
+        align_punct_lines_to_batch(&mut lines, 2, &batch);
+        assert_eq!(lines, vec!["甲。".to_string(), "乙".to_string()]);
     }
 
     #[test]

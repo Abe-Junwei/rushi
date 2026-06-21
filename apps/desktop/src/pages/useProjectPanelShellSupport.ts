@@ -69,7 +69,6 @@ export function useProjectPanelExportShell(args: {
   selectionCount: number;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
-  exportDocx: (mode: "verbatim" | "lecture" | "clean") => Promise<void>;
   openDeliveryMode: () => void;
   setTranscribeFailureDiag: (value: null) => void;
   setError: (value: string) => void;
@@ -127,15 +126,6 @@ export function useProjectPanelExportShell(args: {
           break;
         case "delivery_mode":
           args.openDeliveryMode();
-          break;
-        case "docx_verbatim":
-          void args.exportDocx("verbatim");
-          break;
-        case "docx_lecture":
-          void args.exportDocx("lecture");
-          break;
-        case "docx_clean":
-          void args.exportDocx("clean");
           break;
         default:
           break;

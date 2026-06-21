@@ -1,7 +1,7 @@
 import type { CorrectionRuleRow } from "../tauri/correctionApi";
 import { extractSingleTextDiffParts } from "../utils/textDiff";
 import { applyStableRulesToPolishLines } from "./exportPolishFinalize";
-import { joinSegmentTextsForExportPolish } from "./exportDocxPolish.helpers";
+import { joinExportPolishLines } from "./exportDocxPolish.helpers";
 import type { SegmentDto } from "../tauri/projectApi";
 import { collapseOralFillerRuns, collapseOralStutter } from "./exportPolishHygiene";
 import { lineWouldHaveWordTrackMarkup } from "./exportPolishTrackMarkup";
@@ -239,7 +239,5 @@ export function summarizeLineChange(row: ExportPolishLineChange): string {
 }
 
 export function joinLinesForLlmBody(lines: string[]): string {
-  return joinSegmentTextsForExportPolish(
-    lines.map((text, idx) => ({ text, idx, start_sec: 0, end_sec: 0, low_confidence: false })),
-  );
+  return joinExportPolishLines(lines);
 }

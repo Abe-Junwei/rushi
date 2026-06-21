@@ -228,7 +228,10 @@ mod tests {
             None,
             &[],
             Some(&["旧一。改\n\n旧二。改".to_string()]),
-            Some("旧一。\n旧二。"),
+            Some(&format!(
+                "旧一。{}旧二。",
+                crate::postprocess_cmd::EXPORT_POLISH_LINE_SEPARATOR
+            )),
             Some(&["旧一。改".to_string(), "旧二。改".to_string()]),
             true,
         )

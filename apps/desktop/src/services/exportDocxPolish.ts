@@ -132,6 +132,7 @@ export async function fetchExportPolishResult(
     task: "export_polish",
     requestId: options?.requestId,
     body,
+    lineCount: beforeLines.length,
     runtime,
     ruleHints: ruleHints.trim() || undefined,
   };

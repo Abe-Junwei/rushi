@@ -27,6 +27,8 @@ pub struct PostprocessExportPolishRequest {
     #[serde(default)]
     pub request_id: Option<String>,
     pub body: String,
+    #[serde(default)]
+    pub line_count: Option<usize>,
     pub runtime: PostprocessRuntimeBridge,
     /// 稳定纠错规则摘要，注入 prompt（可选）。
     #[serde(default)]
@@ -100,11 +102,23 @@ pub async fn postprocess_export_polish(
     if batch_bodies.is_empty() {
         return Err("正文为空，无法润色。".to_string());
     }
+    let parsed_line_count = postprocess_export_polish::lines_from_export_polish_body(body).len();
+    let total_lines = req
+        .line_count
+        .filter(|&n| n > 0)
+        .unwrap_or(parsed_line_count);
+    if req.line_count.is_some() && parsed_line_count != total_lines {
+        return Err(format!(
+            "语段行数不一致（声明 {total_lines} 行 / 正文解析 {parsed_line_count} 行），请重新打开导出对话框。"
+        ));
+    }
     let batch_line_counts: Vec<usize> = batch_bodies
         .iter()
         .map(|b| postprocess_export_polish::count_body_lines(b))
         .collect();
-    let total_lines: usize = batch_line_counts.iter().sum();
+    if batch_line_counts.iter().sum::<usize>() != total_lines {
+        return Err("润色分批计数异常，请重试。".to_string());
+    }
     let batch_total = batch_bodies.len();
     let request_id = req
         .request_id
@@ -320,7 +334,7 @@ async fn run_export_polish_batch(
     })?;
     let raw = extract_chat_completion_text(&json)?;
     let finish_reason = chat_completion_finish_reason(&json).unwrap_or("unknown");
-    let parsed = postprocess_export_polish::parse_export_polish_json(&raw, line_count).map_err(|e| {
+    let mut parsed = postprocess_export_polish::parse_export_polish_json(&raw, line_count).map_err(|e| {
         let truncated = finish_reason == "length";
         let open_braces = raw.matches('{').count();
         let close_braces = raw.matches('}').count();
@@ -343,6 +357,11 @@ async fn run_export_polish_batch(
     if parsed.punct_lines.is_empty() {
         return Err("润色结果为空，请重试或取消勾选大模型润色。".to_string());
     }
+    postprocess_export_polish::align_punct_lines_to_batch(
+        &mut parsed.punct_lines,
+        line_count,
+        batch_body,
+    );
 
     Ok((parsed, t0.elapsed().as_millis() as u64))
 }

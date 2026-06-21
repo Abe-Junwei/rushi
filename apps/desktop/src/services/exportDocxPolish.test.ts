@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { joinSegmentTextsForExportPolish } from "./exportDocxPolish.helpers";
+import {
+  EXPORT_POLISH_LINE_SEPARATOR,
+  joinSegmentTextsForExportPolish,
+  splitExportPolishJoinedBody,
+} from "./exportDocxPolish.helpers";
 import {
   exportModeSupportsLlmPolish,
   resolveExportPolishBlockReason,
@@ -23,8 +27,12 @@ describe("exportDocxPolish", () => {
     expect(exportModeSupportsLlmPolish("verbatim")).toBe(false);
   });
 
-  it("joins segment text", () => {
-    expect(joinSegmentTextsForExportPolish([seg("a"), seg("b")])).toBe("a\nb");
+  it("joins segment text with RS (preserves in-segment newlines)", () => {
+    expect(joinSegmentTextsForExportPolish([seg("a"), seg("b")])).toBe(
+      `a${EXPORT_POLISH_LINE_SEPARATOR}b`,
+    );
+    const joined = joinSegmentTextsForExportPolish([seg("a"), seg("b\nc")]);
+    expect(splitExportPolishJoinedBody(joined)).toEqual(["a", "b\nc"]);
   });
 
   it("blocks empty", () => {

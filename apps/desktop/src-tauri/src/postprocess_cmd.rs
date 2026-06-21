@@ -35,7 +35,10 @@ pub(crate) use postprocess_config::{
     resolve_auto_punctuate_system_prompt, resolve_postprocess_config_async,
     resolve_runtime_postprocess_config, PostprocessConfig, DEFAULT_TIMEOUT_SECS,
 };
-pub(crate) use postprocess_export_polish::validate_export_polish_instructions_template;
+pub(crate) use postprocess_export_polish::{
+    lines_from_export_polish_body, validate_export_polish_instructions_template,
+    EXPORT_POLISH_LINE_SEPARATOR,
+};
 
 #[cfg(test)]
 pub(crate) use postprocess_api_key_cmd::{secret_account_for_delete, LlmSaveApiKeyRequest};

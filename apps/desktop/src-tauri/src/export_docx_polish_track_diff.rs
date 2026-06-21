@@ -183,6 +183,9 @@ pub(crate) fn diff_pieces_for_export_track(before: &str, after: &str) -> Vec<Dif
 }
 
 pub fn before_lines_from_joined(joined: &str) -> Vec<String> {
+    if joined.contains(crate::postprocess_cmd::EXPORT_POLISH_LINE_SEPARATOR) {
+        return crate::postprocess_cmd::lines_from_export_polish_body(joined);
+    }
     joined
         .split(['\n', '\r'])
         .map(str::trim)

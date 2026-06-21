@@ -33,6 +33,15 @@ describe("reconcileLlmPolishLines", () => {
     expect(lines[5]).toBe("语段5");
     expect(stats.paddedLineIndices).toEqual([5]);
   });
+
+  it("merges extra llm lines into last segment without dropping chars", () => {
+    const before = ["第一段", "第二\n段"];
+    const llm = ["第一段。", "第二", "段。"];
+    const { lines } = reconcileLlmPolishLines(before, llm);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]).toBe("第一段。");
+    expect(lines[1]).toBe("第二段。");
+  });
 });
 
 describe("isPunctuationOnlyLineDiff", () => {

@@ -38,7 +38,6 @@ export function useProjectPanelShell() {
     selectionCount: c.selectionCount,
     exportTxt: c.exportTxt,
     exportSrt: c.exportSrt,
-    exportDocx: c.exportDocx,
     openDeliveryMode: deliveryMode.openDeliveryMode,
     setTranscribeFailureDiag: c.setTranscribeFailureDiag,
     setError: c.setError,

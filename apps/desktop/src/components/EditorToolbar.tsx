@@ -261,9 +261,6 @@ export const EditorToolbar = memo(function EditorToolbar({
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_delivery")}>
                   交付导出 Word…
                 </button>
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_verbatim")}>导出 DOCX 逐字稿</button>
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_lecture")}>导出 DOCX 讲稿</button>
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_clean")}>导出 DOCX 干净稿</button>
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportProjectBundle()}>导出项目包（zip）</button>
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportDiagnosticBundle()}>导出诊断包（zip）</button>
               </div>

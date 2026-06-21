@@ -166,6 +166,8 @@ export interface PostprocessExportPolishRequest {
   task: "export_polish";
   requestId?: string;
   body: string;
+  /** 语段行数真源（与 body RS 分隔段数一致；语段内可含 \\n）。 */
+  lineCount: number;
   runtime: PostprocessRuntimeBridge;
   ruleHints?: string;
 }
