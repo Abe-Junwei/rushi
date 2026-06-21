@@ -7,8 +7,8 @@ use crate::local_asr_model::{
     DEFAULT_FUNASR_HUB_MODEL_ID, DEFAULT_FUNASR_PUNC_MODEL_ID, DEFAULT_FUNASR_VAD_MODEL_ID,
 };
 use crate::project::bundled_asr_models_manifest::{
-    BundledAsrModelsManifest, BundledAsrModelSpec, DEFAULT_BUNDLED_ASR_BUNDLE_ID,
-    BUNDLED_ASR_MODELS_PACK_VERSION,
+    BundledAsrModelSpec, BundledAsrModelsManifest, BUNDLED_ASR_MODELS_PACK_VERSION,
+    DEFAULT_BUNDLED_ASR_BUNDLE_ID,
 };
 
 static TEST_SERIAL: TestSerialMutex<()> = TestSerialMutex::new(());

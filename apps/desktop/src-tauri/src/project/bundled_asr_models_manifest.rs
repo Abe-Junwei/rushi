@@ -40,7 +40,6 @@ pub struct ResolvedBundledAsrModelSpec {
     pub weight_file: String,
 }
 
-
 /// Reject manifest-relative paths that could escape a model directory (`../`, absolute, etc.).
 pub fn sanitize_manifest_rel_path(raw: &str) -> Result<String, String> {
     let trimmed = raw.trim();
