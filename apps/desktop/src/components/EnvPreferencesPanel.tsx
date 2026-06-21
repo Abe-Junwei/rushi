@@ -1,11 +1,14 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import { ChevronsLeftRight, Crosshair, type LucideIcon } from "lucide-react";
-import { CONTROL_BTN_SECONDARY, CONTROL_SELECT } from "../config/controlStyles";
+import {
+  CONTROL_BTN_SECONDARY,
+  CONTROL_TEXT_INPUT,
+} from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import {
-  ENV_PANEL_PAGE_CLASS,
-  ENV_PANEL_SECTION_CLASS,
   ENV_PANEL_FORM_FIELD_CLASS,
+  ENV_PANEL_FORM_FIELDS_CLASS,
+  ENV_PANEL_PAGE_CLASS,
 } from "../utils/environmentPanelNav";
 import {
   formatWaveformPlaybackRateLabel,
@@ -37,6 +40,8 @@ import {
   writeStoredWaveformPlaybackScrollFollowMode,
 } from "../utils/waveformPrefs";
 import { EnvAppearanceSections } from "./EnvAppearanceSections";
+import { EnvPanelSelect } from "./EnvPanelSelect";
+import { EnvPrefGroupShell } from "./EnvPrefGroupShell";
 import { EnvPrefSwitchRow } from "./EnvPrefSwitchRow";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -98,6 +103,24 @@ export function EnvPreferencesPanel() {
     resolveStoredWaveformHeightPx,
   );
 
+  const playbackRateOptions = useMemo(
+    () =>
+      PLAYBACK_RATE_PRESETS.map((rate) => ({
+        id: String(rate),
+        label: formatWaveformPlaybackRateLabel(rate),
+      })),
+    [],
+  );
+  const transcriptFontOptions = useMemo(
+    () =>
+      listTranscriptFontPxOptions().map((px) => ({
+        id: String(px),
+        label: `${px}px`,
+      })),
+    [],
+  );
+  const snappedPlaybackRate = String(snapWaveformPlaybackRate(globalPlaybackRate));
+
   const setTabAdvanceLoops = useCallback((enabled: boolean) => {
     writeStoredTabAdvanceLoopsSegment(enabled);
   }, []);
@@ -125,15 +148,15 @@ export function EnvPreferencesPanel() {
 
   return (
     <div className={ENV_PANEL_PAGE_CLASS} data-purpose="env-preferences-page">
-      <EnvAppearanceSections />
+      <EnvPrefGroupShell title="外观" description="界面主题与强调色；变更后立即生效。">
+        <EnvAppearanceSections />
+      </EnvPrefGroupShell>
 
-      <section className={ENV_PANEL_SECTION_CLASS} aria-label="转写与波形">
-        <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>转写与波形</h3>
-        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-          与转写页工具条共用同一偏好；语段字体族、列宽等仍可在编辑器右键或拖拽调整。
-        </p>
-
-        <div className="flex flex-col gap-5">
+      <EnvPrefGroupShell
+        title="转写与波形"
+        description="与转写页工具条共用同一偏好；语段字体族、列宽等仍可在编辑器右键或拖拽调整。"
+      >
+        <div className={ENV_PANEL_FORM_FIELDS_CLASS}>
           <EnvPrefSwitchRow
             id="pref-tab-advance-loop"
             label="Tab 定稿后 loop 播下一段"
@@ -151,66 +174,72 @@ export function EnvPreferencesPanel() {
           />
 
           <div className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className="text-body font-medium text-notion-text">播放滚屏</span>
-            <div className="flex flex-wrap gap-2" role="group" aria-label="播放滚屏方式">
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>播放滚屏</span>
+            <div
+              className="grid max-w-md grid-cols-2 gap-2"
+              role="radiogroup"
+              aria-label="播放滚屏方式"
+            >
               {SCROLL_FOLLOW_MODES.map(({ id, label, hint, Icon }) => {
                 const active = playbackScrollFollow === id;
                 return (
                   <button
                     key={id}
                     type="button"
+                    role="radio"
+                    aria-checked={active}
                     title={hint}
-                    aria-pressed={active}
                     className={[
-                      "inline-flex items-center gap-2 rounded-md border px-3 py-2 text-label font-medium transition-colors",
+                      "flex flex-col items-start gap-1 rounded-md px-3 py-2.5 text-left shadow-none transition-colors",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30",
                       active
-                        ? "border-accent-action bg-notion-sidebar-active text-notion-text"
-                        : "border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+                        ? "bg-notion-sidebar-active text-notion-text ring-1 ring-accent-action/35"
+                        : "bg-notion-sidebar text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
                     ].join(" ")}
                     onClick={() => setPlaybackScrollFollow(id)}
                   >
-                    <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                    {label}
+                    <span className="inline-flex items-center gap-1.5 text-body font-medium text-inherit">
+                      <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                      {label}
+                    </span>
+                    <span className="text-label leading-snug text-notion-text-muted">{hint}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          <label className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className="text-body font-medium text-notion-text">默认播放速度</span>
-            <select
-              className={CONTROL_SELECT}
-              value={String(snapWaveformPlaybackRate(globalPlaybackRate))}
-              onChange={(e) => setGlobalPlaybackRate(e.target.value)}
-            >
-              {PLAYBACK_RATE_PRESETS.map((rate) => (
-                <option key={rate} value={rate}>
-                  {formatWaveformPlaybackRateLabel(rate)}
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className={ENV_PANEL_FORM_FIELD_CLASS}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>默认播放速度</span>
+            <div className="max-w-[12rem]">
+              <EnvPanelSelect
+                id="pref-playback-rate"
+                aria-label="默认播放速度"
+                value={snappedPlaybackRate}
+                options={playbackRateOptions}
+                onChange={setGlobalPlaybackRate}
+              />
+            </div>
+          </div>
 
-          <label className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className="text-body font-medium text-notion-text">语段正文字号</span>
-            <select
-              className={CONTROL_SELECT}
-              value={String(transcriptFontPx)}
-              onChange={(e) => setTranscriptFontPx(e.target.value)}
-            >
-              {listTranscriptFontPxOptions().map((px) => (
-                <option key={px} value={px}>
-                  {px}px
-                </option>
-              ))}
-            </select>
-          </label>
+          <div className={ENV_PANEL_FORM_FIELD_CLASS}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>语段正文字号</span>
+            <div className="max-w-[12rem]">
+              <EnvPanelSelect
+                id="pref-transcript-font"
+                aria-label="语段正文字号"
+                value={String(transcriptFontPx)}
+                options={transcriptFontOptions}
+                onChange={setTranscriptFontPx}
+              />
+            </div>
+          </div>
 
-          <label className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className="text-body font-medium text-notion-text">波形区域高度</span>
+          <label htmlFor="pref-waveform-height" className={ENV_PANEL_FORM_FIELD_CLASS}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>波形区域高度</span>
             <input
-              className={CONTROL_SELECT}
+              id="pref-waveform-height"
+              className={`${CONTROL_TEXT_INPUT} max-w-[12rem]`}
               type="number"
               min={WAVEFORM_HEIGHT_MIN}
               max={WAVEFORM_HEIGHT_MAX}
@@ -218,7 +247,7 @@ export function EnvPreferencesPanel() {
               value={waveformHeightPx}
               onChange={(e) => setWaveformHeightPx(e.target.value)}
             />
-            <span className="text-label text-notion-text-muted">
+            <span className={PANEL_TYPOGRAPHY.meta}>
               {WAVEFORM_HEIGHT_MIN}–{WAVEFORM_HEIGHT_MAX}px；默认 {WAVEFORM_HEIGHT_DEFAULT}px
             </span>
           </label>
@@ -233,7 +262,7 @@ export function EnvPreferencesPanel() {
             </button>
           </div>
         </div>
-      </section>
+      </EnvPrefGroupShell>
     </div>
   );
 }

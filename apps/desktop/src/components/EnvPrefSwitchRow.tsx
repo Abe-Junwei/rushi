@@ -4,6 +4,7 @@ type EnvPrefSwitchRowProps = {
   hint?: string;
   checked: boolean;
   disabled?: boolean;
+  className?: string;
   onChange: (checked: boolean) => void;
 };
 
@@ -13,10 +14,11 @@ export function EnvPrefSwitchRow({
   hint,
   checked,
   disabled = false,
+  className,
   onChange,
 }: EnvPrefSwitchRowProps) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className={["flex items-start justify-between gap-4", className].filter(Boolean).join(" ")}>
       <div className="min-w-0">
         <label htmlFor={id} className="text-body font-medium text-notion-text">
           {label}

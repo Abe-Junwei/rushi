@@ -67,6 +67,3 @@ export const ENV_PANEL_CONFIG_FLOW_CLASS = "mx-auto flex w-full max-w-[860px] fl
 
 /** 设置页能力状态条外壳（本机 ASR / 在线 STT / LLM 共用；Stitch F1 · rounded-lg） */
 export const ENV_STATUS_BANNER_SHELL_CLASS = "rounded-lg px-4 py-3";
-
-/** 偏好页等内容区：sidebar 底圆角块（无 border；与主内容区形成第 2 层视觉容器） */
-export const ENV_PANEL_REGION_CLASS = "rounded-lg bg-notion-sidebar px-4 py-4 sm:px-5 sm:py-5";
