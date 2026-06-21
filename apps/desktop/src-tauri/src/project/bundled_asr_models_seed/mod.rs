@@ -12,7 +12,7 @@ pub use super::offline_asr_models_pack_manifest::{
 };
 use crate::bundled_asr_assets;
 use crate::project::app_data_paths::{
-    modelscope_cache_for_models_root, models_root_for_app_data_root,
+    models_root_for_app_data_root, modelscope_cache_for_models_root,
 };
 use crate::DbState;
 
@@ -140,10 +140,7 @@ pub fn seed_bundled_asr_models_at(
         let merged_bytes = merge_result.unwrap_or(0);
         if let Err(err) = manifest::validate_manifest_models_cached(&modelscope_cache, &specs) {
             copy::rollback_new_files(&merge_rollback, &modelscope_cache);
-            progress::log_seed_detail(
-                app,
-                &format!("ERROR bundled seed validate rollback: {err}"),
-            );
+            progress::log_seed_detail(app, &format!("ERROR bundled seed validate rollback: {err}"));
             return Err(err);
         }
         marker::write_seed_marker(models_root, &manifest)?;

@@ -30,7 +30,10 @@ pub fn read_seed_marker(models_root: &Path) -> Result<Option<SeedMarker>, String
         .map_err(|e| format!("seed marker 格式无效: {e}"))
 }
 
-pub fn write_seed_marker(models_root: &Path, manifest: &OfflineAsrModelsPackManifest) -> Result<(), String> {
+pub fn write_seed_marker(
+    models_root: &Path,
+    manifest: &OfflineAsrModelsPackManifest,
+) -> Result<(), String> {
     let marker = models_root.join(SEED_MARKER_FILE);
     let body = json!({
         "pack_version": manifest.pack_version,

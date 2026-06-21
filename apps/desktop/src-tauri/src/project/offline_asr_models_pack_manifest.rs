@@ -55,7 +55,9 @@ pub fn embedded_offline_asr_models_pack_manifest(
 }
 
 #[allow(dead_code)]
-pub fn default_offline_asr_models_pack_manifest(rushi_version: &str) -> OfflineAsrModelsPackManifest {
+pub fn default_offline_asr_models_pack_manifest(
+    rushi_version: &str,
+) -> OfflineAsrModelsPackManifest {
     embedded_offline_asr_models_pack_manifest(Some(rushi_version))
 }
 
@@ -76,7 +78,9 @@ pub fn sanitize_manifest_rel_path(raw: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
-pub fn resolve_model_specs(manifest: &OfflineAsrModelsPackManifest) -> Result<Vec<ResolvedPackModelSpec>, String> {
+pub fn resolve_model_specs(
+    manifest: &OfflineAsrModelsPackManifest,
+) -> Result<Vec<ResolvedPackModelSpec>, String> {
     if manifest.pack_version != OFFLINE_ASR_MODELS_PACK_VERSION {
         return Err(format!(
             "不支持的离线包版本 {}（期望 {}）。",
@@ -113,7 +117,9 @@ pub fn resolve_model_specs(manifest: &OfflineAsrModelsPackManifest) -> Result<Ve
                     .collect::<Result<Vec<_>, _>>()?
             };
             if required_files.is_empty() {
-                return Err(format!("离线包 manifest 无法推断 {hub_id} 的 required_files。"));
+                return Err(format!(
+                    "离线包 manifest 无法推断 {hub_id} 的 required_files。"
+                ));
             }
             let min_weight_bytes = entry
                 .min_weight_bytes

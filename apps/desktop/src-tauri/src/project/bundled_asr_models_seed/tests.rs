@@ -2,7 +2,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex as TestSerialMutex;
 
-use super::{seed_bundled_asr_models_at, marker::SEED_MARKER_FILE};
+use super::{marker::SEED_MARKER_FILE, seed_bundled_asr_models_at};
 use crate::local_asr_model::{
     DEFAULT_FUNASR_HUB_MODEL_ID, DEFAULT_FUNASR_PUNC_MODEL_ID, DEFAULT_FUNASR_VAD_MODEL_ID,
 };
@@ -34,10 +34,7 @@ fn write_manifest(root: &std::path::Path, manifest: &OfflineAsrModelsPackManifes
 
 fn write_fake_model(root: &std::path::Path, hub_id: &str, weight_bytes: u64) {
     let parts: Vec<_> = hub_id.split('/').collect();
-    let dir = root
-        .join("modelscope/models")
-        .join(parts[0])
-        .join(parts[1]);
+    let dir = root.join("modelscope/models").join(parts[0]).join(parts[1]);
     fs::create_dir_all(&dir).unwrap();
     fs::write(dir.join("config.yaml"), "model: test\n").unwrap();
     if hub_id == DEFAULT_FUNASR_HUB_MODEL_ID {

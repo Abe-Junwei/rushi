@@ -125,6 +125,24 @@
     correction_memory_list: async () => [],
     correction_rules_list: async () => [],
     glossary_list: async () => [],
+    seed_bundled_asr_models_if_needed: async () => ({
+      status: "skipped_no_bundle",
+      imported_bytes: 0,
+      models_root: "",
+      modelscope_cache: "",
+      pack_version: 1,
+      bundle_id: "e2e-mock",
+      seeded_at: "",
+    }),
+    retry_bundled_asr_sidecar: async () => ({
+      attempted: true,
+      success: true,
+      detail: "",
+    }),
+  };
+
+  window.__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    unregisterListener: () => {},
   };
 
   window.__RUSHI_E2E_INVOKES__ = invocations;
@@ -140,6 +158,12 @@
     transformCallback: () => 0,
     invoke: async (cmd, args) => {
       invocations.push({ cmd, args });
+      if (cmd === "plugin:event|listen") {
+        return 1;
+      }
+      if (cmd === "plugin:event|unlisten") {
+        return null;
+      }
       const handler = invokeHandlers[cmd];
       if (handler) return handler(args);
       return null;

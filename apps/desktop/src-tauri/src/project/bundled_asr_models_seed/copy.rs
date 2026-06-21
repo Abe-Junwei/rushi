@@ -132,8 +132,7 @@ pub fn copy_dir_recursive(
             if let Some(parent) = dest_path.parent() {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            let existed = dest_path
-                .exists()
+            let existed = dest_path.exists()
                 && fs::symlink_metadata(&dest_path)
                     .map(|m| !m.file_type().is_symlink())
                     .unwrap_or(false);

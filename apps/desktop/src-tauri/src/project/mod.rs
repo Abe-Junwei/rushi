@@ -3,10 +3,9 @@
 
 pub mod app_data_paths;
 pub mod asr_cache_cmd;
-pub mod bundled_asr_models_seed;
-pub mod offline_asr_models_pack_manifest;
 pub mod asr_runtime_paths_cmd;
 pub mod asset_scope;
+pub mod bundled_asr_models_seed;
 pub mod correction;
 pub mod correction_memory_cmd;
 mod edit_log_detail;
@@ -29,6 +28,7 @@ pub mod lexicon_bundle;
 pub mod lexicon_bundle_cmd;
 pub mod lexicon_pack;
 mod local_transcribe_gate;
+pub mod offline_asr_models_pack_manifest;
 pub mod online_segment_normalize;
 pub mod picker_cmd;
 mod project_bundle_cmd;

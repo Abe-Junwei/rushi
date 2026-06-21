@@ -1,8 +1,8 @@
-use crate::project::bundled_asr_models_seed::is_bundled_asr_models_seed_in_progress;
 use crate::project::app_data_paths::{
     huggingface_cache_for_models_root, models_root_for_app_data_root,
     modelscope_cache_for_models_root,
 };
+use crate::project::bundled_asr_models_seed::is_bundled_asr_models_seed_in_progress;
 use crate::DbState;
 use serde::Serialize;
 use std::fs;
