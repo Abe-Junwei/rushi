@@ -45,7 +45,6 @@ export interface AsrBridgeApi {
   clearOrphanWaveformPeaksCache: () => Promise<void>;
   asrCacheMessage: string;
   prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
-  cancelPrepareModel: () => void;
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
@@ -266,7 +265,6 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     clearOrphanWaveformPeaksCache: cacheCtrl.clearOrphanWaveformPeaksCache,
     asrCacheMessage: cacheCtrl.asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
-    cancelPrepareModel: () => void modelCtrl.cancelPrepareModel(),
     localAsrModelCatalog,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,

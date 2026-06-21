@@ -71,3 +71,8 @@ export function bundledCatalogProgressLabel(input: {
   }
   return { label: "待从安装包复制", tone: "muted" };
 }
+
+/** Env model picker suffix for bundled SKU. */
+export function bundledCatalogOptionSuffix(cached: boolean): string {
+  return cached ? " · 已就绪" : " · 待复制";
+}

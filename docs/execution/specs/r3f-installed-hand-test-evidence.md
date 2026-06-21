@@ -1,8 +1,8 @@
 # R3f 安装包手测 — 机器证据
 
-- **时间（UTC）**：2026-06-09T02:33:38Z
+- **时间（UTC）**：2026-06-21T11:29:06Z
 - **macOS**：26.5.1
-- **包**：`/Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`
+- **包**：`/Applications/如是我闻.app`
 - **App Data**：`/Users/junwei/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi`
 - **命令**：`bash scripts/r3f-installed-hand-test.sh`
 

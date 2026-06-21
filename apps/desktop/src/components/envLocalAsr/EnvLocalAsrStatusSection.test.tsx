@@ -78,7 +78,32 @@ describe("EnvLocalAsrStatusSection", () => {
     expect(within(container).getByText("未就绪")).toBeTruthy();
   });
 
-  it("shows cancelling banner while model download cancel is pending", () => {
+  it("shows bundled preparing banner while seed copy is in flight", () => {
+    const { container } = render(
+      <EnvLocalAsrStatusSection
+        presentation={makePresentation({
+          tone: "warn",
+          transcribeReady: false,
+          chipOk: false,
+          bannerTitle: "本机 ASR · 正在准备内置模型",
+          bannerDetail: "正在准备内置语音模型（42%），完成后方可转写。无需联网。",
+          statusRows: [
+            { id: "env", label: "环境", ok: true, text: "侧车已连接" },
+            { id: "ffmpeg", label: "FFmpeg", ok: true, text: "可用" },
+            { id: "runtime", label: "运行时", ok: false, text: "复制中", warn: true },
+            { id: "transcribe", label: "转写", ok: false, text: "准备中", warn: true },
+          ],
+        })}
+        busy={false}
+        refreshAsrHealth={vi.fn()}
+      />,
+    );
+
+    expect(within(container).getByText("本机 ASR · 正在准备内置模型")).toBeTruthy();
+    expect(within(container).getByText("复制中")).toBeTruthy();
+  });
+
+  it("shows legacy cancel banner for dev ModelScope prepare", () => {
     const { container } = render(
       <EnvLocalAsrStatusSection
         presentation={makePresentation({

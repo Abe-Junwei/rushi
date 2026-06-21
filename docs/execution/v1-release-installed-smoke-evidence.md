@@ -1,10 +1,10 @@
 # v1 安装包冒烟证据
 
-- **时间（UTC）**：2026-06-14T05:15:21Z
-- **包**：`/Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`
+- **时间（UTC）**：2026-06-21T11:21:25Z
+- **包**：`/Applications/如是我闻.app`
 - **App Data**：`/Users/junwei/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi`
 - **机器结论**：进程启动 ✅ · App Data 可写 ✅ · bundled ffmpeg/ffprobe ✅ · sidecar stamp ✅ · diagnostic zip ✅
-- **侧车构建**：`git_sha=87418b9 built_at=2026-06-14T05:02:31Z platform=Darwin-arm64`
+- **侧车构建**：`git_sha=8f715d3 built_at=2026-06-21T06:47:53Z platform=Darwin-arm64`
 
 ## 仍需 UI 手测
 

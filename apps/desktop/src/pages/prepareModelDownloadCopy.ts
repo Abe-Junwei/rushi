@@ -41,17 +41,27 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     };
   }
   if (c === "modelscope_not_installed") {
-    return {
-      headline: "缺少 ModelScope 客户端，无法拉取模型权重。",
-      tips: [
-        ...packagedOrDevArray(prepareModelScopeMissingTipsDev, prepareModelScopeMissingTipsManaged),
-        ...commonRetryTips(),
-      ],
-    };
+    return usesBundledAsrModelStack()
+      ? {
+          headline: "内置模型复制环境异常（不应出现 ModelScope 下载）。",
+          tips: [
+            ...packagedOrDevArray(prepareModelScopeMissingTipsDev, prepareModelScopeMissingTipsManaged),
+            ...commonRetryTips(),
+          ],
+        }
+      : {
+          headline: "缺少 ModelScope 客户端，无法拉取模型权重。",
+          tips: [
+            ...packagedOrDevArray(prepareModelScopeMissingTipsDev, prepareModelScopeMissingTipsManaged),
+            ...commonRetryTips(),
+          ],
+        };
   }
   if (c === "model_prepare_disk_full") {
     return {
-      headline: "磁盘剩余空间不足，无法写入模型缓存。",
+      headline: usesBundledAsrModelStack()
+        ? "磁盘剩余空间不足，无法复制内置模型。"
+        : "磁盘剩余空间不足，无法写入模型缓存。",
       tips: [
         "清理系统盘或应用数据盘，至少留出数 GB 余量（策略建议预留约 5GB 总预算）。",
         "点「打开应用数据目录」查看 models 占用，必要时删除旧缓存后再试。",
@@ -60,24 +70,41 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     };
   }
   if (c === "model_prepare_incomplete") {
-    return {
-      headline: "模型下载未完整落盘，缓存目录里仍是半成品。",
-      tips: [
-        "先结束当前转写/下载，再删除对应模型缓存目录后重新点「下载当前模型」。",
-        "若仍复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
-        ...commonRetryTips(),
-      ],
-    };
+    return usesBundledAsrModelStack()
+      ? {
+          headline: "内置模型复制未完整落盘，缓存目录里仍是半成品。",
+          tips: [
+            "点「清除模型缓存」后完全退出并重新打开应用（会重新从安装包复制）。",
+            "若仍复现：确认安装包内 bundled-asr-models 约 1.1 GB。",
+            ...commonRetryTips(),
+          ],
+        }
+      : {
+          headline: "模型下载未完整落盘，缓存目录里仍是半成品。",
+          tips: [
+            "先结束当前转写/下载，再删除对应模型缓存目录后重新点「下载当前模型」。",
+            "若仍复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
+            ...commonRetryTips(),
+          ],
+        };
   }
   if (c === "vad_prepare_incomplete") {
-    return {
-      headline: "辅助 VAD 模型未完整落盘，当前仍不能稳定转写。",
-      tips: [
-        "删除对应 VAD 缓存目录后重新点「下载当前模型」，让主模型与辅助模型一起补齐。",
-        "若多次复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
-        ...commonRetryTips(),
-      ],
-    };
+    return usesBundledAsrModelStack()
+      ? {
+          headline: "辅助 VAD 模型未完整复制，当前仍不能稳定转写。",
+          tips: [
+            "点「清除模型缓存」后重启应用，让主模型与 VAD/标点一起重新复制。",
+            ...commonRetryTips(),
+          ],
+        }
+      : {
+          headline: "辅助 VAD 模型未完整落盘，当前仍不能稳定转写。",
+          tips: [
+            "删除对应 VAD 缓存目录后重新点「下载当前模型」，让主模型与辅助模型一起补齐。",
+            "若多次复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
+            ...commonRetryTips(),
+          ],
+        };
   }
   if (c === "model_manifest_path_missing") {
     return {
@@ -98,25 +125,38 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     };
   }
   if (c === "client_timeout") {
-    return {
-      headline: "下载等待超过 15 分钟仍未完成。",
-      tips: [
-        "大文件在网络较慢时可能超时；请换更稳定网络后重试（支持断点续传）。",
-        "确认未休眠/断网；必要时在终端直接观察 ASR 日志。",
-        ...commonRetryTips(),
-      ],
-    };
+    return usesBundledAsrModelStack()
+      ? {
+          headline: "内置模型复制等待超过 15 分钟仍未完成。",
+          tips: [
+            "复制大文件在磁盘较慢时可能耗时较久；请确认未休眠并保持应用前台。",
+            ...commonRetryTips(),
+          ],
+        }
+      : {
+          headline: "下载等待超过 15 分钟仍未完成。",
+          tips: [
+            "大文件在网络较慢时可能超时；请换更稳定网络后重试（支持断点续传）。",
+            "确认未休眠/断网；必要时在终端直接观察 ASR 日志。",
+            ...commonRetryTips(),
+          ],
+        };
   }
   if (c === "model_prepare_network_error") {
-    return {
-      headline: "模型下载因网络中断失败（已保留已下载部分，可续传）。",
-      tips: [
-        "请先稳定 VPN/代理（建议全程保持同一网络），再点「下载当前模型」。",
-        "若进度长时间不动：点「取消下载」后重新点「下载当前模型」。",
-        "ModelScope 会跳过已落盘文件，不会从零开始。",
-        ...commonRetryTips(),
-      ],
-    };
+    return usesBundledAsrModelStack()
+      ? {
+          headline: "内置模型复制中断（不应依赖网络）。",
+          tips: commonRetryTips(),
+        }
+      : {
+          headline: "模型下载因网络中断失败（已保留已下载部分，可续传）。",
+          tips: [
+            "请先稳定 VPN/代理（建议全程保持同一网络），再点「下载当前模型」。",
+            "若进度长时间不动：点「取消下载」后重新点「下载当前模型」。",
+            "ModelScope 会跳过已落盘文件，不会从零开始。",
+            ...commonRetryTips(),
+          ],
+        };
   }
   if (c === "fetch_failed") {
     return {
@@ -145,7 +185,9 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     };
   }
   return {
-    headline: `模型准备失败（${c.length > 120 ? `${c.slice(0, 120)}…` : c}）。`,
+    headline: usesBundledAsrModelStack()
+      ? `内置模型准备失败（${c.length > 120 ? `${c.slice(0, 120)}…` : c}）。`
+      : `模型准备失败（${c.length > 120 ? `${c.slice(0, 120)}…` : c}）。`,
     tips: commonRetryTips(),
   };
 }

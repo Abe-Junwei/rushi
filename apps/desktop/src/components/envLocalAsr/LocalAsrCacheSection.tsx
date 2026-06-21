@@ -84,7 +84,7 @@ export function LocalAsrCacheSection({
         <div className="flex flex-col gap-2">
           <InfoRow label="缓存目录" value={asrModelCacheInfo?.models_root ?? "未读取"} mono />
           <InfoRow label="当前占用" value={formatBytes(asrModelCacheInfo?.total_bytes ?? 0)} />
-          <InfoRow label="ModelScope" value={asrModelCacheInfo?.modelscope_cache ?? "未读取"} mono />
+          <InfoRow label="权重子目录" value={asrModelCacheInfo?.modelscope_cache ?? "未读取"} mono />
           <InfoRow label="HuggingFace" value={asrModelCacheInfo?.huggingface_cache ?? "未读取"} mono />
           <InfoRow label="manifest 校验" value={manifestStatus} />
         </div>
@@ -101,8 +101,9 @@ export function LocalAsrCacheSection({
             </p>
           ) : null}
           <p className="m-0">
-            占用仅统计应用数据目录下的 <code className="font-mono text-notion-text-muted">models/</code>；若 ASR
-            在终端单独启动且未设置 RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
+            占用仅统计应用数据目录下的 <code className="font-mono text-notion-text-muted">models/</code>
+            （Release 默认从安装包复制 Paraformer，无需联网下载）。若 ASR 在终端单独启动且未设置
+            RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
           </p>
           <p className="m-0">
             manifest 状态读取自<strong className="font-medium text-notion-text">桌面应用进程</strong>的{" "}

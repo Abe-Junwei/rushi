@@ -57,7 +57,7 @@ export const sidecarMissingHealthBlockReasonDev =
 
 export const prepareModelFunasrMissingTipsManaged = [
   "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
-  "准备完成后点「下载当前模型」重试。",
+  "若模型未就绪，请完全退出应用后重新打开（会重新从安装包复制内置模型）。",
 ];
 
 export const prepareModelFunasrMissingTipsDev = [
@@ -66,8 +66,8 @@ export const prepareModelFunasrMissingTipsDev = [
 ];
 
 export const prepareModelScopeMissingTipsManaged = [
-  "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
-  "准备完成后点「下载当前模型」重试。",
+  "Release 包不应走 ModelScope 下载；请完全退出应用后重新打开以重新复制内置模型。",
+  "若仍出现此错误，请点「清除模型缓存」后重启，或重装最新版本。",
 ];
 
 export const prepareModelScopeMissingTipsDev = [

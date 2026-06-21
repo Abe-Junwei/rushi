@@ -4,6 +4,10 @@ import type { PrepareModelFailureCopy } from "../../pages/prepareModelDownloadCo
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrCatalogPresentation } from "../../services/asr/asrCatalogPresentation";
+import {
+  bundledCatalogOptionSuffix,
+  usesBundledAsrModelStack,
+} from "../../services/asr/bundledModelJobPresentation";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
 import { ENV_PANEL_BUTTON_ROW_CLASS, ENV_PANEL_FORM_FIELDS_CLASS, ENV_PANEL_FORM_FIELD_CLASS } from "../../utils/environmentPanelNav";
 import {
@@ -50,6 +54,9 @@ export function EnvLocalAsrModelCard({
   } = catalogPresentation;
   const panelBusy = busy || prepareModelBusy || prepareModelCancelling || catalog.applyBusy;
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
+  const catalogOptionSuffix = usesBundledAsrModelStack()
+    ? bundledCatalogOptionSuffix
+    : (cached: boolean) => (cached ? " · 已缓存" : " · 未就绪");
 
   const progressToneClass =
     progressTone === "success" ? "text-zen-success" : "text-notion-text-muted";
@@ -67,7 +74,7 @@ export function EnvLocalAsrModelCard({
           {catalogView.map((item) => (
             <option key={item.hubModelId} value={item.hubModelId}>
               {item.label}
-              {item.cached ? " · 已缓存" : " · 未就绪"}
+              {catalogOptionSuffix(item.cached)}
               {item.active ? " · 运行中" : ""}
             </option>
           ))}
