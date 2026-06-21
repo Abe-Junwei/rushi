@@ -58,6 +58,7 @@
 ## 5. 模型缓存目录与卸载（已定）
 
 - **统一缓存根**：`{app_data_dir}/studio.lingchuang.rushi/models/`（与现有 SQLite 同应用数据根，便于备份与诊断 zip 说明）。侧车仅可再设 **临时工作目录**（如系统 temp 或 `…/models/_work`），**不以 temp 为长期模型存放处**。
+- **默认获取路径**：主安装包 **不含** 模型权重；首次可通过 **ModelScope 在线 prepare** 或 **导入可选离线模型包**（Release 第二 asset `rushi-offline-asr-models_{version}.zip`）seed 到上述缓存根。见 [`asr-bundled-models-plan.md`](../execution/specs/asr-bundled-models-plan.md)（路线 E）。
 - **卸载行为**：**默认卸载安装包不删除** `…/models/`（避免误删大文件与用户曾手动缓存）；卸载向导提供 **可选勾选**：「同时删除已下载的语音识别模型（约显示占用空间）」。应用内 **设置** 提供 **「清除模型缓存」** 独立入口。
 
 ---
