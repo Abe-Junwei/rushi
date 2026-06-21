@@ -10,6 +10,7 @@ import {
   matchEditorShortcut,
   type EditorShortcutId,
 } from "../utils/editorShortcutRegistry";
+import type { ConfirmAdvanceTabQueueRef } from "../utils/confirmAdvanceTabQueue";
 import { executeEditorShortcut } from "../utils/executeEditorShortcut";
 import { hasOpenDialogEscapeHandler } from "../utils/dialogEscapeStack";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
@@ -88,6 +89,10 @@ export function useEditorShortcutDispatcher(args: {
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
+  const confirmAdvanceQueueRef = useRef<ConfirmAdvanceTabQueueRef>({
+    inFlight: false,
+    pendingSteps: 0,
+  });
 
   useEffect(() => {
     if (!args.enabled) return;
@@ -129,6 +134,7 @@ export function useEditorShortcutDispatcher(args: {
         shortcutId,
         {
           ctx,
+          getCtx: () => argsRef.current.ctxRef.current,
           wf: a.wfApiRef.current,
           selectSegmentAt: (idx, source, opts) => a.selectSegmentAtRef.current(idx, source, opts),
           focusSegmentTextarea: a.focusSegmentTextarea,
@@ -140,6 +146,7 @@ export function useEditorShortcutDispatcher(args: {
           blurActiveElement: () => {
             (document.activeElement as HTMLElement | null)?.blur?.();
           },
+          confirmAdvanceQueueRef: confirmAdvanceQueueRef.current,
         },
         { shiftKey: e.shiftKey, eventTarget: e.target },
       );

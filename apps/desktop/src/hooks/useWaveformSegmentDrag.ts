@@ -171,6 +171,7 @@ export function useWaveformSegmentDrag(
       });
 
       if (blankMode === "lasso") {
+        const modifiers = readSegmentOverlayModifiers(ev);
         const baseIndices = ev.shiftKey
           ? new Set(a.getSelectedIndices?.() ?? [])
           : new Set<number>();
@@ -185,7 +186,11 @@ export function useWaveformSegmentDrag(
           moved: false,
           baseIndices,
         };
-        updateCreatePreview({ startSec: timeSec, endSec: timeSec });
+        if (!modifiers.shiftKey && !modifiers.toggleKey) {
+          a.onFocusWaveformShell?.();
+          a.suppressPlaybackFollowForSelectionSeek?.();
+          a.seekToTime(timeSec);
+        }
         ev.currentTarget.setPointerCapture(ev.pointerId);
         return;
       }
@@ -206,11 +211,12 @@ export function useWaveformSegmentDrag(
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
       if (drag.mode === "lasso") {
-        const lo = Math.min(drag.initialStartSec, timeSec);
-        const hi = Math.max(drag.initialStartSec, timeSec);
         if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
           drag.moved = true;
         }
+        if (!drag.moved) return;
+        const lo = Math.min(drag.initialStartSec, timeSec);
+        const hi = Math.max(drag.initialStartSec, timeSec);
         const clamped = snapCreateRange(a, lo, hi, snapEnabled);
         updateCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
         return;

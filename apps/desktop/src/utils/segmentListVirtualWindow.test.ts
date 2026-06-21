@@ -316,18 +316,22 @@ describe("segmentListVirtualWindow", () => {
     document.body.removeChild(root);
   });
 
-  it("resolveSegmentListRangeDragHoverIndex clamps to first/last row outside viewport (S8)", () => {
+  it("resolveSegmentListRangeDragHoverIndex clamps to visible edge rows outside viewport (S8)", () => {
     const root = document.createElement("div");
     root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
     annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
-    writeSegmentListFilterIndices(root, [5, 15, 25], true);
+    Object.defineProperty(root, "clientHeight", { value: 400, configurable: true });
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0, configurable: true });
     root.getBoundingClientRect = () =>
       ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) });
     document.body.appendChild(root);
 
     document.elementFromPoint = () => null;
-    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 80, 100)).toBe(5);
-    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 520, 100)).toBe(25);
+    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 80, 100)).toBe(0);
+    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 520, 100)).toBe(4);
+
+    root.scrollTop = 800;
+    expect(resolveSegmentListRangeDragHoverIndex(root, 20, 520, 100)).toBe(14);
 
     document.body.removeChild(root);
   });

@@ -179,7 +179,9 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       )) {
         return;
       }
-      onRowRangePointerDown?.(i, e);
+      if (e.shiftKey) {
+        onRowRangePointerDown?.(i, e);
+      }
     },
     [busy, i, onRowRangePointerDown],
   );

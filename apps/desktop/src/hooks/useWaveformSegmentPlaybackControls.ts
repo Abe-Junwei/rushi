@@ -79,7 +79,13 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (options?.loop) {
         setSegmentLoopPlayback(true);
       }
-      await ws.play(playFrom);
+      try {
+        await ws.play(playFrom);
+      } catch {
+        if (gen !== playGenerationRef.current) return;
+        clearSegmentPlaybackBound();
+        return;
+      }
       if (gen !== playGenerationRef.current) {
         if (ws.isPlaying()) ws.pause();
         return;

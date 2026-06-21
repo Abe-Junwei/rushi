@@ -5,13 +5,19 @@ import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
-import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
 import type { EditorShortcutId } from "./editorShortcutRegistry";
+import {
+  enqueueConfirmAdvanceTab,
+  resolveConfirmAdvanceStartingIdx,
+  type ConfirmAdvanceTabQueueRef,
+} from "./confirmAdvanceTabQueue";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type EditorShortcutExecuteDeps = {
   ctx: TranscriptionLayerInput;
+  /** 异步 shortcut（如 Tab 定稿）完成后须读最新 ctx，避免闭包 stale。 */
+  getCtx?: () => TranscriptionLayerInput;
   wf: WfApi;
   selectSegmentAt: (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void;
   focusSegmentTextarea: (segmentIdx: number) => void;
@@ -20,6 +26,7 @@ export type EditorShortcutExecuteDeps = {
   showEditorHint: (msg: string) => void;
   stepWaveformZoom: (direction: "in" | "out") => void;
   blurActiveElement: () => void;
+  confirmAdvanceQueueRef?: ConfirmAdvanceTabQueueRef | { current: ConfirmAdvanceTabQueueRef };
 };
 
 export type EditorShortcutExecuteMods = {
@@ -30,6 +37,10 @@ export type EditorShortcutExecuteMods = {
 /** 结构操作与 focus 文本均锚定 selectedIdx（focus=selected 不变量）。 */
 function resolveSelectedSegmentIdx(ctx: TranscriptionLayerInput): number {
   return ctx.selectedIdx;
+}
+
+function readCtx(deps: EditorShortcutExecuteDeps): TranscriptionLayerInput {
+  return deps.getCtx?.() ?? deps.ctx;
 }
 
 export function executeEditorShortcut(
@@ -136,23 +147,22 @@ export function executeEditorShortcut(
       void ctx.saveSegments();
       return true;
     case "workflow.confirmAdvance": {
-      const idx = resolveSelectedSegmentIdx(ctx);
+      const ctx = readCtx(deps);
+      const idx = resolveConfirmAdvanceStartingIdx(ctx);
       if (idx < 0 || idx >= ctx.segments.length) return true;
-      void (async () => {
-        const ok = await ctx.confirmSegmentEditAndAdvance(idx);
-        if (!ok) return;
-        const ni = Math.min(idx + 1, Math.max(0, ctx.segments.length - 1));
-        if (ni !== idx) {
-          deps.selectSegmentAt(ni, "listKeyboard");
-          deps.focusSegmentTextarea(ni);
-          const seg = ctx.segments[ni];
-          if (!seg) return;
-          if (readStoredTabAdvanceLoopsSegment()) {
-            wf.preserveLoopForNextSegmentSelect();
-            void wf.playSegmentAtIndex(ni, { loop: true });
-          }
-        }
-      })();
+      const queue =
+        deps.confirmAdvanceQueueRef &&
+        ("current" in deps.confirmAdvanceQueueRef
+          ? deps.confirmAdvanceQueueRef.current
+          : deps.confirmAdvanceQueueRef);
+      if (!queue) return true;
+      enqueueConfirmAdvanceTab(queue, {
+        getCtx: () => readCtx(deps),
+        segmentListFilterNavState: deps.segmentListFilterNavState,
+        selectSegmentAt: (ni, source) => deps.selectSegmentAt(ni, source),
+        focusSegmentTextarea: deps.focusSegmentTextarea,
+        wf,
+      });
       return true;
     }
     case "workflow.find":

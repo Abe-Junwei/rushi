@@ -28,6 +28,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
     fromTextBody: boolean;
     startClientX: number;
     startClientY: number;
+    lastClientX?: number;
     lastClientY?: number;
   } | null>(null);
   const suppressSegmentListRowClickRef = useRef(false);
@@ -70,18 +71,29 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       const tickAutoScroll = () => {
         const drag = segmentListRangeDragRef.current;
         const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
-        if (!drag || !scrollRoot) {
+        if (!drag || !scrollRoot || !drag.moved) {
           stopAutoScroll();
           return;
         }
         const rect = scrollRoot.getBoundingClientRect();
+        const clientY = drag.lastClientY ?? drag.startClientY;
+        const clientX = drag.lastClientX ?? drag.startClientX;
         const delta = computeSegmentListDragAutoScrollDelta({
-          clientY: drag.lastClientY ?? drag.startClientY,
+          clientY,
           rootTop: rect.top,
           rootBottom: rect.bottom,
         });
         if (delta !== 0) {
           scrollRoot.scrollTop = Math.max(0, scrollRoot.scrollTop + delta);
+        }
+        const hoverIdx = resolveSegmentListRangeDragHoverIndex(
+          scrollRoot,
+          clientX,
+          clientY,
+          ctxRef.current.segments.length,
+        );
+        if (hoverIdx != null) {
+          ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
         }
         autoScrollRafRef.current = window.requestAnimationFrame(tickAutoScroll);
       };
@@ -89,6 +101,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       const onMove = (ev: PointerEvent) => {
         const drag = segmentListRangeDragRef.current;
         if (!drag || ev.pointerId !== drag.pointerId) return;
+        drag.lastClientX = ev.clientX;
         drag.lastClientY = ev.clientY;
         if (
           !drag.moved &&

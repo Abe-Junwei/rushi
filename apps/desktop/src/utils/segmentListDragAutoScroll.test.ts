@@ -16,40 +16,40 @@ describe("computeSegmentListDragAutoScrollDelta", () => {
     expect(computeSegmentListDragAutoScrollDelta({ ...root, clientY: 300 })).toBe(0);
   });
 
-  it("uses near-max speed just inside the top edge band", () => {
+  it("uses near-min speed just inside the top edge band", () => {
     const delta = computeSegmentListDragAutoScrollDelta({
       ...root,
       clientY: root.rootTop + edge - 0.01,
     });
-    expect(delta).toBeLessThan(-max + 0.1);
-    expect(delta).toBeGreaterThan(-max);
+    expect(delta).toBeGreaterThan(-min - 0.1);
+    expect(delta).toBeLessThan(-min + 0.5);
   });
 
-  it("uses min speed at the outer top edge", () => {
+  it("uses max speed at the outer top edge", () => {
     expect(
       computeSegmentListDragAutoScrollDelta({
         ...root,
         clientY: root.rootTop,
       }),
-    ).toBeCloseTo(-min, 5);
+    ).toBeCloseTo(-max, 5);
   });
 
-  it("uses near-max speed just inside the bottom edge band", () => {
+  it("uses near-min speed just inside the bottom edge band", () => {
     const delta = computeSegmentListDragAutoScrollDelta({
       ...root,
       clientY: root.rootBottom - edge + 0.01,
     });
-    expect(delta).toBeGreaterThan(max - 0.1);
-    expect(delta).toBeLessThan(max);
+    expect(delta).toBeGreaterThan(min - 0.1);
+    expect(delta).toBeLessThan(min + 0.5);
   });
 
-  it("uses min speed at the outer bottom edge", () => {
+  it("uses max speed at the outer bottom edge", () => {
     expect(
       computeSegmentListDragAutoScrollDelta({
         ...root,
         clientY: root.rootBottom,
       }),
-    ).toBeCloseTo(min, 5);
+    ).toBeCloseTo(max, 5);
   });
 
   it("linearly interpolates speed within the top edge band", () => {

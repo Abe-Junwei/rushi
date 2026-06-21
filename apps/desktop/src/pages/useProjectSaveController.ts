@@ -130,10 +130,12 @@ export function useProjectSaveController(args: Args) {
   );
 
   const finalizeSegmentAt = useCallback(
-    async (segmentIdx: number, advance: boolean): Promise<boolean> => {
+    async (segmentIdx: number): Promise<boolean> => {
       if (!current || !currentFileId || busy) return false;
       const currentSegments = getCurrentSegmentsSnapshot();
       if (segmentIdx < 0 || segmentIdx >= currentSegments.length) return false;
+      const stage = currentSegments[segmentIdx]?.text_stage ?? "auto_transcribe";
+      if (stage === "finalized") return true;
       if (!segmentCanFinalize(currentSegments, segmentIdx, busy)) return false;
       clearAutoSaveRef.current();
       const hadUnsaved = segmentHasUnsavedText(
@@ -164,12 +166,6 @@ export function useProjectSaveController(args: Args) {
         toast.warning("定稿失败：请稍候再试（可能正在自动保存）");
         return false;
       }
-      if (advance) {
-        const nextIdx = Math.min(segmentIdx + 1, getCurrentSegmentsSnapshot().length - 1);
-        if (nextIdx !== selectedIdxRef.current) {
-          setSelectedIdx(nextIdx);
-        }
-      }
       return true;
     },
     [
@@ -179,18 +175,16 @@ export function useProjectSaveController(args: Args) {
       dirty,
       getCurrentSegmentsSnapshot,
       saveSegments,
-      selectedIdxRef,
-      setSelectedIdx,
     ],
   );
 
   const confirmSegmentEditAndAdvance = useCallback(
-    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx, true),
+    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx),
     [finalizeSegmentAt],
   );
 
   const markSegmentFinalized = useCallback(
-    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx, false),
+    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx),
     [finalizeSegmentAt],
   );
 

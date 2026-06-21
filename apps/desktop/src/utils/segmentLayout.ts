@@ -9,6 +9,18 @@ import {
 import { computeTimelineWidthPx } from "./pxPerSec";
 export { computeTimelineWidthPx };
 
+/** 语段下方/底部拖调字号：每 1px 字号所需的 pointer Y 位移（越大越精细）。 */
+export const TRANSCRIPT_FONT_DRAG_PX_PER_STEP = 8;
+
+export function transcriptFontPxFromDragDelta(
+  startFontPx: number,
+  deltaYPx: number,
+  pxPerStep: number = TRANSCRIPT_FONT_DRAG_PX_PER_STEP,
+): number {
+  if (pxPerStep <= 0) return clampTranscriptFontPx(startFontPx);
+  return clampTranscriptFontPx(startFontPx + Math.trunc(deltaYPx / pxPerStep));
+}
+
 /** 语段卡行高（px）：支持元信息与两行正文的编辑卡。 */
 export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
   const f = clampTranscriptFontPx(transcriptFontPx);

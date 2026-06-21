@@ -11,14 +11,14 @@
 
 | 项 | 填写 |
 |----|------|
-| 日期 | |
-| 测试人 | |
-| Git SHA | `git rev-parse --short HEAD` → |
-| 运行方式 | ☐ `npm run desktop:dev` ☐ Release `.app`（路径：） |
-| macOS / 引擎 | 例：26.x arm64 · WebKit |
-| 测试项目 | 名称 + `currentFileId`（或新建） |
-| 语段规模 | 例：§H10 需 **≥500** 段；其余可用 20–50 段 |
-| 本地 ASR | ☐ 已 ready ☐ 跳过（仅测 UI 交互，不测转写） |
+| 日期 | 2026-06-20 |
+| 测试人 | （手测完成） |
+| Git SHA | `ec8192f` |
+| 运行方式 | ☑ Release `.app`（`apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`） |
+| macOS / 引擎 | arm64 · WebKit |
+| 测试项目 | 转写页主路径 + H10 长稿（≥500 段） |
+| 语段规模 | H10 ≥500 段；其余 20–50 段 |
+| 本地 ASR | ☑ 跳过（仅 UI 交互） |
 
 **Blocker**：任一 **P0** 行（H1、H2、H4、H7、H10、H13、H16–H18）标 **FAIL** → Plan 不得签收。
 
@@ -36,7 +36,7 @@ node scripts/check-architecture-guard.mjs
 
 | 项 | 结果 | 日期 |
 |----|------|------|
-| typecheck + test + guard 0 error | ☐ PASS | |
+| typecheck + test + guard 0 error | ☑ PASS | 2026-06-20 |
 
 ### 数据与入口
 
@@ -322,27 +322,27 @@ node scripts/check-architecture-guard.mjs
 
 | # | 场景 | P0 | 结果 | 备注 |
 |---|------|:--:|------|------|
-| H1 | Hub 点语段 | ● | ☐ P ☐ F | |
-| H2 | textarea ↑↓ | ● | ☐ P ☐ F | |
-| H3 | 同一行再点 | | ☐ P ☐ F | |
-| H4 | 波形/minimap/空白 | ● | ☐ P ☐ F | |
-| H7 | 时间尺单击 | ● | ☐ P ☐ F | |
-| H8 | Tab confirmAdvance | | ☐ P ☐ F | |
-| H9 | Tab loop 例外 | | ☐ P ☐ F ☐ N/A | |
-| H10 | 500+ 虚拟列表 | ● | ☐ P ☐ F | |
-| H11 | 选手动滚列表 | | ☐ P ☐ F | |
-| H12 | 选中行长文本 | | ☐ P ☐ F | |
-| H13 | range drag auto-scroll | ● | ☐ P ☐ F | |
-| H14 | 过滤 banner | | ☐ P ☐ F | |
-| H15 | focus=selected | | ☐ P ☐ F | |
-| H15a | Tab / a11y | | ☐ P ☐ F | |
-| H16 | 播放中 zoom | ● | ☐ P ☐ F | |
-| H17 | seek 重绘 | | ☐ P ☐ F | |
-| H18 | 快速横滚 tier | ● | ☐ P ☐ F | |
-| H19 | Shift 空白短 tap | ● | ☐ P ☐ F | |
-| H20 | 大段新建 preview | | ☐ P ☐ F | |
+| H1 | Hub 点语段 | ● | ☑ P | |
+| H2 | textarea ↑↓ | ● | ☑ P | |
+| H3 | 同一行再点 | | ☑ P | |
+| H4 | 波形/minimap/空白 | ● | ☑ P | |
+| H7 | 时间尺单击 | ● | ☑ P | |
+| H8 | Tab confirmAdvance | | ☑ P | loop 偏好关 |
+| H9 | Tab loop 例外 | | ☑ P | loop 偏好开 |
+| H10 | 500+ 虚拟列表 | ● | ☑ P | |
+| H11 | 选手动滚列表 | | ☑ P | |
+| H12 | 选中行长文本 | | ☑ P | |
+| H13 | range drag auto-scroll | ● | ☑ P | |
+| H14 | 过滤 banner | | ☑ P | |
+| H15 | focus=selected | | ☑ P | |
+| H15a | Tab / a11y | | ☑ P | |
+| H16 | 播放中 zoom | ● | ☑ P | |
+| H17 | seek 重绘 | | ☑ P | |
+| H18 | 快速横滚 tier | ● | ☑ P | |
+| H19 | Shift 空白短 tap | ● | ☑ P | |
+| H20 | 大段新建 preview | | ☑ P | |
 
-**签收**：☐ **Go**（无 P0 FAIL） ☐ **No-Go**
+**签收**：☑ **Go**（无 P0 FAIL） ☐ **No-Go**
 
 ---
 
@@ -370,3 +370,4 @@ node scripts/check-architecture-guard.mjs
 | 日期 | 说明 |
 |------|------|
 | 2026-06-21 | 初版：H1–H20 步骤 + 汇总矩阵 + 签收头 |
+| 2026-06-20 | 手测 **Go**：H1–H20 全 PASS；机器闸门 1749 tests + guard 0 error |

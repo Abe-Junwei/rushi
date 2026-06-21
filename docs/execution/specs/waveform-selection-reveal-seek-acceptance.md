@@ -2,7 +2,7 @@
 
 > **Plan**：[`waveform-selection-reveal-seek-plan.md`](./waveform-selection-reveal-seek-plan.md)  
 > **S8 实地调研**：[`waveform-list-ux-boundaries-research.md`](./waveform-list-ux-boundaries-research.md)  
-> **状态**：自动化已绿（含 S8 距离比例 auto-scroll、S7 ruler/playhead snapshot）；**手测 H1–H20 待记录**
+> **状态**：自动化已绿；**手测 H1–H20 Go**（2026-06-20 · [`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md)）
 
 ---
 
@@ -61,7 +61,8 @@
 
 ## 3. 手测矩阵
 
-> **清单模板（逐步操作 + 汇总矩阵）**：[`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md)
+> **清单模板（逐步操作 + 汇总矩阵）**：[`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md)  
+> **签收**：2026-06-20 **Go** — H1–H20 全 PASS；P0（H1、H2、H4、H7、H10、H13、H16–H18）无 FAIL。
 
 ### Grill + 列表（S0–S5, S8）
 
@@ -104,5 +105,5 @@
 
 1. Plan §A 除 **2.4** 外全部条目有对应测试或手测行。  
 2. `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs` 通过。  
-3. 手测 H1–H20 记录 → [`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md)（可并入 v0.1.8 checklist）。  
+3. 手测 H1–H20 记录 → [`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md)（**Go 2026-06-20**；可并入 v0.1.8 checklist）。  
 4. 代码检索：`selectSegmentAt` + `list|listAdvance|listKeyboard` 路径 **无** `seek(`。

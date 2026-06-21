@@ -38,6 +38,8 @@ export type ShortcutBinding = {
   shift?: boolean;
   /** 覆盖 definition 级 allowInTextarea（如 Space 仅全局、⇧⌘Space 含正文） */
   allowInTextarea?: boolean;
+  /** 仅语段正文 textarea 内生效（如 Tab 定稿跳下一段） */
+  textareaOnly?: boolean;
 };
 
 export type EditorShortcutDefinition = {

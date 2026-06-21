@@ -713,16 +713,20 @@ function checkSegmentListRapidSelectGuard() {
   }
   const shortcutRel = 'apps/desktop/src/utils/executeEditorShortcut.ts';
   const shortcutPath = path.join(ROOT, shortcutRel);
-  if (fs.existsSync(shortcutPath)) {
+  const tabQueueRel = 'apps/desktop/src/utils/confirmAdvanceTabQueue.ts';
+  const tabQueuePath = path.join(ROOT, tabQueueRel);
+  if (fs.existsSync(shortcutPath) && fs.existsSync(tabQueuePath)) {
     const shortcutSource = fs.readFileSync(shortcutPath, 'utf-8');
-    if (!/readStoredTabAdvanceLoopsSegment/.test(shortcutSource)) {
+    const tabQueueSource = fs.readFileSync(tabQueuePath, 'utf-8');
+    const tabAdvanceSource = `${shortcutSource}\n${tabQueueSource}`;
+    if (!/readStoredTabAdvanceLoopsSegment/.test(tabAdvanceSource)) {
       errors.push(
-        `${shortcutRel}: Tab confirmAdvance 须在 listKeyboard 后按偏好触发 loop-play 或 seek`,
+        `${tabQueueRel}: Tab confirmAdvance 须在 listKeyboard 后按偏好触发 loop-play 或 seek`,
       );
     }
-    if (!/selectSegmentAt\([^)]*"listKeyboard"/.test(shortcutSource)) {
+    if (!/selectSegmentAt\([^)]*"listKeyboard"/.test(tabAdvanceSource)) {
       errors.push(
-        `${shortcutRel}: Tab confirmAdvance 须使用 listKeyboard 源`,
+        `${tabQueueRel}: Tab confirmAdvance 须使用 listKeyboard 源`,
       );
     }
   }

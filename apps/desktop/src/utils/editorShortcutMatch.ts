@@ -78,6 +78,7 @@ function bindingAllowedInTextarea(
   def: EditorShortcutDefinition,
   inTextarea: boolean,
 ): boolean {
+  if (binding.textareaOnly && !inTextarea) return false;
   if (!inTextarea) return true;
   return binding.allowInTextarea ?? def.allowInTextarea ?? false;
 }

@@ -133,7 +133,26 @@ export function resolveSegmentListRowIndexFromPoint(
   return displayIndexToSegmentIdx(filteredIndices, clampedDisplay);
 }
 
-/** Range drag: clamp hover to first/last row when pointer leaves the list viewport. */
+/** Visible display-row indices from current scrollTop (virtual list stride). */
+export function resolveSegmentListViewportDisplayRowBounds(
+  scrollRoot: HTMLElement,
+  displayCount: number,
+): { firstDisplayIdx: number; lastDisplayIdx: number } | null {
+  const metrics = readSegmentListScrollMetrics(scrollRoot);
+  if (!metrics || displayCount <= 0) return null;
+  const stride = metrics.itemStridePx;
+  const firstDisplayIdx = Math.max(0, Math.floor(scrollRoot.scrollTop / stride));
+  const lastDisplayIdx = Math.max(
+    0,
+    Math.min(
+      displayCount - 1,
+      Math.floor((scrollRoot.scrollTop + scrollRoot.clientHeight - 1) / stride),
+    ),
+  );
+  return { firstDisplayIdx, lastDisplayIdx };
+}
+
+/** Range drag: clamp hover to first/last visible row when pointer leaves the list viewport. */
 export function resolveSegmentListRangeDragHoverIndex(
   scrollRoot: HTMLElement | null,
   clientX: number,
@@ -151,7 +170,10 @@ export function resolveSegmentListRangeDragHoverIndex(
     return resolveSegmentListRowIndexFromPoint(scrollRoot, clientX, clientY, fallbackSegmentCount);
   }
 
-  const clampedDisplay = clientY < rect.top ? 0 : displayCount - 1;
+  const bounds = resolveSegmentListViewportDisplayRowBounds(scrollRoot, displayCount);
+  if (!bounds) return null;
+  const clampedDisplay =
+    clientY < rect.top ? bounds.firstDisplayIdx : bounds.lastDisplayIdx;
   return displayIndexToSegmentIdx(filteredIndices, clampedDisplay);
 }
 

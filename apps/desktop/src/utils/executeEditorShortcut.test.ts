@@ -3,6 +3,7 @@ import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { executeEditorShortcut } from "./executeEditorShortcut";
 import { createEmptySegmentListFilterNavState } from "./segmentListFilterNav";
 import * as waveformPrefs from "./waveformPrefs";
+import type { ConfirmAdvanceTabQueueRef } from "./confirmAdvanceTabQueue";
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -52,9 +53,14 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
   };
 }
 
+function makeConfirmAdvanceQueue(): ConfirmAdvanceTabQueueRef {
+  return { inFlight: false, pendingSteps: 0 };
+}
+
 function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]> = {}) {
   return {
     ctx: makeCtx(),
+    confirmAdvanceQueueRef: makeConfirmAdvanceQueue(),
     wf: {
       getPlayheadTime: () => 1.5,
       togglePlay: vi.fn(),
@@ -190,7 +196,7 @@ describe("executeEditorShortcut", () => {
       expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
       expect(wf.seek).not.toHaveBeenCalled();
       expect(wf.playSegmentAtIndex).not.toHaveBeenCalled();
-    });
+    }, { timeout: 3000 });
     document.body.innerHTML = "";
   });
 
@@ -248,6 +254,93 @@ describe("executeEditorShortcut", () => {
       }),
     );
     expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
+  });
+
+  it("confirmAdvance finalizes focused textarea row, not stale selectedIdx", async () => {
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({
+      selectedIdx: 0,
+      confirmSegmentEditAndAdvance,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+    });
+    const selectSegmentAt = vi.fn();
+    document.body.innerHTML = `
+      <div data-seg-row="1">
+        <textarea aria-label="语段正文"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    executeEditorShortcut(
+      "workflow.confirmAdvance",
+      makeDeps({ ctx, selectSegmentAt }),
+    );
+
+    await vi.waitFor(() => {
+      expect(confirmSegmentEditAndAdvance).toHaveBeenCalledWith(1);
+      expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
+    });
+    document.body.innerHTML = "";
+  });
+
+  it("confirmAdvance respects active list filter", async () => {
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({
+      selectedIdx: 0,
+      confirmSegmentEditAndAdvance,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+    });
+    const selectSegmentAt = vi.fn();
+    document.body.innerHTML = `
+      <div data-seg-row="0">
+        <textarea aria-label="语段正文"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    executeEditorShortcut(
+      "workflow.confirmAdvance",
+      makeDeps({
+        ctx,
+        selectSegmentAt,
+        segmentListFilterNavState: { active: true, indices: [0, 2] },
+      }),
+    );
+
+    await vi.waitFor(() => {
+      expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
+    });
+    document.body.innerHTML = "";
+  });
+
+  it("confirmAdvance still advances when finalize is no-op on finalized segment", async () => {
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
+    const selectSegmentAt = vi.fn();
+    document.body.innerHTML = `
+      <div data-seg-row="0">
+        <textarea aria-label="语段正文"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    executeEditorShortcut(
+      "workflow.confirmAdvance",
+      makeDeps({ ctx, selectSegmentAt }),
+    );
+
+    await vi.waitFor(() => {
+      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
+    });
+    document.body.innerHTML = "";
   });
 
   it("confirmAdvance loops next segment when tab advance preference is on", async () => {

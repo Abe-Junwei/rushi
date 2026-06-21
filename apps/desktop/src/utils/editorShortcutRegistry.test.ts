@@ -116,6 +116,19 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "l", metaKey: true }))).toBe("workflow.addCorrectionMemory");
   });
 
+  it("matches confirmAdvance on Tab in transcript textarea only", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: true })).toBe(
+      "workflow.confirmAdvance",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: false })).toBeNull();
+  });
+
+  it("matches confirmAdvance on Cmd+Enter", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "Enter", metaKey: true }))).toBe(
+      "workflow.confirmAdvance",
+    );
+  });
+
   it("matches waveform escape only in waveform scope definitions", () => {
     expect(matchEditorShortcut(keyEvent({ key: "Escape" }))).toBe("waveform.clearSelection");
   });

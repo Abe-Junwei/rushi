@@ -12,6 +12,7 @@ import {
 import {
   clampSegmentLaneRowPx,
   computeSegmentLaneRowPx,
+  transcriptFontPxFromDragDelta,
   transcriptFontPxFromSegmentRowPx,
 } from "../utils/segmentLayout";
 import { useDeferredRendererState } from "./useDeferredRendererState";
@@ -127,7 +128,7 @@ export function useWaveformDisplay(args: { busy: boolean }) {
         const dy = ev.clientY - startY;
         if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
         dragging = true;
-        setTranscriptFontPxState(clampTranscriptFontPx(startF + Math.round(dy / 5)));
+        setTranscriptFontPxState(transcriptFontPxFromDragDelta(startF, dy));
       };
       const onUp = (ev: PointerEvent) => {
         try {
@@ -153,15 +154,14 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       const target = e.currentTarget;
       target.setPointerCapture(e.pointerId);
       const startY = e.clientY;
-      const startRow = computeSegmentLaneRowPx(transcriptFontPxRef.current);
+      const startF = transcriptFontPxRef.current;
       let dragging = false;
       const onMove = (ev: PointerEvent) => {
         if ((ev.buttons & 1) !== 1) return;
         const dy = ev.clientY - startY;
         if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
         dragging = true;
-        const nextRow = clampSegmentLaneRowPx(startRow + dy);
-        setTranscriptFontPxState(transcriptFontPxFromSegmentRowPx(nextRow));
+        setTranscriptFontPxState(transcriptFontPxFromDragDelta(startF, dy));
       };
       const onUp = (ev: PointerEvent) => {
         try {

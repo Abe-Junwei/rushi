@@ -30,6 +30,6 @@ describe("useEditorFooterShortcutHintRotation", () => {
     expect(result.current).not.toBe(first);
     const allKeys = EDITOR_FOOTER_SHORTCUT_HINTS.map((h) => h.keys);
     expect(allKeys).toContain("⌘/Ctrl + S");
-    expect(allKeys).toContain("⌘/Ctrl + Enter");
+    expect(allKeys).toContain("Tab / ⌘/Ctrl + Enter");
   });
 });

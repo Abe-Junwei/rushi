@@ -80,6 +80,6 @@ describe("useWaveformDisplay transcript resize drags", () => {
       dispatchPointer("pointerup", { clientY: 130 });
     });
 
-    expect(result.current.transcriptFontPx).toBeGreaterThan(TRANSCRIPT_FONT_DEFAULT);
+    expect(result.current.transcriptFontPx).toBe(TRANSCRIPT_FONT_DEFAULT + 3);
   });
 });

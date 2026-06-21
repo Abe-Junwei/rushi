@@ -1,8 +1,8 @@
 # R3f 首装空 App Data — 手测证据
 
-- **时间（UTC）**：2026-06-20T14:40:23Z
+- **时间（UTC）**：2026-06-20T16:29:15Z
 - **macOS**：26.5.1
-- **隔离 HOME**：`/var/folders/j4/b03_8dm52y5g4txtq946jqjc0000gn/T//rushi-fresh-home.FFP5J9`（应用仍运行，关闭后可手动删除）
+- **隔离 HOME**：`/var/folders/j4/b03_8dm52y5g4txtq946jqjc0000gn/T//rushi-fresh-home.XBiH03`（应用仍运行，关闭后可手动删除）
 - **包**：`/Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`
 - **命令**：`bash scripts/r3f-fresh-appdata-hand-test.sh --interactive --wipe-ui-prefs`
 
@@ -19,7 +19,7 @@
 
 ## 产物
 
-- Artifacts: `/var/folders/j4/b03_8dm52y5g4txtq946jqjc0000gn/T//r3f-fresh-20260620-223357`（临时目录，可手动清理）
+- Artifacts: `/var/folders/j4/b03_8dm52y5g4txtq946jqjc0000gn/T//r3f-fresh-20260621-002304`（临时目录，可手动清理）
 
 ## 说明
 
