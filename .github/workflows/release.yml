@@ -312,6 +312,15 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --platform darwin-aarch64
 
+      - name: Bootstrap ASR venv (offline models pack)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Build offline ASR models pack (Route E)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: npm run asr:build-offline-models-pack
+        timeout-minutes: 120
+
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -346,6 +355,18 @@ jobs:
           upload+=( "$latest_json" )
           if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
+          fi
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          OFFLINE_PACK="${{ github.workspace }}/dist/offline-asr-models-pack/rushi-offline-asr-models_${VERSION}.zip"
+          OFFLINE_SHA="${OFFLINE_PACK}.sha256"
+          if [ -f "$OFFLINE_PACK" ]; then
+            upload+=( "$OFFLINE_PACK" )
+            if [ -f "$OFFLINE_SHA" ]; then
+              upload+=( "$OFFLINE_SHA" )
+            fi
+          else
+            echo "::error::Offline ASR models pack missing (Route E): ${OFFLINE_PACK}"
+            exit 1
           fi
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
