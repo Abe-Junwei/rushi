@@ -115,7 +115,7 @@ export async function runAsrOneClickPrepareModelFlow(
     setSetupSteps((steps) =>
       patchStep(steps, "model", { status: "error", detail: "磁盘可用空间不足" }),
     );
-    setSetupMessage("磁盘空间不足，无法下载当前所选模型。请清理后重试。");
+    setSetupMessage("磁盘空间不足，无法复制内置模型。请清理后重试。");
     setSetupOutcome("blocked");
     return false;
   } else {
@@ -154,9 +154,16 @@ export async function runAsrOneClickPrepareModelFlow(
       );
     } else {
       setSetupSteps((steps) =>
-        patchStep(steps, "model", { status: "error", detail: "模型下载未完成" }),
+        patchStep(steps, "model", {
+          status: "error",
+          detail: isDefaultBundledAsrTarget() ? "内置模型复制未完成" : "模型下载未完成",
+        }),
       );
-      setSetupMessage("模型下载可能失败，请查看模型下载区的错误提示并重试。");
+      setSetupMessage(
+        isDefaultBundledAsrTarget()
+          ? "内置模型复制可能失败，请重启应用或点「一键准备本机 ASR」重试。"
+          : "模型下载可能失败，请查看模型下载区的错误提示并重试。",
+      );
       setSetupOutcome("error");
       return false;
     }
@@ -167,7 +174,11 @@ export async function runAsrOneClickPrepareModelFlow(
     setSetupSteps((steps) =>
       patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
     );
-    setSetupMessage("模型或侧车尚未完全准备好，请完成模型下载或重试侧车同步。");
+    setSetupMessage(
+      isDefaultBundledAsrTarget()
+        ? "模型或侧车尚未完全准备好，请等待内置模型复制完成或重试侧车同步。"
+        : "模型或侧车尚未完全准备好，请完成模型下载或重试侧车同步。",
+    );
     setSetupOutcome("blocked");
     return false;
   }

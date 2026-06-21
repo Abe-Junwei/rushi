@@ -6,6 +6,10 @@ import {
   type LocalAsrCatalogStatusItem,
 } from "./localAsrModelCatalog";
 import { buildPrepareJobPresentation } from "./prepareJobPresentation";
+import {
+  bundledCatalogProgressLabel,
+  usesBundledAsrModelStack,
+} from "./bundledModelJobPresentation";
 
 /** D1–D6 对齐：环境页「转写模型」区唯一 catalog presentation 真源。 */
 export type BuildAsrCatalogPresentationInput = {
@@ -75,18 +79,31 @@ export function buildAsrCatalogPresentation(
         ? prepareModelProgress
         : 0;
 
+  const bundledLabels = usesBundledAsrModelStack()
+    ? bundledCatalogProgressLabel({
+        modelsCached,
+        modelsReady,
+        progress,
+        prepareBusy: prepareModelBusy || prepareModelCancelling,
+      })
+    : null;
+
   const progressLabel = prepareJob
     ? prepareJob.progressLabel
-    : modelsCached
-      ? "已缓存 · 100%"
-      : prepareModelProgress > 0
-        ? `已暂停 · ${prepareModelProgress}%（可续传）`
-        : partialCache
-          ? "主模型已缓存 · 辅助模型待补齐"
-          : "未准备";
+    : partialCache
+      ? "主模型已缓存 · 辅助模型待补齐"
+      : bundledLabels
+        ? bundledLabels.label
+        : modelsCached
+          ? "已缓存 · 100%"
+          : prepareModelProgress > 0
+            ? `已暂停 · ${prepareModelProgress}%（可续传）`
+            : "未准备";
 
   const progressTone: AsrCatalogPresentation["progressTone"] =
-    modelsReady && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
+    (bundledLabels?.tone === "success" || (modelsReady && !prepareModelBusy && !prepareModelCancelling))
+      ? "success"
+      : "muted";
 
   return {
     catalogView,

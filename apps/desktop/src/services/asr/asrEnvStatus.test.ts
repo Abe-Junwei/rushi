@@ -150,7 +150,7 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.bannerDetail).toContain("PATH");
   });
 
-  it("shows downloading banner while model prepare is in flight", async () => {
+  it("shows bundled copy banner while model seed is in flight", async () => {
     const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",
@@ -167,12 +167,13 @@ describe("buildAsrEnvPresentation", () => {
       prepareModelBusy: true,
       prepareModelProgress: 87,
     });
-    expect(p.bannerTitle).toBe("本机 ASR · 正在下载模型");
+    expect(p.bannerTitle).toBe("本机 ASR · 正在准备内置模型");
     expect(p.bannerDetail).toContain("87%");
+    expect(p.bannerDetail).toContain("无需联网");
     expect(p.bannerDetail).not.toContain("可直接转写");
     expect(p.chipOk).toBe(false);
-    expect(p.blockReason).toContain("正在下载");
-    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("下载中");
+    expect(p.blockReason).toContain("复制");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("准备中");
   });
 
   it("shows user-facing inference queue depth", async () => {

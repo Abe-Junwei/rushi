@@ -5,6 +5,7 @@ import {
   type AsrSetupStep,
   type AsrSetupStepId,
 } from "../services/asr/asrSetupContract";
+import { usesBundledAsrModelStack } from "../services/asr/bundledModelJobPresentation";
 import { buildPrepareJobPresentation } from "../services/asr/prepareJobPresentation";
 
 export function patchStep(
@@ -27,14 +28,18 @@ function diagnoseStepDetail(report: AsrSetupReport): string {
     return `LRC 安装中：${sup.lrcInstallPhase}`;
   }
   if (sup.preparePhase === "stale") {
-    return sup.prepareJobId
-      ? `模型下载可能卡住（${sup.prepareJobId}）`
-      : "模型下载可能卡住";
+    return usesBundledAsrModelStack()
+      ? "内置模型复制可能卡住"
+      : sup.prepareJobId
+        ? `模型下载可能卡住（${sup.prepareJobId}）`
+        : "模型下载可能卡住";
   }
   if (sup.preparePhase === "running") {
-    return sup.prepareJobId
-      ? `模型下载中（${sup.prepareJobId}）`
-      : "模型下载中";
+    return usesBundledAsrModelStack()
+      ? "正在从安装包复制内置模型"
+      : sup.prepareJobId
+        ? `模型下载中（${sup.prepareJobId}）`
+        : "模型下载中";
   }
   if (sup.preparePhase) {
     return `模型准备：${sup.preparePhase}`;
@@ -104,7 +109,7 @@ export function stepsFromReport(
   } else if (prepareCancelling) {
     steps = patchStep(steps, "model", {
       status: "running",
-      detail: "正在取消下载…",
+      detail: usesBundledAsrModelStack() ? "正在复制内置模型…" : "正在取消下载…",
     });
   } else if (selectedModelReady) {
     steps = patchStep(steps, "model", {
@@ -119,7 +124,10 @@ export function stepsFromReport(
   } else if (report.diskLow && report.health.funasrReady) {
     steps = patchStep(steps, "model", { status: "error", detail: "磁盘空间不足" });
   } else if (report.health.funasrReady) {
-    steps = patchStep(steps, "model", { status: "pending", detail: "待下载模型" });
+    steps = patchStep(steps, "model", {
+      status: "pending",
+      detail: usesBundledAsrModelStack() ? "待从安装包复制" : "待下载模型",
+    });
   } else {
     steps = patchStep(steps, "model", {
       status: "pending",

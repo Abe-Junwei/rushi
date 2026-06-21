@@ -26,7 +26,6 @@ type Props = {
   prepareModelFailure: PrepareModelFailureCopy | null;
   funasrInstallMessage: string;
   busy: boolean;
-  cancelPrepareModel: () => void;
 };
 
 export function EnvLocalAsrModelCard({
@@ -38,7 +37,6 @@ export function EnvLocalAsrModelCard({
   prepareModelFailure,
   funasrInstallMessage,
   busy,
-  cancelPrepareModel: _cancelPrepareModel,
 }: Props) {
   const catalog = localAsrModelCatalog;
   const {

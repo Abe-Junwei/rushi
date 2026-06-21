@@ -6,6 +6,7 @@ import {
   prepareModelScopeMissingTipsDev,
   prepareModelScopeMissingTipsManaged,
 } from "../services/packagedUserHints";
+import { usesBundledAsrModelStack } from "../services/asr/bundledModelJobPresentation";
 import { normalizePrepareModelErrorCode } from "./prepareModelResume";
 
 export type PrepareModelFailureCopy = {
@@ -14,6 +15,13 @@ export type PrepareModelFailureCopy = {
 };
 
 function commonRetryTips(): string[] {
+  if (usesBundledAsrModelStack()) {
+    return [
+      "重启应用以重新从安装包复制内置模型。",
+      "点「重新检测 ASR」确认侧车仍在本机运行。",
+      "若多次失败：点「清除模型缓存」后重启应用（会重新复制）。",
+    ];
+  }
   return [
     "再次点击「下载当前模型」重试（ModelScope 下载支持断点续传，可多试几次）。",
     "点「重新检测 ASR」确认服务仍在本机运行。",

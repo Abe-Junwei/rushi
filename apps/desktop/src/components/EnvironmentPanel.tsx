@@ -37,7 +37,6 @@ export type EnvironmentPanelProps = {
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -70,7 +69,6 @@ export function EnvironmentPanel({
   busy,
   refreshAsrHealth,
   copyFunasrManualCommands,
-  cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -179,7 +177,6 @@ export function EnvironmentPanel({
                 busy={busy}
                 refreshAsrHealth={refreshAsrHealth}
                 copyFunasrManualCommands={copyFunasrManualCommands}
-                cancelPrepareModel={cancelPrepareModel}
                 refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                 clearAsrModelCache={clearAsrModelCache}
                 clearOrphanWaveformPeaksCache={clearOrphanWaveformPeaksCache}

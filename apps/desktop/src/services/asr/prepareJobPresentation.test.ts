@@ -87,7 +87,18 @@ describe("buildPrepareJobPresentation", () => {
     expect(presentation.shouldForceResume).toBe(true);
   });
 
-  it("uses cancelling copy for wizard and catalog", () => {
+  it("uses bundled copy when local prepare is busy without sidecar status", () => {
+    const presentation = buildPrepareJobPresentation({
+      localBusy: true,
+      progressOverride: 33,
+    });
+
+    expect(presentation.progressLabel).toBe("复制中… 33%");
+    expect(presentation.envBannerDetail).toContain("无需联网");
+    expect(presentation.stageTitle).toContain("内置");
+  });
+
+  it("uses bundled copy while cancelling is requested (copy cannot be cancelled mid-flight)", () => {
     const presentation = buildPrepareJobPresentation({
       localBusy: true,
       cancelling: true,
@@ -95,8 +106,8 @@ describe("buildPrepareJobPresentation", () => {
     });
 
     expect(presentation.progress).toBe(42);
-    expect(presentation.progressLabel).toBe("正在取消… 42%");
-    expect(presentation.wizardDetail).toBe("正在取消… 42%");
+    expect(presentation.progressLabel).toBe("复制中… 42%");
+    expect(presentation.cancelling).toBe(true);
     expect(presentation.shouldForceResume).toBe(false);
   });
 

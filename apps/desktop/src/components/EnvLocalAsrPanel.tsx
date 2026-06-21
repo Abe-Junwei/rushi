@@ -32,7 +32,6 @@ type Props = {
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -59,7 +58,6 @@ export function EnvLocalAsrPanel({
   busy,
   refreshAsrHealth,
   copyFunasrManualCommands,
-  cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -119,7 +117,6 @@ export function EnvLocalAsrPanel({
           prepareModelFailure={prepareModelFailure}
           funasrInstallMessage={funasrInstallMessage}
           busy={busy}
-          cancelPrepareModel={cancelPrepareModel}
         />
       </section>
 

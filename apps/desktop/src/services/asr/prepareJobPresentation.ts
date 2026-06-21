@@ -4,6 +4,10 @@ import {
   monotonicPrepareProgress,
   parsePrepareProgressPercent,
 } from "../../pages/prepareModelProgress";
+import {
+  buildBundledModelJobPresentation,
+  usesBundledAsrModelStack,
+} from "./bundledModelJobPresentation";
 
 /** Align with Python prepare_state stale threshold and prior UI stall timer. */
 export const PREPARE_STALL_MS = 120_000;
@@ -135,6 +139,29 @@ function isPrepareJobStalled(input: PrepareJobPresentationInput, progress: numbe
 export function buildPrepareJobPresentation(
   input: PrepareJobPresentationInput,
 ): PrepareJobPresentation {
+  const sidecarDriven = input.status?.phase != null && input.status.phase !== "?";
+  if (
+    usesBundledAsrModelStack() &&
+    (input.localBusy === true || input.cancelling === true) &&
+    !sidecarDriven
+  ) {
+    const bundled = buildBundledModelJobPresentation({
+      progress: input.progressOverride ?? 0,
+    });
+    return {
+      active: true,
+      cancelling: input.cancelling === true,
+      stalled: false,
+      shouldForceResume: false,
+      progress: bundled.progress,
+      progressLabel: bundled.progressLabel,
+      wizardDetail: bundled.wizardDetail,
+      envBannerDetail: bundled.envBannerDetail,
+      stageTitle: bundled.stageTitle,
+      installMessage: bundled.installMessage,
+    };
+  }
+
   const cancelling = input.cancelling === true;
   const active = cancelling || input.localBusy === true || input.status?.phase === "running";
   const modelLabel = input.modelLabel?.trim() || "模型";

@@ -169,7 +169,11 @@ export function useAsrSetupHealthFlow({
         setSetupOutcome("ready");
       } else {
         markPortConflictAcknowledged();
-        setSetupMessage("已使用当前 8741 服务，但模型尚未完全准备好，请继续完成模型下载。");
+        setSetupMessage(
+          isDefaultBundledAsrTarget()
+            ? "已使用当前 8741 服务，但内置模型尚未完全复制完成，请重启应用或点「一键准备」。"
+            : "已使用当前 8741 服务，但模型尚未完全准备好，请继续完成模型下载。",
+        );
         setSetupOutcome("blocked");
       }
     } catch (error) {

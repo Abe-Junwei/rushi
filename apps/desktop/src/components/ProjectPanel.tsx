@@ -146,7 +146,6 @@ export function ProjectPanel() {
             busy={c.busy}
             refreshAsrHealth={c.refreshAsrHealth}
             copyFunasrManualCommands={c.copyFunasrManualCommands}
-            cancelPrepareModel={c.cancelPrepareModel}
             refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
             clearAsrModelCache={c.clearAsrModelCache}
             clearOrphanWaveformPeaksCache={c.clearOrphanWaveformPeaksCache}

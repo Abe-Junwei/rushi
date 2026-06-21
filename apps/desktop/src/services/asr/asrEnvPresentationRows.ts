@@ -105,3 +105,11 @@ export function mapPrepareModelBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRo
   });
 }
 
+export function mapBundledModelBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRow[] {
+  return rows.map((row) => {
+    if (row.id === "runtime") return { ...row, ok: false, text: "复制中", warn: true };
+    if (row.id === "transcribe") return { ...row, ok: false, text: "准备中", warn: true };
+    return row;
+  });
+}
+

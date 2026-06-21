@@ -202,7 +202,7 @@ describe("applyHubModelToSidecar", () => {
     expect(result.ok).toBe(true);
     if (result.ok) {
       expect(result.transcribeReady).toBe(false);
-      expect(result.message).toContain("下载当前模型");
+      expect(result.message).toContain("重启应用");
       expect(result.message).not.toContain("可以开始转写");
     }
   });

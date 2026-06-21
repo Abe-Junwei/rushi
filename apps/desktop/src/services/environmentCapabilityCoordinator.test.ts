@@ -150,7 +150,9 @@ describe("environmentCapabilityCoordinator", () => {
       }),
     };
     await runEnvironmentCapabilityRefresh("manual", deps);
-    expect(getEnvironmentCapabilityBlockReason()).toBe("所选模型正在下载，完成后方可转写。");
+    expect(getEnvironmentCapabilityBlockReason()).toBe(
+      "正在从安装包复制内置语音模型，完成后方可转写。",
+    );
   });
 
   it("awaitEnvironmentCapabilityRefresh reuses fresh snapshot", async () => {

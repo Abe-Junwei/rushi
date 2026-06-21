@@ -41,7 +41,7 @@ describe("buildAsrCatalogPresentation", () => {
 
     expect(presentation.modelsCached).toBe(false);
     expect(presentation.progress).toBe(0);
-    expect(presentation.progressLabel).toBe("未准备");
+    expect(presentation.progressLabel).toBe("待从安装包复制");
   });
 
   it("reports D1≠D2 when sidecar hub differs from selection", () => {
@@ -85,6 +85,7 @@ describe("buildAsrCatalogPresentation", () => {
 
     expect(presentation.modelsCached).toBe(true);
     expect(presentation.progress).toBe(100);
+    expect(presentation.progressLabel).toBe("已就绪 · 100%");
     expect(presentation.progressTone).toBe("success");
   });
 
@@ -107,7 +108,7 @@ describe("buildAsrCatalogPresentation", () => {
     expect(presentation.progressTone).toBe("muted");
   });
 
-  it("shows cancelling label while prepare cancel is in flight", () => {
+  it("shows bundled copy label while prepare is in flight", () => {
     const presentation = buildAsrCatalogPresentation({
       asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
       catalogStatus: null,
@@ -118,10 +119,10 @@ describe("buildAsrCatalogPresentation", () => {
     });
 
     expect(presentation.progress).toBe(42);
-    expect(presentation.progressLabel).toBe("正在取消… 42%");
+    expect(presentation.progressLabel).toBe("复制中… 42%");
   });
 
-  it("shows paused label after partial download was cancelled", () => {
+  it("shows bundled paused label after partial copy", () => {
     const presentation = buildAsrCatalogPresentation({
       asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
       catalogStatus: null,
@@ -130,6 +131,6 @@ describe("buildAsrCatalogPresentation", () => {
     });
 
     expect(presentation.progress).toBe(38);
-    expect(presentation.progressLabel).toBe("已暂停 · 38%（可续传）");
+    expect(presentation.progressLabel).toBe("复制暂停 · 38%");
   });
 });

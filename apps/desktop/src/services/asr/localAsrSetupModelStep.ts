@@ -6,6 +6,7 @@ import {
   SIDEcarRestartFailedDev,
   SIDEcarRestartFailedPackaged,
 } from "../packagedUserHints";
+import { usesBundledAsrModelStack } from "./bundledModelJobPresentation";
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import {
   shouldSkipSidecarRestartForSelection,
@@ -53,7 +54,9 @@ function buildApplyHubSuccessMessage(
     return { message: `侧车已切换为 ${label}，可以开始转写。`, transcribeReady: true };
   }
   return {
-    message: `侧车已切换为 ${label}。请先点「下载当前模型」完成准备后再转写。`,
+    message: usesBundledAsrModelStack()
+      ? `侧车已切换为 ${label}。若尚未就绪，请重启应用以重新复制内置模型。`
+      : `侧车已切换为 ${label}。请先点「下载当前模型」完成准备后再转写。`,
     transcribeReady: false,
   };
 }

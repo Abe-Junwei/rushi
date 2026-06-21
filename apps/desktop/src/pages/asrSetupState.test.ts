@@ -71,7 +71,7 @@ describe("stepsFromReport", () => {
       }),
     );
     expect(steps.find((step) => step.id === "diagnose")).toMatchObject({
-      detail: "模型下载中（job-abc）",
+      detail: "正在从安装包复制内置模型",
     });
   });
 
@@ -101,7 +101,7 @@ describe("stepsFromReport", () => {
       }),
     );
     expect(steps.find((step) => step.id === "diagnose")?.detail).toBe(
-      "模型下载可能卡住（job-stuck）",
+      "内置模型复制可能卡住",
     );
   });
 
@@ -211,7 +211,7 @@ describe("stepsFromReport", () => {
     );
     expect(steps.find((step) => step.id === "model")).toMatchObject({
       status: "running",
-      detail: "正在下载模型（42%）",
+      detail: "正在准备内置语音模型… 42%",
     });
     expect(steps.find((step) => step.id === "done")?.status).not.toBe("ok");
   });

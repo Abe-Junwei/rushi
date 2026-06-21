@@ -18,12 +18,18 @@ import {
   type LocalAsrCatalogStatusItem,
 } from "./localAsrModelCatalog";
 import { modelsRootMismatch } from "./asrRuntimePathsAlign";
+import {
+  buildBundledModelJobPresentation,
+  usesBundledAsrModelStack,
+} from "./bundledModelJobPresentation";
 import { buildPrepareJobPresentation } from "./prepareJobPresentation";
+import { isBundledAsrModelsSeedActive } from "./asrPrepareActivityGate";
 import {
   bannerTitleFor,
   buildAsrEnvStatusRows,
   chipLabelFor,
   effectiveTranscribeReady,
+  mapBundledModelBusyRows,
   mapPrepareModelBusyRows,
   mapPrepareModelCancelRows,
   toneFor,
@@ -97,9 +103,11 @@ function bannerDetailFor(input: {
     return packagedOrDev(ffmpegBannerDetailDev, ffmpegBannerDetailPackaged);
   }
   if (!input.runtimeReady) {
-    return "FunASR 未就绪，请准备模型或一键准备。";
+    return usesBundledAsrModelStack()
+      ? "FunASR 未就绪，请完成侧车连接或等待内置模型复制完成。"
+      : "FunASR 未就绪，请准备模型或一键准备。";
   }
-  return input.connectedGuidance ?? "所选模型尚未齐备。";
+  return input.connectedGuidance ?? (usesBundledAsrModelStack() ? "内置模型尚未复制完成。" : "所选模型尚未齐备。");
 }
 
 function connectedGuidanceFor(input: {
@@ -109,7 +117,11 @@ function connectedGuidanceFor(input: {
   if (!input.sidecarMatchesSelection) {
     return "所选模型未应用到侧车，请先「应用并重启侧车」。";
   }
-  return `模型或 VAD/标点未齐备（mode: ${input.asrCaps.transcription_mode}）。请准备当前模型或切换已缓存模型。`;
+  return `模型或 VAD/标点未齐备（mode: ${input.asrCaps.transcription_mode}）。${
+    usesBundledAsrModelStack()
+      ? "请重启应用以重新复制内置模型，或点「一键准备」。"
+      : "请准备当前模型或切换已缓存模型。"
+  }`;
 }
 
 function blockReasonFor(input: {
@@ -135,13 +147,36 @@ function blockReasonFor(input: {
   if (!input.sidecarMatchesSelection) {
     return "所选模型与侧车不一致：请先「应用并重启侧车」。";
   }
-  return "所选模型未就绪：请先完成模型准备。";
+  return usesBundledAsrModelStack()
+    ? "所选模型未就绪：请等待内置模型复制完成或点「一键准备」。"
+    : "所选模型未就绪：请先完成模型准备。";
 }
 
 function applyPrepareModelOverlay(
   presentation: AsrEnvPresentation,
   input: BuildAsrEnvPresentationInput,
 ): AsrEnvPresentation {
+  const mapBusyRows = usesBundledAsrModelStack()
+    ? mapBundledModelBusyRows
+    : mapPrepareModelBusyRows;
+
+  if (isBundledAsrModelsSeedActive()) {
+    const bundled = buildBundledModelJobPresentation({
+      progress: input.prepareModelProgress ?? 0,
+    });
+    return {
+      ...presentation,
+      transcribeReady: false,
+      tone: "warn",
+      chipLabel: "ASR 未就绪",
+      chipOk: false,
+      bannerTitle: bundled.bannerTitle,
+      bannerDetail: bundled.envBannerDetail,
+      statusRows: mapBusyRows(presentation.statusRows),
+      blockReason: bundled.blockReason,
+    };
+  }
+
   if (input.runtimeInstallRunning) {
     return {
       ...presentation,
@@ -151,12 +186,28 @@ function applyPrepareModelOverlay(
       chipOk: false,
       bannerTitle: "本机 ASR · 正在安装运行时",
       bannerDetail: "正在下载或安装本机 ASR 运行时组件，完成后方可转写。请保持应用开启并联网。",
-      statusRows: mapPrepareModelBusyRows(presentation.statusRows),
+      statusRows: mapBusyRows(presentation.statusRows),
       blockReason: "本机 ASR 运行时安装中，暂不可转写。",
     };
   }
 
   if (input.prepareModelCancelling) {
+    if (usesBundledAsrModelStack()) {
+      const bundled = buildBundledModelJobPresentation({
+        progress: input.prepareModelProgress ?? 0,
+      });
+      return {
+        ...presentation,
+        transcribeReady: false,
+        tone: "warn",
+        chipLabel: "ASR 未就绪",
+        chipOk: false,
+        bannerTitle: bundled.bannerTitle,
+        bannerDetail: bundled.envBannerDetail,
+        statusRows: mapBusyRows(presentation.statusRows),
+        blockReason: bundled.blockReason,
+      };
+    }
     return {
       ...presentation,
       transcribeReady: false,
@@ -176,6 +227,20 @@ function applyPrepareModelOverlay(
     localBusy: true,
     progressOverride: input.prepareModelProgress ?? 0,
   });
+  if (usesBundledAsrModelStack()) {
+    const bundled = buildBundledModelJobPresentation({ progress: job.progress });
+    return {
+      ...presentation,
+      transcribeReady: false,
+      tone: "warn",
+      chipLabel: "ASR 未就绪",
+      chipOk: false,
+      bannerTitle: bundled.bannerTitle,
+      bannerDetail: bundled.envBannerDetail,
+      statusRows: mapBusyRows(presentation.statusRows),
+      blockReason: bundled.blockReason,
+    };
+  }
   return {
     ...presentation,
     transcribeReady: false,
@@ -184,7 +249,7 @@ function applyPrepareModelOverlay(
     chipOk: false,
     bannerTitle: "本机 ASR · 正在下载模型",
     bannerDetail: job.envBannerDetail,
-    statusRows: mapPrepareModelBusyRows(presentation.statusRows),
+    statusRows: mapBusyRows(presentation.statusRows),
     blockReason: "所选模型正在下载，完成后方可转写。",
   };
 }

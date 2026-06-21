@@ -170,7 +170,7 @@ export function usePrepareModelController(
       if (selectedReady && sidecarMatchesSelection) {
         setPrepareModelProgress(100);
         setFunasrInstallMessage(
-          `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。无需重复下载。`,
+          `${modelLabel} 与必需辅助模型已就绪，无需重复复制。`,
         );
         await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
         setAsrModelPrepareActive(false);
@@ -471,6 +471,10 @@ export function usePrepareModelController(
   }, [getSelectedHubModelId, refreshAsrRuntimeInfo, setInstallMessageThrottled, setProgressIfChanged]);
 
   const cancelPrepareModel = useCallback(async () => {
+    if (isDefaultBundledAsrTarget()) {
+      toast.info("内置模型复制进行中，请等待完成；也可重启应用从头复制。");
+      return;
+    }
     if (!prepareModelBusy || prepareModelCancelling) return;
     setPrepareModelFailure(null);
     const base = asrBaseUrl().replace(/\/+$/, "");

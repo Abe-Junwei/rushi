@@ -187,7 +187,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
 
   const retryBundledAsrSidecar = useCallback(async () => {
     if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
-      toast.warning("模型下载进行中，请稍候或先取消下载后再重启侧车。");
+      toast.warning("内置模型正在准备中，请稍候后再重启侧车。");
       return;
     }
     try {
@@ -207,7 +207,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
 
   const clearAsrModelCache = useCallback(async () => {
     if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
-      toast.warning("模型下载进行中，请先取消下载或等待完成后再清除缓存。");
+      toast.warning("内置模型正在准备中，请等待完成后再清除缓存。");
       return;
     }
     await cacheCtrl.clearAsrModelCache();
@@ -221,7 +221,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       if (log != null && log.length > 0) {
         modelCtrl.setFunasrInstallMessage(
           [
-            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置 Paraformer 长音频模型；请先下载当前所选模型，再开始正式转写。",
+            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置 Paraformer 长音频模型；若尚未就绪，请重启应用以复制内置模型后再转写。",
             "停止并重新执行 python -m rushi_asr，然后回到本页点「重新检测 ASR」。",
             "",
             "--- 脚本输出（节选）---",
