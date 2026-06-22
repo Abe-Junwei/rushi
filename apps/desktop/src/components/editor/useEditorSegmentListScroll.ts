@@ -7,51 +7,22 @@ import {
 } from "react";
 import {
   annotateSegmentListScrollMetrics,
-  computeSegmentListVirtualWindow,
-  maybePinSegmentListVirtualWindow,
-  resolveVirtualListScrollTopForWindow,
-  scrollSegmentListIndexIntoView,
-  scrollSegmentListIndexIntoViewForMount,
   scrollSegmentRowIntoViewContainer,
-  segmentListIndexNeedsScrollAdjustment,
-  SEGMENT_LIST_VIRTUAL_OVERSCAN,
-  SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
+  SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
-import { selectionProfileTime, selectionProfileMarkListCommit } from "../../services/ui/selectionLatencyProfile";
+import { selectionProfileMarkListCommit, selectionProfileTime } from "../../services/ui/selectionLatencyProfile";
 import type { SegmentSelectSource } from "../../utils/waveformViewMode";
 import { shouldSkipListScrollWhenInViewport } from "../../utils/waveformViewMode";
-
-function isListKeyboardSelectSource(source: SegmentSelectSource | undefined): boolean {
-  return source === "listKeyboard";
-}
-
-/** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
-const SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX = 480;
-const SCROLL_METRICS_EPSILON_PX = 0.5;
-
-function readScrollMetrics(root: HTMLElement | null): { scrollTop: number; viewportHeight: number } {
-  if (!root) {
-    return { scrollTop: 0, viewportHeight: SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX };
-  }
-  return {
-    scrollTop: root.scrollTop,
-    viewportHeight: root.clientHeight > 0 ? root.clientHeight : SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX,
-  };
-}
-
-function scrollMetricsEqual(
-  a: { scrollTop: number; viewportHeight: number },
-  b: { scrollTop: number; viewportHeight: number },
-): boolean {
-  return (
-    Math.abs(a.scrollTop - b.scrollTop) < SCROLL_METRICS_EPSILON_PX &&
-    Math.abs(a.viewportHeight - b.viewportHeight) < SCROLL_METRICS_EPSILON_PX
-  );
-}
+import { computeEditorSegmentListVirtualWindow } from "./computeEditorSegmentListVirtualWindow";
+import {
+  editorSegmentListScrollMetricsEqual,
+  readEditorSegmentListScrollMetrics,
+} from "./editorSegmentListScrollMetrics";
+import { planEditorSegmentListSelectionScroll } from "./planEditorSegmentListSelectionScroll";
 
 export type UseEditorSegmentListScrollArgs = {
   segmentListRef: React.RefObject<HTMLDivElement | null>;
@@ -78,7 +49,7 @@ export function useEditorSegmentListScroll({
   transcriptRowHeightPx,
   lastSegmentSelectSourceRef,
 }: UseEditorSegmentListScrollArgs) {
-  const scrollMetricsRef = useRef(readScrollMetrics(segmentListRef.current));
+  const scrollMetricsRef = useRef(readEditorSegmentListScrollMetrics(segmentListRef.current));
   const [scrollEpoch, setScrollEpoch] = useState(0);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
@@ -117,9 +88,9 @@ export function useEditorSegmentListScroll({
 
   const bumpScrollEpoch = useCallback(
     (options?: { force?: boolean; sync?: boolean }) => {
-      const next = readScrollMetrics(segmentListRef.current);
+      const next = readEditorSegmentListScrollMetrics(segmentListRef.current);
       const prev = scrollMetricsRef.current;
-      const changed = !scrollMetricsEqual(next, prev);
+      const changed = !editorSegmentListScrollMetricsEqual(next, prev);
       scrollMetricsRef.current = next;
       if (!useVirtualList) return;
       if (!options?.force && !changed) return;
@@ -132,14 +103,11 @@ export function useEditorSegmentListScroll({
     [scheduleScrollEpochBump, segmentListRef, useVirtualList],
   );
 
-  const writeScrollTop = useCallback(
-    (root: HTMLElement, scrollTop: number) => {
-      suppressScrollGenerationBumpRef.current = true;
-      root.scrollTop = scrollTop;
-      suppressScrollGenerationBumpRef.current = false;
-    },
-    [],
-  );
+  const writeScrollTop = useCallback((root: HTMLElement, scrollTop: number) => {
+    suppressScrollGenerationBumpRef.current = true;
+    root.scrollTop = scrollTop;
+    suppressScrollGenerationBumpRef.current = false;
+  }, []);
 
   const handleScroll = useCallback(() => {
     if (!suppressScrollGenerationBumpRef.current) {
@@ -166,7 +134,15 @@ export function useEditorSegmentListScroll({
       }
       observer.disconnect();
     };
-  }, [bumpScrollEpoch, cancelPendingListScrollCorrection, itemStridePx, rowMinHeightPx, segmentListRef, displayCount, useVirtualList]);
+  }, [
+    bumpScrollEpoch,
+    cancelPendingListScrollCorrection,
+    itemStridePx,
+    rowMinHeightPx,
+    segmentListRef,
+    displayCount,
+    useVirtualList,
+  ]);
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
@@ -177,104 +153,78 @@ export function useEditorSegmentListScroll({
     lastSelectedScrollKeyRef.current = scrollKey;
     cancelPendingListScrollCorrection();
 
-    const fromWaveform = shouldSkipListScrollWhenInViewport(
-      lastSegmentSelectSourceRef?.current ?? "waveform",
-    );
-    const fromListKeyboard = isListKeyboardSelectSource(lastSegmentSelectSourceRef?.current);
-    const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
-    const needsListScroll = segmentListIndexNeedsScrollAdjustment({
-      scrollTop: root.scrollTop,
-      viewportHeight: root.clientHeight,
-      index: selectedDisplayIndex,
-      rowMinHeightPx,
-      itemStridePx,
-      maxScrollTop,
-    });
+    const source = lastSegmentSelectSourceRef?.current;
+    const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
 
     if (fromWaveform) {
       selectionProfileMarkListCommit();
     }
 
-    if (fromWaveform && !needsListScroll) {
+    const plan = selectionProfileTime("listScroll", () =>
+      planEditorSegmentListSelectionScroll({
+        root,
+        selectedDisplayIndex,
+        selectedIdx,
+        rowMinHeightPx,
+        itemStridePx,
+        useVirtualList,
+        source,
+      }),
+    );
+
+    if (plan.kind === "skip") {
+      selectionScrollProjectionRef.current = false;
       return;
     }
 
-    const nextScrollTop = selectionProfileTime("listScroll", () => {
-      const projected = scrollSegmentListIndexIntoView({
-        scrollTop: root.scrollTop,
-        viewportHeight: root.clientHeight,
-        index: selectedDisplayIndex,
-        rowMinHeightPx,
-        itemStridePx,
-        align: "minimal",
-        maxScrollTop,
-      });
-      if (projected != null) return projected;
-      if (fromWaveform || !useVirtualList) return null;
-      if (root.querySelector(`[data-seg-row="${selectedIdx}"]`) != null) return null;
-      return scrollSegmentListIndexIntoViewForMount({
-        scrollTop: root.scrollTop,
-        viewportHeight: root.clientHeight,
-        index: selectedDisplayIndex,
-        itemStridePx,
-        maxScrollTop,
-      });
-    });
-    if (nextScrollTop != null) {
-      layoutScrollCorrectionRef.current = { generation: scrollGenerationRef.current };
-      writeScrollTop(root, nextScrollTop);
-      bumpScrollEpoch({ sync: fromListKeyboard, force: fromListKeyboard });
-      if (fromListKeyboard) {
+    if (plan.kind === "fallback-dom-correct") {
+      const corrected = selectionProfileTime("listScrollCorrect", () =>
+        scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+      );
+      if (corrected == null || Math.abs(corrected - root.scrollTop) < 1) {
         selectionScrollProjectionRef.current = false;
         return;
       }
-      cancelPendingListScrollCorrection();
-      listScrollCorrectionRafRef.current = window.requestAnimationFrame(() => {
-        listScrollCorrectionRafRef.current = null;
-        if (layoutScrollCorrectionRef.current?.generation !== scrollGenerationRef.current) {
-          selectionScrollProjectionRef.current = false;
-          return;
-        }
-        const corrected = selectionProfileTime("listScrollCorrect", () =>
-          scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
-        );
-        if (corrected == null) {
-          selectionScrollProjectionRef.current = false;
-          layoutScrollCorrectionRef.current = null;
-          return;
-        }
-        if (Math.abs(corrected - root.scrollTop) < 1) {
-          selectionScrollProjectionRef.current = false;
-          layoutScrollCorrectionRef.current = null;
-          return;
-        }
-        writeScrollTop(root, corrected);
-        bumpScrollEpoch();
+      writeScrollTop(root, corrected);
+      bumpScrollEpoch();
+      selectionScrollProjectionRef.current = false;
+      return;
+    }
+
+    layoutScrollCorrectionRef.current = { generation: scrollGenerationRef.current };
+    writeScrollTop(root, plan.nextScrollTop);
+    bumpScrollEpoch({ sync: plan.syncEpoch, force: plan.syncEpoch });
+
+    if (plan.skipDomCorrection) {
+      selectionScrollProjectionRef.current = false;
+      return;
+    }
+
+    cancelPendingListScrollCorrection();
+    listScrollCorrectionRafRef.current = window.requestAnimationFrame(() => {
+      listScrollCorrectionRafRef.current = null;
+      if (layoutScrollCorrectionRef.current?.generation !== scrollGenerationRef.current) {
+        selectionScrollProjectionRef.current = false;
+        return;
+      }
+      const corrected = selectionProfileTime("listScrollCorrect", () =>
+        scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+      );
+      if (corrected == null) {
         selectionScrollProjectionRef.current = false;
         layoutScrollCorrectionRef.current = null;
-      });
-      return;
-    }
-
-    if (fromWaveform || fromListKeyboard) {
+        return;
+      }
+      if (Math.abs(corrected - root.scrollTop) < 1) {
+        selectionScrollProjectionRef.current = false;
+        layoutScrollCorrectionRef.current = null;
+        return;
+      }
+      writeScrollTop(root, corrected);
+      bumpScrollEpoch();
       selectionScrollProjectionRef.current = false;
-      return;
-    }
-
-    const corrected = selectionProfileTime("listScrollCorrect", () =>
-      scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
-    );
-    if (corrected == null) {
-      selectionScrollProjectionRef.current = false;
-      return;
-    }
-    if (Math.abs(corrected - root.scrollTop) < 1) {
-      selectionScrollProjectionRef.current = false;
-      return;
-    }
-    writeScrollTop(root, corrected);
-    bumpScrollEpoch();
-    selectionScrollProjectionRef.current = false;
+      layoutScrollCorrectionRef.current = null;
+    });
   }, [
     bumpScrollEpoch,
     cancelPendingListScrollCorrection,
@@ -304,64 +254,33 @@ export function useEditorSegmentListScroll({
     writeSegmentListFilterIndices(root, filteredIndices, filterActive);
   }, [filterActive, filteredIndices, filterNavRef, segmentListRef]);
 
-  const virtualWindow = useMemo(() => {
-    if (!useVirtualList) {
-      return {
-        startIndex: 0,
-        endIndex: displayCount,
-        paddingTopPx: 0,
-        paddingBottomPx: 0,
-        totalHeightPx: 0,
-      };
-    }
-
-    const fromWaveform = shouldSkipListScrollWhenInViewport(
-      lastSegmentSelectSourceRef?.current ?? "waveform",
-    );
-    const selectionChanged =
-      prevSelectedDisplayIndexForProjectionRef.current !== selectedDisplayIndex;
-    prevSelectedDisplayIndexForProjectionRef.current = selectedDisplayIndex;
-    if (fromWaveform) {
-      selectionScrollProjectionRef.current = false;
-    } else if (selectionChanged && selectedDisplayIndex >= 0) {
-      selectionScrollProjectionRef.current = true;
-    }
-
-    const scrollMetrics = scrollMetricsRef.current;
-    const root = segmentListRef.current;
-    const scrollTop = resolveVirtualListScrollTopForWindow({
-      rootScrollTop: root?.scrollTop ?? scrollMetrics.scrollTop,
-      rootScrollHeight: root?.scrollHeight ?? 0,
-      rootClientHeight: root?.clientHeight ?? 0,
-      scrollMetrics,
+  const virtualWindow = useMemo(
+    () =>
+      computeEditorSegmentListVirtualWindow({
+        segmentListRoot: segmentListRef.current,
+        scrollMetricsRef,
+        selectionScrollProjectionRef,
+        prevSelectedDisplayIndexRef: prevSelectedDisplayIndexForProjectionRef,
+        selectedDisplayIndex,
+        displayCount,
+        itemStridePx,
+        rowMinHeightPx,
+        useVirtualList,
+        source: lastSegmentSelectSourceRef?.current,
+      }),
+    // selectedDisplayIndex drives projection/pin on list path; scrollEpoch forces recompute after user scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      scrollEpoch,
+      useVirtualList,
+      itemStridePx,
+      displayCount,
       selectedDisplayIndex,
       rowMinHeightPx,
-      itemStridePx,
-      useSelectionProjection: selectionScrollProjectionRef.current,
-    });
-    const base = computeSegmentListVirtualWindow({
-      scrollTop,
-      viewportHeight: scrollMetrics.viewportHeight,
-      itemStridePx,
-      totalCount: displayCount,
-      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
-    });
-    if (fromWaveform || selectedDisplayIndex < 0) return base;
-    return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
-      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN + 1,
-    });
-    // selectedDisplayIndex drives projection/pin on list path; scrollEpoch is intentionally listed to force recomputation after user scroll.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    scrollEpoch,
-    useVirtualList,
-    itemStridePx,
-    displayCount,
-    selectedDisplayIndex,
-    rowMinHeightPx,
-    segmentListRef,
-    lastSegmentSelectSourceRef,
-  ]);
+      segmentListRef,
+      lastSegmentSelectSourceRef,
+    ],
+  );
 
   return {
     useVirtualList,

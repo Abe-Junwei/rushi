@@ -224,44 +224,6 @@ export function scrollSegmentRowIntoViewContainer(
   return clampSegmentListScrollTop(next, maxScrollTop);
 }
 
-/** Sync list scroll on selection — projection-first, no rAF correction (keyboard path). */
-export function imperativeScrollListSegmentIntoView(
-  segmentIdx: number,
-  scrollRoot: HTMLElement,
-  options?: { align?: SegmentListScrollAlign },
-): boolean {
-  if (segmentIdx < 0) return false;
-
-  const filteredIndices = readSegmentListFilterIndices(scrollRoot);
-  const displayIndex = segmentIdxToDisplayIndex(filteredIndices, segmentIdx);
-  if (displayIndex == null) return false;
-
-  const align = options?.align ?? "minimal";
-  const maxScrollTop = Math.max(0, scrollRoot.scrollHeight - scrollRoot.clientHeight);
-
-  const domNext = scrollSegmentRowIntoViewContainer(segmentIdx, scrollRoot, { align });
-  if (domNext != null) {
-    scrollRoot.scrollTop = domNext;
-    return true;
-  }
-
-  const metrics = readSegmentListScrollMetrics(scrollRoot);
-  if (!metrics) return false;
-
-  const indexNext = scrollSegmentListIndexIntoView({
-    scrollTop: scrollRoot.scrollTop,
-    viewportHeight: scrollRoot.clientHeight,
-    index: displayIndex,
-    rowMinHeightPx: metrics.rowMinHeightPx,
-    itemStridePx: metrics.itemStridePx,
-    align,
-    maxScrollTop,
-  });
-  if (indexNext == null) return false;
-  scrollRoot.scrollTop = indexNext;
-  return true;
-}
-
 /**
  * 将语段滚入列表可视区：优先按真实 DOM 校正；行未挂载时按虚拟 stride 估算并二次校正。
  */

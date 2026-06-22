@@ -212,7 +212,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
     <div
       ref={segmentListRef}
       {...{ [SEGMENT_LIST_SCROLL_ATTR]: "" }}
-      className="h-0 min-h-0 flex-1 overflow-y-auto bg-notion-bg p-2.5"
+      className="h-0 min-h-0 flex-1 overflow-y-auto bg-notion-bg p-2.5 [contain:layout_paint]"
       role="list"
       aria-label="语段文本列表"
       onScroll={handleScroll}

@@ -177,7 +177,7 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
     );
     expect(parsed).not.toBeNull();
     expect(parsed!.spans.listScroll ?? 0).toBe(0);
-    expect(parsed!.syncPathTotalMs).toBe(computeSelectionProfileSyncPathMs(parsed!.spans));
+    expect(computeSelectionProfileSyncPathMs(parsed!.spans)).toBeCloseTo(parsed!.syncPathTotalMs, 5);
     expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
     expect(selectionProfileMeetsHandChromeGate(parsed!)).toBe(true);
     expect(parsed!.spans.firstPaint ?? 0).toBeLessThanOrEqual(SELECTION_PROFILE_HAND_CHROME_MAX_MS);

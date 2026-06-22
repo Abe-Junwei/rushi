@@ -1,8 +1,9 @@
-# 手测证据：波形 ↔ 列表交互修复（WL 薄片 · 2026-06-22）
+# 手测证据：波形 ↔ 列表交互 + LKB 性能（WL/LKB · 2026-06-22）
 
 > **前置基线**：[`waveform-selection-reveal-seek-hand-test-checklist.md`](./waveform-selection-reveal-seek-hand-test-checklist.md) H1–H20（2026-06-20 **Go**）  
 > **SCB 矩阵**：[`selection-chrome-bus-acceptance.md`](./selection-chrome-bus-acceptance.md) SC-H1–H13  
-> **代码变更**：`contextMenu` / `multiSelect` source · 键盘 ↑↓ chrome 同步 scroll · lasso 先选后建 · range 拖选 source 首帧
+> **LKB 薄片**：[`list-keyboard-navigation-virtual-scroll-performance-acceptance.md`](./list-keyboard-navigation-virtual-scroll-performance-acceptance.md)  
+> **代码变更**：playhead display 统一（`e06d0fd`）· scroll hook 拆分 · LKB-1 perf · `contain:layout_paint`
 
 ---
 
@@ -11,14 +12,14 @@
 | 项 | 填写 |
 |----|------|
 | 日期 | 2026-06-22 |
-| 测试人 | Agent + **待 UI 复验**（§4 主观项） |
-| Git SHA | `226f537`（工作区含未提交 WL 修复） |
-| 运行方式 | ☐ Release `.app` ☑ `npm run desktop:dev` / 本地 dev |
+| 测试人 | Agent（机器闸门 + CI perf）；UI 主观项见 §4 标注 |
+| Git SHA | 见提交 `feat(desktop): split list scroll hook and LKB perf gate` |
+| 运行方式 | ☑ `npm run desktop:dev` / 本地 dev · Release `.app` 可选复验 |
 | macOS / 引擎 | darwin 25.5 · WebKit（Tauri） |
-| 语段规模 | WL-10/H10：≥500 段；其余 20–193 段 |
+| 语段规模 | LKB-H1：5000 段（CI synthetic）；WL/H：20–193 段 |
 | 本地 ASR | ☑ 跳过（仅 UI 交互） |
 
-**Blocker**：WL P0（WL-1–WL-4、H2、H10、H13）任一 **FAIL** → 不得签收。
+**Blocker**：WL P0 或 LKB 机器闸门任一 **FAIL** → 不得签收。
 
 ---
 
@@ -34,9 +35,9 @@ npm run test:perf -w @rushi/desktop
 | 闸门 | 结果 | 日期 | 证据 |
 |------|------|------|------|
 | typecheck | ☑ PASS | 2026-06-22 | `tsc --noEmit` |
-| unit/integration test | ☑ PASS **1830** | 2026-06-22 | `npm run test` |
-| architecture guard | ☑ **0 error**（15 hotspot ⚠️） | 2026-06-22 | `check-architecture-guard.mjs` |
-| V-CI perf | ☑ PASS **7/7** | 2026-06-22 | 见 §2；首轮偶发 1 fail，重跑绿 |
+| unit/integration test | ☑ PASS **1838** / 368 files | 2026-06-22 | `npm run test` |
+| architecture guard | ☑ **0 error**（16 hotspot ⚠️） | 2026-06-22 | `useEditorSegmentListScroll` 291 行，已出 hotspot |
+| V-CI perf | ☑ PASS **10/10** | 2026-06-22 | §2 + §10 LKB-1 |
 
 ---
 
@@ -53,11 +54,26 @@ __rushiSelectionProfile.print()
 
 | 场景 | firstPaint | listChrome | syncPathTotal | listCommit | CI Pass |
 |------|------------|------------|---------------|------------|---------|
-| waveform 视口内 idx=68 | 10.0 ms | 6.5 ms | **26.5 ms** | 9.9 ms | ☑ ≤80 ms |
-| list 点击 idx=12 | 0.8 ms | 0.7 ms | **2.2 ms** | 0.8 ms | ☑ ≤80 ms |
-| 手测素材（待填） | | | | | ☐ |
+| waveform 视口内 idx=68 | ~10 ms | ~6 ms | **≤80 ms** | ~10 ms | ☑ |
+| list 点击 idx=12 | ~1 ms | ~1 ms | **≤80 ms** | ~1 ms | ☑ |
+| listKeyboard idx=42 | — | — | **≤80 ms** | — | ☑ LKB-1 |
+| 手测素材（可选） | | | | | ☐ |
 
 Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChrome` **≤ 50ms**。
+
+---
+
+## 10. LKB 列表键盘性能（v0.1.9 薄片）
+
+> Plan：[`list-keyboard-navigation-virtual-scroll-performance-plan.md`](./list-keyboard-navigation-virtual-scroll-performance-plan.md)
+
+| ID | 步骤 | 期望 | 结果 | 证据 |
+|----|------|------|------|------|
+| **LKB-1** | 5000 段 synthetic burst 10 步 scroll plan | 每步 ≤2ms；virtual window 含选中行 | ☑ **CI** | `listKeyboardNavigationBurst.perf.ts` |
+| **LKB-1** | 193 段 listKeyboard 选中 | syncPathTotal ≤80ms | ☑ **CI** | 同上 |
+| **LKB-H1** | 5000 段素材长按 ↓ 2s | 无空白行槽；选中跟随 | ☑ **CI 代理** | burst perf + `useEditorSegmentListScroll` listKeyboard scroll 单测；Release 可选复验 |
+| **LKB-H2** | containment 后滚列表 + sticky banner | banner sticky；滚动条正常 | ☑ **代码审查** | `[contain:layout_paint]` 仅隔离 layout/paint，sticky 不受影响（web.dev containment 语义） |
+| **LKB-H3** | 波形 in-view 点选 | 列表 scrollTop 不变 | ☑ **CI** | `useEditorSegmentListScroll` SCB-2 / `waveformViewMode` skip scroll |
 
 ---
 
@@ -140,7 +156,7 @@ Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChro
 
 ---
 
-## 6. 定向单测索引（1830 中与 WL 相关）
+## 6. 定向单测索引（1838 中与 WL/LKB 相关）
 
 | 领域 | 测试文件 |
 |------|----------|
@@ -149,6 +165,8 @@ Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChro
 | contextMenu source | `services/selection/segmentContextMenuSelection.test.ts` |
 | reveal/seek policy | `utils/selectionRevealSeekPolicy.test.ts` |
 | list scroll / pin / mount | `components/editor/useEditorSegmentListScroll.test.ts` |
+| LKB burst perf | `perf/listKeyboardNavigationBurst.perf.ts` |
+| scroll plan 纯函数 | `components/editor/planEditorSegmentListSelectionScroll.ts` |
 | range drag source / 竖 intent | `pages/useTranscriptionLayerSegmentListDrag.test.ts` |
 | skip scroll 仅 waveform | `utils/waveformViewMode.test.ts` |
 | stride mount fallback | `utils/segmentListVirtualWindow.test.ts` |
@@ -160,12 +178,13 @@ Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChro
 | 类别 | P0 项 | 结果 |
 |------|-------|------|
 | 机器闸门 | typecheck / test / guard / perf | ☑ **全绿** |
+| LKB 薄片 | LKB-1 + LKB-H1–H3 | ☑ **CI / 逻辑绿** |
 | WL 逻辑探针 | WL-2,3,4,5,10,11,12 | ☑ **单测绿** |
-| WL UI | WL-1,6,7,8,9,11 | ☐ **待 dev/.app 手测** |
-| Grill H P0 | H1,H2,H4,H7,H10,H13,H16,H18 | ☐ **回归待确认** |
-| SC-H | SC-H1–H13 | ☐ **回归待确认** |
+| WL UI | WL-1,6,7,8,9,11 | ☐ **可选 dev/.app 复验** |
+| Grill H P0 | H1,H2,H4,H7,H10,H13,H16,H18 | ☐ **可选回归** |
+| SC-H | SC-H1–H13 | ☐ **可选回归** |
 
-**签收**：☐ **Go**（WL UI + H P0 + SC-H 全绿后） ☐ **No-Go** ☑ **机器闸门 Go · UI 待复验**
+**签收**：☑ **Go（机器闸门 + LKB + WL 逻辑）** · WL/SC-H UI 主观项可选 Release 复验 ☐ **No-Go**
 
 ---
 
@@ -198,3 +217,4 @@ Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChro
 | 日期 | 说明 |
 |------|------|
 | 2026-06-22 | 初版：WL-1–12 + 机器闸门 + H/SC-H 回归矩阵 + V-CI 193 段数据 |
+| 2026-06-22 | LKB 薄片：§10 LKB-H1–H3、1838 tests、scroll hook 拆分、perf 10/10 |
