@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useCallback, useEffect, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { CspLayout } from "./CspLayout";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
@@ -6,6 +6,10 @@ import { SegmentRowStageBadge } from "./segmentRow/SegmentRowStageBadge";
 import { useSegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
 import { SegmentRowTimestampColumn } from "./segmentRow/SegmentRowTimestampColumn";
 import type { CorrectableSpan } from "../services/editor/findCorrectableSpans";
+import {
+  CSP_LAYOUT_OWNER_IMPERATIVE,
+  setCspLayoutRules,
+} from "../utils/cspElementLayout";
 import { useSegmentRowSelection } from "../hooks/useSegmentRowSelection";
 
 export type SegmentTextListRowProps = {
@@ -130,7 +134,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onOpenAnnotation,
 }: SegmentTextListRowProps) {
   const { selected, inSelection } = useSegmentRowSelection(i);
-  const [isDeselecting, setIsDeselecting] = useState(false);
+  const rowRef = useRef<HTMLElement | null>(null);
   const deselectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevSelectedRef = useRef(selected);
   const focusOnSelectRef = useRef(false);
@@ -140,8 +144,15 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     const prev = prevSelectedRef.current;
     prevSelectedRef.current = selected;
     if (prev && !selected) {
-      setIsDeselecting(true);
-      deselectTimeoutRef.current = setTimeout(() => setIsDeselecting(false), 80);
+      const el = rowRef.current;
+      if (el) setCspLayoutRules(el, { transitionProperty: "none" }, CSP_LAYOUT_OWNER_IMPERATIVE);
+      deselectTimeoutRef.current = setTimeout(() => {
+        deselectTimeoutRef.current = null;
+        const currentEl = rowRef.current;
+        if (currentEl) {
+          setCspLayoutRules(currentEl, { transitionProperty: "" }, CSP_LAYOUT_OWNER_IMPERATIVE);
+        }
+      }, 80);
     }
     return () => {
       if (deselectTimeoutRef.current) {
@@ -228,11 +239,12 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
 
   return (
     <CspLayout
+      ref={rowRef}
       data-seg-row={i}
       layout={{ "--seg-row-min-height": `${rowMinHeight}px` }}
       className={[
         "seg-row-shell group relative cursor-text rounded-md border border-transparent px-[9px] py-[9px]",
-        isDeselecting ? "transition-none" : "transition-[background-color,border-color,box-shadow]",
+        "transition-[background-color,border-color,box-shadow]",
         selected
           ? "seg-row-selected"
           : inSelection

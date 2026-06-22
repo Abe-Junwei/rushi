@@ -78,12 +78,11 @@ export function useEditorSegmentListScroll({
   transcriptRowHeightPx,
   lastSegmentSelectSourceRef,
 }: UseEditorSegmentListScrollArgs) {
-  const scrollMetricsRef = useRef(readScrollMetrics(null));
+  const scrollMetricsRef = useRef(readScrollMetrics(segmentListRef.current));
   const [scrollEpoch, setScrollEpoch] = useState(0);
-  const [virtualWindowPinEpoch, setVirtualWindowPinEpoch] = useState(0);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
-  const prevSelectedDisplayIndexRef = useRef(selectedDisplayIndex);
+  const prevSelectedDisplayIndexForProjectionRef = useRef(selectedDisplayIndex);
   const selectionScrollProjectionRef = useRef(false);
   const scrollGenerationRef = useRef(0);
   const suppressScrollGenerationBumpRef = useRef(false);
@@ -150,23 +149,6 @@ export function useEditorSegmentListScroll({
     bumpScrollEpoch();
   }, [bumpScrollEpoch]);
 
-  if (prevSelectedDisplayIndexRef.current !== selectedDisplayIndex) {
-    const fromWaveform = shouldSkipListScrollWhenInViewport(
-      lastSegmentSelectSourceRef?.current ?? "waveform",
-    );
-    prevSelectedDisplayIndexRef.current = selectedDisplayIndex;
-    cancelPendingListScrollCorrection();
-    if (fromWaveform) {
-      selectionScrollProjectionRef.current = false;
-    } else {
-      selectionScrollProjectionRef.current = true;
-      if (useVirtualList) {
-        scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
-      }
-      setVirtualWindowPinEpoch((n) => n + 1);
-    }
-  }
-
   useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root) return;
@@ -193,6 +175,7 @@ export function useEditorSegmentListScroll({
     const scrollKey = `${currentFileId ?? ""}:${selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
     if (lastSelectedScrollKeyRef.current === scrollKey) return;
     lastSelectedScrollKeyRef.current = scrollKey;
+    cancelPendingListScrollCorrection();
 
     const fromWaveform = shouldSkipListScrollWhenInViewport(
       lastSegmentSelectSourceRef?.current ?? "waveform",
@@ -294,6 +277,7 @@ export function useEditorSegmentListScroll({
     selectionScrollProjectionRef.current = false;
   }, [
     bumpScrollEpoch,
+    cancelPendingListScrollCorrection,
     currentFileId,
     filteredIndicesScrollKey,
     itemStridePx,
@@ -309,8 +293,8 @@ export function useEditorSegmentListScroll({
   useLayoutEffect(() => {
     lastSelectedScrollKeyRef.current = null;
     selectionScrollProjectionRef.current = false;
+    prevSelectedDisplayIndexForProjectionRef.current = -1;
     cancelPendingListScrollCorrection();
-    setVirtualWindowPinEpoch(0);
   }, [cancelPendingListScrollCorrection, currentFileId]);
 
   useLayoutEffect(() => {
@@ -330,6 +314,19 @@ export function useEditorSegmentListScroll({
         totalHeightPx: 0,
       };
     }
+
+    const fromWaveform = shouldSkipListScrollWhenInViewport(
+      lastSegmentSelectSourceRef?.current ?? "waveform",
+    );
+    const selectionChanged =
+      prevSelectedDisplayIndexForProjectionRef.current !== selectedDisplayIndex;
+    prevSelectedDisplayIndexForProjectionRef.current = selectedDisplayIndex;
+    if (fromWaveform) {
+      selectionScrollProjectionRef.current = false;
+    } else if (selectionChanged && selectedDisplayIndex >= 0) {
+      selectionScrollProjectionRef.current = true;
+    }
+
     const scrollMetrics = scrollMetricsRef.current;
     const root = segmentListRef.current;
     const scrollTop = resolveVirtualListScrollTopForWindow({
@@ -349,15 +346,22 @@ export function useEditorSegmentListScroll({
       totalCount: displayCount,
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
-    if (shouldSkipListScrollWhenInViewport(lastSegmentSelectSourceRef?.current ?? "waveform")) {
-      return base;
-    }
-    if (selectedDisplayIndex < 0) return base;
+    if (fromWaveform || selectedDisplayIndex < 0) return base;
     return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN + 1,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- scrollEpoch / pinEpoch trigger recompute; selectedDisplayIndex only read for projection/pin on list path
-  }, [scrollEpoch, virtualWindowPinEpoch, useVirtualList, itemStridePx, displayCount]);
+    // selectedDisplayIndex drives projection/pin on list path; scrollEpoch is intentionally listed to force recomputation after user scroll.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    scrollEpoch,
+    useVirtualList,
+    itemStridePx,
+    displayCount,
+    selectedDisplayIndex,
+    rowMinHeightPx,
+    segmentListRef,
+    lastSegmentSelectSourceRef,
+  ]);
 
   return {
     useVirtualList,

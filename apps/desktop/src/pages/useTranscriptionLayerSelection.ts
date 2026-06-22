@@ -30,7 +30,6 @@ import {
   shouldSeekOnSegmentSelect,
 } from "../utils/selectionRevealSeekPolicy";
 import { isListSegmentSelectSource } from "../utils/segmentListSelectSource";
-import { imperativeScrollListSegmentIntoView } from "../utils/segmentListScrollIntoView";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 const LIST_KEYBOARD_REVEAL_DEBOUNCE_MS = 180;
@@ -208,12 +207,8 @@ export function useTranscriptionLayerSelection(opts: {
           paintSelectionChrome(c, idx, opts, source);
         }
         commitSelectedIdxUi(idx, source, opts);
-        if (isListSegmentSelectSource(source)) {
-          const listRoot = segmentListRef.current;
-          if (listRoot) {
-            imperativeScrollListSegmentIntoView(idx, listRoot, { align: "minimal" });
-          }
-        }
+        // List scroll is owned by useEditorSegmentListScroll layout effect to avoid
+        // duplicate forced layout and rAF coalesce conflicts (RUSHI-KEYBOARD-LAG).
         if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
