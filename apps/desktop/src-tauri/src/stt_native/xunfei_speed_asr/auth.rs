@@ -2,7 +2,7 @@
 
 use base64::{engine::general_purpose::STANDARD as B64, Engine as _};
 use chrono::Utc;
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::{Digest, Sha256};
 
 type HmacSha256 = Hmac<Sha256>;
