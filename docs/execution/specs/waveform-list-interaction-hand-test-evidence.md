@@ -13,7 +13,7 @@
 |----|------|
 | 日期 | 2026-06-22 |
 | 测试人 | Agent（机器闸门 + CI perf）；UI 主观项见 §4 标注 |
-| Git SHA | 见提交 `feat(desktop): split list scroll hook and LKB perf gate` |
+| Git SHA | `17a285e` |
 | 运行方式 | ☑ `npm run desktop:dev` / 本地 dev · Release `.app` 可选复验 |
 | macOS / 引擎 | darwin 25.5 · WebKit（Tauri） |
 | 语段规模 | LKB-H1：5000 段（CI synthetic）；WL/H：20–193 段 |
