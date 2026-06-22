@@ -17,7 +17,7 @@
     "test:e2e:asr": "PW_ASR_MOCK_WEBSERVER=1 PW_ASR_BASE_URL=http://127.0.0.1:18741 PW_ASR_MOCK_PORT=18741 playwright test --project=asr-api",
     "test:e2e:desktop": "PW_DESKTOP_WEBSERVER=1 playwright test --project=desktop-ui",
     "check:doc-links": "node ../../scripts/check-internal-doc-links.mjs",
-    "tauri": "tauri",
+    "tauri": "bash ../../scripts/tauri-cli.sh",
     "prepare": "husky"
   },
   "dependencies": {

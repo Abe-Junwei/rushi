@@ -216,7 +216,7 @@ export function useTierScrollSync(args: {
         applyScrollLeftPx(px, "program", { immediate: true });
       },
       playbackFollowScroll: (px: number) => {
-        applyScrollLeftPx(px, "program", { deferLayoutCommit: true, immediate: true });
+        applyScrollLeftPx(px, "program", { deferLayoutCommit: false, immediate: true });
       },
       userScrubScroll: commitUserScrubScroll,
       applyWheelScrollDelta,

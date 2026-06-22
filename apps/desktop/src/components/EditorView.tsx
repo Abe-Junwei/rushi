@@ -30,7 +30,6 @@ interface EditorViewProps {
   llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
-  onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 
 export const EditorView = memo(function EditorView({
@@ -45,7 +44,6 @@ export const EditorView = memo(function EditorView({
   llmStatusRefreshSeq = 0,
   segmentCtxMenu,
   setSegmentCtxMenu,
-  onOpenSegmentContextMenu,
 }: EditorViewProps) {
   const tx = useTranscriptionLayer(txInput);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
@@ -151,7 +149,6 @@ export const EditorView = memo(function EditorView({
       footerCenterLabel={footerCenterLabel}
       footerCenterHintKind={footerCenterHintKind}
       transcriptStats={transcriptStats}
-      onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       editorDialogs={editorDialogs}
     />
   );

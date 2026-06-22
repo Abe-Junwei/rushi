@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
@@ -67,9 +67,9 @@ function makeTextareaKeyEvent(
   } as ReactKeyboardEvent<HTMLTextAreaElement>;
 }
 
-function flushAdvanceRaf() {
-  act(() => {
-    vi.advanceTimersToNextFrame();
+async function flushAdvanceCoalesce() {
+  await act(async () => {
+    await Promise.resolve();
   });
 }
 
@@ -110,10 +110,6 @@ function renderKeyboard(
 }
 
 describe("useSegmentKeyboard", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
   afterEach(() => {
     vi.useRealTimers();
   });
@@ -141,7 +137,7 @@ describe("useSegmentKeyboard", () => {
     expect(mergeWithNextAt).toHaveBeenCalledWith(0);
   });
 
-  it("advances to next segment on ArrowDown through the normal list selection path", () => {
+  it("advances to next segment on ArrowDown through the normal list selection path", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -155,7 +151,7 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
@@ -163,7 +159,7 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("leaves seek ownership to selectSegmentAt for each flushed ArrowDown target", () => {
+  it("leaves seek ownership to selectSegmentAt for each flushed ArrowDown target", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -178,19 +174,40 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
     rerender({ ...ctx, selectedIdx: 1 });
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("goes to previous segment on ArrowUp", () => {
+  it("anchors ArrowDown on focused row when React selectedIdx still lags", async () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    await flushAdvanceCoalesce();
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalledWith(1, "listKeyboard");
+  });
+
+  it("goes to previous segment on ArrowUp", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -204,14 +221,14 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowUp", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
   });
 
-  it("coalesces duplicate ArrowDown presses in the same frame", () => {
+  it("coalesces duplicate ArrowDown presses in the same frame", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -226,7 +243,7 @@ describe("useSegmentKeyboard", () => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
@@ -254,7 +271,7 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
   });
 
-  it("stops at last filtered segment on ArrowDown", () => {
+  it("stops at last filtered segment on ArrowDown", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -269,12 +286,12 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(2, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
   });
 
-  it("steps only within filtered indices on ArrowDown", () => {
+  it("steps only within filtered indices on ArrowDown", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -289,7 +306,7 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
-    flushAdvanceRaf();
+    await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
   });

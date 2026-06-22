@@ -71,6 +71,7 @@ export type ProjectLifecycleReturnInput = {
   dirty: Dirty;
   mutations: Mutations;
   segmentSelection: SegmentSelection;
+  clearMultiSelectionWithChrome: () => void;
   segmentDeleteConfirm: SegmentDeleteConfirm;
   glossaryLearn: GlossaryLearn;
   manualCorrectionMemory: ManualCorrectionMemory;

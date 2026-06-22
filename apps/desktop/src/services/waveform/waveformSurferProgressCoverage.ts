@@ -2,6 +2,21 @@ import type WaveSurfer from "wavesurfer.js";
 import { setCspLayoutRules } from "../../utils/cspElementLayout";
 import { readTauriStyleCspNonce } from "../../utils/tauriStyleCspNonce";
 import { logDesktopUi } from "../desktopUiLog";
+
+/** When set during playback, progress tint follows the visual playhead clock instead of raw WS ratio. */
+let visualProgressRatioReader: (() => number | null) | null = null;
+
+export function setWaveSurferVisualProgressRatioReader(reader: (() => number | null) | null): void {
+  visualProgressRatioReader = reader;
+}
+
+function resolveWaveSurferProgressRatio(ratio: number, isPlaying: boolean): number {
+  if (!isPlaying || !visualProgressRatioReader) return ratio;
+  const visual = visualProgressRatioReader();
+  if (visual == null || !Number.isFinite(visual)) return ratio;
+  return Math.max(0, Math.min(1, visual));
+}
+
 export const WAVESURFER_MAX_CANVAS_CHUNK_PX = 8000;
 const WAVESURFER_INTERNAL_SCROLL_LOCK_STYLE_ATTR = "data-rushi-ws-internal-scroll-lock";
 
@@ -256,7 +271,7 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
 
   renderer.renderProgress = (ratio: number, isPlaying: boolean) => {
     original(ratio, isPlaying);
-    applyWaveSurferProgressWithoutClip(ws, ratio);
+    applyWaveSurferProgressWithoutClip(ws, resolveWaveSurferProgressRatio(ratio, isPlaying));
   };
 
   return () => {

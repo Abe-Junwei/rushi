@@ -11,11 +11,13 @@ import { resolveEditorWaveformPaneMetrics } from "./editorWaveformPaneMetrics";
 interface EditorWaveformPaneProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
+  filterExcludesPrimary?: boolean;
 }
 
 export function EditorWaveformPane({
   controller: c,
   tx,
+  filterExcludesPrimary = false,
 }: EditorWaveformPaneProps) {
   const tierViewport = resolveTierViewportMetrics({
     tierScrollEl: tx.tierScrollRef.current,
@@ -68,6 +70,7 @@ export function EditorWaveformPane({
           <EditorWaveformPeaksStage
             controller={c}
             tx={tx}
+            filterExcludesPrimary={filterExcludesPrimary}
             viewportWidthPx={viewportWidthPx}
             peaksPaneHeightPx={peaksPaneHeightPx}
             peaksPaintedHeightPx={Math.max(1, tx.waveformPaintedHeightPx)}

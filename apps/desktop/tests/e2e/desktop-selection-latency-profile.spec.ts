@@ -2,6 +2,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { test, expect } from "@playwright/test";
+import {
+  parseSelectionProfileLine,
+  SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS,
+} from "../../src/services/ui/selectionLatencyProfile";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const tauriMockInit = readFileSync(join(__dirname, "support/tauri-mock-init.js"), "utf8");
@@ -117,10 +121,10 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     expect(selectionLines.length).toBeGreaterThanOrEqual(2);
 
     for (const line of selectionLines) {
-      const totalMatch = line.match(/total=([\d.]+)ms/);
-      expect(totalMatch).not.toBeNull();
-      const totalMs = Number(totalMatch![1]);
-      expect(totalMs).toBeLessThan(5000);
+      const parsed = parseSelectionProfileLine(line);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.syncPathTotalMs).toBeLessThanOrEqual(SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS);
+      expect(parsed!.totalMs).toBeLessThan(5000);
     }
 
     console.info("[selection-profile e2e] captured lines:");

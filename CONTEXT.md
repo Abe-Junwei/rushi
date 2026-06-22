@@ -183,7 +183,7 @@ _Avoid_: 多选 highlight（未特指 SC3 时）
 _Avoid_: 虚拟滚动（泛指实现时）
 
 **Selection chrome publish**（选中 chrome 发布）:
-点选 / 结构突变时 **显式** 写 `selectionChromeStore` + 波形 imperative；v0.1.9 **R-DROP**：无 reconcile 安全网，结构路径（merge/delete/undo/filter）须各自 publish。
+点选 / 结构突变时 **显式** 写 `selectionChromeStore` + 波形 imperative；列表行经 **useSegmentRowSelection** 订阅 store；结构路径（merge/delete/undo/filter/clearMulti）须各自 publish。
 _Avoid_: reconcile, 双写后对齐, flushSync 换 perf
 
 **Vertical slice**（纵向薄片）:

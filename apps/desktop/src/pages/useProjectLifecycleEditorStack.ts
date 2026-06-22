@@ -12,6 +12,8 @@ import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import type { BusyReason } from "./useProjectCrudController";
 import { createSegmentPublishApi } from "./segmentPublishApi";
 import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
+import { publishSelectionChromeForControllerState } from "../services/selection/selectionChromePublishBridge";
+import { clampSegmentIndex } from "../utils/segmentSelection";
 
 type UseProjectLifecycleEditorStackArgs = {
   busy: boolean;
@@ -64,6 +66,50 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
+  const publishStructureSelectionChrome = useCallback(
+    (primaryIdx: number, selectedIndices: Iterable<number> = [primaryIdx]) => {
+      publishSelectionChromeForControllerState({
+        fileId: currentFileId,
+        segments: getCurrentSegmentsSnapshot(),
+        primaryIdx,
+        selectedIndices,
+      });
+    },
+    [currentFileId, getCurrentSegmentsSnapshot],
+  );
+
+  const onSelectionCollapsed = useCallback(
+    (idx: number) => {
+      segmentSelection.collapseTo(idx);
+      publishStructureSelectionChrome(idx, [idx]);
+    },
+    [publishStructureSelectionChrome, segmentSelection],
+  );
+
+  const onSegmentsStructureRestored = useCallback(() => {
+    const segs = getCurrentSegmentsSnapshot();
+    const idx = clampSegmentIndex(selectedIdxRef.current, segs.length);
+    segmentSelection.collapseTo(idx);
+    publishStructureSelectionChrome(idx, [idx]);
+  }, [
+    getCurrentSegmentsSnapshot,
+    publishStructureSelectionChrome,
+    segmentSelection,
+    selectedIdxRef,
+  ]);
+
+  const clearMultiSelectionWithChrome = useCallback(() => {
+    if (segmentSelection.selectionCount <= 1) return;
+    const primary = clampSegmentIndex(selectedIdxRef.current, segments.length);
+    segmentSelection.clearMultiSelection();
+    publishStructureSelectionChrome(primary, [primary]);
+  }, [
+    publishStructureSelectionChrome,
+    segmentSelection,
+    segments.length,
+    selectedIdxRef,
+  ]);
+
   const mutations = useSegmentMutationController({
     segmentPublish,
     selectedIdxRef,
@@ -71,7 +117,8 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     setError,
     busy,
     pendingAiRevisedUidsRef,
-    onSelectionCollapsed: segmentSelection.collapseTo,
+    onSelectionCollapsed,
+    onSegmentsStructureRestored,
   });
 
   const segmentDeleteConfirm = useSegmentDeleteConfirmController({
@@ -161,6 +208,7 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   return {
     segmentSelection,
+    clearMultiSelectionWithChrome,
     mutations,
     segmentDeleteConfirm,
     dirty,

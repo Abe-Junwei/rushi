@@ -17,8 +17,9 @@ type WaveformViewportPlayheadProps = {
   tierScrollRef?: React.RefObject<HTMLElement | null>;
   isPlaying: boolean;
   isReady: boolean;
+  /** Paused seek commits — retriggers transform without playhead rAF bus. */
   currentTimeSec: number;
-  getVisualPlayheadTimeSec: () => number;
+  getDisplayPlayheadTimeSec: () => number;
   /** Single playback tick bus; playhead transform runs here instead of its own rAF. */
   subscribePlayheadFrame: (cb: (timeSec: number) => void, priority?: number) => () => void;
   playbackFollowMode: WaveformPlaybackScrollFollowMode;
@@ -38,7 +39,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   isPlaying,
   isReady,
   currentTimeSec,
-  getVisualPlayheadTimeSec,
+  getDisplayPlayheadTimeSec,
   subscribePlayheadFrame,
   playbackFollowMode,
 }: WaveformViewportPlayheadProps) {
@@ -51,8 +52,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollLive,
     tierScrollRef,
     isPlaying,
-    currentTimeSec,
-    getVisualPlayheadTimeSec,
+    getDisplayPlayheadTimeSec,
     playbackFollowMode,
   });
   argsRef.current = {
@@ -62,8 +62,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollLive,
     tierScrollRef,
     isPlaying,
-    currentTimeSec,
-    getVisualPlayheadTimeSec,
+    getDisplayPlayheadTimeSec,
     playbackFollowMode,
   };
 
@@ -93,21 +92,19 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
 
   useEffect(() => {
     if (!isReady || !isPlaying) return;
-    writePosition(getVisualPlayheadTimeSec());
+    writePosition(getDisplayPlayheadTimeSec());
     return subscribePlayheadFrame((timeSec) => writePosition(timeSec));
-  }, [getVisualPlayheadTimeSec, isPlaying, isReady, subscribePlayheadFrame, writePosition]);
+  }, [getDisplayPlayheadTimeSec, isPlaying, isReady, subscribePlayheadFrame, writePosition]);
 
   useEffect(() => {
     if (isPlaying || !isReady) return;
-    writePosition(currentTimeSec);
-  }, [currentTimeSec, isPlaying, isReady, writePosition]);
+    writePosition(getDisplayPlayheadTimeSec());
+  }, [currentTimeSec, getDisplayPlayheadTimeSec, isPlaying, isReady, writePosition]);
 
   useEffect(() => {
     if (!isReady) return;
     const onScrollFrame = () => {
-      const args = argsRef.current;
-      const timeSec = args.isPlaying ? args.getVisualPlayheadTimeSec() : args.currentTimeSec;
-      writePosition(timeSec);
+      writePosition(argsRef.current.getDisplayPlayheadTimeSec());
     };
     return subscribeTierScrollFrame(onScrollFrame);
   }, [isReady, writePosition]);

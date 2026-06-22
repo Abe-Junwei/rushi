@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { CspLayout } from "./CspLayout";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
@@ -130,8 +130,26 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onOpenAnnotation,
 }: SegmentTextListRowProps) {
   const { selected, inSelection } = useSegmentRowSelection(i);
+  const [isDeselecting, setIsDeselecting] = useState(false);
+  const deselectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevSelectedRef = useRef(selected);
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
+
+  useEffect(() => {
+    const prev = prevSelectedRef.current;
+    prevSelectedRef.current = selected;
+    if (prev && !selected) {
+      setIsDeselecting(true);
+      deselectTimeoutRef.current = setTimeout(() => setIsDeselecting(false), 80);
+    }
+    return () => {
+      if (deselectTimeoutRef.current) {
+        clearTimeout(deselectTimeoutRef.current);
+        deselectTimeoutRef.current = null;
+      }
+    };
+  }, [selected]);
   const textStyle = useSegmentRowTextStyle(
     transcriptFontPx,
     transcriptFontFamily,
@@ -169,15 +187,16 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
 
   const onRowPointerDown = useCallback(
     (e: ReactPointerEvent<HTMLDivElement>) => {
-      if (busy || e.button !== 0) return;
-      if ((e.target as HTMLElement).closest(
-        "button, [role='separator'], [aria-label='拖拽调整语段高度']",
-      )) {
+      if (busy || e.button !== 0 || !e.shiftKey) return;
+      const target = e.target as HTMLElement;
+      if (
+        target.closest(
+          'button, [role="separator"], [aria-label="拖拽调整语段高度"], textarea[aria-label="语段正文"], .segment-row-meta-column-fallback',
+        )
+      ) {
         return;
       }
-      if (e.shiftKey) {
-        onRowRangePointerDown?.(i, e);
-      }
+      onRowRangePointerDown?.(i, e);
     },
     [busy, i, onRowRangePointerDown],
   );
@@ -212,7 +231,8 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       data-seg-row={i}
       layout={{ "--seg-row-min-height": `${rowMinHeight}px` }}
       className={[
-        "seg-row-shell group relative cursor-text rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
+        "seg-row-shell group relative cursor-text rounded-md border border-transparent px-[9px] py-[9px]",
+        isDeselecting ? "transition-none" : "transition-[background-color,border-color,box-shadow]",
         selected
           ? "seg-row-selected"
           : inSelection

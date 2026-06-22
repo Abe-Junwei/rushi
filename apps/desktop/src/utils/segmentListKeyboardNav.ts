@@ -1,9 +1,16 @@
+import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import type { SegmentListFilterNavState } from "./segmentListFilterNav";
 import { readSegmentListFilterNavIndices } from "./segmentListFilterNav";
 import {
   querySegmentListScrollRoot,
   readSegmentListFilterIndices,
 } from "./segmentListVirtualWindow";
+
+/** ↑↓ anchor: chrome primary leads React selectedIdx during keyboard navigation. */
+export function resolveListSelectionNavAnchor(fallbackIdx: number): number {
+  const primary = getSelectionChromeSnapshot().primaryIdx;
+  return primary >= 0 ? primary : fallbackIdx;
+}
 
 /** Resolve ↑↓ target within the visible segment list (respects active filter). */
 export function resolveAdjacentVisibleSegmentIdx(

@@ -34,7 +34,6 @@ export function useProjectPanelShell() {
     flushSegmentTextDrafts: c.flushSegmentTextDrafts,
     deliveryModeOpen: deliveryMode.deliveryModeOpen,
     isIndexInSelection: c.isIndexInSelection,
-    selectSegmentAt: c.selectSegmentAt,
     selectionCount: c.selectionCount,
     exportTxt: c.exportTxt,
     exportSrt: c.exportSrt,

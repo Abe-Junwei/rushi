@@ -135,8 +135,8 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
-    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
-      setSelectedIdxUi.mock.invocationCallOrder[0],
+    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
 
     const lines = readRecentSelectionLatencyProfileLines();
@@ -174,6 +174,7 @@ describe("useTranscriptionLayerSelection profile", () => {
   });
 
   it("listKeyboard reveals when editor focus gate open and does not seek", () => {
+    vi.useFakeTimers();
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -201,9 +202,14 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "listKeyboard");
     });
 
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(180);
+    });
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     document.body.innerHTML = "";
+    vi.useRealTimers();
   });
 
   it("listKeyboard skips reveal when editor focus gate closed", () => {
@@ -261,8 +267,8 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
-    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
-      setSelectedIdxUi.mock.invocationCallOrder[0],
+    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
       start_sec: 4,
@@ -271,9 +277,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
     expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
-    );
-    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
       setSelectedIdxUi.mock.invocationCallOrder[0],
     );
     expect(document.activeElement).toBe(waveformShell);

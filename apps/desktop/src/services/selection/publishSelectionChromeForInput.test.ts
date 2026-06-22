@@ -27,6 +27,6 @@ describe("publishSelectionChromeForIndices", () => {
     publishSelectionChromeForIndices(ctx, [1, 2, 3], 3, { listRoot, overlayRoot: null });
     expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
     expect(getSelectionChromeSnapshot().selectedSet.has(2)).toBe(true);
-    expect(row.classList.contains("seg-row-selected")).toBe(true);
+    expect(getSelectionChromeSnapshot().selectedSet.has(3)).toBe(true);
   });
 });

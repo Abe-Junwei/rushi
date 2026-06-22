@@ -12,6 +12,7 @@ export function shouldSeekOnSegmentSelect(source: SegmentSelectSource): boolean 
 
 export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext): boolean {
   if (!ctx.idxChanged) return false;
+  if (ctx.source === "contextMenu" || ctx.source === "multiSelect") return false;
   if (ctx.source === "list" || ctx.source === "listAdvance") return true;
   if (ctx.source === "listKeyboard") return ctx.editorFocusGateOpen;
   if (ctx.source === "waveform") return true;

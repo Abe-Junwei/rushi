@@ -57,6 +57,8 @@ function createTranscriptionLayer() {
     openSegmentContextMenuFromPointer: vi.fn(),
     focusWaveformShell: vi.fn(),
     getPlayheadTime: () => 0,
+    getDisplayPlayheadTimeSec: () => 0,
+    subscribePlayheadFrame: undefined,
     formatMediaTime: (sec: number) => `${sec}`,
     clientXToTimeSec: (clientX: number) => clientX / 40,
     selectSegmentAt: vi.fn(),

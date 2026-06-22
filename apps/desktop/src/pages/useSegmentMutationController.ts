@@ -54,6 +54,7 @@ type SegmentMutationDeps = {
   busy: boolean;
   pendingAiRevisedUidsRef?: React.MutableRefObject<Set<string>>;
   onSelectionCollapsed?: (idx: number) => void;
+  onSegmentsStructureRestored?: () => void;
 };
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
@@ -65,6 +66,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     busy,
     pendingAiRevisedUidsRef,
     onSelectionCollapsed,
+    onSegmentsStructureRestored,
   } = deps;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -89,14 +91,16 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
     segmentDraftStore.discardEditingSession();
     undoStackPop();
-  }, [busy, getCurrentSegmentsSnapshot, undoStackPop]);
+    onSegmentsStructureRestored?.();
+  }, [busy, getCurrentSegmentsSnapshot, onSegmentsStructureRestored, undoStackPop]);
 
   const redo = useCallback(() => {
     if (busy) return;
     syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
     segmentDraftStore.discardEditingSession();
     redoStackPop();
-  }, [busy, getCurrentSegmentsSnapshot, redoStackPop]);
+    onSegmentsStructureRestored?.();
+  }, [busy, getCurrentSegmentsSnapshot, onSegmentsStructureRestored, redoStackPop]);
 
   const mergeDelete = useMemo(
     () =>

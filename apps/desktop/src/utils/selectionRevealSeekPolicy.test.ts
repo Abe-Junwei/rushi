@@ -43,6 +43,23 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(false);
   });
 
+  it("contextMenu and multiSelect never reveal", () => {
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "contextMenu",
+        idxChanged: true,
+        editorFocusGateOpen: false,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "multiSelect",
+        idxChanged: true,
+        editorFocusGateOpen: true,
+      }),
+    ).toBe(false);
+  });
+
   it("no reveal or seek when idx unchanged", () => {
     expect(
       shouldRevealOnSegmentSelect({

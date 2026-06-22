@@ -7,14 +7,17 @@ import {
   resetScheduledSegmentListScrollForTests,
   scheduleScrollSegmentListIndexToView,
   scrollSegmentListIndexIntoView,
+  scrollSegmentListIndexIntoViewForMount,
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
+  segmentListIndexNeedsScrollAdjustment,
   resolveVirtualListScrollTopForWindow,
   resolveSegmentListRowIndexFromPoint,
   resolveSegmentListRangeDragHoverIndex,
   isEditableSegmentBodyTextarea,
   isSegmentBodyTextarea,
   segmentListRangeDragExceededSlop,
+  segmentListRangeDragRequiresVerticalIntent,
   segmentListRangeDragVerticalIntentExceededSlop,
   SEGMENT_LIST_FILTER_INDICES_ATTR,
   SEGMENT_LIST_SCROLL_ATTR,
@@ -62,6 +65,31 @@ describe("segmentListVirtualWindow", () => {
     expect(segmentListVirtualRowTopPx(142, stride)).toBe(142 * stride);
   });
 
+  it("segmentListIndexNeedsScrollAdjustment is false when row already visible", () => {
+    const stride = 80;
+    const rowMin = 70;
+    const viewport = 400;
+    const index = 3;
+    expect(
+      segmentListIndexNeedsScrollAdjustment({
+        scrollTop: 0,
+        viewportHeight: viewport,
+        index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+      }),
+    ).toBe(false);
+    expect(
+      segmentListIndexNeedsScrollAdjustment({
+        scrollTop: 0,
+        viewportHeight: viewport,
+        index: 20,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+      }),
+    ).toBe(true);
+  });
+
   it("scrolls selected row into view when off-screen (minimal align)", () => {
     const stride = 80;
     expect(
@@ -82,6 +110,18 @@ describe("segmentListVirtualWindow", () => {
         itemStridePx: stride,
       }),
     ).toBeNull();
+  });
+
+  it("scrollSegmentListIndexIntoViewForMount forces stride scroll when row is not mounted", () => {
+    const stride = 80;
+    expect(
+      scrollSegmentListIndexIntoViewForMount({
+        scrollTop: 20 * stride,
+        viewportHeight: 400,
+        index: 20,
+        itemStridePx: stride,
+      }),
+    ).toBe(20 * stride);
   });
 
   it("resolveVirtualListScrollTopForWindow projects pre-layout scroll target when enabled", () => {
@@ -256,6 +296,19 @@ describe("segmentListVirtualWindow", () => {
   it("segmentListRangeDragVerticalIntentExceededSlop requires vertical-dominant movement", () => {
     expect(segmentListRangeDragVerticalIntentExceededSlop(100, 200, 130, 206)).toBe(false);
     expect(segmentListRangeDragVerticalIntentExceededSlop(100, 200, 103, 212)).toBe(true);
+  });
+
+  it("segmentListRangeDragRequiresVerticalIntent on timestamp and readOnly textarea", () => {
+    const timestamp = document.createElement("div");
+    timestamp.className = "segment-row-meta-column-fallback";
+    expect(segmentListRangeDragRequiresVerticalIntent(timestamp)).toBe(true);
+
+    const readOnly = document.createElement("textarea");
+    readOnly.setAttribute("aria-label", "语段正文");
+    expect(segmentListRangeDragRequiresVerticalIntent(readOnly)).toBe(true);
+
+    const badge = document.createElement("div");
+    expect(segmentListRangeDragRequiresVerticalIntent(badge)).toBe(false);
   });
 
   it("isEditableSegmentBodyTextarea ignores readOnly segment textareas", () => {

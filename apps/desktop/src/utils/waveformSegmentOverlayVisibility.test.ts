@@ -46,7 +46,7 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
     ).toEqual([1]);
   });
 
-  it("returns every index in the multi-select range", () => {
+  it("returns every index in the multi-select range when within cap", () => {
     expect(
       selectOverlayInteractiveSegmentIndices({
         segmentCount: 8,
@@ -56,6 +56,22 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
         draftIdx: null,
       }),
     ).toEqual([2, 3, 4, 5]);
+  });
+
+  it("caps contiguous multi-select DOM overlay above MAX_DOM_OVERLAY_SPARSE", () => {
+    const out = selectOverlayInteractiveSegmentIndices({
+      segmentCount: 100,
+      selectedIdx: 50,
+      selectionLo: 0,
+      selectionHi: 49,
+      selectionCount: 50,
+      isContiguousSelection: true,
+      draftIdx: null,
+    });
+    expect(out.length).toBeLessThanOrEqual(4);
+    expect(out).toContain(50);
+    expect(out).toContain(0);
+    expect(out).toContain(49);
   });
 
   it("includes index 0 when range starts at zero", () => {

@@ -106,7 +106,7 @@
 | `validate_p0_transcription_result.py` | P0 转写结果校验 |
 | `seed-duizhao-project.py` | 对照项目种子 |
 | `generate-p0-chinese-samples-macos.sh` / `p0-sample-batch.sh` | P0 中文样本 |
-| `clean-dev-artifacts.sh` | 清理本地开发产物 |
+| `clean-dev-artifacts.sh` / `npm run clean:artifacts` | 清理可再生的构建/缓存产物（含根目录 staged DMG、Tauri target、ASR PyInstaller build） |
 | `audit-copy-shortcuts.sh` | 文案快捷键审计 |
 | `test-r3h-2-c-rollback.sh` | R3h 回滚测试 |
 

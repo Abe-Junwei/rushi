@@ -89,7 +89,7 @@
 | **SC2** | 列表 + 波形 **视觉 chrome** | [`selectionChromeStore`](../../apps/desktop/src/services/selection/selectionChromeStore.ts) + [`applySelectionChromeImperative`](../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts) |
 | **SC4** | 虚拟列表 scroll 投影 | [`useEditorSegmentListScroll`](../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) |
 
-**硬规则**：SC2 **不得**驱动 persist/undo；波形/列表点击 **先 SC2 imperative（<30ms）→ reveal/seek → SC1 `startTransition`**。多选/lasso/undo 经 [`reconcileSelectionChromeFromReact`](../../apps/desktop/src/services/selection/reconcileSelectionChromeFromReact.ts) 对齐。Spec：[`selection-chrome-bus-plan.md`](../execution/specs/selection-chrome-bus-plan.md)。
+**硬规则**：SC2 **不得**驱动 persist/undo；波形/列表点击 **先 SC2 publish（store + 波形 imperative；列表行 `useSegmentRowSelection`）→ reveal/seek → SC1 `startTransition`**。结构突变（merge/delete/undo/clearMulti）经 [`selectionChromePublishBridge`](../../apps/desktop/src/services/selection/selectionChromePublishBridge.ts) 显式 publish。Spec：[`selection-chrome-bus-plan.md`](../execution/specs/selection-chrome-bus-plan.md)。
 
 唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ SC2 chrome + `publishSelectionChrome` → SC1（`startTransition`）→ `flushTierScrollFrame`（band/overlay 同帧，仅 waveform 源）→ suppress + seek（仅 waveform 源）→ focus（仅 waveform 源）**。策略真源：[`selectionRevealSeekPolicy.ts`](../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) + [`editorFocusGate.ts`](../../apps/desktop/src/utils/editorFocusGate.ts)。
 

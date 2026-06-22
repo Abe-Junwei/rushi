@@ -93,7 +93,8 @@ export function EditorWorkbenchToolbar({
                 isReady={tx.isReady}
                 durationSec={mediaDurationSec}
                 currentTimeSec={tx.currentTime}
-                getPlayheadTime={tx.getPlayheadTime}
+                getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
+                subscribePlayheadFrame={tx.subscribePlayheadFrame}
                 formatMediaTime={tx.formatMediaTime}
               />
               <WaveformGlobalPlaybackSpeed

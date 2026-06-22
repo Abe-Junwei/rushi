@@ -107,6 +107,24 @@ export function resolveVirtualListScrollTopForWindow(input: {
   return projected ?? scrollMetrics.scrollTop;
 }
 
+/** 选中行是否已完全落在列表 scroll 视口内（无需 scroll-into-view）。 */
+export function segmentListIndexNeedsScrollAdjustment(input: {
+  scrollTop: number;
+  viewportHeight: number;
+  index: number;
+  rowMinHeightPx: number;
+  itemStridePx: number;
+  maxScrollTop?: number;
+}): boolean {
+  if (input.index < 0 || input.viewportHeight <= 0) return false;
+  return (
+    scrollSegmentListIndexIntoView({
+      ...input,
+      align: "minimal",
+    }) != null
+  );
+}
+
 export function scrollSegmentListIndexIntoView(input: {
   scrollTop: number;
   viewportHeight: number;
@@ -135,6 +153,19 @@ export function scrollSegmentListIndexIntoView(input: {
   if (rowTop < viewTop) return rowTop;
   if (rowBottom > viewBottom) return Math.max(0, rowBottom - input.viewportHeight);
   return null;
+}
+
+/** 选中行未挂载时强制滚到 stride 槽位（pin 合并超 cap 时的回退）。 */
+export function scrollSegmentListIndexIntoViewForMount(input: {
+  scrollTop: number;
+  viewportHeight: number;
+  index: number;
+  itemStridePx: number;
+  maxScrollTop?: number;
+}): number | null {
+  if (input.index < 0 || input.viewportHeight <= 0) return null;
+  const rowTop = input.index * input.itemStridePx;
+  return clampSegmentListScrollTop(rowTop, input.maxScrollTop);
 }
 
 /** 列表 range 拖选：低于此像素位移视为点击，不扩展多选。 */
@@ -169,6 +200,18 @@ export function isSegmentBodyTextarea(el: Element | null): el is HTMLTextAreaEle
   return (
     el instanceof HTMLTextAreaElement &&
     el.getAttribute("aria-label") === "语段正文"
+  );
+}
+
+/** List range drag uses vertical slop on timestamp gutter (horizontal ≠ multi-select). */
+export function isSegmentListTimestampColumn(el: Element | null): boolean {
+  return el instanceof Element && el.closest(".segment-row-meta-column-fallback") != null;
+}
+
+export function segmentListRangeDragRequiresVerticalIntent(target: Element | null): boolean {
+  return (
+    isSegmentBodyTextarea(target?.closest('textarea[aria-label="语段正文"]') ?? null) ||
+    isSegmentListTimestampColumn(target)
   );
 }
 

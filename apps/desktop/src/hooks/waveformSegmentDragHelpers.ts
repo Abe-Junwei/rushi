@@ -127,27 +127,6 @@ export function finishWaveformLassoDrag(input: {
   const baseIndices = drag.baseIndices ?? new Set<number>();
   const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
 
-  if (
-    drag.blankLasso &&
-    !modifiers.shiftKey &&
-    !modifiers.toggleKey &&
-    Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC
-  ) {
-    const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-    const overlapSegs = selectPackableSegments(a.segments, a.durationSec);
-    const fit = resolveCreateRangeForPolicy(
-      overlapSegs,
-      clamped.startSec,
-      clamped.endSec,
-      overlapPolicy,
-    );
-    if (fit) {
-      suppressClickAfterPointer();
-      a.onCreateRange?.(fit.startSec, fit.endSec, { overlapPolicy });
-      return true;
-    }
-  }
-
   const outcome = computeSegmentLassoOutcome(a.segments, lo, hi, a.durationSec, baseIndices);
   if (outcome.mode === "select" && outcome.indices.size > 0) {
     suppressClickAfterPointer();
@@ -160,9 +139,24 @@ export function finishWaveformLassoDrag(input: {
 
   if (Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
     const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-    suppressClickAfterPointer();
-    a.onCreateRange?.(clamped.startSec, clamped.endSec, { overlapPolicy });
-    return true;
+    if (drag.blankLasso && !modifiers.shiftKey && !modifiers.toggleKey) {
+      const overlapSegs = selectPackableSegments(a.segments, a.durationSec);
+      const fit = resolveCreateRangeForPolicy(
+        overlapSegs,
+        clamped.startSec,
+        clamped.endSec,
+        overlapPolicy,
+      );
+      if (fit) {
+        suppressClickAfterPointer();
+        a.onCreateRange?.(fit.startSec, fit.endSec, { overlapPolicy });
+        return true;
+      }
+    } else {
+      suppressClickAfterPointer();
+      a.onCreateRange?.(clamped.startSec, clamped.endSec, { overlapPolicy });
+      return true;
+    }
   }
 
   suppressClickAfterPointer();

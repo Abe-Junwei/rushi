@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  computeSelectionProfileSyncPathMs,
   installSelectionLatencyProfileDevTools,
   isSelectionLatencyProfileEnabled,
+  parseSelectionProfileLine,
   resetSelectionLatencyProfileForTests,
   SELECTION_LATENCY_PROFILE_STORAGE_KEY,
+  SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS,
   selectionProfileBegin,
   selectionProfileFlush,
+  selectionProfileMeetsCiGate,
   selectionProfileTime,
   setSelectionLatencyProfileEnabled,
 } from "./selectionLatencyProfile";
@@ -67,6 +71,29 @@ describe("selectionLatencyProfile", () => {
       expect.stringMatching(/\[selection-profile\] #1 list idx=3 segments=197/),
     );
     infoSpy.mockRestore();
+  });
+
+  it("parseSelectionProfileLine extracts syncPathTotal and spans", () => {
+    const line =
+      "[selection-profile] #2 waveform idx=68 segments=193 flushSelectedIdx=2.0ms firstPaint=3.5ms listChrome=1.2ms syncPathTotal=6.7ms total=120.0ms";
+    const parsed = parseSelectionProfileLine(line);
+    expect(parsed).not.toBeNull();
+    expect(parsed!.label).toBe("waveform idx=68 segments=193");
+    expect(parsed!.spans.firstPaint).toBe(3.5);
+    expect(parsed!.syncPathTotalMs).toBe(6.7);
+    expect(computeSelectionProfileSyncPathMs(parsed!.spans)).toBe(6.7);
+    expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
+  });
+
+  it("computeSelectionProfileSyncPathMs excludes listCommit and listScroll", () => {
+    const sync = computeSelectionProfileSyncPathMs({
+      flushSelectedIdx: 5,
+      firstPaint: 10,
+      listCommit: 400,
+      listScroll: 20,
+    });
+    expect(sync).toBe(15);
+    expect(sync).toBeLessThanOrEqual(SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS);
   });
 
   it("does nothing when disabled", () => {

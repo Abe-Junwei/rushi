@@ -22,9 +22,6 @@ let snapshot: SelectionChromeSnapshot = {
   fileId: null,
 };
 
-/** User click published SC2 before React SC1 transition — reconcile may defer until counts match. */
-let pendingUserSelection: { version: number; segmentCount: number } | null = null;
-
 const listeners = new Set<() => void>();
 
 function notifyListeners(): void {
@@ -67,7 +64,6 @@ export function commitSelectionChrome(input: {
 }
 
 export function resetSelectionChrome(fileId: string | null = null): void {
-  pendingUserSelection = null;
   snapshot = {
     primaryIdx: -1,
     selectedSet: EMPTY_SET,
@@ -75,25 +71,6 @@ export function resetSelectionChrome(fileId: string | null = null): void {
     fileId,
   };
   notifyListeners();
-}
-
-export function markUserSelectionChromePending(version: number, segmentCount: number): void {
-  pendingUserSelection = { version, segmentCount };
-}
-
-export function clearUserSelectionChromePending(): void {
-  pendingUserSelection = null;
-}
-
-export function isUserSelectionChromePending(
-  snap: SelectionChromeSnapshot,
-  segmentCount: number,
-): boolean {
-  if (pendingUserSelection === null) return false;
-  if (pendingUserSelection.version !== snap.version) return false;
-  if (pendingUserSelection.segmentCount !== segmentCount) return false;
-  if (snap.primaryIdx < 0 || snap.primaryIdx >= segmentCount) return false;
-  return true;
 }
 
 export function selectionRowState(
@@ -118,7 +95,6 @@ export function selectionSetsEqual(a: ReadonlySet<number>, b: ReadonlySet<number
 
 /** Test-only */
 export function resetSelectionChromeStoreForTests(): void {
-  pendingUserSelection = null;
   snapshot = {
     primaryIdx: -1,
     selectedSet: EMPTY_SET,

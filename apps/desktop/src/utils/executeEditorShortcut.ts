@@ -4,7 +4,10 @@ import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
-import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
+import {
+  resolveKeyboardAdvanceTarget,
+  resolveListSelectionNavAnchor,
+} from "./segmentListKeyboardNav";
 import type { EditorShortcutId } from "./editorShortcutRegistry";
 import {
   enqueueConfirmAdvanceTab,
@@ -100,23 +103,25 @@ export function executeEditorShortcut(
       return true;
     }
     case "segment.advancePrev": {
+      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
       const targetIdx = resolveKeyboardAdvanceTarget(
-        ctx.selectedIdx,
+        anchorIdx,
         -1,
         ctx.segments.length,
         deps.segmentListFilterNavState,
       );
-      if (targetIdx != null && targetIdx !== ctx.selectedIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      if (targetIdx != null && targetIdx !== anchorIdx) deps.scheduleAdvanceToSegment(targetIdx);
       return true;
     }
     case "segment.advanceNext": {
+      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
       const targetIdx = resolveKeyboardAdvanceTarget(
-        ctx.selectedIdx,
+        anchorIdx,
         1,
         ctx.segments.length,
         deps.segmentListFilterNavState,
       );
-      if (targetIdx != null && targetIdx !== ctx.selectedIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      if (targetIdx != null && targetIdx !== anchorIdx) deps.scheduleAdvanceToSegment(targetIdx);
       return true;
     }
     case "segment.delete": {

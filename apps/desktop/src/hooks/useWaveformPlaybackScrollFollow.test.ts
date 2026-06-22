@@ -69,7 +69,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
     );
 
     act(() => {
-      bus.tick();
+      bus.tick(15);
     });
 
     // playhead at 50% → 1500px; center in 400px viewport → 1500 - 200 = 1300
@@ -99,13 +99,13 @@ describe("useWaveformPlaybackScrollFollow", () => {
     );
 
     act(() => {
-      bus.tick();
+      bus.tick(15);
     });
 
     playheadTimeSec = 15.006;
 
     act(() => {
-      bus.tick();
+      bus.tick(15.006);
     });
 
     expect(playbackFollowScroll).toHaveBeenLastCalledWith(1300.6);
@@ -134,7 +134,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
     );
 
     act(() => {
-      bus.tick();
+      bus.tick(15);
     });
 
     expect(playbackFollowScroll).not.toHaveBeenCalled();

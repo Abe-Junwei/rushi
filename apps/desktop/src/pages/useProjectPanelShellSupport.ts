@@ -65,7 +65,6 @@ export function useProjectPanelExportShell(args: {
   flushSegmentTextDrafts: () => void;
   deliveryModeOpen: boolean;
   isIndexInSelection: (idx: number) => boolean;
-  selectSegmentAt: (idx: number) => void;
   selectionCount: number;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
@@ -98,18 +97,9 @@ export function useProjectPanelExportShell(args: {
     return () => window.clearInterval(id);
   }, [args.busy]);
 
-  /* eslint-disable react-hooks/exhaustive-deps -- args is a stable controller args object; we list used fields in deps */
-  const openSegmentContextMenu = useCallback(
-    (menu: SegmentContextMenuOpen) => {
-      const preserveMulti = args.isIndexInSelection(menu.segmentIdx) && args.selectionCount > 1;
-      if (!preserveMulti) {
-        args.selectSegmentAt(menu.segmentIdx);
-      }
-      setSegmentCtxMenu(menu);
-    },
-    [args.isIndexInSelection, args.selectSegmentAt, args.selectionCount],
-  );
-  /* eslint-enable react-hooks/exhaustive-deps */
+  const openSegmentContextMenu = useCallback((menu: SegmentContextMenuOpen) => {
+    setSegmentCtxMenu(menu);
+  }, []);
 
   const onExportSelect = useCallback(
     (key: string) => {

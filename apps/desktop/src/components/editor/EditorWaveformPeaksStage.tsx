@@ -32,6 +32,7 @@ type Props = {
   waveformHeightPreviewActive: boolean;
   stripDisabled: boolean;
   tierScrollProps: TierScrollProps;
+  filterExcludesPrimary?: boolean;
 };
 
 export function EditorWaveformPeaksStage({
@@ -46,6 +47,7 @@ export function EditorWaveformPeaksStage({
   waveformHeightPreviewActive,
   stripDisabled,
   tierScrollProps,
+  filterExcludesPrimary = false,
 }: Props) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const mediaDurationSec = tx.mediaDurationSec;
@@ -130,7 +132,9 @@ export function EditorWaveformPeaksStage({
                 selectedIndices={c.selectedIndices}
                 dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
                 draftIdx={overlayDraftIdx}
-                getPlayheadSec={tx.getPlayheadTime}
+                filterExcludesPrimary={filterExcludesPrimary}
+                getPlayheadSec={tx.getDisplayPlayheadTimeSec}
+                subscribePlayheadFrame={tx.subscribePlayheadFrame}
                 tierScrollRef={tx.tierScrollRef}
                 tierScrollLive={tx.tierScrollLive}
                 tierScrollLayout={tx.tierScrollLayout}
@@ -144,13 +148,14 @@ export function EditorWaveformPeaksStage({
                 selectionHi={c.selectionHi}
                 selectionCount={c.selectionCount}
                 isContiguousSelection={c.isContiguousSelection}
+                filterExcludesPrimary={filterExcludesPrimary}
                 timelineWidthPx={tx.timelineWidthPx}
                 durationSec={mediaDurationSec}
                 layoutHeightPx={segmentLayoutHeightPx}
                 laneByIndex={tx.segmentLaneLayout.laneByIndex}
                 laneCount={tx.segmentLaneLayout.laneCount}
                 dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
-                getPlayheadSec={tx.getPlayheadTime}
+                getPlayheadSec={tx.getDisplayPlayheadTimeSec}
                 onDraftIdxChange={onOverlayDraftIdxChange}
                 enableCreateRange
                 clientXToTimeSec={tx.clientXToTimeSec}
@@ -194,10 +199,9 @@ export function EditorWaveformPeaksStage({
                 isPlaying={tx.isPlaying}
                 isReady={tx.isReady}
                 currentTimeSec={tx.currentTime}
-                getPlayheadTime={tx.getPlayheadTime}
-                getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
-                formatMediaTime={tx.formatMediaTime}
+                getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
                 subscribePlayheadFrame={tx.subscribePlayheadFrame}
+                formatMediaTime={tx.formatMediaTime}
                 disabled={stripDisabled}
                 onCenterTierAtClientX={tx.centerTierAtClientX}
                 onSetScrollLeftPx={tx.userScrubScroll}
@@ -233,7 +237,7 @@ export function EditorWaveformPeaksStage({
                   isPlaying={tx.isPlaying}
                   isReady={tx.isReady}
                   currentTimeSec={tx.currentTime}
-                  getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
+                  getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
                   subscribePlayheadFrame={tx.subscribePlayheadFrame}
                   playbackFollowMode={tx.playbackScrollFollowMode}
                 />

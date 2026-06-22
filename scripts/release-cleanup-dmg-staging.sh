@@ -18,7 +18,7 @@ detach_stale_mounts() {
         ;;
       /dev/*"/Volumes/dmg."*)
         mount="${line##*$'\t'}"
-        if [[ -n "${img}" && ( "${img}" == *"/bundle/macos/rw."* || "${img}" == *"/bundle/dmg/rw."* ) ]]; then
+        if [[ -n "${img}" && "${img}" == *"${ROOT}"*"/apps/desktop/src-tauri/target/release/bundle/"* ]]; then
           echo "detach stale DMG mount: ${mount} (${img})"
           hdiutil detach "${mount}" -force 2>/dev/null || hdiutil detach "${img}" -force 2>/dev/null || true
         fi

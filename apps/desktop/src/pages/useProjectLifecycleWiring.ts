@@ -77,6 +77,7 @@ export function useProjectLifecycleWiring(
 
   const {
     segmentSelection,
+    clearMultiSelectionWithChrome,
     mutations,
     segmentDeleteConfirm,
     dirty,
@@ -280,6 +281,7 @@ export function useProjectLifecycleWiring(
     dirty,
     mutations,
     segmentSelection,
+    clearMultiSelectionWithChrome,
     segmentDeleteConfirm,
     glossaryLearn,
     manualCorrectionMemory,

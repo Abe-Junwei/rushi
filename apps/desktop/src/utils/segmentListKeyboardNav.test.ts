@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { resolveAdjacentVisibleSegmentIdx } from "./segmentListKeyboardNav";
+import {
+  commitSelectionChrome,
+  resetSelectionChromeStoreForTests,
+} from "../services/selection/selectionChromeStore";
+import {
+  resolveAdjacentVisibleSegmentIdx,
+  resolveListSelectionNavAnchor,
+} from "./segmentListKeyboardNav";
 
 describe("resolveAdjacentVisibleSegmentIdx", () => {
   const all = null;
@@ -34,5 +41,14 @@ describe("resolveAdjacentVisibleSegmentIdx", () => {
 
   it("returns null when filter is active but empty", () => {
     expect(resolveAdjacentVisibleSegmentIdx(0, 1, 6, [])).toBeNull();
+  });
+});
+
+describe("resolveListSelectionNavAnchor", () => {
+  it("prefers chrome primary over stale React selectedIdx", () => {
+    resetSelectionChromeStoreForTests();
+    commitSelectionChrome({ fileId: "f1", primaryIdx: 3, selectedSet: new Set([3]) });
+    expect(resolveListSelectionNavAnchor(0)).toBe(3);
+    resetSelectionChromeStoreForTests();
   });
 });

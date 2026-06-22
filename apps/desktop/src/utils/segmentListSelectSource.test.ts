@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { LIST_RAPID_SELECT_MS, nextListSelectSource, segmentListScrollCoalesceMs } from "./segmentListSelectSource";
+import { LIST_RAPID_SELECT_MS, isListSegmentSelectSource, nextListSelectSource } from "./segmentListSelectSource";
 
-describe("segmentListScrollCoalesceMs", () => {
-  it("scrolls immediately for all segment select sources", () => {
-    expect(segmentListScrollCoalesceMs("list")).toBe(0);
-    expect(segmentListScrollCoalesceMs("listAdvance")).toBe(0);
-    expect(segmentListScrollCoalesceMs("listKeyboard")).toBe(0);
-    expect(segmentListScrollCoalesceMs("waveform")).toBe(0);
+describe("isListSegmentSelectSource", () => {
+  it("matches list navigation sources only", () => {
+    expect(isListSegmentSelectSource("list")).toBe(true);
+    expect(isListSegmentSelectSource("listAdvance")).toBe(true);
+    expect(isListSegmentSelectSource("listKeyboard")).toBe(true);
+    expect(isListSegmentSelectSource("waveform")).toBe(false);
   });
 });
 

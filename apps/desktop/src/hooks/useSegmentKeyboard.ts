@@ -1,4 +1,8 @@
-import { useCallback, useEffect, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+} from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
@@ -31,7 +35,8 @@ export function useSegmentKeyboard(args: {
 
   useEffect(
     () => () => {
-      if (advanceRafRef.current) cancelAnimationFrame(advanceRafRef.current);
+      pendingAdvanceIdxRef.current = null;
+      advanceRafRef.current = 0;
     },
     [],
   );
@@ -55,8 +60,8 @@ export function useSegmentKeyboard(args: {
   const resolveAdvanceAnchorIdx = useCallback((segmentIdx: number): number => {
     const pending = pendingAdvanceIdxRef.current;
     if (pending != null) return pending;
-    const selectedIdx = argsRef.current.ctxRef.current.selectedIdx;
-    return selectedIdx >= 0 ? selectedIdx : segmentIdx;
+    // Anchor on the focused row; React selectedIdx may lag behind chrome after startTransition.
+    return segmentIdx;
   }, []);
 
   const advanceToSegment = useCallback(
@@ -68,7 +73,7 @@ export function useSegmentKeyboard(args: {
 
       // Keyboard navigation: listKeyboard source — reveal gated by F3, no seek.
       a.selectSegmentAtRef.current(targetIdx, "listKeyboard");
-      focusSegmentTextareaImmediate(targetIdx);
+      queueMicrotask(() => focusSegmentTextareaImmediate(targetIdx));
     },
     [focusSegmentTextareaImmediate],
   );
@@ -85,7 +90,8 @@ export function useSegmentKeyboard(args: {
     (targetIdx: number) => {
       pendingAdvanceIdxRef.current = targetIdx;
       if (advanceRafRef.current) return;
-      advanceRafRef.current = requestAnimationFrame(flushPendingAdvance);
+      advanceRafRef.current = 1;
+      queueMicrotask(flushPendingAdvance);
     },
     [flushPendingAdvance],
   );

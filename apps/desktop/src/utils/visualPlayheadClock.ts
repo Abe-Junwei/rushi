@@ -5,6 +5,8 @@ export type VisualPlayheadClockState = {
   emittedSec: number;
   emittedNowMs: number;
   lastRawSec: number;
+  /** Monotonic clock when {@link lastRawSec} last changed (sparse WS samples). */
+  lastRawNowMs: number;
 };
 
 export function createVisualPlayheadClockState(timeSec: number, nowMs = performance.now()): VisualPlayheadClockState {
@@ -13,15 +15,23 @@ export function createVisualPlayheadClockState(timeSec: number, nowMs = performa
     emittedSec: clamped,
     emittedNowMs: nowMs,
     lastRawSec: clamped,
+    lastRawNowMs: nowMs,
   };
 }
 
-/** Max the visual clock may lead raw media time. Bounds startup over-prediction so we never run far ahead then snap back. */
+/** Max the visual clock may lead raw media time when raw was sampled recently. */
 const MAX_LEAD_SEC = 0.05;
+/** Allow more extrapolation when raw samples are sparse (WaveSurfer can quantize 50–250ms). */
+const MAX_STALE_RAW_LEAD_SEC = 0.24;
 /** Raw moved back at least this far ⇒ genuine backward seek (snap). */
 const BACKWARD_SEEK_SEC = 0.2;
 /** Raw leapt ahead of prediction by at least this much ⇒ genuine forward seek (snap). */
 const FORWARD_JUMP_SEC = 0.35;
+
+function resolveMaxLeadSec(rawAgeSec: number, playbackRate: number): number {
+  if (rawAgeSec <= 0.04) return MAX_LEAD_SEC;
+  return Math.min(MAX_STALE_RAW_LEAD_SEC, MAX_LEAD_SEC + rawAgeSec * playbackRate);
+}
 
 export function readVisualPlayheadTimeSec(input: {
   state: VisualPlayheadClockState;
@@ -42,14 +52,25 @@ export function readVisualPlayheadTimeSec(input: {
     s.emittedSec = raw;
     s.emittedNowMs = input.nowMs;
     s.lastRawSec = raw;
+    s.lastRawNowMs = input.nowMs;
     return raw;
   }
 
-  // Smooth forward: fill gaps between quantized raw samples, but never run more than
-  // MAX_LEAD_SEC ahead of real media time (kills startup over-prediction + snap-back),
-  // and never move backward during forward playback (monotonic).
-  let next = Math.min(predicted, raw + MAX_LEAD_SEC);
-  next = Math.max(next, s.emittedSec);
+  // Normal forward WS timeupdate: anchor to raw immediately so extrapolation never trails.
+  if (raw > s.lastRawSec + 1e-4) {
+    s.emittedSec = raw;
+    s.emittedNowMs = input.nowMs;
+    s.lastRawSec = raw;
+    s.lastRawNowMs = input.nowMs;
+    return raw;
+  }
+
+  const rawAgeSec = Math.max(0, (input.nowMs - s.lastRawNowMs) / 1000);
+  const maxLead = resolveMaxLeadSec(rawAgeSec, rate);
+
+  // Between quantized raw samples: extrapolate forward, never trail last raw.
+  let next = Math.min(predicted, s.lastRawSec + maxLead);
+  next = Math.max(next, s.emittedSec, s.lastRawSec);
   if (dur > 0) next = Math.min(next, dur);
 
   s.emittedSec = next;

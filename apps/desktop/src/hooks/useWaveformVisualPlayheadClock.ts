@@ -4,6 +4,7 @@ import {
   readVisualPlayheadTimeSec,
   type VisualPlayheadClockState,
 } from "../utils/visualPlayheadClock";
+import { resolveDisplayPlayheadTimeSec } from "../utils/waveformDisplayPlayhead";
 
 /** Lower priority runs first within a frame (scroll-follow before playhead transform). */
 export type PlayheadFramePriority = number;
@@ -46,6 +47,18 @@ export function useWaveformVisualPlayheadClock(input: {
   }, []);
 
   const getVisualPlayheadTimeSec = useCallback(() => visualTimeSecRef.current, []);
+
+  /** Single UI read path: visual while playing, WaveSurfer raw when paused. */
+  const getDisplayPlayheadTimeSec = useCallback(
+    () =>
+      resolveDisplayPlayheadTimeSec({
+        isPlaying: argsRef.current.isPlaying,
+        isReady: argsRef.current.isReady,
+        getVisualPlayheadTimeSec: () => visualTimeSecRef.current,
+        getMediaPlayheadTimeSec: argsRef.current.getPlayheadTime,
+      }),
+    [],
+  );
 
   /** Subscribe to the single playback tick. Lower priority runs earlier in the frame. */
   const subscribePlayheadFrame = useCallback(
@@ -105,6 +118,7 @@ export function useWaveformVisualPlayheadClock(input: {
   return {
     visualTimeSecRef,
     getVisualPlayheadTimeSec,
+    getDisplayPlayheadTimeSec,
     subscribePlayheadFrame,
   };
 }

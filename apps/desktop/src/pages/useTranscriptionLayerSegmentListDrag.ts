@@ -1,10 +1,11 @@
 import { useCallback, useRef, type MutableRefObject, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
+import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import {
-  isSegmentBodyTextarea,
   querySegmentListScrollRoot,
   resolveSegmentListRangeDragHoverIndex,
   segmentListRangeDragExceededSlop,
+  segmentListRangeDragRequiresVerticalIntent,
   segmentListRangeDragVerticalIntentExceededSlop,
 } from "../utils/segmentListVirtualWindow";
 import { computeSegmentListDragAutoScrollDelta } from "../utils/segmentListDragAutoScroll";
@@ -14,18 +15,22 @@ type SelectSegmentAtRef = MutableRefObject<
   (idx: number, source?: import("../utils/waveformViewMode").SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
 >;
 
+type SelectSegmentRangeRef = MutableRefObject<(lo: number, hi: number) => void>;
+
 export function useTranscriptionLayerSegmentListDrag(opts: {
   ctxRef: RefObject<TranscriptionLayerInput>;
   segmentListRef: RefObject<HTMLDivElement | null>;
   selectSegmentAtRef: SelectSegmentAtRef;
+  selectSegmentRangeRef: SelectSegmentRangeRef;
+  lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
 }) {
-  const { ctxRef, segmentListRef, selectSegmentAtRef } = opts;
+  const { ctxRef, segmentListRef, selectSegmentAtRef, selectSegmentRangeRef, lastSegmentSelectSourceRef } = opts;
 
   const segmentListRangeDragRef = useRef<{
     anchorIdx: number;
     pointerId: number;
     moved: boolean;
-    fromTextBody: boolean;
+    verticalIntentOnly: boolean;
     startClientX: number;
     startClientY: number;
     lastClientX?: number;
@@ -41,15 +46,15 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       if ((e.target as HTMLElement).closest('[role="separator"]')) return;
       e.stopPropagation();
 
-      const fromTextBody = isSegmentBodyTextarea(
-        (e.target as HTMLElement).closest('textarea[aria-label="语段正文"]'),
-      );
+      const verticalIntentOnly = segmentListRangeDragRequiresVerticalIntent(e.target as HTMLElement);
+
+      lastSegmentSelectSourceRef.current = "multiSelect";
 
       segmentListRangeDragRef.current = {
         anchorIdx: idx,
         pointerId: e.pointerId,
         moved: false,
-        fromTextBody,
+        verticalIntentOnly,
         startClientX: e.clientX,
         startClientY: e.clientY,
       };
@@ -93,7 +98,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
           ctxRef.current.segments.length,
         );
         if (hoverIdx != null) {
-          ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
+          selectSegmentRangeRef.current(drag.anchorIdx, hoverIdx);
         }
         autoScrollRafRef.current = window.requestAnimationFrame(tickAutoScroll);
       };
@@ -105,7 +110,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         drag.lastClientY = ev.clientY;
         if (
           !drag.moved &&
-          !(drag.fromTextBody
+          !(drag.verticalIntentOnly
             ? segmentListRangeDragVerticalIntentExceededSlop(
                 drag.startClientX,
                 drag.startClientY,
@@ -136,7 +141,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         );
         if (hoverIdx == null) return;
         ev.preventDefault();
-        ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
+        selectSegmentRangeRef.current(drag.anchorIdx, hoverIdx);
       };
 
       const onUp = (ev: PointerEvent) => {
@@ -154,7 +159,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [ctxRef, segmentListRef, selectSegmentAtRef],
+    [ctxRef, lastSegmentSelectSourceRef, segmentListRef, selectSegmentAtRef, selectSegmentRangeRef],
   );
 
   const consumeSegmentListRangeClickSuppress = useCallback(() => {

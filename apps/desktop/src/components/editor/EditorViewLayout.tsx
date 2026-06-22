@@ -10,6 +10,7 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { useSegmentListFilter } from "../../hooks/useSegmentListFilter";
+import { isSegmentListFilterHidingPrimary } from "../../utils/segmentListFilterNav";
 
 type EditHistory = ReturnType<typeof useEditorEditHistory>;
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -34,7 +35,6 @@ export type EditorViewLayoutProps = {
   footerCenterLabel: string;
   footerCenterHintKind: "status" | "shortcut" | "none";
   transcriptStats: { segmentCount: number; charCount: number };
-  onOpenSegmentContextMenu: (menu: import("../../utils/segmentContextMenuModel").SegmentContextMenuOpen) => void;
   editorDialogs: ReactNode;
 };
 
@@ -57,9 +57,15 @@ export function EditorViewLayout({
   footerCenterLabel,
   footerCenterHintKind,
   transcriptStats,
-  onOpenSegmentContextMenu,
   editorDialogs,
 }: EditorViewLayoutProps) {
+  const filterExcludesPrimary = isSegmentListFilterHidingPrimary({
+    filterActive: segmentFilter.isActive,
+    filteredIndices: segmentFilter.filteredIndices,
+    primaryIdx: c.selectedIdx,
+    segmentCount: c.segments.length,
+  });
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
       <EditorToolbar
@@ -77,7 +83,7 @@ export function EditorViewLayout({
 
       <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
         {c.audioSrc ? (
-          <EditorWaveformPane controller={c} tx={tx} />
+          <EditorWaveformPane controller={c} tx={tx} filterExcludesPrimary={filterExcludesPrimary} />
         ) : (
           <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">
             <p>当前文件不包含音频轨道，因此无法显示波形。</p>
@@ -110,7 +116,7 @@ export function EditorViewLayout({
           filteredIndices={segmentFilter.filteredIndices}
           filterActive={segmentFilter.isActive}
           onResetSegmentListFilter={segmentFilter.resetFilter}
-          onOpenSegmentContextMenu={onOpenSegmentContextMenu}
+          onOpenSegmentContextMenu={tx.openSegmentContextMenu}
         />
       </main>
 

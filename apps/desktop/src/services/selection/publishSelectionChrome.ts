@@ -4,7 +4,6 @@ import { applySelectionChromeImperative } from "./applySelectionChromeImperative
 import {
   commitSelectionChrome,
   getSelectionChromeSnapshot,
-  markUserSelectionChromePending,
   type SelectionChromeSnapshot,
 } from "./selectionChromeStore";
 import { requestWaveformSegmentBandPaint } from "../../utils/tierScrollFrameCoordinator";
@@ -17,6 +16,8 @@ export function publishSelectionChrome(input: {
   listRoot: ParentNode | null;
   overlayRoot: ParentNode | null;
   markFirstPaint?: boolean;
+  /** Skip waveform band force-repaint (list keyboard / click path). */
+  skipBandPaint?: boolean;
 }): SelectionChromeSnapshot {
   const prevSnapshot = getSelectionChromeSnapshot();
   const nextSnapshot = commitSelectionChrome({
@@ -24,7 +25,6 @@ export function publishSelectionChrome(input: {
     primaryIdx: input.primaryIdx,
     selectedSet: input.selectedSet,
   });
-  markUserSelectionChromePending(nextSnapshot.version, input.segments.length);
 
   selectionProfileTime("listChrome", () => {
     applySelectionChromeImperative({
@@ -37,7 +37,9 @@ export function publishSelectionChrome(input: {
   });
 
   // Force band repaint so selection chrome is not dropped by scroll coalesce within 12ms.
-  requestWaveformSegmentBandPaint({ force: true });
+  if (!input.skipBandPaint) {
+    requestWaveformSegmentBandPaint({ force: true });
+  }
 
   if (input.markFirstPaint) {
     selectionProfileMarkFirstPaint();

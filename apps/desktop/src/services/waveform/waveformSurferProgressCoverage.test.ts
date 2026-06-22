@@ -8,11 +8,13 @@ import {
   installWaveSurferPlayedRegionDisplayFix,
   resetWaveSurferInternalScroll,
   restoreWaveSurferMainCanvasVisibility,
+  setWaveSurferVisualProgressRatioReader,
   WAVESURFER_MAX_CANVAS_CHUNK_PX,
   waveSurferLazyCanvasIndices,
 } from "./waveformSurferProgressCoverage";
 
 afterEach(() => {
+  setWaveSurferVisualProgressRatioReader(null);
   clearAllCspScopeRulesForTests();
 });
 
@@ -92,6 +94,30 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     renderer.renderProgress(0.4, false);
     expect(canvasWrapper.style.clipPath).toContain("40%");
     expect(progressWrapper.style.width).toBe("40%");
+  });
+
+  it("uses visual progress ratio while playing when a reader is registered", () => {
+    const canvasWrapper = document.createElement("div");
+    const progressWrapper = document.createElement("div");
+    const cursor = document.createElement("div");
+    const renderer = {
+      canvasWrapper,
+      progressWrapper,
+      cursor,
+      options: { cursorWidth: 1 },
+      renderProgress(_ratio: number, _isPlaying: boolean) {},
+    };
+    const ws = {
+      getRenderer: () => renderer,
+      getWrapper: () => null,
+    } as unknown as import("wavesurfer.js").default;
+
+    setWaveSurferVisualProgressRatioReader(() => 0.55);
+    const uninstall = installWaveSurferPlayedRegionDisplayFix(ws);
+    renderer.renderProgress(0.4, true);
+
+    expect(readCspLayoutRulesForElement(progressWrapper)).toMatch(/width:\s*55(\.\d+)?%/);
+    uninstall();
   });
 });
 

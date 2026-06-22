@@ -17,6 +17,22 @@ function resolveOverlaySelectionRange(input: {
   return { lo, hi };
 }
 
+function addCappedContiguousRange(
+  add: (idx: number) => void,
+  lo: number,
+  hi: number,
+  primaryIdx: number,
+): void {
+  const span = hi - lo + 1;
+  if (span <= MAX_DOM_OVERLAY_SPARSE) {
+    for (let idx = lo; idx <= hi; idx += 1) add(idx);
+    return;
+  }
+  add(primaryIdx);
+  add(lo);
+  add(hi);
+}
+
 export function selectOverlayRenderedSegmentIndices(input: {
   segments: SegmentDto[];
   dominantSpanIndices?: readonly number[];
@@ -68,9 +84,9 @@ export function selectOverlayInteractiveSegmentIndices(input: {
     hi > lo;
 
   if (fillContiguousRange) {
-    for (let idx = lo; idx <= hi; idx += 1) add(idx);
+    addCappedContiguousRange(add, lo, hi, input.selectedIdx);
   } else if (!input.selectedIndices || input.selectedIndices.size === 0) {
-    for (let idx = lo; idx <= hi; idx += 1) add(idx);
+    addCappedContiguousRange(add, lo, hi, input.selectedIdx);
   }
 
   if (input.draftIdx != null) add(input.draftIdx);

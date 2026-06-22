@@ -5,7 +5,7 @@ export function publishSelectionChromeForInput(
   c: TranscriptionLayerInput,
   input: { primaryIdx: number; selectedSet: ReadonlySet<number> },
   roots: { listRoot: ParentNode | null; overlayRoot: ParentNode | null },
-  opts?: { markFirstPaint?: boolean },
+  opts?: { markFirstPaint?: boolean; skipBandPaint?: boolean },
 ): void {
   publishSelectionChrome({
     fileId: c.fileId,
@@ -15,6 +15,7 @@ export function publishSelectionChromeForInput(
     listRoot: roots.listRoot,
     overlayRoot: roots.overlayRoot,
     markFirstPaint: opts?.markFirstPaint,
+    skipBandPaint: opts?.skipBandPaint,
   });
 }
 

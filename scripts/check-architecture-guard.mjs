@@ -683,9 +683,9 @@ function checkSegmentListRapidSelectGuard() {
   const keyboardPath = path.join(ROOT, keyboardRel);
   if (!fs.existsSync(keyboardPath)) return;
   const keyboardSource = fs.readFileSync(keyboardPath, 'utf-8');
-  if (!/advanceRafRef[\s\S]{0,260}requestAnimationFrame\(flushPendingAdvance\)/.test(keyboardSource)) {
+  if (!/advanceRafRef[\s\S]{0,260}(?:requestAnimationFrame|queueMicrotask)\(flushPendingAdvance\)/.test(keyboardSource)) {
     errors.push(
-      `${keyboardRel}: 快速 ↑↓ 切语段须至少在同一帧内合并到最后目标，避免按键重复触发选中链`,
+      `${keyboardRel}: 快速 ↑↓ 切语段须至少在同一微任务/帧内合并到最后目标，避免按键重复触发选中链`,
     );
   }
   if (/createListAdvanceCoalescedScheduler|createListAdvanceSegmentPlaybackScheduler/.test(keyboardSource)) {

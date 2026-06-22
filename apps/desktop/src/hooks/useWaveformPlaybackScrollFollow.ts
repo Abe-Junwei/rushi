@@ -30,7 +30,7 @@ function applyPlaybackScrollFollowTarget(args: {
   timelineWidthPx: number;
   durationSec: number;
   followMode: WaveformPlaybackScrollFollowMode;
-  getPlayheadTimeSec: () => number;
+  playheadTimeSec: number;
   playbackFollowScroll: UseWaveformPlaybackScrollFollowArgs["playbackFollowScroll"];
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 }): void {
@@ -42,7 +42,7 @@ function applyPlaybackScrollFollowTarget(args: {
   const vw = tier.clientWidth;
   if (vw <= 0) return;
 
-  const t = Math.max(0, Math.min(args.durationSec, args.getPlayheadTimeSec()));
+  const t = Math.max(0, Math.min(args.durationSec, args.playheadTimeSec));
   const currentScrollLeftPx = tier.scrollLeft;
   const target = resolvePlaybackScrollFollowTargetPx({
     mode: args.followMode,
@@ -91,7 +91,7 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
       timelineWidthPx,
       durationSec,
       followMode,
-      getPlayheadTimeSec,
+      playheadTimeSec: getPlayheadTimeSec(),
       playbackFollowScroll,
       userScrollSuppressUntilRef,
     });
@@ -113,13 +113,13 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     }
     // Runs inside the single playback tick (before the playhead transform) so scroll
     // and playhead share the same frame's time — no separate follow rAF.
-    return subscribePlayheadFrame(() => {
+    return subscribePlayheadFrame((timeSec) => {
       applyPlaybackScrollFollowTarget({
         tierScrollRef,
         timelineWidthPx,
         durationSec,
         followMode: followModeRef.current,
-        getPlayheadTimeSec,
+        playheadTimeSec: timeSec,
         playbackFollowScroll,
         userScrollSuppressUntilRef,
       });

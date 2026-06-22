@@ -34,7 +34,10 @@ export function SegmentRowTimestampColumn({
           "segment-row-meta-column-fallback shrink-0 touch-none select-none pt-2 pr-3 text-right",
           busy ? "cursor-not-allowed" : "cursor-cell",
         ].join(" ")}
-        onPointerDown={(e) => onTimestampPointerDown?.(index, e)}
+        onPointerDown={(e) => {
+          onTimestampPointerDown?.(index, e);
+          e.stopPropagation();
+        }}
       >
         <div className="segment-row-meta-stack flex flex-col gap-1">
           <span

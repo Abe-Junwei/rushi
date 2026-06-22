@@ -371,3 +371,4 @@ node scripts/check-architecture-guard.mjs
 |------|------|
 | 2026-06-21 | 初版：H1–H20 步骤 + 汇总矩阵 + 签收头 |
 | 2026-06-20 | 手测 **Go**：H1–H20 全 PASS；机器闸门 1749 tests + guard 0 error |
+| 2026-06-22 | WL 交互修复后回归：见 [`waveform-list-interaction-hand-test-evidence.md`](./waveform-list-interaction-hand-test-evidence.md)（机器闸门 1830 + WL 单测绿；UI 待复验） |

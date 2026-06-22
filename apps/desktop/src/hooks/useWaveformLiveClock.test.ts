@@ -10,15 +10,13 @@ describe("useWaveformLiveClock", () => {
 
   it("updates display time when paused and currentTimeSec changes", () => {
     const formatMediaTime = (sec: number) => `${Math.floor(sec)}s`;
-    const getPlayheadTime = () => 0;
-
     const { result, rerender } = renderHook(
       (props: { currentTimeSec: number; isPlaying: boolean }) =>
         useWaveformLiveClock({
           isPlaying: props.isPlaying,
           isReady: true,
           currentTimeSec: props.currentTimeSec,
-          getPlayheadTime,
+          getDisplayPlayheadTimeSec: () => props.currentTimeSec,
           formatMediaTime,
           durationSec: 600,
         }),
@@ -31,7 +29,7 @@ describe("useWaveformLiveClock", () => {
     expect(result.current.displayTimeLabel).toBe("125s");
   });
 
-  it("advances visual playhead time via subscribePlayheadFrame while playing", () => {
+  it("advances display time via subscribePlayheadFrame while playing", () => {
     const moves: number[] = [];
     const subscribePlayheadFrame = (cb: (timeSec: number) => void) => {
       cb(0.016);
@@ -43,7 +41,7 @@ describe("useWaveformLiveClock", () => {
       useWaveformLiveClock({
         isPlaying: true,
         isReady: true,
-        getPlayheadTime: () => 0,
+        getDisplayPlayheadTimeSec: () => 0,
         formatMediaTime: (sec) => `${sec}`,
         durationSec: 10,
         onPlayheadMove: (timeSec) => moves.push(timeSec),

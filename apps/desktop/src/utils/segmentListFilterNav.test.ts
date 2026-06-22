@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createEmptySegmentListFilterNavState,
+  isSegmentListFilterHidingPrimary,
   resolveEffectiveFilteredIndices,
 } from "./segmentListFilterNav";
 
@@ -19,5 +20,27 @@ describe("segmentListFilterNav", () => {
 
   it("returns null when filter includes every segment", () => {
     expect(resolveEffectiveFilteredIndices({ active: true, indices: [0, 1, 2] }, 3)).toBeNull();
+  });
+
+  it("isSegmentListFilterHidingPrimary when active filter excludes primary", () => {
+    expect(
+      isSegmentListFilterHidingPrimary({
+        filterActive: true,
+        filteredIndices: [0, 2],
+        primaryIdx: 5,
+        segmentCount: 10,
+      }),
+    ).toBe(true);
+  });
+
+  it("isSegmentListFilterHidingPrimary is false when primary remains visible", () => {
+    expect(
+      isSegmentListFilterHidingPrimary({
+        filterActive: true,
+        filteredIndices: [0, 2, 5],
+        primaryIdx: 5,
+        segmentCount: 10,
+      }),
+    ).toBe(false);
   });
 });

@@ -429,7 +429,7 @@ describe("useTierScrollSync", () => {
     expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(240);
   });
 
-  it("playback follow writes scroll without committing burst layout immediately", async () => {
+  it("playback follow writes scroll and commits layout immediately", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -455,7 +455,7 @@ describe("useTierScrollSync", () => {
 
     expect(tier.scrollLeft).toBe(144);
     expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(144);
-    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(0);
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(144);
   });
 
   it("playback follow flushes viewport chrome in the same frame as the scroll write", () => {

@@ -81,7 +81,7 @@ describe("finishWaveformLassoDrag", () => {
     expect(seekToTime).toHaveBeenCalledWith(12.5);
   });
 
-  it("blank lasso prefers create when range fits a gap even if it grazes a segment", () => {
+  it("blank lasso creates when drag stays in a gap with no segment hits", () => {
     const onCreateRange = vi.fn();
     const onSelectSegmentIndices = vi.fn();
     const args = makeArgs({
@@ -108,5 +108,63 @@ describe("finishWaveformLassoDrag", () => {
     });
     expect(onCreateRange).toHaveBeenCalled();
     expect(onSelectSegmentIndices).not.toHaveBeenCalled();
+  });
+
+  it("blank lasso multi-selects intersecting segments instead of creating in a trimmed gap", () => {
+    const onCreateRange = vi.fn();
+    const onSelectSegmentIndices = vi.fn();
+    const args = makeArgs({
+      durationSec: 20,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 5, text: "A" },
+        { uid: "b", idx: 1, start_sec: 10, end_sec: 15, text: "B" },
+      ],
+      onCreateRange,
+      onSelectSegmentIndices,
+    });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag({
+        moved: true,
+        blankLasso: true,
+        initialStartSec: 1,
+        initialEndSec: 1,
+      }),
+      timeSec: 12,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(onSelectSegmentIndices).toHaveBeenCalledWith([0, 1], 0);
+    expect(onCreateRange).not.toHaveBeenCalled();
+  });
+
+  it("blank lasso selects a single intersecting segment", () => {
+    const onCreateRange = vi.fn();
+    const onSelectSegmentIndices = vi.fn();
+    const args = makeArgs({
+      durationSec: 20,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 5, text: "A" },
+        { uid: "b", idx: 1, start_sec: 10, end_sec: 15, text: "B" },
+      ],
+      onCreateRange,
+      onSelectSegmentIndices,
+    });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag({
+        moved: true,
+        blankLasso: true,
+        initialStartSec: 1,
+        initialEndSec: 1,
+      }),
+      timeSec: 3,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(onSelectSegmentIndices).toHaveBeenCalledWith([0], 0);
+    expect(onCreateRange).not.toHaveBeenCalled();
   });
 });

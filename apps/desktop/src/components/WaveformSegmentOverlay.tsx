@@ -18,6 +18,7 @@ export type WaveformSegmentOverlayProps = {
   selectionCount?: number;
   isContiguousSelection?: boolean;
   selectedIndices?: ReadonlySet<number>;
+  filterExcludesPrimary?: boolean;
   isIndexInSelection?: (idx: number) => boolean;
   timelineWidthPx: number;
   durationSec: number;
@@ -84,6 +85,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     selectionCount: props.selectionCount,
     isContiguousSelection: props.isContiguousSelection,
     segmentCount: segments.length,
+    filterExcludesPrimary: props.filterExcludesPrimary,
   });
 
   const segmentIndices = useMemo(

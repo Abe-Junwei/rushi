@@ -18,6 +18,7 @@ import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
 import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
 import { useWaveformVisualPlayheadClock } from "./useWaveformVisualPlayheadClock";
+import { setWaveSurferVisualProgressRatioReader } from "../services/waveform/waveformSurferProgressCoverage";
 import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
 import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
@@ -152,6 +153,25 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     getPlayheadTime: wf.getPlayheadTime,
   });
 
+  useEffect(() => {
+    const dur = timelineMetrics.mediaDurationSec;
+    if (!wf.isPlaying || !wf.isReady || dur <= 0) {
+      setWaveSurferVisualProgressRatioReader(null);
+      return;
+    }
+    setWaveSurferVisualProgressRatioReader(
+      () => visualPlayheadClock.getDisplayPlayheadTimeSec() / dur,
+    );
+    return () => {
+      setWaveSurferVisualProgressRatioReader(null);
+    };
+  }, [
+    timelineMetrics.mediaDurationSec,
+    visualPlayheadClock.getDisplayPlayheadTimeSec,
+    wf.isPlaying,
+    wf.isReady,
+  ]);
+
   const scroll = useTierScrollSync({
     tierScrollRef,
     timelineWidthPx,
@@ -211,7 +231,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     isReady: wf.isReady,
     enabled: Boolean(ctx.mediaUrl && wf.isReady),
     followMode: routePrefs.playbackScrollFollowMode,
-    getPlayheadTimeSec: visualPlayheadClock.getVisualPlayheadTimeSec,
+    getPlayheadTimeSec: visualPlayheadClock.getDisplayPlayheadTimeSec,
     playbackFollowScroll: scroll.playbackFollowScroll,
     userScrollSuppressUntilRef: playbackFollowSuppressUntilRef,
     subscribePlayheadFrame: visualPlayheadClock.subscribePlayheadFrame,
@@ -289,7 +309,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     minimapScrubScroll: scroll.minimapScrubScroll,
     tierScrollLive: scroll.tierScrollLive,
     suppressPlaybackFollowForSelectionSeek,
-    getVisualPlayheadTimeSec: visualPlayheadClock.getVisualPlayheadTimeSec,
+    getDisplayPlayheadTimeSec: visualPlayheadClock.getDisplayPlayheadTimeSec,
     subscribePlayheadFrame: visualPlayheadClock.subscribePlayheadFrame,
     clearWaveformPeaksCache: peaks.clearAndReloadPeaks,
     routePrefs,

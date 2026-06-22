@@ -96,6 +96,27 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(hits.length).toBe(1);
   });
 
+  it("getDisplayPlayheadTimeSec uses media time when paused and visual when playing", () => {
+    const { result, rerender } = renderHook(
+      (props: { isPlaying: boolean }) =>
+        useWaveformVisualPlayheadClock({
+          isPlaying: props.isPlaying,
+          isReady: true,
+          durationSec: 30,
+          currentTimeSec: 5,
+          playbackRate: 1,
+          getPlayheadTime: () => 5,
+        }),
+      { initialProps: { isPlaying: false } },
+    );
+
+    expect(result.current.getDisplayPlayheadTimeSec()).toBe(5);
+
+    rerender({ isPlaying: true });
+    result.current.visualTimeSecRef.current = 7.25;
+    expect(result.current.getDisplayPlayheadTimeSec()).toBe(7.25);
+  });
+
   it("does not restart playing rAF when currentTimeSec changes (S7)", async () => {
     const source = await import("./useWaveformVisualPlayheadClock.ts?raw");
     expect(source.default).toMatch(

@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, memo, type MouseEvent as ReactMouseEvent } from "react";
 import { CspLayout } from "../CspLayout";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -17,7 +17,6 @@ import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 import { logSegmentRowLayoutProbe } from "../../utils/releaseFrontendProbe";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
 import { useSelectionChromePrimaryIdx } from "../../hooks/useSegmentRowSelection";
-import { useSelectionChromeReconcile } from "../../hooks/useSelectionChromeReconcile";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -35,7 +34,7 @@ interface EditorSegmentListProps {
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
-export function EditorSegmentList({
+export const EditorSegmentList = memo(function EditorSegmentList({
   controller: c,
   tx,
   appearance: a,
@@ -50,12 +49,16 @@ export function EditorSegmentList({
   controllerRef.current = c;
 
   const displayCount = filteredIndices.length;
+  const chromePrimaryIdx = useSelectionChromePrimaryIdx();
+  // Imperative chrome updates before React selectedIdx (startTransition); scroll/pin must follow chrome.
+  const listScrollSegmentIdx =
+    chromePrimaryIdx >= 0 ? chromePrimaryIdx : c.selectedIdx;
   const selectedDisplayIndex =
-    c.selectedIdx >= 0
+    listScrollSegmentIdx >= 0
       ? filterActive
-        ? filteredIndices.indexOf(c.selectedIdx)
-        : c.selectedIdx < displayCount
-          ? c.selectedIdx
+        ? filteredIndices.indexOf(listScrollSegmentIdx)
+        : listScrollSegmentIdx < displayCount
+          ? listScrollSegmentIdx
           : -1
       : -1;
 
@@ -66,21 +69,10 @@ export function EditorSegmentList({
     filterActive,
     displayCount,
     selectedDisplayIndex,
-    selectedIdx: c.selectedIdx,
+    selectedIdx: listScrollSegmentIdx,
     currentFileId: c.currentFileId,
     transcriptRowHeightPx: tx.transcriptRowHeightPx,
     lastSegmentSelectSourceRef: tx.lastSegmentSelectSourceRef,
-  });
-
-  const chromePrimaryIdx = useSelectionChromePrimaryIdx();
-
-  useSelectionChromeReconcile({
-    fileId: c.currentFileId,
-    primaryIdx: c.selectedIdx,
-    selectedIndicesArray: c.selectedIndicesArray,
-    segments: c.segments,
-    segmentListRef,
-    tierScrollRef: tx.tierScrollRef,
   });
 
   useLayoutEffect(() => {
@@ -214,7 +206,7 @@ export function EditorSegmentList({
     : filteredIndices;
 
   const showFilteredSelectedBanner =
-    filterActive && c.selectedIdx >= 0 && selectedDisplayIndex < 0;
+    filterActive && listScrollSegmentIdx >= 0 && selectedDisplayIndex < 0;
 
   return (
     <div
@@ -277,4 +269,35 @@ export function EditorSegmentList({
       )}
     </div>
   );
+}, areEditorSegmentListPropsEqual);
+
+function areEditorSegmentListPropsEqual(
+  prev: EditorSegmentListProps,
+  next: EditorSegmentListProps,
+): boolean {
+  if (prev.controller.busy !== next.controller.busy) return false;
+  if (prev.controller.currentFileId !== next.controller.currentFileId) return false;
+  if (prev.controller.selectedIdx !== next.controller.selectedIdx) return false;
+  if (prev.controller.selectionCount !== next.controller.selectionCount) return false;
+  if (prev.controller.selectedIndicesArray !== next.controller.selectedIndicesArray) return false;
+  if (prev.controller.segments !== next.controller.segments) return false;
+  if (prev.controller.segments.length !== next.controller.segments.length) return false;
+  if (prev.filteredIndices !== next.filteredIndices) return false;
+  if (prev.filterActive !== next.filterActive) return false;
+  if (prev.controller.findReplaceEditorHighlight !== next.controller.findReplaceEditorHighlight) {
+    return false;
+  }
+  if (prev.controller.correctionRulesEditorHighlight !== next.controller.correctionRulesEditorHighlight) {
+    return false;
+  }
+  if (prev.controller.updateSegmentText !== next.controller.updateSegmentText) return false;
+  if (prev.controller.editorSpansForText !== next.controller.editorSpansForText) return false;
+  if (prev.tx.transcriptFontPx !== next.tx.transcriptFontPx) return false;
+  if (prev.tx.transcriptRowHeightPx !== next.tx.transcriptRowHeightPx) return false;
+  if (prev.tx.selectSegmentFromList !== next.tx.selectSegmentFromList) return false;
+  if (prev.tx.onSegmentTextareaKeyDown !== next.tx.onSegmentTextareaKeyDown) return false;
+  if (prev.appearance !== next.appearance) return false;
+  if (prev.onResetSegmentListFilter !== next.onResetSegmentListFilter) return false;
+  if (prev.onOpenSegmentContextMenu !== next.onOpenSegmentContextMenu) return false;
+  return true;
 }

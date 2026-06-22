@@ -225,7 +225,6 @@ export function ProjectPanel() {
                 llmStatusRefreshSeq={llmUiEpoch}
                 segmentCtxMenu={segmentCtxMenu}
                 setSegmentCtxMenu={setSegmentCtxMenu}
-                onOpenSegmentContextMenu={openSegmentContextMenu}
               />
             </main>
           </CollapsibleWorkspaceShell>

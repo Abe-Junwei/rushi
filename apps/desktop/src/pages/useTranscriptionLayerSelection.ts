@@ -22,13 +22,18 @@ import {
 } from "../services/ui/selectionLatencyProfile";
 import { publishSelectionChromeForInput } from "../services/selection/publishSelectionChromeForInput";
 import { resolveSelectionChromePreview } from "../services/selection/resolveSelectionChromePreview";
+import { applyContextMenuSelectionBeforeOpen } from "../services/selection/segmentContextMenuSelection";
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
 import {
   shouldRevealOnSegmentSelect,
   shouldSeekOnSegmentSelect,
 } from "../utils/selectionRevealSeekPolicy";
+import { isListSegmentSelectSource } from "../utils/segmentListSelectSource";
+import { imperativeScrollListSegmentIntoView } from "../utils/segmentListScrollIntoView";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
+
+const LIST_KEYBOARD_REVEAL_DEBOUNCE_MS = 180;
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 
@@ -70,6 +75,8 @@ export function useTranscriptionLayerSelection(opts: {
 
   /** 最近一次语段选中来源（供列表 scroll coalesce 分支）。 */
   const lastSegmentSelectSourceRef = useRef<SegmentSelectSource>("waveform");
+  const pendingRevealRafRef = useRef(0);
+  const pendingRevealTimeoutRef = useRef(0);
 
   const laneBoundsSig = useMemo(() => p1LaneBoundsSignature(ctx.segments), [ctx.segments]);
   const segmentLaneLayout = useMemo(() => {
@@ -85,7 +92,15 @@ export function useTranscriptionLayerSelection(opts: {
   }, [waveformShellRef]);
 
   const commitSelectedIdxUi = useCallback(
-    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+    (
+      idx: number,
+      source: SegmentSelectSource,
+      opts?: { shiftKey?: boolean; toggle?: boolean },
+    ) => {
+      if (isListSegmentSelectSource(source)) {
+        setSelectedIdxUi(idx, opts);
+        return;
+      }
       startTransition(() => {
         setSelectedIdxUi(idx, opts);
       });
@@ -97,7 +112,8 @@ export function useTranscriptionLayerSelection(opts: {
     (
       c: TranscriptionLayerInput,
       idx: number,
-      opts?: { shiftKey?: boolean; toggle?: boolean },
+      opts: { shiftKey?: boolean; toggle?: boolean } | undefined,
+      source: SegmentSelectSource,
     ) => {
       const preview = resolveSelectionChromePreview(c, idx, opts);
       const tier = scrollFitRef.current.timeline.tierScrollRef.current;
@@ -108,7 +124,10 @@ export function useTranscriptionLayerSelection(opts: {
           listRoot: segmentListRef.current,
           overlayRoot: tier?.querySelector(".waveform-timeline-overlay-layer") ?? null,
         },
-        { markFirstPaint: isSelectionLatencyProfileEnabled() },
+        {
+          markFirstPaint: isSelectionLatencyProfileEnabled(),
+          skipBandPaint: source != null && isListSegmentSelectSource(source),
+        },
       );
     },
     [segmentListRef],
@@ -123,6 +142,34 @@ export function useTranscriptionLayerSelection(opts: {
       end_sec: seg.end_sec,
     });
   }, [ctxRef]);
+
+  const scheduleRevealSelectedSegment = useCallback(
+    (seg: { start_sec: number; end_sec: number }, source: SegmentSelectSource) => {
+      cancelAnimationFrame(pendingRevealRafRef.current);
+      pendingRevealRafRef.current = 0;
+      window.clearTimeout(pendingRevealTimeoutRef.current);
+
+      const reveal = () => {
+        selectionProfileTime("viewport", () => {
+          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+            start_sec: seg.start_sec,
+            end_sec: seg.end_sec,
+          });
+        });
+      };
+
+      if (source === "listKeyboard") {
+        pendingRevealTimeoutRef.current = window.setTimeout(reveal, LIST_KEYBOARD_REVEAL_DEBOUNCE_MS);
+        return;
+      }
+
+      pendingRevealRafRef.current = requestAnimationFrame(() => {
+        pendingRevealRafRef.current = 0;
+        reveal();
+      });
+    },
+    [],
+  );
 
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean; toggle?: boolean }) => {
@@ -143,8 +190,10 @@ export function useTranscriptionLayerSelection(opts: {
       const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChanged;
       selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
       lastSegmentSelectSourceRef.current = source;
-      const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
-      const seg = plan.segment;
+      const seg =
+        shouldSeek || (shouldReveal && source === "waveform")
+          ? selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s)).segment
+          : s;
       if (shouldSeek) {
         const tl = scrollFitRef.current.timeline;
         selectionProfileTime("seek", () => {
@@ -152,25 +201,26 @@ export function useTranscriptionLayerSelection(opts: {
           tl.wfApiRef.current.seek(segmentStartSec(s));
         });
       }
-      if (shouldReveal) {
-        selectionProfileTime("viewport", () => {
-          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
-        });
-      }
       selectionProfileTime("flushSelectedIdx", () => {
         const idxChangedForChrome =
           idx !== c.selectedIdx || Boolean(opts?.shiftKey) || Boolean(opts?.toggle);
         if (idxChangedForChrome) {
-          paintSelectionChrome(c, idx, opts);
+          paintSelectionChrome(c, idx, opts, source);
         }
-        commitSelectedIdxUi(idx, opts);
+        commitSelectedIdxUi(idx, source, opts);
+        if (isListSegmentSelectSource(source)) {
+          const listRoot = segmentListRef.current;
+          if (listRoot) {
+            imperativeScrollListSegmentIntoView(idx, listRoot, { align: "minimal" });
+          }
+        }
         if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
       });
+      if (shouldReveal) {
+        scheduleRevealSelectedSegment(seg, source);
+      }
       if (isSelectionLatencyProfileEnabled()) {
         selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
       }
@@ -178,7 +228,7 @@ export function useTranscriptionLayerSelection(opts: {
         selectionProfileTime("focus", focusWaveformShell);
       }
     },
-    [commitSelectedIdxUi, ctxRef, focusWaveformShell, paintSelectionChrome, waveformShellRef],
+    [commitSelectedIdxUi, ctxRef, focusWaveformShell, paintSelectionChrome, scheduleRevealSelectedSegment, waveformShellRef],
   );
 
   selectSegmentAtRef.current = selectSegmentAt;
@@ -207,6 +257,18 @@ export function useTranscriptionLayerSelection(opts: {
         durationSec: timeline.timelineMetrics.mediaDurationSec,
       });
       if (segmentIdx < 0) return;
+      applyContextMenuSelectionBeforeOpen(
+        {
+          x: input.clientX,
+          y: input.clientY,
+          segmentIdx,
+          pointerTimeSec,
+          origin: "waveform",
+          selectionText: "",
+        },
+        c,
+        (idx, source) => selectSegmentAt(idx, source),
+      );
       c.onOpenSegmentContextMenu({
         x: input.clientX,
         y: input.clientY,
@@ -216,7 +278,7 @@ export function useTranscriptionLayerSelection(opts: {
         selectionText: "",
       });
     },
-    [ctxRef, segmentLaneLayout.laneByIndex, segmentLaneLayout.laneCount, timeline.timelineMetrics.mediaDurationSec, timeline.wfApiRef],
+    [ctxRef, segmentLaneLayout.laneByIndex, segmentLaneLayout.laneCount, selectSegmentAt, timeline.timelineMetrics.mediaDurationSec, timeline.wfApiRef],
   );
 
   return {

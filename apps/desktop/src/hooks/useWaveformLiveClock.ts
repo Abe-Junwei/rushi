@@ -1,38 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { playheadTimelineLeftPct } from "../utils/waveformProjection";
 
-/** Ruler label clock: playing ticks via subscribePlayheadFrame; paused follows currentTimeSec. */
+/** Ruler / toolbar label clock — reads {@link getDisplayPlayheadTimeSec} only. */
 export function useWaveformLiveClock(args: {
   isPlaying: boolean;
   isReady: boolean;
-  getPlayheadTime: () => number;
+  getDisplayPlayheadTimeSec: () => number;
   formatMediaTime: (sec: number) => string;
   durationSec: number;
-  /** WaveSurfer seeking/timeupdate — keeps label in sync while paused. */
+  /** Paused seek commits — retriggers label sync without playing rAF bus. */
   currentTimeSec?: number;
-  /** When omitted, playhead pct falls back to time/duration (label-only consumers). */
   timelineWidthPx?: number;
-  playbackRate?: number;
   onPlayheadMove?: (timeSec: number, leftPct: number) => void;
   subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
-  getVisualPlayheadTimeSec?: () => number;
 }) {
   const {
     isPlaying,
     isReady,
-    getPlayheadTime,
+    getDisplayPlayheadTimeSec,
     formatMediaTime,
     durationSec,
     currentTimeSec = 0,
     timelineWidthPx = 0,
     onPlayheadMove,
     subscribePlayheadFrame,
-    getVisualPlayheadTimeSec,
   } = args;
   const [displayTimeSec, setDisplayTimeSec] = useState(0);
-  const getPlayheadTimeRef = useRef(getPlayheadTime);
+  const getDisplayPlayheadTimeSecRef = useRef(getDisplayPlayheadTimeSec);
   const onPlayheadMoveRef = useRef(onPlayheadMove);
-  getPlayheadTimeRef.current = getPlayheadTime;
+  getDisplayPlayheadTimeSecRef.current = getDisplayPlayheadTimeSec;
   onPlayheadMoveRef.current = onPlayheadMove;
 
   const applyDisplayTime = (t: number, forceUi: boolean) => {
@@ -66,12 +62,11 @@ export function useWaveformLiveClock(args: {
         onPlayheadMoveRef.current?.(timeSec, leftPct);
       });
     }
-    const pausedTime = getVisualPlayheadTimeSec?.() ?? currentTimeSec;
-    applyDisplayTime(pausedTime, true);
+    applyDisplayTime(getDisplayPlayheadTimeSecRef.current(), true);
   }, [
     currentTimeSec,
     durationSec,
-    getVisualPlayheadTimeSec,
+    getDisplayPlayheadTimeSec,
     isPlaying,
     isReady,
     subscribePlayheadFrame,

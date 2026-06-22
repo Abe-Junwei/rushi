@@ -26,7 +26,7 @@ function makePlayheadProps(overrides: Partial<ComponentProps<typeof WaveformView
     isPlaying: false,
     isReady: true,
     currentTimeSec: 50,
-    getVisualPlayheadTimeSec: () => 50,
+    getDisplayPlayheadTimeSec: () => 50,
     subscribePlayheadFrame: (_cb: (timeSec: number) => void) => () => {},
     playbackFollowMode: "edge" as const,
     ...overrides,
@@ -46,7 +46,7 @@ describe("WaveformViewportPlayhead", () => {
     const props = makePlayheadProps({
       tierScrollLayout: { scrollLeftPx: 0, clientWidthPx: 800 },
       currentTimeSec: 30,
-      getVisualPlayheadTimeSec: () => 30,
+      getDisplayPlayheadTimeSec: () => 30,
     });
     props.tierScrollRef.current!.scrollLeft = 0;
 
@@ -72,7 +72,7 @@ describe("WaveformViewportPlayhead", () => {
           tierScrollRef: { current: tierScroll },
           tierScrollLayout: { scrollLeftPx: 0, clientWidthPx: 800 },
           currentTimeSec: 33.3333,
-          getVisualPlayheadTimeSec: () => 33.3333,
+          getDisplayPlayheadTimeSec: () => 33.3333,
         })}
       />,
     );
@@ -86,7 +86,7 @@ describe("WaveformViewportPlayhead", () => {
       <WaveformViewportPlayhead
         {...makePlayheadProps({
           isPlaying: true,
-          getVisualPlayheadTimeSec: () => 12.345,
+          getDisplayPlayheadTimeSec: () => 12.345,
           playbackFollowMode: "center",
         })}
       />,

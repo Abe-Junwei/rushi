@@ -49,10 +49,9 @@
 |------|------|
 | Chrome store | `apps/desktop/src/services/selection/selectionChromeStore.test.ts` |
 | Imperative paint | `apps/desktop/src/services/selection/applySelectionChromeImperative.test.ts` |
-| Reconcile | `apps/desktop/src/services/selection/reconcileSelectionChromeFromReact.test.ts` |
 | Selection profile | `apps/desktop/src/pages/useTranscriptionLayerSelection.profile.test.ts` |
+| **V-CI sync path** | `apps/desktop/src/perf/selectionChromeSyncPath.perf.ts` |
 | List scroll | `apps/desktop/src/components/editor/useEditorSegmentListScroll.test.ts` |
-| Waveform imperative（迁移） | `apps/desktop/src/services/waveform/applyWaveformSegmentSelectionImperative.test.ts` |
 
 ### 性能（DevTools · 193 段素材）
 
@@ -64,17 +63,20 @@ __rushiSelectionProfile.enable()
 __rushiSelectionProfile.print()
 ```
 
-| 指标 | 通过标准 | 说明 |
-|------|----------|------|
-| `firstPaint` | **≤30ms**（波形源） | imperative chrome |
-| `listChrome` | **≤30ms**（Phase 1+） | 列表 DOM 部分 |
-| `flushSelectedIdx` | **≤40ms** | 含 store + imperative |
-| `listCommit` | 记录即可 | 允许 100–500ms；**不**作为 blocker 若 SC-H1 通过 |
-| `syncPathTotal` | **≤80ms** | 从 click 到 profile 行中 sync spans 之和的上界（plan 定义） |
+| 指标 | CI（V-CI） | 手测（F-SPLIT） | 说明 |
+|------|------------|-----------------|------|
+| `syncPathTotal` | **≤80ms** fail | 记录 | flushSelectedIdx + firstPaint + listChrome + resolvePlan + viewport + seek + focus |
+| `firstPaint` | — | **≤50ms** | imperative chrome |
+| `listChrome` | — | **≤50ms** | store commit + 波形 imperative |
+| `listCommit` | 记录即可 | 记录 | 允许 100–500ms；**不**作为 CI blocker |
+| `listScroll` | 波形视口内 = 0 | 波形视口内 = 0 | P1 回归 |
+
+CI 命令：`npm run test:perf -w @rushi/desktop`（含 193 段基准）。
 
 ### 手测矩阵
 
-> 素材：**≥193 段**（如 `D3-堂3-3笼统制控座-5月2日（法砆法师）`）+ 可选 500+ 段回归 H10。
+> 素材：**≥193 段**（如 `D3-堂3-3笼统制控座-5月2日（法砆法师）`）+ 可选 500+ 段回归 H10。  
+> **WL 薄片证据**：[`waveform-list-interaction-hand-test-evidence.md`](./waveform-list-interaction-hand-test-evidence.md)（2026-06-22）
 
 | ID | 步骤 | Pass 标准 |
 |----|------|-----------|

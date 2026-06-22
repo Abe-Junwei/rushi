@@ -44,7 +44,9 @@ export type WaveformSegmentBandCanvasProps = {
   selectedIndices?: ReadonlySet<number>;
   dominantSpanIndices?: readonly number[];
   draftIdx: number | null;
+  filterExcludesPrimary?: boolean;
   getPlayheadSec?: () => number;
+  subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
   tierScrollRef: RefObject<HTMLElement | null>;
   tierScrollLive: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
@@ -64,7 +66,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   selectedIndices,
   dominantSpanIndices,
   draftIdx,
+  filterExcludesPrimary = false,
   getPlayheadSec,
+  subscribePlayheadFrame,
   tierScrollRef,
   tierScrollLive,
   tierScrollLayout,
@@ -95,6 +99,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanSet,
     draftIdx,
+    filterExcludesPrimary,
     getPlayheadSec,
   });
   inputRef.current = {
@@ -111,6 +116,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanSet,
     draftIdx,
+    filterExcludesPrimary,
     getPlayheadSec,
   };
 
@@ -127,6 +133,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   });
   const lastCssLeftRef = useRef<number | null>(null);
   const lastPaintedChromeVersionRef = useRef(-1);
+
+  const lastPaintedPlayheadSecRef = useRef(Number.NaN);
 
   const invalidatePaintWindow = () => {
     lastPaintWindowRef.current = { leftPx: -1, widthPx: 0, heightPx: 0, bufferPx: 0 };
@@ -148,6 +156,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         selectionCount: input.selectionCount,
         isContiguousSelection: input.isContiguousSelection,
         segmentCount: input.segments.length,
+        filterExcludesPrimary: input.filterExcludesPrimary,
       });
       const skipIndices = selectOverlayInteractiveSegmentIndices({
         segmentCount: input.segments.length,
@@ -176,9 +185,15 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const paintedChromeVersion = lastPaintedChromeVersionRef.current;
       const chromeVersionNow = getSelectionChromeSnapshot().version;
       const selectionChromeChanged = chromeVersionNow !== paintedChromeVersion;
+      const playheadSec = input.getPlayheadSec?.() ?? Number.NaN;
+      const playheadChanged =
+        !Number.isFinite(lastPaintedPlayheadSecRef.current) ||
+        !Number.isFinite(playheadSec) ||
+        Math.abs(playheadSec - lastPaintedPlayheadSecRef.current) > 1e-4;
 
       if (
         !selectionChromeChanged &&
+        !playheadChanged &&
         !segmentBandCanvasNeedsRepaint({
           scrollLeftPx,
           viewportWidthPx,
@@ -243,6 +258,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
 
       lastPaintWindowRef.current = { leftPx, widthPx, heightPx, bufferPx };
       lastPaintedChromeVersionRef.current = chromeVersionNow;
+      lastPaintedPlayheadSecRef.current = playheadSec;
     };
 
     const schedulePaint = () => {
@@ -262,13 +278,17 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       invalidatePaintWindow();
       schedulePaint();
     });
+    const unsubPlayhead = subscribePlayheadFrame?.(() => {
+      scheduleTierScrollFrame();
+    });
     return () => {
+      unsubPlayhead?.();
       unsubAppearance();
       unsubFrame();
       schedulePaintRef.current = null;
       window.removeEventListener("resize", onResize);
     };
-  }, [tierScrollRef, tierScrollLayout.clientWidthPx]);
+  }, [subscribePlayheadFrame, tierScrollRef, tierScrollLayout.clientWidthPx]);
 
   // Segment / selection data changes repaint without re-registering scroll listeners.
   useLayoutEffect(() => {
@@ -287,6 +307,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanIndices,
     draftIdx,
+    filterExcludesPrimary,
     chromeVersion,
   ]);
 

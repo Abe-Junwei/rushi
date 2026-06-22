@@ -23,6 +23,22 @@ export function resolveEffectiveFilteredIndices(
   return state.indices;
 }
 
+/** True when an active filter excludes the given segment index from the list (SC-H6). */
+export function isSegmentListFilterHidingPrimary(input: {
+  filterActive: boolean;
+  filteredIndices: readonly number[];
+  primaryIdx: number;
+  segmentCount: number;
+}): boolean {
+  if (!input.filterActive || input.primaryIdx < 0) return false;
+  const effective = resolveEffectiveFilteredIndices(
+    { active: true, indices: input.filteredIndices },
+    input.segmentCount,
+  );
+  if (effective === null) return false;
+  return !effective.includes(input.primaryIdx);
+}
+
 export function readSegmentListFilterNavIndices(
   navState: SegmentListFilterNavState,
   segmentCount: number,

@@ -1,4 +1,4 @@
-import { memo, type KeyboardEvent, type MouseEvent } from "react";
+import { memo, useCallback, type KeyboardEvent, type MouseEvent } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
@@ -37,6 +37,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     busy,
     textStyle,
     selectSegmentAt,
+    index,
+    onRowRangePointerDown,
     ...controllerArgs
   } = props;
 
@@ -65,13 +67,26 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     onSelectionChange,
     onFocusText,
     canResizeRowHeight,
-  } = useSegmentRowTextFieldController({ ...controllerArgs, selected, busy, selectSegmentAt });
+  } = useSegmentRowTextFieldController({ ...controllerArgs, index, selected, busy, selectSegmentAt });
   const onResizeHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation();
     onRowHeightHandlePointerDown(e);
   };
 
-  const { index, onCorrectableSpanClick } = props;
+  const onTextareaPointerDownCapture = useCallback(
+    (e: React.PointerEvent<HTMLTextAreaElement>) => {
+      if (busy) return;
+      if (e.button === 2) {
+        onTextPointerDownCapture(e);
+        return;
+      }
+      if (e.button !== 0) return;
+      onRowRangePointerDown?.(index, e);
+    },
+    [busy, index, onRowRangePointerDown, onTextPointerDownCapture],
+  );
+
+  const { onCorrectableSpanClick } = props;
   const panelMirrorText = selected ? liveText : committedText;
   const useTransparentText = showPanelHighlightMirror || showCorrectableMirror;
 
@@ -101,7 +116,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             defaultValue={defaultText}
             disabled={busy}
             tabIndex={selected ? 0 : -1}
-            onPointerDownCapture={selected ? onTextPointerDownCapture : undefined}
+            onPointerDownCapture={onTextareaPointerDownCapture}
             onContextMenu={onTextContextMenu}
             onFocus={selected ? onFocusText : undefined}
             onInput={
