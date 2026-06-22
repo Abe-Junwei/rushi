@@ -2,13 +2,12 @@ use std::fs::{self, File};
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
+use symphonia::core::codecs::audio::{AudioCodecParameters, AudioDecoder, AudioDecoderOptions};
 use symphonia::core::errors::Error;
-use symphonia::core::formats::FormatOptions;
+use symphonia::core::formats::probe::Hint;
+use symphonia::core::formats::{FormatOptions, TrackType};
 use symphonia::core::io::MediaSourceStream;
 use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
 
 use super::waveform_peaks::{
     audio_file_fingerprint, duration_covers_reference, peak_file_path, write_peaks_meta,
@@ -142,6 +141,12 @@ fn codec_duration_sec(sample_rate: u32, n_frames: Option<u64>) -> Option<f64> {
     Some(frames as f64 / sample_rate as f64)
 }
 
+fn make_audio_decoder(params: &AudioCodecParameters) -> Result<Box<dyn AudioDecoder>, String> {
+    symphonia::default::get_codecs()
+        .make_audio_decoder(params, &AudioDecoderOptions::default())
+        .map_err(|e| format!("创建解码器失败: {e}"))
+}
+
 /// Container/codec duration from a quick Symphonia probe (no full decode).
 pub fn probe_symphonia_track_duration_sec(audio_path: &Path) -> Option<f64> {
     let file = File::open(audio_path).ok()?;
@@ -150,17 +155,17 @@ pub fn probe_symphonia_track_duration_sec(audio_path: &Path) -> Option<f64> {
     if let Some(ext) = audio_path.extension().and_then(|e| e.to_str()) {
         hint.with_extension(ext);
     }
-    let probed = symphonia::default::get_probe()
-        .format(
+    let format = symphonia::default::get_probe()
+        .probe(
             &hint,
             mss,
-            &FormatOptions::default(),
-            &MetadataOptions::default(),
+            FormatOptions::default(),
+            MetadataOptions::default(),
         )
         .ok()?;
-    let track = probed.format.default_track()?;
-    let params = track.codec_params.clone();
-    codec_duration_sec(params.sample_rate?, params.n_frames)
+    let track = format.default_track(TrackType::Audio)?;
+    let params = track.codec_params.as_ref()?.audio()?;
+    codec_duration_sec(params.sample_rate?, track.num_frames)
 }
 
 /// Generate all configured LOD `.dat` files for one audio asset.
@@ -202,25 +207,27 @@ fn generate_all_levels_inner(
     }
     let meta_opts: MetadataOptions = Default::default();
     let fmt_opts: FormatOptions = Default::default();
-    let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &fmt_opts, &meta_opts)
+    let mut format = symphonia::default::get_probe()
+        .probe(&hint, mss, fmt_opts, meta_opts)
         .map_err(|e| format!("探测音频格式失败: {e}"))?;
 
-    let mut format = probed.format;
     let track = format
-        .default_track()
+        .default_track(TrackType::Audio)
         .ok_or_else(|| "音频无可用轨道".to_string())?;
     let track_id = track.id;
-    let codec_params = track.codec_params.clone();
-    let sample_rate = codec_params
+    let audio_params = track
+        .codec_params
+        .as_ref()
+        .and_then(|params| params.audio())
+        .ok_or_else(|| "无法读取音频编解码参数".to_string())?
+        .clone();
+    let sample_rate = audio_params
         .sample_rate
         .ok_or_else(|| "无法读取采样率".to_string())?;
-    let expected_frame_count = codec_params.n_frames;
+    let expected_frame_count = track.num_frames;
     let expected_codec_duration_sec = codec_duration_sec(sample_rate, expected_frame_count);
 
-    let mut dec = symphonia::default::get_codecs()
-        .make(&codec_params, &DecoderOptions::default())
-        .map_err(|e| format!("创建解码器失败: {e}"))?;
+    let mut dec = make_audio_decoder(&audio_params)?;
 
     let dec_track = track_id;
 
@@ -233,32 +240,28 @@ fn generate_all_levels_inner(
 
     loop {
         let packet = match format.next_packet() {
-            Ok(p) => p,
+            Ok(Some(p)) => p,
+            Ok(None) => break,
             Err(Error::ResetRequired) => {
-                dec = symphonia::default::get_codecs()
-                    .make(&codec_params, &DecoderOptions::default())
+                dec = make_audio_decoder(&audio_params)
                     .map_err(|e| format!("解码器重置失败: {e}"))?;
                 continue;
             }
-            Err(Error::IoError(_)) => break,
             Err(e) => return Err(format!("读取音频包失败: {e}")),
         };
 
-        if packet.track_id() != dec_track {
+        if packet.track_id != dec_track {
             continue;
         }
 
         match dec.decode(&packet) {
             Ok(decoded) => {
-                let cap = decoded.capacity();
-                if cap == 0 {
+                if decoded.is_empty() {
                     continue;
                 }
-                let spec = *decoded.spec();
-                let channels = spec.channels.count().max(1);
-                let mut sample_buf = SampleBuffer::<f32>::new(cap as u64, spec);
-                sample_buf.copy_interleaved_ref(decoded);
-                let samples = sample_buf.samples();
+                let channels = decoded.spec().channels().count().max(1);
+                let mut samples = Vec::new();
+                decoded.copy_to_vec_interleaved::<f32>(&mut samples);
                 for frame in samples.chunks(channels) {
                     // Arithmetic mean mixing. Out-of-phase stereo content can cancel,
                     // making the waveform look flatter than perceived loudness.
@@ -276,7 +279,6 @@ fn generate_all_levels_inner(
                     total_samples += 1;
                 }
             }
-            Err(Error::IoError(_)) => break,
             Err(Error::DecodeError(_)) => continue,
             Err(e) => return Err(format!("解码失败: {e}")),
         }
