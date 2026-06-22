@@ -10,6 +10,8 @@ export type CloseGateLifecycleFacade = Pick<
   | "loadProjectAfterImport"
   | "openFile"
   | "openLastEditorWorkspace"
+  | "openWorkspaceFile"
+  | "openingWorkspaceTarget"
   | "closeFile"
   | "closeProject"
   | "closeGateOpen"
@@ -33,6 +35,8 @@ export function pickCloseGateLifecycleFacade(
     loadProjectAfterImport: closeGate.loadProjectAfterImport,
     openFile: closeGate.openFileWrapped,
     openLastEditorWorkspace: closeGate.openLastEditorWorkspace,
+    openWorkspaceFile: closeGate.openWorkspaceFile,
+    openingWorkspaceTarget: closeGate.openingWorkspaceTarget,
     closeFile: closeGate.closeFileWrapped,
     closeProject: closeGate.closeProjectWrapped,
     closeGateOpen: closeGate.closeGateOpen,

@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useRef, useState } from "react";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import { writeLastWorkspace } from "../services/lastWorkspace";
+import { writeLastWorkspace, type WorkspaceFileTarget } from "../services/lastWorkspace";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./ProjectLifecycleApi";
 import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
@@ -55,6 +55,8 @@ export type ProjectCloseGateControllerApi = {
   refreshProjectHub: (id: string) => Promise<void>;
   openFileWrapped: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
+  openWorkspaceFile: (projectId: string, fileId: string) => Promise<void>;
+  openingWorkspaceTarget: WorkspaceFileTarget | null;
   saveAndClose: () => Promise<void>;
   stayAfterCloseAttempt: () => void;
   transcribeNavBlockOpen: boolean;
@@ -110,6 +112,8 @@ export function useProjectCloseGateController(
   const [closeGateIntent, setCloseGateIntent] = useState<"app-quit" | "navigate">("app-quit");
   const [transcribeNavBlockOpen, setTranscribeNavBlockOpen] = useState(false);
   const [transcribeNavBlockStopping, setTranscribeNavBlockStopping] = useState(false);
+  const [openingWorkspaceTarget, setOpeningWorkspaceTarget] =
+    useState<WorkspaceFileTarget | null>(null);
 
   const navigateState = {
     setCloseGateOpen,
@@ -155,6 +159,7 @@ export function useProjectCloseGateController(
     performCloseFile,
     openFileWrapped: (fileId) => openFileWrappedRef.current(fileId),
     openFileAfterImport: (fileId) => openFileAfterImportRef.current(fileId),
+    setOpeningWorkspaceTarget,
     projects,
   });
 
@@ -210,6 +215,13 @@ export function useProjectCloseGateController(
     if (busy) return Promise.resolve();
     navigate.requestNavigateWithGuards(() => projectLoad.performResumeEditorWorkspace());
     return Promise.resolve();
+  }
+
+  async function openWorkspaceFile(projectId: string, fileId: string) {
+    if (busy) return;
+    navigate.requestNavigateWithGuards(() =>
+      projectLoad.performOpenWorkspaceFile(projectId, fileId),
+    );
   }
 
   async function loadProject(id: string) {
@@ -322,6 +334,8 @@ export function useProjectCloseGateController(
     runWithUnsavedNavigateGate,
     openFileWrapped,
     openLastEditorWorkspace,
+    openWorkspaceFile,
+    openingWorkspaceTarget,
     saveAndClose,
     stayAfterCloseAttempt,
     transcribeNavBlockOpen,

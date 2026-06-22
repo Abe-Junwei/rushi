@@ -250,6 +250,22 @@ describe("useProjectCloseGateController", () => {
     expect(args.closeFile).not.toHaveBeenCalled();
   });
 
+  it("openWorkspaceFile loads project and opens file atomically", async () => {
+    const detail = makeDetail("proj-b");
+    vi.mocked(projectLoad).mockResolvedValue(detail);
+    const args = baseArgs({ current: null, currentFileId: null });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.openWorkspaceFile("proj-b", "file-1");
+    });
+
+    expect(projectLoad).toHaveBeenCalledWith("proj-b");
+    expect(args.applyDetail).toHaveBeenCalled();
+    expect(args.openFile).toHaveBeenCalledWith("file-1");
+    expect(result.current.openingWorkspaceTarget).toBeNull();
+  });
+
   it("confirmTranscribeNavBlock stops batch transcribe before navigate", async () => {
     const cancelBatchTranscribe = vi.fn(() => Promise.resolve());
     const args = baseArgs({

@@ -100,10 +100,7 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
       closeSearch();
       resetQuery();
       rememberQuery(debouncedQuery || hit.file_name);
-      if (controller.current?.id !== hit.project_id) {
-        await controller.loadProject(hit.project_id);
-      }
-      await controller.openFile(hit.file_id);
+      await controller.openWorkspaceFile(hit.project_id, hit.file_id);
     },
     [closeSearch, controller, debouncedQuery, rememberQuery, resetQuery],
   );
@@ -119,10 +116,7 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
         charStart: hit.char_start,
         charEnd: hit.char_end,
       });
-      if (controller.current?.id !== hit.project_id) {
-        await controller.loadProject(hit.project_id);
-      }
-      await controller.openFile(hit.file_id);
+      await controller.openWorkspaceFile(hit.project_id, hit.file_id);
       controller.setSelectedIdx(hit.segment_idx);
       scheduleScrollSegmentListIndexToView(hit.segment_idx);
       window.setTimeout(() => clearWelcomeSearchEditorHighlight(), 6000);

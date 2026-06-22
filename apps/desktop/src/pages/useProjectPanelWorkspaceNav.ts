@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GlossaryWorkspaceId } from "../components/glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "../components/WelcomeView";
+import { resolveWorkspaceShellVariant } from "./resolveWorkspaceShellVariant";
 import type { useProjectController } from "./useProjectController";
 
 type ProjectController = ReturnType<typeof useProjectController>;
@@ -12,11 +13,15 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
   const pendingGlossaryWorkspaceRef = useRef<GlossaryWorkspaceId | null>(null);
 
-  const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(() => {
-    if (!c.current) return "welcome";
-    if (!c.currentFileId) return "hub";
-    return "editor";
-  }, [c]);
+  const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(
+    () =>
+      resolveWorkspaceShellVariant({
+        hasCurrentProject: c.current != null,
+        currentFileId: c.currentFileId,
+        openingWorkspaceTarget: c.openingWorkspaceTarget,
+      }),
+    [c.current, c.currentFileId, c.openingWorkspaceTarget],
+  );
 
   useEffect(() => {
     if (workspaceShellVariant !== "welcome") setWelcomePage("home");

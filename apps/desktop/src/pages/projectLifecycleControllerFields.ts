@@ -44,6 +44,8 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     restoreEditorFromEditLog: lifecycle.restoreEditorFromEditLog,
     openFile: lifecycle.openFile,
     openLastEditorWorkspace: lifecycle.openLastEditorWorkspace,
+    openWorkspaceFile: lifecycle.openWorkspaceFile,
+    openingWorkspaceTarget: lifecycle.openingWorkspaceTarget,
     closeFile: lifecycle.closeFile,
     closeProject: lifecycle.closeProject,
     runTranscribe: lifecycle.runTranscribe,

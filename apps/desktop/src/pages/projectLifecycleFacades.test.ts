@@ -23,6 +23,8 @@ describe("projectLifecycleFacades contract", () => {
       refreshProjectHub: async () => {},
       openFileWrapped: async () => {},
       openLastEditorWorkspace: async () => {},
+      openWorkspaceFile: async () => {},
+      openingWorkspaceTarget: null,
       closeFileWrapped: () => {},
       closeProjectWrapped: () => {},
       closeGateOpen: true,

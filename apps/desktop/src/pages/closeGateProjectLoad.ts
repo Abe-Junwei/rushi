@@ -1,6 +1,6 @@
 import * as p1 from "../tauri/projectApi";
 import type { ProjectDetail, ProjectSummary } from "../tauri/projectApi";
-import { resolveEditorResumeTarget } from "../services/lastWorkspace";
+import { resolveEditorResumeTarget, type WorkspaceFileTarget } from "../services/lastWorkspace";
 import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
 
 export type CloseGateProjectLoadDeps = {
@@ -16,6 +16,7 @@ export type CloseGateProjectLoadDeps = {
   openFileWrapped: (fileId: string) => Promise<void>;
   /** Post-import reload — must bypass same-file dirty noop so DB replace is visible. */
   openFileAfterImport: (fileId: string) => Promise<void>;
+  setOpeningWorkspaceTarget: (target: WorkspaceFileTarget | null) => void;
   projects: ProjectSummary[];
 };
 
@@ -99,31 +100,48 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
     }
   }
 
+  async function ensureProjectLoadedForWorkspaceFile(projectId: string) {
+    if (deps.current?.id === projectId) return;
+    if (deps.currentFileId) {
+      deps.performCloseFile();
+    }
+    const detail = await p1.projectLoad(projectId);
+    deps.applyDetail(detail);
+  }
+
+  async function performOpenWorkspaceFile(projectId: string, fileId: string) {
+    deps.setOpeningWorkspaceTarget({ projectId, fileId });
+    deps.setError("");
+    deps.beginBusy("load");
+    try {
+      await ensureProjectLoadedForWorkspaceFile(projectId);
+      await deps.openFileWrapped(fileId);
+    } catch (e) {
+      if (deps.current?.id !== projectId) {
+        deps.setCurrent(null);
+        deps.performCloseFile();
+      }
+      deps.setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      deps.setOpeningWorkspaceTarget(null);
+      deps.endBusy();
+    }
+  }
+
   async function performResumeEditorWorkspace() {
     const target = await resolveEditorResumeTarget(deps.projects);
     if (!target) {
       deps.setError("暂无项目或文件，请先新建项目。");
       return;
     }
-    deps.beginBusy("load");
-    deps.setError("");
-    try {
-      if (deps.current?.id !== target.projectId) {
-        const detail = await p1.projectLoad(target.projectId);
-        deps.applyDetail(detail);
-      }
-      await deps.openFileWrapped(target.fileId);
-    } catch (e) {
-      deps.setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      deps.endBusy();
-    }
+    await performOpenWorkspaceFile(target.projectId, target.fileId);
   }
 
   return {
     performLoadProject,
     loadProjectAfterImport,
     refreshProjectHub,
+    performOpenWorkspaceFile,
     performResumeEditorWorkspace,
   };
 }

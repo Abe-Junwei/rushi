@@ -25,6 +25,24 @@ describe("runActivityFeedItemAction", () => {
     vi.clearAllMocks();
   });
 
+  it("uses openWorkspaceFile when provided for open-file action", async () => {
+    const loadProject = vi.fn(() => Promise.resolve());
+    const openFile = vi.fn(() => Promise.resolve());
+    const openWorkspaceFile = vi.fn(() => Promise.resolve());
+    await runActivityFeedItemAction(
+      item({
+        id: "1",
+        actionKind: "open-file",
+        projectId: "p1",
+        fileId: "f1",
+      }),
+      { currentProjectId: "p2", loadProject, openFile, openWorkspaceFile },
+    );
+    expect(openWorkspaceFile).toHaveBeenCalledWith("p1", "f1");
+    expect(loadProject).not.toHaveBeenCalled();
+    expect(openFile).not.toHaveBeenCalled();
+  });
+
   it("loads project and opens file for open-file action", async () => {
     const loadProject = vi.fn(() => Promise.resolve());
     const openFile = vi.fn(() => Promise.resolve());

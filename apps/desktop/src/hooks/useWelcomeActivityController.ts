@@ -82,6 +82,8 @@ export function useWelcomeActivityController({
         currentProjectId: controller.current?.id,
         loadProject: (id) => controller.loadProject(id),
         openFile: (id) => controller.openFile(id),
+        openWorkspaceFile: (projectId, fileId) =>
+          controller.openWorkspaceFile(projectId, fileId),
       });
     },
     [closePanel, controller],

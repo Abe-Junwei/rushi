@@ -133,10 +133,7 @@ export function WelcomeView({
   }, [recentProjectIds, shouldFetchRecentFiles]);
 
   const handleOpenRecentFile = async (item: RecentWorkspaceFile) => {
-    if (c.current?.id !== item.projectId) {
-      await c.loadProject(item.projectId);
-    }
-    await c.openFile(item.fileId);
+    await c.openWorkspaceFile(item.projectId, item.fileId);
   };
 
   return (

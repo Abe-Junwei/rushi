@@ -7,6 +7,7 @@ import type { CorrectionRulesDialogState } from "./useCorrectionRulesController"
 import type { PostTranscribeStageBDialogState } from "./usePostTranscribeStageBController";
 import type { GlossaryLearnPromptDialogState } from "./useGlossaryLearnPromptController";
 import type { GlossaryLearnPromptRow } from "../tauri/correctionApi";
+import type { WorkspaceFileTarget } from "../services/lastWorkspace";
 import type { BusyReason } from "./useProjectCrudController";
 
 export type { BusyReason };
@@ -51,6 +52,8 @@ export interface ProjectLifecycleApi {
   loadProjectAfterImport: (id: string, preferFileId?: string | null) => Promise<void>;
   openFile: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
+  openWorkspaceFile: (projectId: string, fileId: string) => Promise<void>;
+  openingWorkspaceTarget: WorkspaceFileTarget | null;
   closeFile: () => void;
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
