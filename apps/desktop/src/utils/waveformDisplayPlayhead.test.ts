@@ -13,15 +13,15 @@ describe("resolveDisplayPlayheadTimeSec", () => {
     ).toBe(12.5);
   });
 
-  it("uses media time when paused", () => {
+  it("uses visual time when paused and ready", () => {
     expect(
       resolveDisplayPlayheadTimeSec({
         isPlaying: false,
         isReady: true,
-        getVisualPlayheadTimeSec: () => 12.5,
-        getMediaPlayheadTimeSec: () => 12.1,
+        getVisualPlayheadTimeSec: () => 142,
+        getMediaPlayheadTimeSec: () => 165,
       }),
-    ).toBe(12.1);
+    ).toBe(142);
   });
 
   it("uses media time when not ready even if playing flag is set", () => {

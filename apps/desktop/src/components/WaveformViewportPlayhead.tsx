@@ -91,10 +91,10 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   }, []);
 
   useEffect(() => {
-    if (!isReady || !isPlaying) return;
+    if (!isReady) return;
     writePosition(getDisplayPlayheadTimeSec());
     return subscribePlayheadFrame((timeSec) => writePosition(timeSec));
-  }, [getDisplayPlayheadTimeSec, isPlaying, isReady, subscribePlayheadFrame, writePosition]);
+  }, [getDisplayPlayheadTimeSec, isReady, subscribePlayheadFrame, writePosition]);
 
   useEffect(() => {
     if (isPlaying || !isReady) return;

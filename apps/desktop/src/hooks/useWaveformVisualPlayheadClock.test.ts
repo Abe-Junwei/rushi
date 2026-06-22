@@ -96,7 +96,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(hits.length).toBe(1);
   });
 
-  it("getDisplayPlayheadTimeSec uses media time when paused and visual when playing", () => {
+  it("getDisplayPlayheadTimeSec uses visual time when paused and visual when playing", () => {
     const { result, rerender } = renderHook(
       (props: { isPlaying: boolean }) =>
         useWaveformVisualPlayheadClock({
@@ -115,6 +115,61 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     rerender({ isPlaying: true });
     result.current.visualTimeSecRef.current = 7.25;
     expect(result.current.getDisplayPlayheadTimeSec()).toBe(7.25);
+  });
+
+  it("syncDisplayPlayheadAfterSeek notifies subscribers while paused", () => {
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: false,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 2,
+        playbackRate: 1,
+        getPlayheadTime: () => 2,
+      }),
+    );
+
+    const seen: number[] = [];
+    act(() => {
+      result.current.subscribePlayheadFrame((t) => seen.push(t));
+    });
+
+    act(() => {
+      result.current.syncDisplayPlayheadAfterSeek(9.5);
+    });
+
+    expect(seen).toEqual([9.5]);
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(9.5);
+  });
+
+  it("ignores stale paused currentTimeSec until WS commit catches up to imperative seek", () => {
+    const { result, rerender } = renderHook(
+      (props: { currentTimeSec: number }) =>
+        useWaveformVisualPlayheadClock({
+          isPlaying: false,
+          isReady: true,
+          durationSec: 30,
+          currentTimeSec: props.currentTimeSec,
+          playbackRate: 1,
+          getPlayheadTime: () => props.currentTimeSec,
+        }),
+      { initialProps: { currentTimeSec: 165 } },
+    );
+
+    act(() => {
+      result.current.syncDisplayPlayheadAfterSeek(142);
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
+
+    act(() => {
+      rerender({ currentTimeSec: 165 });
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
+
+    act(() => {
+      rerender({ currentTimeSec: 142 });
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
   });
 
   it("does not restart playing rAF when currentTimeSec changes (S7)", async () => {

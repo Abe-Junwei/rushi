@@ -6,6 +6,7 @@ import {
   logWaveSurferGeomDeferred,
   readWaveSurferChannelCoverageSec,
   subscribeWaveSurferAfterRender,
+  applyWaveSurferProgressWithoutClip,
 } from "../services/waveform/waveformSurferProgressCoverage";
 
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
@@ -116,9 +117,12 @@ export function bindProjectWaveformWaveSurferEvents(
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
       setCurrentTime(t);
+      const duration = ws.getDuration();
+      if (duration > 0) {
+        applyWaveSurferProgressWithoutClip(ws, t / duration);
+      }
       const suppressUntilMs = optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
       if (shouldCoalesceSelectionSeekChrome(performance.now(), suppressUntilMs)) {
-        // reveal + flushTierScrollFrame already synced tier chrome; skip double resync rAF chain.
         requestWaveformSegmentBandPaint();
         return;
       }

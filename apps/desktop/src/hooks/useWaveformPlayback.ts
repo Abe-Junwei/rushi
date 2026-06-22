@@ -17,19 +17,19 @@ export function useWaveformPlayback(
   applyGlobalPlaybackRateRef: React.MutableRefObject<() => void>,
   tierScrollRef?: React.RefObject<HTMLDivElement | null>,
   tierViewportMetricsRef?: TierViewportMetricsRef,
+  commitSeekUi?: (timeSec: number) => void,
 ) {
   const seek = useCallback(
     (timeSec: number) => {
       const ws = wsRef.current;
       if (!ws || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
-      if (d <= 0) {
-        ws.setTime(Math.max(0, timeSec));
-        return;
-      }
-      ws.setTime(Math.max(0, Math.min(timeSec, d)));
+      const clamped =
+        d <= 0 ? Math.max(0, timeSec) : Math.max(0, Math.min(timeSec, d));
+      ws.setTime(clamped);
+      commitSeekUi?.(clamped);
     },
-    [isReady, layoutDurationSecRef, wsRef],
+    [commitSeekUi, isReady, layoutDurationSecRef, wsRef],
   );
 
   const togglePlay = useCallback(async () => {
@@ -58,8 +58,9 @@ export function useWaveformPlayback(
           ? Math.max(0, Math.min(d, ws.getCurrentTime() + deltaSec))
           : Math.max(0, ws.getCurrentTime() + deltaSec);
       ws.setTime(t);
+      commitSeekUi?.(t);
     },
-    [isReady, layoutDurationSecRef, wsRef],
+    [commitSeekUi, isReady, layoutDurationSecRef, wsRef],
   );
 
   const clientXToTimeSec = useCallback(

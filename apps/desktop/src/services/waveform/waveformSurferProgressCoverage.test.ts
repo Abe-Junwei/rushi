@@ -47,14 +47,36 @@ describe("applyWaveSurferProgressWithoutClip", () => {
     const ws = {
       getRenderer: () => renderer,
       getWrapper: () => null,
+      isPlaying: () => false,
     } as unknown as import("wavesurfer.js").default;
 
     applyWaveSurferProgressWithoutClip(ws, 0.25);
 
     expect(readCspLayoutRulesForElement(canvasWrapper)).toContain("clip-path: none");
-    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 25%");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 0%");
     expect(readCspLayoutRulesForElement(cursor)).toContain("display: none");
     expect(readCspLayoutRulesForElement(cursor)).toContain("visibility: hidden");
+  });
+
+  it("applies played ratio while playing", () => {
+    const canvasWrapper = document.createElement("div");
+    const progressWrapper = document.createElement("div");
+    const cursor = document.createElement("div");
+    const renderer = {
+      canvasWrapper,
+      progressWrapper,
+      cursor,
+      options: { cursorWidth: 1 },
+    };
+    const ws = {
+      getRenderer: () => renderer,
+      getWrapper: () => null,
+      isPlaying: () => true,
+    } as unknown as import("wavesurfer.js").default;
+
+    applyWaveSurferProgressWithoutClip(ws, 0.25);
+
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 25%");
   });
 });
 
@@ -87,7 +109,7 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     renderer.renderProgress(0.4, false);
 
     expect(readCspLayoutRulesForElement(canvasWrapper)).toContain("clip-path: none");
-    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 40%");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 0%");
     expect(readCspLayoutRulesForElement(cursor)).toContain("display: none");
 
     uninstall();
@@ -110,6 +132,7 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     const ws = {
       getRenderer: () => renderer,
       getWrapper: () => null,
+      isPlaying: () => true,
     } as unknown as import("wavesurfer.js").default;
 
     setWaveSurferVisualProgressRatioReader(() => 0.55);

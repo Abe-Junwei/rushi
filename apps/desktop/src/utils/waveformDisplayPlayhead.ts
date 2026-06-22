@@ -1,10 +1,10 @@
-/** Display playhead: visual clock while playing, WaveSurfer media time when paused. */
+/** Display playhead: visual clock when ready; raw media only before ready. */
 export function resolveDisplayPlayheadTimeSec(input: {
   isPlaying: boolean;
   isReady: boolean;
   getVisualPlayheadTimeSec: () => number;
   getMediaPlayheadTimeSec: () => number;
 }): number {
-  if (input.isReady && input.isPlaying) return input.getVisualPlayheadTimeSec();
+  if (input.isReady) return input.getVisualPlayheadTimeSec();
   return input.getMediaPlayheadTimeSec();
 }

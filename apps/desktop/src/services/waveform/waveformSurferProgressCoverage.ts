@@ -255,7 +255,10 @@ export function applyWaveSurferProgressWithoutClip(
   if (Number.isNaN(ratio)) return;
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   const layers = readWaveSurferWaveformLayers(ws);
-  if (layers) restoreWaveSurferMainCanvasVisibility(layers, ratio);
+  if (!layers) return;
+  // Paused: hide played/unplayed tint so semi-transparent segment bands stay uniform.
+  const displayRatio = ws.isPlaying() ? ratio : 0;
+  restoreWaveSurferMainCanvasVisibility(layers, displayRatio);
   hideWaveSurferPlayheadCursor(renderer);
 }
 

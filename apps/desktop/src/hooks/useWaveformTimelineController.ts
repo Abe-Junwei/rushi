@@ -324,6 +324,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     suppressPlaybackFollowForSelectionSeek,
     getDisplayPlayheadTimeSec: visualPlayheadClock.getDisplayPlayheadTimeSec,
     subscribePlayheadFrame: visualPlayheadClock.subscribePlayheadFrame,
+    syncDisplayPlayheadAfterSeek: visualPlayheadClock.syncDisplayPlayheadAfterSeek,
     clearWaveformPeaksCache: peaks.clearAndReloadPeaks,
     routePrefs,
     deferDecodeMount,

@@ -40,6 +40,8 @@ export function useWaveformVisualPlayheadClock(input: {
     createVisualPlayheadClockState(input.currentTimeSec),
   );
   const subscribersRef = useRef<Set<PlayheadFrameSubscriber>>(new Set());
+  const pausedImperativeSeekUntilRef = useRef(0);
+  const pausedImperativeSeekTimeRef = useRef(0);
 
   const syncPausedTime = useCallback((timeSec: number) => {
     visualTimeSecRef.current = timeSec;
@@ -86,6 +88,13 @@ export function useWaveformVisualPlayheadClock(input: {
       return;
     }
     if (a.isPlaying) return;
+    const now = performance.now();
+    if (now < pausedImperativeSeekUntilRef.current) {
+      if (Math.abs(a.currentTimeSec - pausedImperativeSeekTimeRef.current) > 0.02) {
+        return;
+      }
+      pausedImperativeSeekUntilRef.current = 0;
+    }
     syncPausedTime(a.currentTimeSec);
   }, [input.currentTimeSec, input.isPlaying, input.isReady, syncPausedTime]);
 
@@ -115,10 +124,23 @@ export function useWaveformVisualPlayheadClock(input: {
     return () => cancelAnimationFrame(rafId);
   }, [input.durationSec, input.getPlayheadTime, input.isPlaying, input.isReady, input.playbackRate, notifyPlayheadFrame, syncPausedTime]);
 
+  /** Imperative paused seek — notifies playhead subscribers without waiting for React commit. */
+  const syncDisplayPlayheadAfterSeek = useCallback(
+    (timeSec: number) => {
+      if (!argsRef.current.isReady) return;
+      pausedImperativeSeekTimeRef.current = timeSec;
+      pausedImperativeSeekUntilRef.current = performance.now() + 1200;
+      syncPausedTime(timeSec);
+      notifyPlayheadFrame(timeSec);
+    },
+    [notifyPlayheadFrame, syncPausedTime],
+  );
+
   return {
     visualTimeSecRef,
     getVisualPlayheadTimeSec,
     getDisplayPlayheadTimeSec,
     subscribePlayheadFrame,
+    syncDisplayPlayheadAfterSeek,
   };
 }
