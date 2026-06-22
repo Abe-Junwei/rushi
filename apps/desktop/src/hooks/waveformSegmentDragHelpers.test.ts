@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { finishWaveformLassoDrag } from "./waveformSegmentDragHelpers";
+import { finishWaveformLassoDrag, updateWaveformOverlayDragMove } from "./waveformSegmentDragHelpers";
 import type { WaveformSegmentDragArgs } from "./useWaveformSegmentDrag";
 import type { OverlayDragState } from "../utils/waveformSegmentOverlayGeometry";
 
@@ -13,6 +13,22 @@ function makeLassoDrag(overrides: Partial<OverlayDragState> = {}): OverlayDragSt
     initialStartSec: 12.5,
     initialEndSec: 12.5,
     moved: false,
+    selectedIdxAtPointerDown: 0,
+    ...overrides,
+  };
+}
+
+function makeEditDrag(overrides: Partial<OverlayDragState> = {}): OverlayDragState {
+  return {
+    mode: "move",
+    pointerId: 1,
+    segmentIdx: 0,
+    anchorTimeSec: 1,
+    anchorClientX: 100,
+    initialStartSec: 1,
+    initialEndSec: 2,
+    moved: false,
+    selectedIdxAtPointerDown: -1,
     ...overrides,
   };
 }
@@ -166,5 +182,49 @@ describe("finishWaveformLassoDrag", () => {
     });
     expect(onSelectSegmentIndices).toHaveBeenCalledWith([0], 0);
     expect(onCreateRange).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateWaveformOverlayDragMove", () => {
+  it("does not paint edit draft before pointer movement crosses drag threshold", () => {
+    const applySegmentDraft = vi.fn();
+    const drag = makeEditDrag();
+
+    updateWaveformOverlayDragMove({
+      drag,
+      clientX: 103,
+      timeSec: 1.003,
+      args: makeArgs({
+        durationSec: 10,
+        segments: [{ uid: "a", idx: 0, start_sec: 1, end_sec: 2, text: "A" }],
+      }),
+      snapEnabled: false,
+      updateCreatePreview: vi.fn(),
+      applySegmentDraft,
+    });
+
+    expect(drag.moved).toBe(false);
+    expect(applySegmentDraft).not.toHaveBeenCalled();
+  });
+
+  it("paints edit draft after pointer movement crosses drag threshold", () => {
+    const applySegmentDraft = vi.fn();
+    const drag = makeEditDrag();
+
+    updateWaveformOverlayDragMove({
+      drag,
+      clientX: 105,
+      timeSec: 1.5,
+      args: makeArgs({
+        durationSec: 10,
+        segments: [{ uid: "a", idx: 0, start_sec: 1, end_sec: 2, text: "A" }],
+      }),
+      snapEnabled: false,
+      updateCreatePreview: vi.fn(),
+      applySegmentDraft,
+    });
+
+    expect(drag.moved).toBe(true);
+    expect(applySegmentDraft).toHaveBeenCalledWith({ idx: 0, startSec: 1.5, endSec: 2.5 });
   });
 });

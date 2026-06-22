@@ -8,12 +8,61 @@ import {
 describe("resolveSegmentOverlayTap", () => {
   const segment = { start_sec: 4, end_sec: 10 };
 
+  it("uses pointerdown tap gesture on click fallback when preview ran", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+        segmentIdx: 2,
+        pointerTimeSec: 9.5,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
+  });
+
   it("selects when tapping a different segment", () => {
     expect(
       resolveSegmentOverlayTap({
         selectedIdx: 0,
         segmentIdx: 2,
         pointerTimeSec: 7,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
+  });
+
+  it("selects when SC2 preview already matches but React SC1 is still on another segment", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 0,
+        segmentIdx: 2,
+        pointerTimeSec: 7,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
+  });
+
+  it("selects when SC2 preview already synced viewport on pointerdown", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+        segmentIdx: 2,
+        pointerTimeSec: 9.5,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
+  });
+
+  it("selects when pointerdown SC1 differs even if live SC1 caught up before pointerup", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        selectedIdxAtPointerDown: 0,
+        segmentIdx: 2,
+        pointerTimeSec: 9.5,
         segment,
       }),
     ).toEqual({ kind: "select", segmentIdx: 2 });
@@ -96,7 +145,7 @@ describe("waveformSegmentOverlayActions", () => {
       suppress,
     );
     expect(suppress).toHaveBeenCalledOnce();
-    expect(onSegmentPointerTap).toHaveBeenCalledWith(2, 5);
+    expect(onSegmentPointerTap).toHaveBeenCalledWith(2, 5, undefined);
   });
 
   it("applyOverlayPointerUpIntent dispatches commit-bounds", () => {

@@ -25,6 +25,22 @@ describe("resolveBlankOverlayShellDragMode", () => {
 });
 
 describe("resolveOverlayPointerUpIntent", () => {
+  it("uses anchor time for segment tap when pointerup drifted", () => {
+    expect(
+      resolveOverlayPointerUpIntent({
+        mode: "move",
+        moved: false,
+        segmentIdx: 2,
+        pointerTimeSec: 5.2,
+        anchorTimeSec: 5,
+        initialStartSec: 4,
+        initialEndSec: 6,
+        clampedStartSec: 4,
+        clampedEndSec: 6,
+      }),
+    ).toEqual({ kind: "select-segment", segmentIdx: 2, pointerTimeSec: 5 });
+  });
+
   it("treats segment tap as select", () => {
     expect(
       resolveOverlayPointerUpIntent({

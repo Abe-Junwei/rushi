@@ -23,6 +23,12 @@ export type OverlayDragState = {
   initialStartSec: number;
   initialEndSec: number;
   moved: boolean;
+  /** React SC1 at pointerdown — tap select vs seek-within must not use post-preview SC1. */
+  selectedIdxAtPointerDown: number;
+  /** pointerdown gesture down 已 seek+reveal（pointerup 不得 seek-within）。 */
+  viewportSyncedOnDown?: boolean;
+  /** Stable pointerdown→pointerup session id for preview dedupe. */
+  sessionId?: string;
   /** Blank overlay shell lasso — user intent is create unless Shift extends selection. */
   blankLasso?: boolean;
   baseIndices?: Set<number>;

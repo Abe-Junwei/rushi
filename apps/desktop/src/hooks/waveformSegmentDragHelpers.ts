@@ -16,18 +16,29 @@ import {
   resolveSnapThresholdSec,
   snapSegmentRange,
 } from "../utils/segmentTimeSnap";
-import { applyOverlayPointerUpIntent, type OverlayPointerActions } from "../utils/waveformSegmentOverlayActions";
+import {
+  applyOverlayPointerUpIntent,
+  type OverlayPointerActions,
+  type SegmentOverlayTapGesture,
+} from "../utils/waveformSegmentOverlayActions";
 import {
   boundsForOverlayDrag,
+  type CreateRangePreview,
   type OverlayDragState,
+  type SegmentOverlayDraft,
 } from "../utils/waveformSegmentOverlayGeometry";
 import { resolveOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayGestures";
+import { pointerMovedPastWaveformDragThreshold } from "../utils/waveformSegmentDragSession";
 import { computeSegmentLassoOutcome } from "../utils/segmentSelection";
 import type { WaveformSegmentDragArgs } from "./useWaveformSegmentDrag";
 
 function overlayPointerActions(
   a: WaveformSegmentDragArgs,
-  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
+  onSegmentPointerTap: (
+    segmentIdx: number,
+    pointerTimeSec: number,
+    tapGesture?: SegmentOverlayTapGesture,
+  ) => void,
 ): OverlayPointerActions {
   return {
     onSegmentPointerTap,
@@ -175,7 +186,11 @@ export function finishWaveformEditDrag(input: {
   args: WaveformSegmentDragArgs;
   snapEnabled: boolean;
   ev: Pick<React.PointerEvent, "shiftKey" | "metaKey" | "ctrlKey">;
-  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void;
+  onSegmentPointerTap: (
+    segmentIdx: number,
+    pointerTimeSec: number,
+    tapGesture?: SegmentOverlayTapGesture,
+  ) => void;
   suppressClickAfterPointer: () => void;
 }): void {
   const { drag, timeSec, args: a, snapEnabled, ev, onSegmentPointerTap, suppressClickAfterPointer } = input;
@@ -216,7 +231,52 @@ export function finishWaveformEditDrag(input: {
     intent,
     overlayPointerActions(a, onSegmentPointerTap),
     suppressClickAfterPointer,
+    {
+      selectedIdxAtPointerDown: drag.selectedIdxAtPointerDown,
+      viewportSyncedOnDown: drag.viewportSyncedOnDown,
+      sessionId: drag.sessionId,
+    },
   );
+}
+
+export function updateWaveformOverlayDragMove(input: {
+  drag: OverlayDragState;
+  clientX: number;
+  timeSec: number;
+  args: WaveformSegmentDragArgs;
+  snapEnabled: boolean;
+  updateCreatePreview: (preview: CreateRangePreview | null) => void;
+  applySegmentDraft: (draft: SegmentOverlayDraft | null) => void;
+}): void {
+  const { drag, clientX, timeSec, args: a, snapEnabled, updateCreatePreview, applySegmentDraft } = input;
+  if (drag.mode === "lasso") {
+    if (pointerMovedPastWaveformDragThreshold(clientX, drag.anchorClientX)) {
+      drag.moved = true;
+    }
+    if (!drag.moved) return;
+    const lo = Math.min(drag.initialStartSec, timeSec);
+    const hi = Math.max(drag.initialStartSec, timeSec);
+    const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+    updateCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
+    return;
+  }
+
+  if (pointerMovedPastWaveformDragThreshold(clientX, drag.anchorClientX)) {
+    drag.moved = true;
+  }
+  if (!drag.moved) return;
+  let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
+  if (!clamped) return;
+  clamped =
+    finalizeEditDragBounds(
+      a,
+      drag,
+      clamped,
+      snapEnabled,
+      SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
+    ) ?? clamped;
+  drag.lastFinalizedBounds = clamped;
+  applySegmentDraft({ idx: drag.segmentIdx, ...clamped });
 }
 
 export { SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC };

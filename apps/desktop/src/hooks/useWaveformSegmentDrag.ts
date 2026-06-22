@@ -1,29 +1,29 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import {
-  hitSegmentEdgeFromTimelinePointer,
-  resolveSegmentIndexAtWaveformPointer,
-} from "../utils/waveformSegmentBounds";
+import { hitSegmentEdgeFromTimelinePointer, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
 import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
-import {
-  isSegmentSnapEnabled,
-  readSegmentOverlayModifiers,
-} from "../utils/segmentOverlayModifiers";
+import { isSegmentSnapEnabled, readSegmentOverlayModifiers } from "../utils/segmentOverlayModifiers";
 import type { CreateRangePreview, OverlayDragState, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
+import type { SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
+import { resolveBlankOverlayShellDragMode } from "../utils/waveformSegmentOverlayGestures";
 import {
-  resolveBlankOverlayShellDragMode,
-} from "../utils/waveformSegmentOverlayGestures";
+  WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS,
+  releasePointerCaptureIfHeld,
+} from "../utils/waveformSegmentDragSession";
 import {
-  finalizeEditDragBounds,
+  beginWaveformSegmentInteraction,
+  beginWaveformSegmentLassoInteraction,
+  cancelWaveformSegmentInteraction,
+  commitWaveformSegmentInteraction,
+  consumeWaveformSegmentTapGesture,
+  markWaveformSegmentInteractionMoved,
+  type WaveformSegmentInteractionState,
+} from "../services/waveform/waveformSegmentInteractionStateMachine";
+import {
   finishWaveformEditDrag,
   finishWaveformLassoDrag,
-  SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
-  snapCreateRange,
+  updateWaveformOverlayDragMove,
 } from "./waveformSegmentDragHelpers";
-import { boundsForOverlayDrag } from "../utils/waveformSegmentOverlayGeometry";
-
-const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
-/** Pointer move beyond this (px) counts as drag, not tap — stable across zoom levels. */
-const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
+import type { WaveformSelectionGesture } from "../services/waveform/waveformSelectionGesture";
 
 export type WaveformSegmentDragArgs = {
   disabled: boolean;
@@ -38,6 +38,9 @@ export type WaveformSegmentDragArgs = {
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
   onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onWaveformSelectionGesture?: (gesture: WaveformSelectionGesture) => boolean | void;
+  /** @deprecated 使用 onWaveformSelectionGesture down phase */
+  onPreviewSegmentSelect?: (idx: number) => boolean;
   onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
   getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
@@ -59,9 +62,14 @@ export function useWaveformSegmentDrag(
   argsRef: React.MutableRefObject<WaveformSegmentDragArgs>,
   applySegmentDraft: (draft: SegmentOverlayDraft | null) => void,
   updateCreatePreview: (preview: CreateRangePreview | null) => void,
-  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
+  onSegmentPointerTap: (
+    segmentIdx: number,
+    pointerTimeSec: number,
+    tapGesture?: SegmentOverlayTapGesture,
+  ) => void,
 ) {
   const dragRef = useRef<OverlayDragState | null>(null);
+  const interactionStateRef = useRef<WaveformSegmentInteractionState>({ phase: "idle" });
   const suppressClickUntilRef = useRef(0);
   const onSegmentPointerTapRef = useRef(onSegmentPointerTap);
   onSegmentPointerTapRef.current = onSegmentPointerTap;
@@ -70,11 +78,20 @@ export function useWaveformSegmentDrag(
     suppressClickUntilRef.current = performance.now() + WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS;
   }, []);
 
+  const consumeLastSegmentTapGesture = useCallback((segmentIdx: number): SegmentOverlayTapGesture | undefined => {
+    const gesture = consumeWaveformSegmentTapGesture(interactionStateRef.current, segmentIdx);
+    if (gesture) {
+      interactionStateRef.current = commitWaveformSegmentInteraction(interactionStateRef.current);
+    }
+    return gesture;
+  }, []);
+
   const finishDrag = useCallback(
     (ev: ReactPointerEvent<HTMLElement>) => {
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== ev.pointerId) return;
       dragRef.current = null;
+      interactionStateRef.current = commitWaveformSegmentInteraction(interactionStateRef.current);
       const a = argsRef.current;
       const modifiers = readSegmentOverlayModifiers(ev);
       const snapEnabled = isSegmentSnapEnabled(modifiers);
@@ -128,7 +145,8 @@ export function useWaveformSegmentDrag(
       if (mode === "resize-start" || mode === "resize-end" || mode === "move") {
         a.onBeginBoundsEdit?.();
       }
-      dragRef.current = {
+      const modifiers = readSegmentOverlayModifiers(ev);
+      const interaction = beginWaveformSegmentInteraction({
         mode,
         pointerId: ev.pointerId,
         segmentIdx: idx,
@@ -136,9 +154,21 @@ export function useWaveformSegmentDrag(
         anchorClientX: ev.clientX,
         initialStartSec: seg.start_sec,
         initialEndSec: seg.end_sec,
-        moved: false,
-      };
-      applySegmentDraft({ idx, startSec: seg.start_sec, endSec: seg.end_sec });
+        selectedIdxAtPointerDown: a.selectedIdx,
+      });
+      interactionStateRef.current = interaction.state;
+      dragRef.current = interaction.state.drag;
+      if (mode === "move" && !modifiers.shiftKey && !modifiers.toggleKey) {
+        const viewportSyncedOnDown =
+          a.onWaveformSelectionGesture?.({ phase: "down", idx, sessionId: interaction.state.sessionId }) === true ||
+          a.onPreviewSegmentSelect?.(idx) === true;
+        if (viewportSyncedOnDown && dragRef.current) {
+          dragRef.current.viewportSyncedOnDown = true;
+          interaction.state.drag.viewportSyncedOnDown = true;
+          interaction.state.tapGesture.viewportSyncedOnDown = true;
+        }
+      }
+      applySegmentDraft(interaction.draft);
       ev.currentTarget.setPointerCapture(ev.pointerId);
     },
     [applySegmentDraft, argsRef],
@@ -177,18 +207,15 @@ export function useWaveformSegmentDrag(
         const baseIndices = ev.shiftKey
           ? new Set(a.getSelectedIndices?.() ?? [])
           : new Set<number>();
-        dragRef.current = {
-          mode: "lasso",
+        const interaction = beginWaveformSegmentLassoInteraction({
           pointerId: ev.pointerId,
-          segmentIdx: -1,
           anchorTimeSec: timeSec,
           anchorClientX: ev.clientX,
-          initialStartSec: timeSec,
-          initialEndSec: timeSec,
-          moved: false,
-          blankLasso: true,
+          selectedIdxAtPointerDown: a.selectedIdx,
           baseIndices,
-        };
+        });
+        interactionStateRef.current = interaction;
+        dragRef.current = interaction.drag;
         if (!modifiers.shiftKey && !modifiers.toggleKey) {
           a.onFocusWaveformShell?.();
           a.suppressPlaybackFollowForSelectionSeek?.();
@@ -202,7 +229,7 @@ export function useWaveformSegmentDrag(
       a.suppressPlaybackFollowForSelectionSeek?.();
       a.seekToTime(timeSec);
     },
-    [argsRef, onSegmentPointerDown, updateCreatePreview],
+    [argsRef, onSegmentPointerDown],
   );
 
   const onPointerMove = useCallback(
@@ -212,34 +239,20 @@ export function useWaveformSegmentDrag(
       const a = argsRef.current;
       const snapEnabled = isSegmentSnapEnabled(readSegmentOverlayModifiers(ev));
       const timeSec = a.clientXToTimeSec(ev.clientX);
+      const movedBefore = drag.moved;
 
-      if (drag.mode === "lasso") {
-        if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
-          drag.moved = true;
-        }
-        if (!drag.moved) return;
-        const lo = Math.min(drag.initialStartSec, timeSec);
-        const hi = Math.max(drag.initialStartSec, timeSec);
-        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-        updateCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
-        return;
+      updateWaveformOverlayDragMove({
+        drag,
+        clientX: ev.clientX,
+        timeSec,
+        args: a,
+        snapEnabled,
+        updateCreatePreview,
+        applySegmentDraft,
+      });
+      if (!movedBefore && drag.moved) {
+        interactionStateRef.current = markWaveformSegmentInteractionMoved(interactionStateRef.current);
       }
-
-      if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
-        drag.moved = true;
-      }
-      let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
-      if (!clamped) return;
-      clamped =
-        finalizeEditDragBounds(
-          a,
-          drag,
-          clamped,
-          snapEnabled,
-          SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
-        ) ?? clamped;
-      drag.lastFinalizedBounds = clamped;
-      applySegmentDraft({ idx: drag.segmentIdx, ...clamped });
     },
     [applySegmentDraft, argsRef, updateCreatePreview],
   );
@@ -257,48 +270,20 @@ export function useWaveformSegmentDrag(
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== ev.pointerId) return;
       dragRef.current = null;
-      try {
-        (ev.currentTarget).releasePointerCapture(ev.pointerId);
-      } catch {
-        /* noop */
-      }
-      const a = argsRef.current;
+      interactionStateRef.current = cancelWaveformSegmentInteraction(interactionStateRef.current);
+      suppressClickAfterPointer();
+      releasePointerCaptureIfHeld(ev.currentTarget, ev.pointerId);
       updateCreatePreview(null);
       applySegmentDraft(null);
-
-      if (drag.mode === "lasso") {
-        if (!drag.moved) {
-          const modifiers = readSegmentOverlayModifiers(ev);
-          finishWaveformLassoDrag({
-            drag,
-            timeSec: a.clientXToTimeSec(ev.clientX),
-            args: a,
-            snapEnabled: isSegmentSnapEnabled(modifiers),
-            modifiers,
-            suppressClickAfterPointer,
-          });
-        }
-        return;
-      }
-
-      if (!drag.moved) {
-        suppressClickAfterPointer();
-        a.onFocusWaveformShell?.();
-        if (ev.shiftKey) {
-          a.onSelectSegmentAt(drag.segmentIdx, { shiftKey: true });
-        } else if (ev.metaKey || ev.ctrlKey) {
-          a.onSelectSegmentAt(drag.segmentIdx, { toggle: true });
-        } else {
-          onSegmentPointerTapRef.current(drag.segmentIdx, drag.anchorTimeSec);
-        }
-      }
     },
-    [applySegmentDraft, argsRef, updateCreatePreview, suppressClickAfterPointer],
+    [applySegmentDraft, updateCreatePreview, suppressClickAfterPointer],
   );
 
   return {
     dragRef,
+    interactionStateRef,
     suppressClickUntilRef,
+    consumeLastSegmentTapGesture,
     suppressClickAfterPointer,
     onShellPointerDown,
     onSegmentPointerDown,

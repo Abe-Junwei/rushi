@@ -37,6 +37,7 @@ describe("waveformSegmentOverlayGeometry", () => {
           initialStartSec: 0,
           initialEndSec: 0,
           moved: false,
+          selectedIdxAtPointerDown: 0,
         },
         1,
         10,

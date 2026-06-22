@@ -14,9 +14,18 @@ export type SegmentDragMode = "resize-start" | "resize-end" | "move" | "create";
 export type SegmentSelectAtOptions = {
   shiftKey?: boolean;
   toggle?: boolean;
+  /** Waveform pointerdown session that already handled preview seek/reveal. */
+  previewSessionId?: string;
   /** listKeyboard burst: SC2 + scroll only; SC1 commit on keyup. */
   burst?: boolean;
 };
+
+export function isListKeyboardBurstStep(
+  source: SegmentSelectSource,
+  opts?: SegmentSelectAtOptions,
+): boolean {
+  return source === "listKeyboard" && opts?.burst === true && !opts?.shiftKey && !opts?.toggle;
+}
 
 export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean {
   return mode === "resize-start" || mode === "resize-end" || mode === "move";

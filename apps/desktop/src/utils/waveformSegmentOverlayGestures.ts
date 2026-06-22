@@ -52,7 +52,7 @@ export function resolveOverlayPointerUpIntent(input: {
     return {
       kind: "select-segment",
       segmentIdx: input.segmentIdx,
-      pointerTimeSec: input.pointerTimeSec,
+      pointerTimeSec: input.anchorTimeSec,
     };
   }
 
@@ -63,7 +63,7 @@ export function resolveOverlayPointerUpIntent(input: {
     return {
       kind: "select-segment",
       segmentIdx: input.segmentIdx,
-      pointerTimeSec: input.pointerTimeSec,
+      pointerTimeSec: input.anchorTimeSec,
     };
   }
 

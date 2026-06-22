@@ -1,8 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
-import { applySegmentOverlayTap } from "../utils/waveformSegmentOverlayActions";
+import { applySegmentOverlayTap, type SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
+import type { WaveformSelectionGesture } from "../services/waveform/waveformSelectionGesture";
 import { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
 import {
   computeCreatePreviewStyle,
@@ -10,41 +10,16 @@ import {
   type CreateRangePreview,
   type SegmentOverlayDraft,
 } from "../utils/waveformSegmentOverlayGeometry";
+import {
+  applySegmentDraftOverlayImperative,
+  applySegmentDraftPreviewFallback,
+  clearSegmentDraftOverlayLayout,
+  hidePreviewFallback,
+  hideSegmentDraftPreviewFallbackIfOverlayMounted,
+  overlayRootFromCreatePreview,
+} from "../utils/waveformSegmentOverlayDraftChrome";
+import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
 import { useWaveformSegmentDrag } from "./useWaveformSegmentDrag";
-
-function overlayRootFromCreatePreview(createPreviewRef: RefObject<HTMLElement | null>): ParentNode | null {
-  return createPreviewRef.current?.closest(".waveform-segment-overlay") ?? null;
-}
-
-function applySegmentDraftOverlayImperative(
-  draft: SegmentOverlayDraft,
-  args: {
-    timelineWidthPx: number;
-    durationSec: number;
-    layoutHeightPx: number;
-    laneByIndex: number[];
-    laneCount: number;
-  },
-  overlayRoot: ParentNode | null,
-): void {
-  const el = overlayRoot?.querySelector(`[data-segment-idx="${draft.idx}"]`) as HTMLElement | null;
-  if (!el) return;
-  const geom = segmentOverlayGeometry({
-    startSec: draft.startSec,
-    endSec: draft.endSec,
-    timelineWidthPx: args.timelineWidthPx,
-    durationSec: args.durationSec,
-    lane: args.laneByIndex[draft.idx] ?? 0,
-    laneCount: args.laneCount,
-    containerHeightPx: args.layoutHeightPx,
-  });
-  setCspLayoutRules(el, {
-    left: geom.leftPx,
-    width: geom.widthPx,
-    top: geom.topPx,
-    height: geom.heightPx,
-  });
-}
 
 export type { CreateRangePreview, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 
@@ -66,6 +41,9 @@ export function useWaveformSegmentOverlay(
     enableCreateRange: boolean;
     clientXToTimeSec: (clientX: number) => number;
     onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+    onWaveformSelectionGesture?: (gesture: WaveformSelectionGesture) => boolean | void;
+    /** @deprecated 使用 onWaveformSelectionGesture down phase */
+    onPreviewSegmentSelect?: (idx: number) => boolean;
     onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
     getSelectedIndices?: () => ReadonlySet<number>;
     onBeginBoundsEdit?: () => void;
@@ -90,6 +68,7 @@ export function useWaveformSegmentOverlay(
   argsRef.current = args;
 
   const [segmentDraft, setSegmentDraft] = useState<SegmentOverlayDraft | null>(null);
+  const activeDraftIdxRef = useRef<number | null>(null);
 
   const segmentDraftIdx = segmentDraft?.idx ?? null;
   const createPreviewInitializedRef = useRef(false);
@@ -123,6 +102,14 @@ export function useWaveformSegmentOverlay(
         display: "block",
         left: layout.left,
         width: layout.width,
+        top: null,
+        height: null,
+        bottom: null,
+        background: null,
+        border: null,
+        borderLeft: null,
+        borderRight: null,
+        zIndex: null,
       });
     },
     [createPreviewRef],
@@ -132,52 +119,99 @@ export function useWaveformSegmentOverlay(
     argsRef.current.onDraftIdxChange?.(segmentDraftIdx);
   }, [segmentDraftIdx]);
 
+  useLayoutEffect(() => {
+    hideSegmentDraftPreviewFallbackIfOverlayMounted(createPreviewRef.current, segmentDraftIdx);
+  }, [createPreviewRef, segmentDraftIdx]);
+
   const applySegmentDraft = useCallback(
     (draft: SegmentOverlayDraft | null) => {
+      const overlayRoot = overlayRootFromCreatePreview(createPreviewRef);
       if (draft) {
-        applySegmentDraftOverlayImperative(
+        if (activeDraftIdxRef.current != null && activeDraftIdxRef.current !== draft.idx) {
+          clearSegmentDraftOverlayLayout(activeDraftIdxRef.current, overlayRoot);
+        }
+        activeDraftIdxRef.current = draft.idx;
+        const appliedExistingOverlay = applySegmentDraftOverlayImperative(
           draft,
           argsRef.current,
-          overlayRootFromCreatePreview(createPreviewRef),
+          overlayRoot,
         );
+        if (appliedExistingOverlay) {
+          hidePreviewFallback(createPreviewRef.current);
+        } else if (
+          resolveWaveformSelectionRenderProjection({
+            segmentCount: argsRef.current.segments.length,
+            selectedIdx: argsRef.current.selectedIdx,
+            selectionLo: argsRef.current.selectionLo,
+            selectionHi: argsRef.current.selectionHi,
+            draftIdx: draft.idx,
+            overlayRoot,
+          }).fallbackTargetIdx === draft.idx
+        ) {
+          applySegmentDraftPreviewFallback(draft, argsRef.current, createPreviewRef.current);
+        } else {
+          hidePreviewFallback(createPreviewRef.current);
+        }
         setSegmentDraft(draft);
       } else {
+        clearSegmentDraftOverlayLayout(activeDraftIdxRef.current, overlayRoot);
+        activeDraftIdxRef.current = null;
+        hidePreviewFallback(createPreviewRef.current);
         setSegmentDraft(null);
       }
     },
     [createPreviewRef],
   );
 
-  const onSegmentPointerTap = useCallback((idx: number, pointerTimeSec: number) => {
-    const a = argsRef.current;
-    const seg = a.segments[idx];
-    if (!seg) return;
-    const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
-    applySegmentOverlayTap(
-      {
-        selectedIdx: chromePrimary >= 0 ? chromePrimary : a.selectedIdx,
-        segmentIdx: idx,
-        pointerTimeSec,
-        segment: seg,
-      },
-      {
-        onSelectSegmentAt: a.onSelectSegmentAt,
-        seekToTime: a.seekToTime,
-        suppressPlaybackFollowForSelectionSeek: a.suppressPlaybackFollowForSelectionSeek,
-      },
-    );
-  }, []);
+  const onSegmentPointerTap = useCallback(
+    (idx: number, pointerTimeSec: number, tapGesture?: SegmentOverlayTapGesture) => {
+      const a = argsRef.current;
+      const seg = a.segments[idx];
+      if (!seg) return;
+      if (a.onWaveformSelectionGesture) {
+        a.onWaveformSelectionGesture({
+          phase: "up",
+          idx,
+          pointerTimeSec,
+          selectedIdxAtPointerDown: tapGesture?.selectedIdxAtPointerDown ?? a.selectedIdx,
+          viewportSyncedOnDown: tapGesture?.viewportSyncedOnDown,
+          sessionId: tapGesture?.sessionId,
+        });
+        return;
+      }
+      applySegmentOverlayTap(
+        {
+          selectedIdx: a.selectedIdx,
+          selectedIdxAtPointerDown: tapGesture?.selectedIdxAtPointerDown,
+          viewportSyncedOnDown: tapGesture?.viewportSyncedOnDown,
+          segmentIdx: idx,
+          pointerTimeSec,
+          segment: seg,
+        },
+        {
+          onSelectSegmentAt: a.onSelectSegmentAt,
+          seekToTime: a.seekToTime,
+          suppressPlaybackFollowForSelectionSeek: a.suppressPlaybackFollowForSelectionSeek,
+        },
+      );
+    },
+    [],
+  );
 
   const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, updateCreatePreview, onSegmentPointerTap);
-  const { suppressClickAfterPointer } = drag;
+  const {
+    consumeLastSegmentTapGesture,
+    dragRef,
+    suppressClickAfterPointer,
+    suppressClickUntilRef,
+  } = drag;
 
   const onSegmentClick = useCallback(
     (idx: number, ev: ReactMouseEvent<HTMLElement>) => {
       const a = argsRef.current;
-      if (a.disabled || drag.dragRef.current || performance.now() < drag.suppressClickUntilRef.current) return;
+      if (a.disabled || dragRef.current || performance.now() < suppressClickUntilRef.current) return;
       ev.stopPropagation();
       if (!a.segments[idx]) return;
-      a.onFocusWaveformShell?.();
       if (ev.shiftKey) {
         a.onSelectSegmentAt(idx, { shiftKey: true });
         return;
@@ -186,9 +220,13 @@ export function useWaveformSegmentOverlay(
         a.onSelectSegmentAt(idx, { toggle: true });
         return;
       }
-      onSegmentPointerTap(idx, a.clientXToTimeSec(ev.clientX));
+      onSegmentPointerTap(
+        idx,
+        a.clientXToTimeSec(ev.clientX),
+        consumeLastSegmentTapGesture(idx) ?? { selectedIdxAtPointerDown: a.selectedIdx },
+      );
     },
-    [drag.dragRef, drag.suppressClickUntilRef, onSegmentPointerTap],
+    [consumeLastSegmentTapGesture, dragRef, suppressClickUntilRef, onSegmentPointerTap],
   );
 
   const onSegmentDoubleClick = useCallback(

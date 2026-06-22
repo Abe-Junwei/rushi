@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   selectOverlayInteractiveSegmentIndices,
   selectOverlayRenderedSegmentIndices,
+  resolveSegmentBandCanvasSkipIndexSet,
 } from "./waveformSegmentOverlayVisibility";
 
 const segments = [
@@ -134,5 +135,51 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
     expect(out).toContain(79);
     expect(out).toContain(0);
     expect(out).toContain(78);
+  });
+});
+
+describe("resolveSegmentBandCanvasSkipIndexSet", () => {
+  it("skips primary when overlay DOM exists for primary", () => {
+    const overlay = document.createElement("div");
+    overlay.innerHTML = '<div data-segment-idx="3"></div>';
+
+    const skip = resolveSegmentBandCanvasSkipIndexSet({
+      segmentCount: 5,
+      selectedIdx: 3,
+      draftIdx: null,
+      overlayRoot: overlay,
+    });
+
+    expect([...skip]).toEqual([3]);
+  });
+
+  it("band-paints primary when overlay DOM is missing", () => {
+    const skip = resolveSegmentBandCanvasSkipIndexSet({
+      segmentCount: 5,
+      selectedIdx: 3,
+      draftIdx: null,
+      overlayRoot: null,
+    });
+
+    expect(skip.has(3)).toBe(false);
+  });
+
+  it("still skips non-primary overlay indices when mounted", () => {
+    const overlay = document.createElement("div");
+    overlay.innerHTML = '<div data-segment-idx="2"></div>';
+
+    const skip = resolveSegmentBandCanvasSkipIndexSet({
+      segmentCount: 5,
+      selectedIdx: 3,
+      selectionLo: 2,
+      selectionHi: 3,
+      selectionCount: 2,
+      isContiguousSelection: true,
+      draftIdx: null,
+      overlayRoot: overlay,
+    });
+
+    expect(skip.has(3)).toBe(false);
+    expect(skip.has(2)).toBe(true);
   });
 });
