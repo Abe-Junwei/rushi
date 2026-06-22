@@ -217,11 +217,12 @@ export function useProjectCloseGateController(
     return Promise.resolve();
   }
 
-  function openWorkspaceFile(projectId: string, fileId: string) {
-    if (busy) return;
+  function openWorkspaceFile(projectId: string, fileId: string): Promise<void> {
+    if (busy) return Promise.resolve();
     navigate.requestNavigateWithGuards(() =>
       projectLoad.performOpenWorkspaceFile(projectId, fileId),
     );
+    return Promise.resolve();
   }
 
   async function loadProject(id: string) {
