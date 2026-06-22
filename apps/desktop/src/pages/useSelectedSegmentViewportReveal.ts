@@ -1,4 +1,5 @@
 import { useCallback, type RefObject } from "react";
+import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
@@ -10,7 +11,9 @@ export function useSelectedSegmentViewportReveal(args: {
 }) {
   return useCallback(() => {
     const c = args.ctxRef.current;
-    const seg = c.segments[c.selectedIdx];
+    const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
+    const idx = chromePrimary >= 0 && chromePrimary < c.segments.length ? chromePrimary : c.selectedIdx;
+    const seg = c.segments[idx];
     if (!seg) return;
     args.timelineRef.current.timeline.viewportFit.revealSegmentInViewport({
       start_sec: seg.start_sec,

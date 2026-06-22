@@ -264,6 +264,9 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
         queueListKeyboardKeyupReveal({ idx, scrollKey });
       }
       lastSegmentSelectSourceRef.current = "listKeyboard";
+      if (c.selectedIdxRef) {
+        c.selectedIdxRef.current = idx;
+      }
       selectionProfileBegin(`listKeyboard commit idx=${idx} segments=${c.segments.length}`);
       startTransition(() => {
         setSelectedIdxUi(idx);

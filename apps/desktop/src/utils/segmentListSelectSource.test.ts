@@ -7,6 +7,7 @@ describe("isListSegmentSelectSource", () => {
     expect(isListSegmentSelectSource("listAdvance")).toBe(true);
     expect(isListSegmentSelectSource("listKeyboard")).toBe(true);
     expect(isListSegmentSelectSource("waveform")).toBe(false);
+    expect(isListSegmentSelectSource("waveformKeyboard")).toBe(false);
   });
 });
 

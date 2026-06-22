@@ -63,7 +63,7 @@ function advanceAdjacentSegment(
   );
   if (targetIdx == null || targetIdx === anchorIdx) return;
   if (mods.inWaveform) {
-    deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+    deps.selectSegmentAt(targetIdx, "waveformKeyboard", { shiftKey: mods.shiftKey });
     return;
   }
   deps.scheduleAdvanceToSegment(targetIdx);
@@ -215,7 +215,7 @@ export function executeEditorShortcut(
         deps.segmentListFilterNavState,
       );
       if (targetIdx != null && targetIdx !== anchorIdx) {
-        deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+        deps.selectSegmentAt(targetIdx, "waveformKeyboard", { shiftKey: mods.shiftKey });
       }
       return true;
     }
@@ -228,7 +228,7 @@ export function executeEditorShortcut(
         deps.segmentListFilterNavState,
       );
       if (targetIdx != null && targetIdx !== anchorIdx) {
-        deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+        deps.selectSegmentAt(targetIdx, "waveformKeyboard", { shiftKey: mods.shiftKey });
       }
       return true;
     }

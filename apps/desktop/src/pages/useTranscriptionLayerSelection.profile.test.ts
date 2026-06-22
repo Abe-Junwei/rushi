@@ -390,6 +390,54 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(document.activeElement).toBe(waveformShell);
   });
 
+  it("waveformKeyboard selects chrome synchronously and commits final idx on keyup", () => {
+    const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const waveformShell = document.createElement("div");
+    waveformShell.tabIndex = -1;
+    document.body.appendChild(waveformShell);
+    const segmentListRef = { current: null as HTMLDivElement | null };
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: waveformShell },
+        segmentListRef,
+        setSelectedIdxUi,
+        selectedIdxRef,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "waveformKeyboard");
+      result.current.selectSegmentAt(3, "waveformKeyboard");
+    });
+
+    expect(selectedIdxRef.current).toBe(3);
+    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(2);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
+      expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
+    );
+    expect(document.activeElement).toBe(waveformShell);
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+  });
+
   it("paints selection chrome before waveform seek on segment change", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };

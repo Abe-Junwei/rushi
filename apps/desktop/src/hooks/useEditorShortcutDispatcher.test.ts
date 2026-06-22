@@ -378,7 +378,7 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: false });
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveformKeyboard", { shiftKey: false });
     tierScroll.remove();
   });
 
@@ -401,7 +401,7 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(selectSegmentAt).toHaveBeenCalledWith(0, "waveform", { shiftKey: false });
+    expect(selectSegmentAt).toHaveBeenCalledWith(0, "waveformKeyboard", { shiftKey: false });
     shell.remove();
   });
 
@@ -464,7 +464,7 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: false });
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveformKeyboard", { shiftKey: false });
     expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
     shell.remove();
   });

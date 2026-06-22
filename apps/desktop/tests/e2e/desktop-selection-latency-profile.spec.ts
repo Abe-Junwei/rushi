@@ -27,6 +27,20 @@ function buildManySegmentMockInit(segmentCount: number): string {
     kind: "speech",
   }));
   window.__RUSHI_E2E_SET_SEGMENTS__?.(segments);
+  const originalInvoke = window.__TAURI_INTERNALS__?.invoke;
+  if (originalInvoke) {
+    window.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
+      const result = await originalInvoke(cmd, args);
+      if (cmd === "load_file" && result) {
+        return {
+          ...result,
+          file_type: "paired",
+          audio_path: "/tmp/rushi-e2e-selection-latency.wav",
+        };
+      }
+      return result;
+    };
+  }
 })();
 `;
 }
@@ -105,6 +119,11 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     await textarea.press("ArrowDown");
     await page.waitForTimeout(200);
 
+    const waveformTier = page.locator(".waveform-tier-scroll-fallback").first();
+    await waveformTier.click();
+    await page.keyboard.press("ArrowRight");
+    await page.waitForTimeout(200);
+
     await page.waitForFunction(
       () =>
         (window.__rushiSelectionProfile?.recent() ?? []).filter(
@@ -118,7 +137,8 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     const selectionLines = lines.filter(
       (line) => line.includes("[selection-profile] #") && line.includes("total="),
     );
-    expect(selectionLines.length).toBeGreaterThanOrEqual(2);
+    expect(selectionLines.length).toBeGreaterThanOrEqual(3);
+    expect(selectionLines.some((line) => line.includes("waveformKeyboard"))).toBe(true);
 
     for (const line of selectionLines) {
       const parsed = parseSelectionProfileLine(line);

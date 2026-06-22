@@ -40,6 +40,7 @@ import { useWaveformZoomStepController } from "./useWaveformZoomStepController";
 import { useWaveformSelectionChromePainter } from "./useWaveformSelectionChromePainter";
 import { useSelectedSegmentViewportReveal } from "./useSelectedSegmentViewportReveal";
 import { useSelectedIdxCommitter } from "./useSelectedIdxCommitter";
+import { useWaveformKeyboardSelectionCommit } from "./useWaveformKeyboardSelectionCommit";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 
@@ -71,9 +72,8 @@ export function useTranscriptionLayerSelection(opts: {
 
   const stepWaveformZoomRef = useWaveformZoomStepController(scrollFitRef);
 
-  const selectSegmentAtRef = useRef<
-    (idx: number, source?: SegmentSelectSource, opts?: SegmentSelectAtOptions) => void
-  >(() => {});
+  const selectSegmentAtRef =
+    useRef<(idx: number, source?: SegmentSelectSource, opts?: SegmentSelectAtOptions) => void>(() => {});
 
   const lastSegmentSelectSourceRef = useRef<SegmentSelectSource>("waveform");
 
@@ -95,20 +95,13 @@ export function useTranscriptionLayerSelection(opts: {
     segmentListRef,
   });
   const commitSelectedIdxUi = useSelectedIdxCommitter(setSelectedIdxUi);
+  const waveformKeyboardCommit = useWaveformKeyboardSelectionCommit(setSelectedIdxUi);
 
-  const commitWaveformSelectPreviewSc1 = useCallback(
-    (idx: number) => {
-      if (selectedIdxRef) {
-        selectedIdxRef.current = idx;
-      }
-    },
-    [selectedIdxRef],
-  );
+  const commitWaveformSelectPreviewSc1 = useCallback((idx: number) => {
+    if (selectedIdxRef) selectedIdxRef.current = idx;
+  }, [selectedIdxRef]);
 
-  const revealSelectedSegmentInViewport = useSelectedSegmentViewportReveal({
-    ctxRef,
-    timelineRef: scrollFitRef,
-  });
+  const revealSelectedSegmentInViewport = useSelectedSegmentViewportReveal({ ctxRef, timelineRef: scrollFitRef });
 
   const burst = useListKeyboardBurstSelection({
     ctxRef,
@@ -127,6 +120,9 @@ export function useTranscriptionLayerSelection(opts: {
       if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
+      const isWaveformKeyboard = source === "waveformKeyboard";
+      const isWaveformLike = source === "waveform" || isWaveformKeyboard;
+      if (!isWaveformKeyboard) waveformKeyboardCommit.cancel();
       if (!isListKeyboardBurstStep(source, opts)) {
         clearListKeyboardImperativeScrollKey();
         clearListKeyboardVirtualDisplayPin();
@@ -156,9 +152,7 @@ export function useTranscriptionLayerSelection(opts: {
       if (previewViewportAlreadySynced) {
         selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
         lastSegmentSelectSourceRef.current = source;
-        if (selectedIdxRef) {
-          selectedIdxRef.current = idx;
-        }
+        if (selectedIdxRef) selectedIdxRef.current = idx;
         if (c.selectedIdx !== idx) {
           commitSelectedIdxUi(idx, source, opts);
         }
@@ -174,7 +168,7 @@ export function useTranscriptionLayerSelection(opts: {
       selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
       lastSegmentSelectSourceRef.current = source;
       const seg =
-        shouldSeek || (shouldReveal && source === "waveform")
+        shouldSeek || (shouldReveal && isWaveformLike)
           ? selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s)).segment
           : s;
 
@@ -189,9 +183,7 @@ export function useTranscriptionLayerSelection(opts: {
           if (idxChangedForChrome) {
             paintSelectionChrome(c, idx, opts, source);
           }
-          if (selectedIdxRef) {
-            selectedIdxRef.current = idx;
-          }
+          if (selectedIdxRef) selectedIdxRef.current = idx;
           burst.runListKeyboardBurstListScroll(idx);
         });
         const burstRevealIdxChanged =
@@ -216,7 +208,7 @@ export function useTranscriptionLayerSelection(opts: {
         if (idxChangedForChrome && !skipPreviewDuplicateWork) {
           paintSelectionChrome(c, idx, opts, source);
         }
-        if (source === "waveform" && idxChangedForChrome && !skipPreviewDuplicateWork) {
+        if (isWaveformLike && idxChangedForChrome && !skipPreviewDuplicateWork) {
           burst.runWaveformSelectListScroll(idx);
         }
         const tl = scrollFitRef.current.timeline;
@@ -225,22 +217,28 @@ export function useTranscriptionLayerSelection(opts: {
             syncWaveformSegmentSelectSeek(tl, s);
           });
         }
-        commitSelectedIdxUi(idx, source, opts);
-        if (shouldReveal && source === "waveform" && !previewViewportAlreadySynced) {
+        if (selectedIdxRef) selectedIdxRef.current = idx;
+        if (isWaveformKeyboard) waveformKeyboardCommit.queue(idx, opts);
+        else commitSelectedIdxUi(idx, source, opts);
+        if (shouldReveal && isWaveformLike && !previewViewportAlreadySynced) {
           burst.cancelPendingSelectionReveal();
           selectionProfileTime("viewport", () => {
-            syncWaveformSegmentSelectReveal(tl, seg);
+            syncWaveformSegmentSelectReveal(
+              tl,
+              seg,
+              isWaveformKeyboard ? { forceBandPaint: false } : undefined,
+            );
           });
         }
         if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
       });
-      if (shouldReveal && !isListKeyboardBurstStep(source, opts) && source !== "waveform") {
+      if (shouldReveal && !isListKeyboardBurstStep(source, opts) && !isWaveformLike) {
         burst.scheduleRevealSelectedSegment(source);
       }
       if (isSelectionLatencyProfileEnabled()) {
-        selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
+        selectionProfileScheduleFlush(isWaveformKeyboard || !isWaveformLike ? "list" : "waveform");
       }
       if (shouldFocusWaveformShellForSelectSource(source)) {
         selectionProfileTime("focus", focusWaveformShell);
@@ -253,6 +251,7 @@ export function useTranscriptionLayerSelection(opts: {
       focusWaveformShell,
       paintSelectionChrome,
       selectedIdxRef,
+      waveformKeyboardCommit,
       waveformShellRef,
     ],
   );
@@ -266,6 +265,7 @@ export function useTranscriptionLayerSelection(opts: {
       paintSelectionChrome,
       commitWaveformSelectPreviewSc1,
       runWaveformSelectListScroll: burst.runWaveformSelectListScroll,
+      lastSegmentSelectSourceRef,
       selectSegmentAt,
       focusWaveformShell,
     });

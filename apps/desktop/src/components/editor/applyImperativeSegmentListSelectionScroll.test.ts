@@ -30,7 +30,7 @@ describe("applyImperativeSegmentListSelectionScroll", () => {
     resetListKeyboardBurstCoordinatorForTests();
   });
 
-  it("waveform scrolls list into view synchronously and marks layout skip key", () => {
+  it("waveform scrolls list into view synchronously without marking listKeyboard layout skip key", () => {
     const rowMin = segmentListRowMinHeightPx(70);
     const stride = segmentListItemStridePx(rowMin);
     const viewport = 480;
@@ -54,6 +54,28 @@ describe("applyImperativeSegmentListSelectionScroll", () => {
     expect(changed).toBe(true);
     expect(root.scrollTop).toBeGreaterThan(0);
     expect(readListKeyboardVirtualDisplayPin()).toBeNull();
+    expect(shouldSkipLayoutScrollForListKeyboard(scrollKey)).toBe(false);
+  });
+
+  it("listKeyboard burst scroll marks layout skip key and pins virtual display index", () => {
+    const rowMin = segmentListRowMinHeightPx(70);
+    const stride = segmentListItemStridePx(rowMin);
+    const root = createScrollRoot(0, 480, 200 * stride);
+    const scrollKey = "file-a:40:40:all:200:0:199";
+
+    applyImperativeSegmentListSelectionScroll({
+      root,
+      selectedDisplayIndex: 40,
+      selectedIdx: 40,
+      rowMinHeightPx: rowMin,
+      itemStridePx: stride,
+      useVirtualList: true,
+      source: "listKeyboard",
+      scrollKey,
+      pinVirtualDisplayIndex: true,
+    });
+
+    expect(readListKeyboardVirtualDisplayPin()).toBe(40);
     expect(shouldSkipLayoutScrollForListKeyboard(scrollKey)).toBe(true);
   });
 });

@@ -11,6 +11,10 @@ export function useSelectedIdxCommitter(
         setSelectedIdxUi(idx, opts);
         return;
       }
+      if (source === "waveformKeyboard") {
+        setSelectedIdxUi(idx, opts);
+        return;
+      }
       startTransition(() => {
         setSelectedIdxUi(idx, opts);
       });

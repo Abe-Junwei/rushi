@@ -8,6 +8,7 @@ import { selectionProfileTime } from "../services/ui/selectionLatencyProfile";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
+import type { MutableRefObject } from "react";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 
@@ -23,6 +24,7 @@ export function useWaveformSelectionGestureDispatcher(args: {
   ) => void;
   commitWaveformSelectPreviewSc1: (idx: number) => void;
   runWaveformSelectListScroll: (idx: number) => void;
+  lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
   selectSegmentAt: (
     idx: number,
     source?: SegmentSelectSource,
@@ -38,6 +40,7 @@ export function useWaveformSelectionGestureDispatcher(args: {
       const c = args.ctxRef.current;
       const tl = args.timelineRef.current.timeline;
       if (gesture.phase === "down") {
+        args.lastSegmentSelectSourceRef.current = "waveform";
         return (
           selectionProfileTime("viewport", () =>
             dispatchWaveformSelectionGestureDown(

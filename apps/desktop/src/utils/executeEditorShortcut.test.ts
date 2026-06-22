@@ -208,7 +208,7 @@ describe("executeEditorShortcut", () => {
     expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(1);
   });
 
-  it("seeks when advancing in waveform context", () => {
+  it("uses lightweight waveform keyboard selection when advancing in waveform context", () => {
     const scheduleAdvanceToSegment = vi.fn();
     const selectSegmentAt = vi.fn();
     const ctx = makeCtx({ selectedIdx: 0 });
@@ -217,7 +217,7 @@ describe("executeEditorShortcut", () => {
       makeDeps({ ctx, scheduleAdvanceToSegment, selectSegmentAt }),
       { inWaveform: true },
     );
-    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: undefined });
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveformKeyboard", { shiftKey: undefined });
     expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
   });
 

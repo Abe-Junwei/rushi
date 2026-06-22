@@ -40,7 +40,9 @@ export function applyImperativeSegmentListSelectionScroll(
   if (pinVirtualDisplayIndex) {
     pinListKeyboardVirtualDisplayIndex(selectedDisplayIndex);
   }
-  markListKeyboardImperativeScrollKey(scrollKey);
+  if (source === "listKeyboard") {
+    markListKeyboardImperativeScrollKey(scrollKey);
+  }
 
   const plan = planEditorSegmentListSelectionScroll({
     root,

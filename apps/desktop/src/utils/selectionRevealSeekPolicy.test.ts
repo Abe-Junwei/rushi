@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import { shouldRevealOnSegmentSelect, shouldSeekOnSegmentSelect } from "./selectionRevealSeekPolicy";
 
 describe("selectionRevealSeekPolicy", () => {
-  it("only waveform seeks on segment select", () => {
+  it("waveform sources seek on segment select", () => {
     expect(shouldSeekOnSegmentSelect("waveform")).toBe(true);
+    expect(shouldSeekOnSegmentSelect("waveformKeyboard")).toBe(true);
     expect(shouldSeekOnSegmentSelect("list")).toBe(false);
     expect(shouldSeekOnSegmentSelect("listAdvance")).toBe(false);
     expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(false);
@@ -67,7 +68,7 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(false);
   });
 
-  it("no reveal or seek when idx unchanged", () => {
+  it("reveals waveform sources only when idx changes", () => {
     expect(
       shouldRevealOnSegmentSelect({
         source: "waveform",
@@ -75,5 +76,12 @@ describe("selectionRevealSeekPolicy", () => {
         editorFocusGateOpen: true,
       }),
     ).toBe(false);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "waveformKeyboard",
+        idxChanged: true,
+        editorFocusGateOpen: true,
+      }),
+    ).toBe(true);
   });
 });

@@ -7,7 +7,7 @@ export type SelectionRevealSeekContext = {
 };
 
 export function shouldSeekOnSegmentSelect(source: SegmentSelectSource): boolean {
-  return source === "waveform";
+  return source === "waveform" || source === "waveformKeyboard";
 }
 
 export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext): boolean {
@@ -16,6 +16,6 @@ export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext): bo
   if (ctx.source === "list" || ctx.source === "listAdvance") return true;
   // ↑↓ / Tab confirm — user-initiated; gate can false-negative when virtual list unmounts textarea.
   if (ctx.source === "listKeyboard") return true;
-  if (ctx.source === "waveform") return true;
+  if (ctx.source === "waveform" || ctx.source === "waveformKeyboard") return true;
   return false;
 }

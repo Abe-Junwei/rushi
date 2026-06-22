@@ -34,7 +34,8 @@ export function useWaveformSelectionChromePainter(args: {
           skipBandPaint:
             publishOpts?.skipBandPaint === true ||
             source === "list" ||
-            source === "listAdvance",
+            source === "listAdvance" ||
+            source === "waveformKeyboard",
         },
       );
     },
