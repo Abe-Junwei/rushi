@@ -314,7 +314,7 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("calls finalizeListKeyboardViewport on Arrow keyup", async () => {
+  it("calls finalizeListKeyboardViewport on Arrow keyup", () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -491,7 +491,7 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(
         0,
-        makeTextareaKeyEvent("ArrowDown", textarea, { repeat: true } as Partial<ReactKeyboardEvent<HTMLTextAreaElement>>),
+        makeTextareaKeyEvent("ArrowDown", textarea, { repeat: true }),
       );
     });
     await flushAdvanceCoalesce();

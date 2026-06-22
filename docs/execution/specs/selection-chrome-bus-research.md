@@ -14,7 +14,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 长转写（90–500+ 语段）编辑：波形点选语段、列表跟选、键盘 ↑↓；期望 **点击后 <50ms 可见高亮**，不「卡住半秒」。 |
-| **本仓现状** | **不对称架构**：波形 B15 已 Display/Interaction 分离（Canvas band + imperative overlay chrome，`applyWaveformSegmentSelectionImperative.ts`）；列表仍 **`selectedIdx` 顶层 React state → Editor 树 reconcile**。入口唯一内核 [`useTranscriptionLayerSelection.selectSegmentAt`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)。虚拟列表 [`useEditorSegmentListScroll`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) 在选中时可能 `bumpScrollEpoch` + `maybePinSegmentListVirtualWindow`。近期补丁：去 `flushSync`、波形 imperative、`startTransition`、跳过多余 listScrollCorrect — **波形 ~20ms，列表 ~400ms 仍在**。 |
+| **本仓现状** | **不对称架构**：波形 B15 已 Display/Interaction 分离（Canvas band + imperative overlay chrome，`applySelectionChromeImperative.ts`）；列表仍 **`selectedIdx` 顶层 React state → Editor 树 reconcile**。入口唯一内核 [`useTranscriptionLayerSelection.selectSegmentAt`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)。虚拟列表 [`useEditorSegmentListScroll`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) 在选中时可能 `bumpScrollEpoch` + `maybePinSegmentListVirtualWindow`。近期补丁：去 `flushSync`、波形 imperative、`startTransition`、跳过多余 listScrollCorrect — **波形 ~20ms，列表 ~400ms 仍在**。 |
 | **成功标准** | 193 段文件：波形 + 列表 **imperative chrome <30ms**（profile）；React `listCommit` 可 >100ms 但 **不阻塞主线程感知**；多选/filter/Tab **无 chrome 与逻辑 desync**（手测矩阵 SC-H1–H12）。 |
 
 ---
@@ -53,7 +53,7 @@
 
 | 模块 | 路径 |
 |------|------|
-| 波形 imperative chrome | [`applyWaveformSegmentSelectionImperative.ts`](../../../apps/desktop/src/services/waveform/applyWaveformSegmentSelectionImperative.ts) |
+| 波形 imperative chrome | [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts) |
 | 选中唯一内核 | [`useTranscriptionLayerSelection.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts) |
 | 列表 DOM 锚点 | `[data-seg-row]` · `.seg-row-selected` · [`SegmentTextListRow.tsx`](../../../apps/desktop/src/components/SegmentTextListRow.tsx) |
 | 列表 scroll / 虚拟窗 | [`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) · [`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts) |

@@ -109,7 +109,7 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
       }),
     );
 
-    await act(async () => {
+    act(() => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
     await act(async () => {
@@ -145,7 +145,7 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
       }),
     );
 
-    await act(async () => {
+    act(() => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
     await act(async () => {

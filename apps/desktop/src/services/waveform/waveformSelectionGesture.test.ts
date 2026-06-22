@@ -146,14 +146,22 @@ describe("dispatchWaveformSelectionGestureDown", () => {
   it("pointerdown then pointerup with matching store bumps version once", () => {
     const ctx = makeCtx(0);
     const timeline = makeTimeline();
-    const paintChrome = vi.fn((_ctx, idx, _opts, _source, publishOpts) => {
-      publishSelectionChromeForInput(
-        _ctx,
-        { primaryIdx: idx, selectedSet: new Set([idx]) },
-        { listRoot: null, overlayRoot: null },
-        { skipImperative: true, skipBandPaint: publishOpts?.skipBandPaint },
-      );
-    });
+    const paintChrome = vi.fn(
+      (
+        ctx: TranscriptionLayerInput,
+        idx: number,
+        _opts: unknown,
+        _source: unknown,
+        publishOpts?: { skipBandPaint?: boolean },
+      ) => {
+        publishSelectionChromeForInput(
+          ctx,
+          { primaryIdx: idx, selectedSet: new Set([idx]) },
+          { listRoot: null, overlayRoot: null },
+          { skipImperative: true, skipBandPaint: publishOpts?.skipBandPaint },
+        );
+      },
+    );
     const selectSegmentAt = vi.fn();
 
     dispatchWaveformSelectionGestureDown(

@@ -239,7 +239,7 @@ describe("useTierScrollSync", () => {
     unsubscribe();
   });
 
-  it("applies wheel delta immediately through the tier scroll authority", async () => {
+  it("applies wheel delta immediately through the tier scroll authority", () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };

@@ -6,7 +6,9 @@ vi.mock("../config/env", () => ({
 }));
 
 vi.mock("../services/asr/asrModelUnload", () => ({
-  postAsrModelUnload: vi.fn(async () => ({ status: "ok", funasr_loaded_model_id: null, funasr_model_id: "m" })),
+  postAsrModelUnload: vi.fn(() =>
+    Promise.resolve({ status: "ok", funasr_loaded_model_id: null, funasr_model_id: "m" }),
+  ),
 }));
 
 import { isTauriRuntime } from "../config/env";
@@ -17,7 +19,7 @@ import {
 } from "./useAsrModelUnloadOnFileSwitch";
 
 describe("useAsrModelUnloadOnFileSwitch", () => {
-  const refreshAsrHealth = vi.fn(async () => {});
+  const refreshAsrHealth = vi.fn(() => Promise.resolve());
 
   const baseProps = {
     busy: false,
@@ -56,7 +58,7 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },
@@ -72,17 +74,18 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
 
     await act(async () => {
       vi.advanceTimersByTime(1);
+      await Promise.resolve();
     });
     expect(postAsrModelUnload).toHaveBeenCalledTimes(1);
     expect(refreshAsrHealth).toHaveBeenCalledTimes(1);
   });
 
-  it("cancels pending unload when file switches again before delay", async () => {
+  it("cancels pending unload when file switches again before delay", () => {
     const { rerender } = renderHook(
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },
@@ -98,12 +101,12 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
     expect(postAsrModelUnload).toHaveBeenCalledTimes(1);
   });
 
-  it("skips unload while busy", async () => {
+  it("skips unload while busy", () => {
     const { rerender } = renderHook(
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },
@@ -119,12 +122,12 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
     expect(postAsrModelUnload).not.toHaveBeenCalled();
   });
 
-  it("skips unload while batch transcribe is running", async () => {
+  it("skips unload while batch transcribe is running", () => {
     const { rerender } = renderHook(
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },
@@ -140,12 +143,12 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
     expect(postAsrModelUnload).not.toHaveBeenCalled();
   });
 
-  it("aborts pending unload if busy becomes true during delay", async () => {
+  it("aborts pending unload if busy becomes true during delay", () => {
     const { rerender } = renderHook(
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },
@@ -161,13 +164,13 @@ describe("useAsrModelUnloadOnFileSwitch", () => {
     expect(postAsrModelUnload).not.toHaveBeenCalled();
   });
 
-  it("skips unload outside Tauri runtime", async () => {
+  it("skips unload outside Tauri runtime", () => {
     vi.mocked(isTauriRuntime).mockReturnValue(false);
     const { rerender } = renderHook(
       (props) => useAsrModelUnloadOnFileSwitch(props),
       {
         initialProps: {
-          currentFileId: "file-a" as string | null,
+          currentFileId: "file-a",
           ...baseProps,
         },
       },

@@ -97,7 +97,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     onAfterCacheMutation: async () => refreshAsrRuntimeInfoRef.current(),
   });
 
-  /* eslint-disable react-hooks/exhaustive-deps -- cacheCtrl is a stable hook-returned controller; only its method identity matters */
+   
   const refreshAsrRuntimeInfo = useCallback(async (runtimeOptions?: RefreshAsrRuntimeOptions) => {
     await refreshLocalAsrDiagnostics(
       {
@@ -115,7 +115,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       runtimeOptions,
     );
   }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshSetupDiagnoseRef]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+   
   refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;
 
   const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);

@@ -33,6 +33,8 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   segmentFilter,
 }: EditorWorkbenchToolbarProps) {
   const { trackRef, compact: compactLayout } = useWorkbenchToolbarCompactFromElement();
+  const { view: selectionView } = useWaveformSelectionChromeViewContext();
+  const selectedSegment = hasAudio ? (c.segments[selectionView.selectedIdx] ?? null) : null;
   const filterMenu =
     c.segments.length > 0 ? (
       <EditorSegmentListFilterMenu
@@ -65,8 +67,6 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
     );
   }
 
-  const { view: selectionView } = useWaveformSelectionChromeViewContext();
-  const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const tierViewport = resolveTierViewportMetrics({
     tierScrollEl: tx.tierScrollRef.current,
     tierScrollLive: tx.tierScrollLive,

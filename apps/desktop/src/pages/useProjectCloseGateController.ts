@@ -217,7 +217,7 @@ export function useProjectCloseGateController(
     return Promise.resolve();
   }
 
-  async function openWorkspaceFile(projectId: string, fileId: string) {
+  function openWorkspaceFile(projectId: string, fileId: string) {
     if (busy) return;
     navigate.requestNavigateWithGuards(() =>
       projectLoad.performOpenWorkspaceFile(projectId, fileId),

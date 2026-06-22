@@ -61,7 +61,9 @@ describe("useSegmentMutationController insert", () => {
       useTestSegmentMutationController([makeSeg({ text: "a", start_sec: 0, end_sec: 2 })]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(0.5, 1.5));
+    act(() => {
+      void result.current.mutations.insertSegmentFromTimeRange(0.5, 1.5);
+    });
 
     expect(result.current.segments).toHaveLength(1);
     expect(result.current.error).toContain("重叠");
@@ -75,7 +77,9 @@ describe("useSegmentMutationController insert", () => {
       ]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(20, 25, 100));
+    act(() => {
+      void result.current.mutations.insertSegmentFromTimeRange(20, 25, 100);
+    });
 
     expect(result.current.error).toBe("");
     expect(result.current.segments).toHaveLength(3);
@@ -90,7 +94,9 @@ describe("useSegmentMutationController insert", () => {
       ]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(22, 26, 100));
+    act(() => {
+      void result.current.mutations.insertSegmentFromTimeRange(22, 26, 100);
+    });
 
     expect(result.current.error).toContain("重叠");
     expect(result.current.segments).toHaveLength(2);
@@ -101,7 +107,9 @@ describe("useSegmentMutationController insert", () => {
       useTestSegmentMutationController([makeSeg({ text: "a", start_sec: 0, end_sec: 2 })]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(0.5, 1.5, 0, "allow"));
+    act(() => {
+      void result.current.mutations.insertSegmentFromTimeRange(0.5, 1.5, 0, "allow");
+    });
 
     expect(result.current.error).toBe("");
     expect(result.current.segments).toHaveLength(2);
@@ -116,7 +124,9 @@ describe("useSegmentMutationController insert", () => {
       ]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(1.97, 2.12));
+    act(() => {
+      void result.current.mutations.insertSegmentFromTimeRange(1.97, 2.12);
+    });
 
     expect(result.current.segments).toHaveLength(3);
     expect(result.current.segments[1].start_sec).toBe(2);

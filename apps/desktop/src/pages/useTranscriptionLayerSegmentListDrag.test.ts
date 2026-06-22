@@ -50,7 +50,7 @@ describe("useTranscriptionLayerSegmentListDrag", () => {
         x: 0,
         y: 100,
         toJSON: () => ({}),
-      }) as DOMRect;
+      });
 
     const row = document.createElement("div");
     row.setAttribute("data-seg-row", "5");

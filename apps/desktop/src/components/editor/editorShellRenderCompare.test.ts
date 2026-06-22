@@ -72,7 +72,7 @@ describe("editorShellRenderCompare", () => {
   it("projectControllerShellRenderEqual ignores selectedIdx-only churn", () => {
     const a = makeController({ selectedIdx: 0 });
     const b = { ...a, selectedIdx: 9, selectionLo: 9, selectionHi: 9 };
-    expect(projectControllerShellRenderEqual(a, b as ProjectControllerApi)).toBe(true);
+    expect(projectControllerShellRenderEqual(a, b)).toBe(true);
   });
 
   it("projectControllerShellRenderEqual detects busy change", () => {
@@ -85,7 +85,7 @@ describe("editorShellRenderCompare", () => {
   it("transcriptionLayerWaveformShellRenderEqual ignores currentTime-only churn", () => {
     const a = makeTx({ currentTime: 0 });
     const b = { ...a, currentTime: 12.5 };
-    expect(transcriptionLayerWaveformShellRenderEqual(a, b as TranscriptionLayerApi)).toBe(true);
+    expect(transcriptionLayerWaveformShellRenderEqual(a, b)).toBe(true);
   });
 
   it("transcriptionLayerWaveformShellRenderEqual detects isPlaying change", () => {
@@ -101,8 +101,8 @@ describe("editorShellRenderCompare", () => {
       editorWaveformPanePropsEqual(
         { controller, tx },
         {
-          controller: { ...controller, selectedIdx: 8, selectionLo: 8, selectionHi: 8 } as ProjectControllerApi,
-          tx: { ...tx, currentTime: 4.2 } as TranscriptionLayerApi,
+          controller: { ...controller, selectedIdx: 8, selectionLo: 8, selectionHi: 8 },
+          tx: { ...tx, currentTime: 4.2 },
         },
       ),
     ).toBe(true);

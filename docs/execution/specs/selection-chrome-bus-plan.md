@@ -95,7 +95,7 @@ type SelectionChromeSnapshot = {
 
 **Step 1.1** 新增 [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts)
 
-- 吸收 [`applyWaveformSegmentSelectionImperative.ts`](../../../apps/desktop/src/services/waveform/applyWaveformSegmentSelectionImperative.ts)（保留 re-export 兼容 1 PR）。  
+- 吸收 [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts)（保留 re-export 兼容 1 PR）。  
 - **列表**：对 `[data-seg-row="${idx}"]` 切换 `seg-row-selected` / `seg-row-in-selection`；同步 `overflow`/`z-index`（与 [`EditorSegmentList.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentList.tsx) L254–255 一致，改 imperative 或 CSS `:is([data-chrome-selected])`）。  
 - **多选**：对 `selectedSet` 内非 primary 行画 `seg-row-in-selection`；prev set diff 清除 removed indices（最多遍历 prev∪next，大 multi-select 仍 O(k)）。  
 - 列表 root：`segmentListRef.current` 或 `.workspace` 下 query。
@@ -221,7 +221,7 @@ function useSegmentRowSelection(segmentIdx: number): {
 | `services/selection/reconcileSelectionChromeFromReact.ts` | 新增 |
 | `services/selection/reconcileSelectionChromeFromReact.test.ts` | 新增 |
 | `hooks/useSegmentRowSelection.ts` | 新增 |
-| `services/waveform/applyWaveformSegmentSelectionImperative.ts` | 改：re-export 或 thin wrapper |
+| `services/waveform/applySelectionChromeImperative.ts` | 改：re-export 或 thin wrapper |
 | `pages/useTranscriptionLayerSelection.ts` | 改 |
 | `pages/useTranscriptionLayer.ts` | 改：lasso / multi 写 store |
 | `components/editor/useEditorSegmentListScroll.ts` | 改 |
