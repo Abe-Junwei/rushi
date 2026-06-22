@@ -735,7 +735,12 @@ function checkSegmentListRapidSelectGuard() {
   const selectionPath = path.join(ROOT, selectionRel);
   if (fs.existsSync(selectionPath)) {
     const selectionSource = fs.readFileSync(selectionPath, 'utf-8');
-    if (!/publishSelectionChrome(?:ForInput)?\s*\(/.test(selectionSource)) {
+    const selectionChromePainterRel = 'apps/desktop/src/pages/useWaveformSelectionChromePainter.ts';
+    const selectionChromePainterPath = path.join(ROOT, selectionChromePainterRel);
+    const selectionChromePainterSource = fs.existsSync(selectionChromePainterPath)
+      ? fs.readFileSync(selectionChromePainterPath, 'utf-8')
+      : '';
+    if (!/publishSelectionChrome(?:ForInput)?\s*\(/.test(`${selectionSource}\n${selectionChromePainterSource}`)) {
       errors.push(
         `${selectionRel}: 语段切换须先 publishSelectionChrome（SC2），再 startTransition 提交 SC1`,
       );
