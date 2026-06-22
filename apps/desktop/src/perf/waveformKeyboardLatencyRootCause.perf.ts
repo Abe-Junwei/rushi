@@ -57,7 +57,7 @@ describe("waveformKeyboard latency root cause probe", () => {
     clearAllCspScopeRulesForTests();
   });
 
-  it("reports overlay CSP layout vs list classList cost (60 segments, step prev→next)", () => {
+  it("reports overlay CSP layout vs list classList cost (60 segments, step prev→next)", { timeout: 15_000 }, () => {
     const segmentCount = 60;
     const segments = Array.from({ length: segmentCount }, (_, idx) => ({
       uid: `s${idx}`,

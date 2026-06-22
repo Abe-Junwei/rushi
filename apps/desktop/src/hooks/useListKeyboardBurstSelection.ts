@@ -7,7 +7,7 @@ import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "./useWaveformTimelineController";
 import {
   selectionProfileBegin,
-  selectionProfileScheduleFlush,
+  selectionProfileMarkListCommit,
   selectionProfileTime,
 } from "../services/ui/selectionLatencyProfile";
 import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
@@ -271,8 +271,8 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
       selectionProfileBegin(`listKeyboard commit idx=${idx} segments=${c.segments.length}`);
       startTransition(() => {
         setSelectedIdxUi(idx);
+        selectionProfileMarkListCommit();
       });
-      selectionProfileScheduleFlush("list");
     },
     [
       ctxRef,
