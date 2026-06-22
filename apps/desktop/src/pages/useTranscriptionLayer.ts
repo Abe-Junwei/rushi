@@ -15,6 +15,7 @@ import {
   publishSelectionChromeForControllerState,
   resetSelectionChromeForFile,
 } from "../services/selection/selectionChromePublishBridge";
+import { clearWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
 import { clampSegmentIndex } from "../utils/segmentSelection";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
@@ -130,6 +131,14 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onCancelScrollMotion: () => timeline.cancelTransientScrollMotion("pointer"),
   });
 
+  const seek = useCallback(
+    (timeSec: number) => {
+      wf.seek(timeSec);
+      timeline.syncDisplayPlayheadAfterSeek(timeSec);
+    },
+    [timeline.syncDisplayPlayheadAfterSeek, wf.seek],
+  );
+
   useLayoutEffect(() => {
     registerSelectionChromePublishRoots({
       getListRoot: () => segmentListRef.current,
@@ -141,6 +150,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   useLayoutEffect(() => {
     resetSelectionChromeForFile(ctx.fileId);
+    clearWaveformSegmentPreviewViewportSync();
     const c = ctxRef.current;
     if (!c.fileId || c.segments.length === 0) return;
     const primary = clampSegmentIndex(c.selectedIdx, c.segments.length);
@@ -278,6 +288,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt: selection.selectSegmentAt,
+    dispatchWaveformSelectionGesture: selection.dispatchWaveformSelectionGesture,
+    previewWaveformSegmentChrome: selection.previewWaveformSegmentChrome,
     selectSegmentFromList,
     selectSegmentRange: selectSegmentRangeWithChrome,
     selectSegmentIndices: selectSegmentIndicesWithChrome,
@@ -307,7 +319,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     isReady: wf.isReady,
     loadError: wf.loadError,
     isPlaying: wf.isPlaying,
-    seek: wf.seek,
+    seek,
     togglePlay: wf.togglePlay,
     getPlayheadTime: wf.getPlayheadTime,
     getDisplayPlayheadTimeSec: timeline.getDisplayPlayheadTimeSec,

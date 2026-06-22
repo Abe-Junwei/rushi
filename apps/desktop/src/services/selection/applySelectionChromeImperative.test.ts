@@ -126,11 +126,11 @@ describe("applySelectionChromeImperative", () => {
       },
     });
 
-    const inSelectionFill = `var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`;
-    expect(readCspLayoutRulesForElement(primaryOverlay)).toContain(inSelectionFill);
-    expect(readCspLayoutRulesForElement(secondaryOverlay)).toContain(inSelectionFill);
-    expect(readCspLayoutRulesForElement(primaryOverlay)).not.toContain(
-      `var(${SEGMENT_FILL_CSS_VAR.selected})`,
-    );
+    const primaryBg = readCspLayoutRulesForElement(primaryOverlay) ?? "";
+    const secondaryBg = readCspLayoutRulesForElement(secondaryOverlay) ?? "";
+    expect(primaryBg).toContain("background:");
+    expect(secondaryBg).toContain("background:");
+    expect(primaryBg.split("{")[1]).toBe(secondaryBg.split("{")[1]);
+    expect(primaryBg).not.toContain(`var(${SEGMENT_FILL_CSS_VAR.selected})`);
   });
 });

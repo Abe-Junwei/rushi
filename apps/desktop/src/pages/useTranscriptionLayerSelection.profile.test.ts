@@ -7,7 +7,8 @@ import {
   resetSelectionLatencyProfileForTests,
   setSelectionLatencyProfileEnabled,
 } from "../services/ui/selectionLatencyProfile";
-import { resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
+import { resetSelectionChromeStoreForTests, getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
+import { resetWaveformSegmentPreviewViewportSyncForTests } from "../services/waveform/waveformSegmentSelectPreviewSync";
 
 function makeSegments(count: number) {
   return Array.from({ length: count }, (_, idx) => ({
@@ -87,6 +88,7 @@ function makeTimeline(layoutIntent: "manual" | "fit-selection" | "fit-all" = "ma
 describe("useTranscriptionLayerSelection profile", () => {
   beforeEach(() => {
     resetSelectionChromeStoreForTests();
+    resetWaveformSegmentPreviewViewportSyncForTests();
     const data = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -377,15 +379,163 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
       timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
-      start_sec: 4,
-      end_sec: 5.5,
-    });
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
+      expect.objectContaining({ start_sec: 4, end_sec: 5.5 }),
+    );
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
     expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
       setSelectedIdxUi.mock.invocationCallOrder[0],
     );
     expect(document.activeElement).toBe(waveformShell);
+  });
+
+  it("paints selection chrome before waveform seek on segment change", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    resetSelectionChromeStoreForTests();
+    let chromeVersionAtSeek = 0;
+
+    timeline.wfApiRef.current.seek = vi.fn(() => {
+      chromeVersionAtSeek = getSelectionChromeSnapshot().version;
+    });
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    const versionBefore = getSelectionChromeSnapshot().version;
+    act(() => {
+      result.current.selectSegmentAt(2, "waveform");
+    });
+
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+    expect(chromeVersionAtSeek).toBeGreaterThan(versionBefore);
+    expect(getSelectionChromeSnapshot().primaryIdx).toBe(2);
+  });
+
+  it("dispatchWaveformSelectionGesture down syncs seek+reveal with chrome on pointerdown when idx changes", async () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    resetSelectionChromeStoreForTests();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
+    });
+
+    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
+    expect(timeline.suppressPlaybackFollowForSelectionSeek).toHaveBeenCalledOnce();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+
+    await act(async () => {
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      await new Promise<void>((resolve) => queueMicrotask(() => resolve()));
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
+      expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
+    );
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({
+        phase: "up",
+        idx: 3,
+        pointerTimeSec: 6.5,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+      });
+    });
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+  });
+
+  it("dispatchWaveformSelectionGesture down skips seek when only chrome resyncs same idx", () => {
+    const ctx = makeCtx(5);
+    ctx.selectedIdx = 3;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    resetSelectionChromeStoreForTests();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
+    });
+
+    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+  });
+
+  it("selectSegmentAt skips duplicate seek/reveal after pointerdown preview sync", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    resetSelectionChromeStoreForTests();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
+    });
+    timeline.wfApiRef.current.seek.mockClear();
+    timeline.viewportFit.revealSegmentInViewport.mockClear();
+    timeline.suppressPlaybackFollowForSelectionSeek.mockClear();
+
+    act(() => {
+      result.current.selectSegmentAt(3, "waveform");
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.suppressPlaybackFollowForSelectionSeek).not.toHaveBeenCalled();
   });
 });
