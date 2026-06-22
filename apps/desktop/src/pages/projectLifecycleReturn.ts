@@ -66,6 +66,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     currentFileId,
     segments,
     selectedIdx,
+    selectedIdxRef,
     setSelectedIdx,
     audioSrc,
     audioStoragePath,

@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { useProjectWaveform } from "./useProjectWaveform";
 import type { useProjectWaveform as UseProjectWaveformHook } from "./useProjectWaveform";
 import { useTierScrollSync } from "./useTierScrollSync";
@@ -29,6 +30,10 @@ type WfApi = ReturnType<typeof UseProjectWaveformHook>;
 /** Waveform timeline: zoom, scroll, peaks, viewport fit (ADR-0005). */
 export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const tierScrollRef = useRef<HTMLDivElement | null>(null);
+  const tierViewportMetricsRef = useRef<{
+    tierScrollLive: TierScrollLiveRefs;
+    tierScrollLayout: TierScrollLayoutMetrics;
+  } | null>(null);
   const durationRef = useRef(0);
   const timelineWidthPxRef = useRef(0);
   const pxPerSecRef = useRef(56);
@@ -93,6 +98,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     layoutTimelineWidthPxRef: timelineWidthPxRef,
     layoutDurationSec: resolvedDurationSec || mountMediaDurationSec,
     tierScrollRef,
+    tierViewportMetricsRef,
     selectionSeekChromeSuppressUntilRef,
     refitFitAllPxPerSec: (viewportWidthPx) => refitFitAllPxPerSecRef.current(viewportWidthPx),
     onFitAllPxPerSecRefit: zoom.applyFitAllRefitPxPerSec,
@@ -182,6 +188,13 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     mediaUrl: ctx.mediaUrl,
     playbackFollowSuppressUntilRef,
   });
+
+  useLayoutEffect(() => {
+    tierViewportMetricsRef.current = {
+      tierScrollLive: scroll.tierScrollLive,
+      tierScrollLayout: scroll.tierScrollLayout,
+    };
+  }, [scroll.tierScrollLayout, scroll.tierScrollLive]);
 
   onAfterViewportResizeRef.current = () => {
     scroll.refreshTierScrollLayout();

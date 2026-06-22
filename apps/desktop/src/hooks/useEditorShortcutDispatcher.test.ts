@@ -66,11 +66,23 @@ function dispatchKey(opts: Partial<KeyboardEventInit> & { key: string }) {
 
 function mountDispatcher(
   ctx: TranscriptionLayerInput,
-  opts: { waveformShell?: HTMLElement; scheduleAdvanceToSegment?: ReturnType<typeof vi.fn> } = {},
+  opts: {
+    waveformShell?: HTMLElement;
+    tierScroll?: HTMLElement;
+    scheduleAdvanceToSegment?: ReturnType<typeof vi.fn>;
+    selectSegmentAt?: ReturnType<typeof vi.fn>;
+  } = {},
 ) {
   const waveformShellRef = { current: opts.waveformShell ?? null };
+  const tierScrollRef = { current: opts.tierScroll ?? null };
   const scheduleAdvanceToSegment = (opts.scheduleAdvanceToSegment ?? vi.fn()) as (targetIdx: number) => void;
   const scheduleAdvanceToSegmentRef = { current: scheduleAdvanceToSegment };
+  const selectSegmentAt = (opts.selectSegmentAt ?? vi.fn()) as (
+    idx: number,
+    source?: string,
+    opts?: { shiftKey?: boolean },
+  ) => void;
+  const selectSegmentAtRef = { current: selectSegmentAt };
   const hook = renderHook(() => {
     const ctxRef = useRef(ctx);
     ctxRef.current = ctx;
@@ -81,21 +93,27 @@ function mountDispatcher(
       preserveLoopForNextSegmentSelect: vi.fn(),
       seekByDelta: vi.fn(),
     });
+    selectSegmentAtRef.current = selectSegmentAt;
     useEditorShortcutDispatcher({
       enabled: true,
       ctxRef,
       wfApiRef: wfApiRef as never,
       waveformShellRef,
-      selectSegmentAtRef: useRef(vi.fn()),
+      tierScrollRef,
+      selectSegmentAtRef,
       focusSegmentTextarea: vi.fn(),
       scheduleAdvanceToSegmentRef,
       showEditorHintRef: useRef(vi.fn()),
       stepWaveformZoomRef: useRef(vi.fn()),
       segmentListFilterNavRef: useRef(createEmptySegmentListFilterNavState()),
     });
-    return { wfApiRef, scheduleAdvanceToSegment };
+    return { wfApiRef, scheduleAdvanceToSegment, selectSegmentAtRef };
   });
-  return { wfApiRef: hook.result.current.wfApiRef, scheduleAdvanceToSegment };
+  return {
+    wfApiRef: hook.result.current.wfApiRef,
+    scheduleAdvanceToSegment,
+    selectSegmentAtRef: hook.result.current.selectSegmentAtRef,
+  };
 }
 
 describe("useEditorShortcutDispatcher", () => {
@@ -311,7 +329,7 @@ describe("useEditorShortcutDispatcher", () => {
     shell.tabIndex = 0;
     shell.focus();
     const ctx = makeCtx({ isMultiSegmentSelection: true, clearMultiSelection });
-    mountDispatcher(ctx, { waveformShell: shell });
+    mountDispatcher(ctx, { waveformShell: shell, tierScroll: shell });
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -339,6 +357,81 @@ describe("useEditorShortcutDispatcher", () => {
     expect(openEnvironment).toHaveBeenCalledTimes(1);
   });
 
+  it("selects next segment on ArrowRight when focus is on waveform tier scroll", () => {
+    const tierScroll = document.createElement("div");
+    const shell = document.createElement("div");
+    tierScroll.appendChild(shell);
+    document.body.appendChild(tierScroll);
+    tierScroll.tabIndex = 0;
+    tierScroll.focus();
+    const selectSegmentAt = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    mountDispatcher(ctx, { waveformShell: shell, tierScroll, selectSegmentAt });
+
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: tierScroll, configurable: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: false });
+    tierScroll.remove();
+  });
+
+  it("selects previous segment on ArrowLeft inside waveform shell", () => {
+    const shell = document.createElement("div");
+    document.body.appendChild(shell);
+    shell.tabIndex = 0;
+    shell.focus();
+    const selectSegmentAt = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 1 });
+    mountDispatcher(ctx, { waveformShell: shell, tierScroll: shell, selectSegmentAt });
+
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowLeft",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: shell, configurable: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(selectSegmentAt).toHaveBeenCalledWith(0, "waveform", { shiftKey: false });
+    shell.remove();
+  });
+
+  it("does not select segment on ArrowRight inside transcript textarea", () => {
+    const selectSegmentAt = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.className = "seg-text";
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+    textarea.focus();
+    mountDispatcher(ctx, { selectSegmentAt });
+
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: textarea, configurable: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(selectSegmentAt).not.toHaveBeenCalled();
+    row.remove();
+  });
+
   it("advances segment on ArrowDown when focus is outside textarea", () => {
     const scheduleAdvanceToSegment = vi.fn();
     const ctx = makeCtx({ selectedIdx: 0 });
@@ -349,6 +442,31 @@ describe("useEditorShortcutDispatcher", () => {
     });
 
     expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(1);
+  });
+
+  it("seeks on ArrowDown when focus is inside waveform shell", () => {
+    const shell = document.createElement("div");
+    document.body.appendChild(shell);
+    shell.tabIndex = 0;
+    shell.focus();
+    const selectSegmentAt = vi.fn();
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    mountDispatcher(ctx, { waveformShell: shell, tierScroll: shell, selectSegmentAt, scheduleAdvanceToSegment });
+
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowDown",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: shell, configurable: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: false });
+    expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
+    shell.remove();
   });
 
   it("does not advance segment on ArrowDown inside textarea", () => {

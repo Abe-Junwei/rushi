@@ -7,6 +7,7 @@ import {
   resetSelectionLatencyProfileForTests,
   setSelectionLatencyProfileEnabled,
 } from "../services/ui/selectionLatencyProfile";
+import { resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
 
 function makeSegments(count: number) {
   return Array.from({ length: count }, (_, idx) => ({
@@ -85,6 +86,7 @@ function makeTimeline(layoutIntent: "manual" | "fit-selection" | "fit-all" = "ma
 
 describe("useTranscriptionLayerSelection profile", () => {
   beforeEach(() => {
+    resetSelectionChromeStoreForTests();
     const data = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
       configurable: true,
@@ -173,8 +175,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("listKeyboard reveals when editor focus gate open and does not seek", () => {
-    vi.useFakeTimers();
+  it("listKeyboard reveals once on burst finalize when editor focus gate open and does not seek", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -199,20 +200,89 @@ describe("useTranscriptionLayerSelection profile", () => {
     );
 
     act(() => {
-      result.current.selectSegmentAt(2, "listKeyboard");
+      result.current.selectSegmentAt(2, "listKeyboard", { burst: true });
     });
 
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     act(() => {
-      vi.advanceTimersByTime(180);
+      result.current.finalizeListKeyboardViewport(2);
     });
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     document.body.innerHTML = "";
-    vi.useRealTimers();
   });
 
-  it("listKeyboard skips reveal when editor focus gate closed", () => {
+  it("listKeyboard burst step defers tier reveal until keyup finalize", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+    document.body.innerHTML = `<button type="button">hub</button>`;
+    document.querySelector("button")!.focus();
+
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "listKeyboard", { burst: true });
+    });
+
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    act(() => {
+      result.current.finalizeListKeyboardViewport(2);
+    });
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    document.body.innerHTML = "";
+  });
+
+  it("finalizeListKeyboardViewport(revealIdx) reveals when focus gate closed", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+    document.body.innerHTML = `<button type="button">hub</button>`;
+    document.querySelector("button")!.focus();
+
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "listKeyboard", { burst: true });
+    });
+    timeline.viewportFit.revealSegmentInViewport.mockClear();
+
+    act(() => {
+      result.current.finalizeListKeyboardViewport(2);
+    });
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: 4,
+      end_sec: 5.5,
+    });
+    document.body.innerHTML = "";
+  });
+
+  it("non-burst listKeyboard skips reveal when editor focus gate closed", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -236,9 +306,46 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "listKeyboard");
     });
 
+    expect(setSelectedIdxUi).toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     document.body.innerHTML = "";
+  });
+
+  it("listKeyboard burst defers SC1 until commitListKeyboardBurst", async () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      for (let i = 1; i <= 4; i += 1) {
+        result.current.selectSegmentAt(i, "listKeyboard", { burst: true });
+      }
+    });
+
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.commitListKeyboardBurst(4);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(4);
   });
 
   it("waveform selection centers without zooming even in fit-selection layout", () => {

@@ -11,6 +11,13 @@ export type SegmentSelectSource =
 
 export type SegmentDragMode = "resize-start" | "resize-end" | "move" | "create";
 
+export type SegmentSelectAtOptions = {
+  shiftKey?: boolean;
+  toggle?: boolean;
+  /** listKeyboard burst: SC2 + scroll only; SC1 commit on keyup. */
+  burst?: boolean;
+};
+
 export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean {
   return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }

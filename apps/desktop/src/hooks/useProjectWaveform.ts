@@ -85,6 +85,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     layoutTimelineWidthPxRef,
     applyGlobalPlaybackRateRef,
     options.tierScrollRef,
+    options.tierViewportMetricsRef,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());

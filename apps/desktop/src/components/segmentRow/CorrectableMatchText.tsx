@@ -1,38 +1,68 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
 import { CspLayout } from "../CspLayout";
-import type { CspLayoutRules } from "../../utils/cspElementLayout";
+import {
+  segmentTextTypographyLayout,
+  type SegmentRowTextStyle,
+} from "./useSegmentRowTextStyle";
 
-const ROOT_CLASS = "m-0 whitespace-pre-wrap break-words leading-snug text-inherit";
+const ROOT_CLASS = "m-0 whitespace-pre-wrap break-words text-inherit";
 const HIT_CLASS = "seg-correctable-hit";
+const HIT_EMPHASIZED_CLASS = "seg-correctable-hit--emphasized";
 
 type Props = {
   text: string;
   spans: CorrectableSpan[];
   className?: string;
-  textStyle?: CSSProperties;
+  /** 语段镜像：与 textarea 对齐的排版（含加粗/斜体/字号/字体） */
+  textStyle?: SegmentRowTextStyle;
+  /** 未选中预览：命中词加深，其余继承根节点 muted 色 */
+  emphasizeHitText?: boolean;
   onSpanClick?: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function CorrectableMatchText({ text, spans, className, textStyle, onSpanClick }: Props) {
+function MirrorRoot({
+  textStyle,
+  className,
+  children,
+}: {
+  textStyle?: SegmentRowTextStyle;
+  className: string;
+  children: ReactNode;
+}) {
+  if (textStyle) {
+    return (
+      <CspLayout as="p" className={className} layout={segmentTextTypographyLayout(textStyle)}>
+        {children}
+      </CspLayout>
+    );
+  }
+  return <p className={className}>{children}</p>;
+}
+
+export function CorrectableMatchText({
+  text,
+  spans,
+  className,
+  textStyle,
+  emphasizeHitText = false,
+  onSpanClick,
+}: Props) {
+  const hitClassName = emphasizeHitText ? `${HIT_CLASS} ${HIT_EMPHASIZED_CLASS}` : HIT_CLASS;
   const rootClass = className ? `${ROOT_CLASS} ${className}` : ROOT_CLASS;
 
   if (!text) {
-    return textStyle ? (
-      <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
+    return (
+      <MirrorRoot textStyle={textStyle} className={rootClass}>
         输入语段文本...
-      </CspLayout>
-    ) : (
-      <p className={rootClass}>输入语段文本...</p>
+      </MirrorRoot>
     );
   }
   if (!spans.length) {
-    return textStyle ? (
-      <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
+    return (
+      <MirrorRoot textStyle={textStyle} className={rootClass}>
         {text}
-      </CspLayout>
-    ) : (
-      <p className={rootClass}>{text}</p>
+      </MirrorRoot>
     );
   }
 
@@ -51,7 +81,7 @@ export function CorrectableMatchText({ text, spans, className, textStyle, onSpan
           <button
             key={`m-${start}-${end}`}
             type="button"
-            className={HIT_CLASS}
+            className={hitClassName}
             onClick={(e) => {
               e.stopPropagation();
               onSpanClick(span, e);
@@ -64,7 +94,7 @@ export function CorrectableMatchText({ text, spans, className, textStyle, onSpan
         );
       } else {
         nodes.push(
-          <span key={`m-${start}-${end}`} className={HIT_CLASS}>
+          <span key={`m-${start}-${end}`} className={hitClassName}>
             {slice}
           </span>,
         );
@@ -76,11 +106,9 @@ export function CorrectableMatchText({ text, spans, className, textStyle, onSpan
     nodes.push(<span key={`t-${cursor}`}>{text.slice(cursor)}</span>);
   }
 
-  return textStyle ? (
-    <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
+  return (
+    <MirrorRoot textStyle={textStyle} className={rootClass}>
       {nodes}
-    </CspLayout>
-  ) : (
-    <p className={rootClass}>{nodes}</p>
+    </MirrorRoot>
   );
 }

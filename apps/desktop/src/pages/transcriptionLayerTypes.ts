@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import type { SegmentDto } from "../tauri/projectTypes";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 
@@ -10,6 +11,8 @@ export type TranscriptionLayerInput = {
   mediaDiskPath?: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
+  /** Burst listKeyboard ref sync when React SC1 lags. */
+  selectedIdxRef?: MutableRefObject<number>;
   busy: boolean;
   selectionLo: number;
   selectionHi: number;

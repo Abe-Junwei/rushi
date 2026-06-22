@@ -344,7 +344,10 @@
 
 /* 语段错词：与正文同字号，仅虚线下划线（勿用 Tailwind font-inherit，其不含 font-size） */
 .workspace .seg-correctable-hit {
-  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  font-style: inherit;
   letter-spacing: inherit;
   line-height: inherit;
   color: inherit;
@@ -359,6 +362,20 @@
   box-shadow: none;
 }
 
+/* 未选中语段：仅命中词加深，其余保持 muted 继承色；显式保留虚线下划线 */
+.workspace .seg-correctable-hit.seg-correctable-hit--emphasized {
+  color: var(--notion-text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-action);
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+}
+
+/* 单行预览镜像：横向截断，纵向留出下划线绘制空间 */
+.workspace .seg-text-mirror-preview {
+  overflow-y: visible;
+}
+
 .workspace button.seg-correctable-hit {
   cursor: pointer;
   pointer-events: auto;
@@ -366,6 +383,11 @@
 
 .workspace button.seg-correctable-hit:hover {
   text-decoration-color: var(--accent-action);
+}
+
+.workspace textarea.seg-text.text-transparent {
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
 .workspace textarea.seg-text.text-transparent::selection {

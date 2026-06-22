@@ -2,6 +2,7 @@
 
 > **Research**：[`selection-chrome-bus-research.md`](./selection-chrome-bus-research.md)  
 > **Acceptance**：[`selection-chrome-bus-acceptance.md`](./selection-chrome-bus-acceptance.md)  
+> **LKB 跟手感**：Phase 2–3 与本 plan Phase 2–3 **合并实施** — [`list-keyboard-navigation-virtual-scroll-performance-plan.md`](./list-keyboard-navigation-virtual-scroll-performance-plan.md) v2 · **整树更新矩阵 §0.1 U1–U20**  
 > **术语**：[`CONTEXT.md`](../../../CONTEXT.md) · [`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)  
 > **前置**：[`waveform-selection-reveal-seek-plan.md`](./waveform-selection-reveal-seek-plan.md) S0–S11（grill 矩阵 **不变**）  
 > **估时**：**~4–5 人日**（单人 2–3 个纵向 PR 或 1 个集成分支）

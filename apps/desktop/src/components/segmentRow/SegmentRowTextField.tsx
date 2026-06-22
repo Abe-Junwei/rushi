@@ -4,6 +4,7 @@ import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
 import { CspLayout } from "../CspLayout";
 import { CorrectableMatchText } from "./CorrectableMatchText";
+import { SegmentTextMirrorShell } from "./SegmentTextMirrorShell";
 import { useSegmentRowTextFieldController } from "../../hooks/useSegmentRowTextFieldController";
 import { segmentTextAreaLayoutVars, type SegmentRowTextStyle } from "./useSegmentRowTextStyle";
 
@@ -141,10 +142,12 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             placeholder="输入语段文本..."
           />
           {showPanelHighlightMirror && panelHighlight ? (
-            <CspLayout
-              className="seg-text-layout-scope pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 font-[inherit] text-notion-text"
-              layout={segmentTextAreaLayoutVars(textStyle, textAreaMinHeight, selected)}
-              aria-hidden
+            <SegmentTextMirrorShell
+              selected={selected}
+              textAreaMinHeight={textAreaMinHeight}
+              textStyle={textStyle}
+              pointerEventsNone
+              ariaHidden
             >
               <FindReplaceMatchText
                 text={panelMirrorText}
@@ -152,20 +155,20 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                 charEnd={panelHighlight.charEnd}
                 textStyle={textStyle}
               />
-            </CspLayout>
+            </SegmentTextMirrorShell>
           ) : null}
           {showCorrectableMirror ? (
-            <div
-              className={[
-                "absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 text-notion-text",
-                selected ? "pointer-events-none" : "max-h-[4.5rem]",
-              ].join(" ")}
-              aria-hidden={selected}
+            <SegmentTextMirrorShell
+              selected={selected}
+              textAreaMinHeight={textAreaMinHeight}
+              textStyle={textStyle}
+              ariaHidden={selected}
             >
               <CorrectableMatchText
                 text={mirrorLiveText}
                 spans={mirrorCorrectableSpans}
                 textStyle={textStyle}
+                emphasizeHitText={!selected}
                 className={selected ? undefined : "overflow-hidden text-ellipsis whitespace-nowrap"}
                 onSpanClick={
                   selected
@@ -176,7 +179,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                       }
                 }
               />
-            </div>
+            </SegmentTextMirrorShell>
           ) : null}
         </div>
 

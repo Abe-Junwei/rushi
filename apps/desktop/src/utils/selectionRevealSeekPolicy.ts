@@ -14,7 +14,8 @@ export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext): bo
   if (!ctx.idxChanged) return false;
   if (ctx.source === "contextMenu" || ctx.source === "multiSelect") return false;
   if (ctx.source === "list" || ctx.source === "listAdvance") return true;
-  if (ctx.source === "listKeyboard") return ctx.editorFocusGateOpen;
+  // ↑↓ / Tab confirm — user-initiated; gate can false-negative when virtual list unmounts textarea.
+  if (ctx.source === "listKeyboard") return true;
   if (ctx.source === "waveform") return true;
   return false;
 }

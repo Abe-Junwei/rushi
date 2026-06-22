@@ -6,13 +6,16 @@ import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForwar
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import type { SegmentSelectAtOptions } from "../utils/waveformViewMode";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
 import { normalizeSegmentIndexRange, rangeIndices } from "../utils/segmentSelection";
 import { publishSelectionChromeForIndices } from "../services/selection/publishSelectionChromeForInput";
 import {
   registerSelectionChromePublishRoots,
+  publishSelectionChromeForControllerState,
   resetSelectionChromeForFile,
 } from "../services/selection/selectionChromePublishBridge";
+import { clampSegmentIndex } from "../utils/segmentSelection";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -31,7 +34,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const timeline = useWaveformTimelineController(ctx);
 
-  const setSelectedIdxUi = useCallback((idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+  const setSelectedIdxUi = useCallback((idx: number, opts?: SegmentSelectAtOptions) => {
     ctxRef.current.selectSegmentAt(idx, opts);
   }, []);
 
@@ -54,6 +57,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformShellRef,
     segmentListRef,
     setSelectedIdxUi,
+    selectedIdxRef: ctx.selectedIdxRef,
+    segmentListFilterNavRef,
+    transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
   });
 
   const selectSegmentRangeRef = useRef<(lo: number, hi: number) => void>((lo, hi) => {
@@ -68,12 +74,22 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     lastSegmentSelectSourceRef: selection.lastSegmentSelectSourceRef,
   });
 
+  const cancelPendingSelectionRevealRef = useRef(selection.cancelPendingSelectionReveal);
+  cancelPendingSelectionRevealRef.current = selection.cancelPendingSelectionReveal;
+  const finalizeListKeyboardViewportRef = useRef(selection.finalizeListKeyboardViewport);
+  finalizeListKeyboardViewportRef.current = selection.finalizeListKeyboardViewport;
+  const commitListKeyboardBurstRef = useRef(selection.commitListKeyboardBurst);
+  commitListKeyboardBurstRef.current = selection.commitListKeyboardBurst;
+
   const keyboard = useSegmentKeyboard({
     ctxRef,
     wfApiRef: timeline.wfApiRef,
     selectSegmentAtRef: selection.selectSegmentAtRef,
     segmentListRef,
     segmentListFilterNavRef,
+    cancelPendingSelectionRevealRef,
+    finalizeListKeyboardViewportRef,
+    commitListKeyboardBurstRef,
   });
   const scheduleAdvanceToSegmentRef = useRef(keyboard.scheduleAdvanceToSegment);
   scheduleAdvanceToSegmentRef.current = keyboard.scheduleAdvanceToSegment;
@@ -83,6 +99,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     ctxRef,
     wfApiRef: timeline.wfApiRef,
     waveformShellRef,
+    tierScrollRef: timeline.tierScrollRef,
     selectSegmentAtRef: selection.selectSegmentAtRef,
     focusSegmentTextarea: keyboard.focusSegmentTextarea,
     scheduleAdvanceToSegmentRef,
@@ -124,7 +141,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   useLayoutEffect(() => {
     resetSelectionChromeForFile(ctx.fileId);
-  }, [ctx.fileId]);
+    const c = ctxRef.current;
+    if (!c.fileId || c.segments.length === 0) return;
+    const primary = clampSegmentIndex(c.selectedIdx, c.segments.length);
+    publishSelectionChromeForControllerState({
+      fileId: c.fileId,
+      segments: c.segments,
+      primaryIdx: primary,
+      selectedIndices: c.selectedIndicesArray.length > 0 ? c.selectedIndicesArray : [primary],
+    });
+  }, [ctx.fileId, ctx.segments.length]);
 
   /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
   const selectSegmentFromList = useCallback(

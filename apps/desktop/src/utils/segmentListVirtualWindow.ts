@@ -9,6 +9,7 @@ export {
   scrollSegmentListIndexIntoView,
   scrollSegmentListIndexIntoViewForMount,
   segmentListIndexNeedsScrollAdjustment,
+  segmentListVirtualWindowIncludesDisplayIndex,
   segmentListItemStridePx,
   segmentListRangeDragExceededSlop,
   segmentListRangeDragRequiresVerticalIntent,
@@ -24,6 +25,7 @@ export {
 export {
   annotateSegmentListScrollMetrics,
   ensureSegmentListVirtualWindowIncludesIndex,
+  isSelectedSegmentRowIntersectingListViewport,
   maybePinSegmentListVirtualWindow,
   querySegmentListScrollRoot,
   readSegmentListFilterIndices,

@@ -54,7 +54,7 @@ export function computeSegmentListVirtualWindow(input: {
   };
 }
 
-export type SegmentListScrollAlign = "minimal" | "center";
+export type SegmentListScrollAlign = "minimal" | "center" | "keyboard";
 
 /** 语段数达到此阈值时启用列表虚拟化（SEG-TEXT-P1）。 */
 export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 90;
@@ -81,6 +81,7 @@ export function resolveVirtualListScrollTopForWindow(input: {
   itemStridePx: number;
   /** 仅选中变更触发的首帧为 true；用户手动滚动须为 false。 */
   useSelectionProjection?: boolean;
+  scrollAlign?: SegmentListScrollAlign;
 }): number {
   const {
     rootScrollTop,
@@ -101,7 +102,7 @@ export function resolveVirtualListScrollTopForWindow(input: {
     index: selectedDisplayIndex,
     rowMinHeightPx,
     itemStridePx,
-    align: "minimal",
+    align: input.scrollAlign ?? "minimal",
     maxScrollTop,
   });
   return projected ?? scrollMetrics.scrollTop;
@@ -115,12 +116,13 @@ export function segmentListIndexNeedsScrollAdjustment(input: {
   rowMinHeightPx: number;
   itemStridePx: number;
   maxScrollTop?: number;
+  align?: SegmentListScrollAlign;
 }): boolean {
   if (input.index < 0 || input.viewportHeight <= 0) return false;
   return (
     scrollSegmentListIndexIntoView({
       ...input,
-      align: "minimal",
+      align: input.align ?? "minimal",
     }) != null
   );
 }
@@ -150,9 +152,46 @@ export function scrollSegmentListIndexIntoView(input: {
 
   const viewTop = input.scrollTop;
   const viewBottom = viewTop + input.viewportHeight;
-  if (rowTop < viewTop) return rowTop;
-  if (rowBottom > viewBottom) return Math.max(0, rowBottom - input.viewportHeight);
+
+  if (input.align === "keyboard") {
+    const bottomMarginPx = input.itemStridePx;
+    if (rowTop < viewTop) {
+      const target = clampSegmentListScrollTop(rowTop, input.maxScrollTop);
+      if (Math.abs(target - input.scrollTop) < 1) return null;
+      return target;
+    }
+    if (rowBottom > viewBottom - bottomMarginPx) {
+      const target = clampSegmentListScrollTop(
+        rowBottom - input.viewportHeight + bottomMarginPx,
+        input.maxScrollTop,
+      );
+      if (Math.abs(target - input.scrollTop) < 1) return null;
+      return target;
+    }
+    return null;
+  }
+
+  if (rowTop < viewTop) {
+    const target = clampSegmentListScrollTop(rowTop, input.maxScrollTop);
+    if (Math.abs(target - input.scrollTop) < 1) return null;
+    return target;
+  }
+  if (rowBottom > viewBottom) {
+    const target = clampSegmentListScrollTop(
+      rowBottom - input.viewportHeight,
+      input.maxScrollTop,
+    );
+    if (Math.abs(target - input.scrollTop) < 1) return null;
+    return target;
+  }
   return null;
+}
+
+export function segmentListVirtualWindowIncludesDisplayIndex(
+  window: SegmentListVirtualWindow,
+  displayIndex: number,
+): boolean {
+  return displayIndex >= window.startIndex && displayIndex < window.endIndex;
 }
 
 /** 选中行未挂载时强制滚到 stride 槽位（pin 合并超 cap 时的回退）。 */

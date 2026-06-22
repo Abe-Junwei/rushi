@@ -15,6 +15,15 @@ import {
 } from "../../utils/segmentListVirtualWindow";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 import { selectionProfileMarkListCommit, selectionProfileTime } from "../../services/ui/selectionLatencyProfile";
+import {
+  clearListKeyboardImperativeScrollKey,
+  clearListKeyboardVirtualDisplayPin,
+  notifyListKeyboardLayoutSettled,
+  registerListKeyboardScrollEpochNotifier,
+  resetListKeyboardBurstScrollState,
+  shouldSkipLayoutScrollForListKeyboard,
+} from "../../services/selection/listKeyboardBurstCoordinator";
+import { buildListKeyboardScrollKey } from "../../utils/listKeyboardListScrollIndex";
 import type { SegmentSelectSource } from "../../utils/waveformViewMode";
 import { shouldSkipListScrollWhenInViewport } from "../../utils/waveformViewMode";
 import { computeEditorSegmentListVirtualWindow } from "./computeEditorSegmentListVirtualWindow";
@@ -22,7 +31,10 @@ import {
   editorSegmentListScrollMetricsEqual,
   readEditorSegmentListScrollMetrics,
 } from "./editorSegmentListScrollMetrics";
-import { planEditorSegmentListSelectionScroll } from "./planEditorSegmentListSelectionScroll";
+import {
+  isListKeyboardSelectSource,
+  planEditorSegmentListSelectionScroll,
+} from "./planEditorSegmentListSelectionScroll";
 
 export type UseEditorSegmentListScrollArgs = {
   segmentListRef: React.RefObject<HTMLDivElement | null>;
@@ -51,10 +63,10 @@ export function useEditorSegmentListScroll({
 }: UseEditorSegmentListScrollArgs) {
   const scrollMetricsRef = useRef(readEditorSegmentListScrollMetrics(segmentListRef.current));
   const [scrollEpoch, setScrollEpoch] = useState(0);
+  const [selectSourceEpoch, setSelectSourceEpoch] = useState(0);
+  const prevSelectSourceRef = useRef<SegmentSelectSource | undefined>(undefined);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
-  const prevSelectedDisplayIndexForProjectionRef = useRef(selectedDisplayIndex);
-  const selectionScrollProjectionRef = useRef(false);
   const scrollGenerationRef = useRef(0);
   const suppressScrollGenerationBumpRef = useRef(false);
   const layoutScrollCorrectionRef = useRef<{ generation: number } | null>(null);
@@ -103,6 +115,11 @@ export function useEditorSegmentListScroll({
     [scheduleScrollEpochBump, segmentListRef, useVirtualList],
   );
 
+  useLayoutEffect(() => {
+    registerListKeyboardScrollEpochNotifier(bumpScrollEpoch);
+    return () => registerListKeyboardScrollEpochNotifier(null);
+  }, [bumpScrollEpoch]);
+
   const writeScrollTop = useCallback((root: HTMLElement, scrollTop: number) => {
     suppressScrollGenerationBumpRef.current = true;
     root.scrollTop = scrollTop;
@@ -113,7 +130,6 @@ export function useEditorSegmentListScroll({
     if (!suppressScrollGenerationBumpRef.current) {
       scrollGenerationRef.current += 1;
     }
-    selectionScrollProjectionRef.current = false;
     bumpScrollEpoch();
   }, [bumpScrollEpoch]);
 
@@ -145,18 +161,59 @@ export function useEditorSegmentListScroll({
   ]);
 
   useLayoutEffect(() => {
+    const source = lastSegmentSelectSourceRef?.current;
+    if (source !== prevSelectSourceRef.current) {
+      prevSelectSourceRef.current = source;
+      setSelectSourceEpoch((n) => n + 1);
+    }
+  });
+
+  useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root || selectedDisplayIndex < 0) return;
 
-    const scrollKey = `${currentFileId ?? ""}:${selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
-    if (lastSelectedScrollKeyRef.current === scrollKey) return;
+    const scrollKey = buildListKeyboardScrollKey({
+      fileId: currentFileId,
+      selectedIdx,
+      selectedDisplayIndex,
+      filteredIndicesScrollKey,
+    });
+    const source = lastSegmentSelectSourceRef?.current;
+    const fromListKeyboard = isListKeyboardSelectSource(source);
+    const maybeNotifyListKeyboardLayoutSettled = () => {
+      if (fromListKeyboard) {
+        notifyListKeyboardLayoutSettled(scrollKey);
+      }
+    };
+
+    if (lastSelectedScrollKeyRef.current === scrollKey) {
+      maybeNotifyListKeyboardLayoutSettled();
+      return;
+    }
+
+    const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
+
+    if (fromListKeyboard && shouldSkipLayoutScrollForListKeyboard(scrollKey)) {
+      lastSelectedScrollKeyRef.current = scrollKey;
+      clearListKeyboardImperativeScrollKey();
+      clearListKeyboardVirtualDisplayPin();
+      maybeNotifyListKeyboardLayoutSettled();
+      return;
+    }
+
+    if (shouldSkipLayoutScrollForListKeyboard(scrollKey)) {
+      lastSelectedScrollKeyRef.current = scrollKey;
+      maybeNotifyListKeyboardLayoutSettled();
+      return;
+    }
+
     lastSelectedScrollKeyRef.current = scrollKey;
     cancelPendingListScrollCorrection();
 
-    const source = lastSegmentSelectSourceRef?.current;
-    const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
-
     if (fromWaveform) {
+      selectionProfileMarkListCommit();
+    }
+    if (fromListKeyboard) {
       selectionProfileMarkListCommit();
     }
 
@@ -173,30 +230,43 @@ export function useEditorSegmentListScroll({
     );
 
     if (plan.kind === "skip") {
-      selectionScrollProjectionRef.current = false;
+      maybeNotifyListKeyboardLayoutSettled();
       return;
     }
 
     if (plan.kind === "fallback-dom-correct") {
       const corrected = selectionProfileTime("listScrollCorrect", () =>
-        scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+        scrollSegmentRowIntoViewContainer(selectedIdx, root, {
+          align: fromWaveform ? "center" : "minimal",
+        }),
       );
       if (corrected == null || Math.abs(corrected - root.scrollTop) < 1) {
-        selectionScrollProjectionRef.current = false;
+        maybeNotifyListKeyboardLayoutSettled();
         return;
       }
       writeScrollTop(root, corrected);
       bumpScrollEpoch();
-      selectionScrollProjectionRef.current = false;
+      maybeNotifyListKeyboardLayoutSettled();
       return;
     }
 
     layoutScrollCorrectionRef.current = { generation: scrollGenerationRef.current };
+    const scrollTopBefore = root.scrollTop;
     writeScrollTop(root, plan.nextScrollTop);
-    bumpScrollEpoch({ sync: plan.syncEpoch, force: plan.syncEpoch });
+    const scrollChanged = Math.abs(root.scrollTop - scrollTopBefore) >= 1;
+
+    scrollMetricsRef.current = readEditorSegmentListScrollMetrics(root);
+
+    if (scrollChanged) {
+      if (fromListKeyboard && scrollEpochRafRef.current != null) {
+        window.cancelAnimationFrame(scrollEpochRafRef.current);
+        scrollEpochRafRef.current = null;
+      }
+      bumpScrollEpoch({ sync: true, force: true });
+    }
 
     if (plan.skipDomCorrection) {
-      selectionScrollProjectionRef.current = false;
+      maybeNotifyListKeyboardLayoutSettled();
       return;
     }
 
@@ -204,25 +274,23 @@ export function useEditorSegmentListScroll({
     listScrollCorrectionRafRef.current = window.requestAnimationFrame(() => {
       listScrollCorrectionRafRef.current = null;
       if (layoutScrollCorrectionRef.current?.generation !== scrollGenerationRef.current) {
-        selectionScrollProjectionRef.current = false;
         return;
       }
       const corrected = selectionProfileTime("listScrollCorrect", () =>
-        scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+        scrollSegmentRowIntoViewContainer(selectedIdx, root, {
+          align: fromWaveform ? "center" : "minimal",
+        }),
       );
       if (corrected == null) {
-        selectionScrollProjectionRef.current = false;
         layoutScrollCorrectionRef.current = null;
         return;
       }
       if (Math.abs(corrected - root.scrollTop) < 1) {
-        selectionScrollProjectionRef.current = false;
         layoutScrollCorrectionRef.current = null;
         return;
       }
       writeScrollTop(root, corrected);
       bumpScrollEpoch();
-      selectionScrollProjectionRef.current = false;
       layoutScrollCorrectionRef.current = null;
     });
   }, [
@@ -242,9 +310,8 @@ export function useEditorSegmentListScroll({
 
   useLayoutEffect(() => {
     lastSelectedScrollKeyRef.current = null;
-    selectionScrollProjectionRef.current = false;
-    prevSelectedDisplayIndexForProjectionRef.current = -1;
     cancelPendingListScrollCorrection();
+    resetListKeyboardBurstScrollState();
   }, [cancelPendingListScrollCorrection, currentFileId]);
 
   useLayoutEffect(() => {
@@ -259,24 +326,19 @@ export function useEditorSegmentListScroll({
       computeEditorSegmentListVirtualWindow({
         segmentListRoot: segmentListRef.current,
         scrollMetricsRef,
-        selectionScrollProjectionRef,
-        prevSelectedDisplayIndexRef: prevSelectedDisplayIndexForProjectionRef,
         selectedDisplayIndex,
         displayCount,
         itemStridePx,
-        rowMinHeightPx,
         useVirtualList,
         source: lastSegmentSelectSourceRef?.current,
       }),
-    // selectedDisplayIndex drives projection/pin on list path; scrollEpoch forces recompute after user scroll.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       scrollEpoch,
+      selectSourceEpoch,
       useVirtualList,
       itemStridePx,
       displayCount,
       selectedDisplayIndex,
-      rowMinHeightPx,
       segmentListRef,
       lastSegmentSelectSourceRef,
     ],

@@ -63,6 +63,7 @@ export function ProjectPanel() {
     mediaDiskPath: c.audioStoragePath,
     segments: c.segments,
     selectedIdx: c.selectedIdx,
+    selectedIdxRef: c.selectedIdxRef,
     busy: c.busy,
     selectionLo: c.selectionLo,
     selectionHi: c.selectionHi,

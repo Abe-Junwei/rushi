@@ -10,6 +10,7 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     currentFileId: lifecycle.currentFileId,
     segments: lifecycle.segments,
     selectedIdx: lifecycle.selectedIdx,
+    selectedIdxRef: lifecycle.selectedIdxRef,
     setSelectedIdx: lifecycle.setSelectedIdx,
     audioSrc: lifecycle.audioSrc,
     audioStoragePath: lifecycle.audioStoragePath,

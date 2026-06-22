@@ -208,6 +208,19 @@ describe("executeEditorShortcut", () => {
     expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(1);
   });
 
+  it("seeks when advancing in waveform context", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const selectSegmentAt = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    executeEditorShortcut(
+      "segment.advanceNext",
+      makeDeps({ ctx, scheduleAdvanceToSegment, selectSegmentAt }),
+      { inWaveform: true },
+    );
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { shiftKey: undefined });
+    expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
+  });
+
   it("advances to previous segment from selectedIdx when blurred", () => {
     const scheduleAdvanceToSegment = vi.fn();
     const ctx = makeCtx({ selectedIdx: 1 });

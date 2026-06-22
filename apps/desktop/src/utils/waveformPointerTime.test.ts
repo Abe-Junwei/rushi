@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { timelinePxToTime } from "./waveformProjection";
-import { clientXToTimelinePx, clientXToTimeSecInTierScroll } from "./waveformPointerTime";
+import {
+  clientXToTimelinePx,
+  clientXToTimeSecInTierScroll,
+  resolveWaveformPointerTimeSecFromClientX,
+} from "./waveformPointerTime";
+import {
+  clearTierViewportMetricsDuringScrollFrameForTests,
+  writeTierViewportMetricsDuringScrollFrame,
+} from "./tierScrollFrameCoordinator";
 
 describe("waveformPointerTime", () => {
+  afterEach(() => {
+    clearTierViewportMetricsDuringScrollFrameForTests();
+  });
+
   it("clientXToTimelinePx subtracts container left", () => {
     expect(clientXToTimelinePx(180, 100)).toBe(80);
   });
@@ -16,6 +28,27 @@ describe("waveformPointerTime", () => {
       durationSec: 60,
     });
     expect(sec).toBeCloseTo(timelinePxToTime(600, 5600, 60), 5);
+  });
+
+  it("resolveWaveformPointerTimeSecFromClientX prefers scroll-frame snapshot", () => {
+    const tier = document.createElement("div");
+    Object.defineProperty(tier, "scrollLeft", { configurable: true, value: 0 });
+    Object.defineProperty(tier, "clientWidth", { configurable: true, value: 500 });
+    Object.defineProperty(tier, "getBoundingClientRect", {
+      configurable: true,
+      value: () => ({ left: 100, top: 0, width: 500, height: 80, right: 600, bottom: 80 }),
+    });
+
+    writeTierViewportMetricsDuringScrollFrame({ scrollLeftPx: 1200, viewportWidthPx: 500 });
+
+    const sec = resolveWaveformPointerTimeSecFromClientX({
+      clientX: 200,
+      tierScrollEl: tier,
+      timelineWidthPx: 5600,
+      durationSec: 60,
+    });
+
+    expect(sec).toBeCloseTo(timelinePxToTime(1300, 5600, 60), 5);
   });
 
   it("timeline projection inverts time from timeline px", () => {

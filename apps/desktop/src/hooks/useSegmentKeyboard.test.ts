@@ -1,9 +1,24 @@
-import { describe, expect, it, vi, afterEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { useSegmentKeyboard } from "./useSegmentKeyboard";
 import { createEmptySegmentListFilterNavState, type SegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
+import {
+  notifyListKeyboardLayoutSettled,
+  queueListKeyboardKeyupReveal,
+  registerListKeyboardKeyupRevealHandler,
+  resetListKeyboardBurstCoordinatorForTests,
+} from "../services/selection/listKeyboardBurstCoordinator";
+
+const focusTranscriptSegmentTextarea = vi.fn();
+const cancelTranscriptSegmentFocusAttempts = vi.fn();
+
+vi.mock("../utils/focusTranscriptSegmentTextarea", () => ({
+  focusTranscriptSegmentTextarea: (...args: unknown[]) => focusTranscriptSegmentTextarea(...args),
+  cancelTranscriptSegmentFocusAttempts: () => cancelTranscriptSegmentFocusAttempts(),
+}));
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -73,6 +88,8 @@ async function flushAdvanceCoalesce() {
   });
 }
 
+const mountedKeyboardCleanups: Array<() => void> = [];
+
 function renderKeyboard(
   initialCtx: TranscriptionLayerInput,
   filterNavState: SegmentListFilterNavState = createEmptySegmentListFilterNavState(),
@@ -106,11 +123,27 @@ function renderKeyboard(
     },
     { initialProps: initialCtx },
   );
+  mountedKeyboardCleanups.push(hook.unmount);
   return { ...hook, filterNavRef };
 }
 
 describe("useSegmentKeyboard", () => {
+  beforeEach(() => {
+    resetSelectionChromeStoreForTests();
+    resetListKeyboardBurstCoordinatorForTests();
+    focusTranscriptSegmentTextarea.mockClear();
+    cancelTranscriptSegmentFocusAttempts.mockClear();
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
+      queueMicrotask(() => cb(0));
+      return 1;
+    });
+  });
+
   afterEach(() => {
+    while (mountedKeyboardCleanups.length > 0) {
+      mountedKeyboardCleanups.pop()?.();
+    }
+    vi.restoreAllMocks();
     vi.useRealTimers();
   });
 
@@ -153,7 +186,7 @@ describe("useSegmentKeyboard", () => {
     });
     await flushAdvanceCoalesce();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.preserveLoopForNextSegmentSelect).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
@@ -181,8 +214,8 @@ describe("useSegmentKeyboard", () => {
     });
     await flushAdvanceCoalesce();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard", { burst: true });
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
@@ -203,8 +236,8 @@ describe("useSegmentKeyboard", () => {
     });
     await flushAdvanceCoalesce();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
-    expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard", { burst: true });
+    expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
   });
 
   it("goes to previous segment on ArrowUp", async () => {
@@ -223,9 +256,40 @@ describe("useSegmentKeyboard", () => {
     });
     await flushAdvanceCoalesce();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard", { burst: true });
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
+  });
+
+  it("applies first ArrowDown immediately before animation frame flush", () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+    let rafCallback: FrameRequestCallback | null = null;
+    vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
+      rafCallback = cb;
+      return 2;
+    });
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
+    expect(rafCallback).not.toBeNull();
+
+    act(() => {
+      rafCallback?.(0);
+    });
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
   });
 
   it("coalesces duplicate ArrowDown presses in the same frame", async () => {
@@ -246,8 +310,66 @@ describe("useSegmentKeyboard", () => {
     await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
+  });
+
+  it("calls finalizeListKeyboardViewport on Arrow keyup", async () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const finalizeListKeyboardViewport = vi.fn();
+    const finalizeListKeyboardViewportRef = { current: finalizeListKeyboardViewport };
+    const commitListKeyboardBurst = vi.fn((idx: number) => {
+      queueListKeyboardKeyupReveal({ idx, scrollKey: `f1:${idx}:${idx}:all:2:0:1` });
+    });
+    const commitListKeyboardBurstRef = { current: commitListKeyboardBurst };
+    registerListKeyboardKeyupRevealHandler(finalizeListKeyboardViewport);
+    const filterNavRef = { current: createEmptySegmentListFilterNavState() };
+    const { result, unmount } = renderHook(() => {
+      const ctxRef = useRef(ctx);
+      ctxRef.current = ctx;
+      const selectSegmentAtRef = useRef<
+        (idx: number, source?: string, opts?: { shiftKey?: boolean }) => void
+      >(vi.fn());
+      const wfApiRef = useRef({
+        togglePlay: vi.fn(),
+        getPlayheadTime: () => 0,
+        seek: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+        seekByDelta: vi.fn(),
+      });
+      const keyboard = useSegmentKeyboard({
+        ctxRef,
+        wfApiRef: wfApiRef as never,
+        selectSegmentAtRef,
+        segmentListRef: useRef(null),
+        segmentListFilterNavRef: filterNavRef,
+        finalizeListKeyboardViewportRef,
+        commitListKeyboardBurstRef,
+      });
+      return { keyboard };
+    });
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowDown", bubbles: true }));
+    });
+    act(() => {
+      notifyListKeyboardLayoutSettled("f1:1:1:all:2:0:1");
+    });
+
+    expect(commitListKeyboardBurst).toHaveBeenCalledWith(1);
+    expect(finalizeListKeyboardViewport).toHaveBeenCalledWith(1);
+    expect(finalizeListKeyboardViewport).toHaveBeenCalledTimes(1);
+    registerListKeyboardKeyupRevealHandler(null);
+    unmount();
   });
 
   it("does not jump segments when Shift+ArrowDown (text selection)", () => {
@@ -308,6 +430,93 @@ describe("useSegmentKeyboard", () => {
     });
     await flushAdvanceCoalesce();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard", { burst: true });
+  });
+
+  it("defers textarea focus until Arrow keyup after coalesced advance", async () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    await flushAdvanceCoalesce();
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
+    expect(focusTranscriptSegmentTextarea).not.toHaveBeenCalled();
+
+    focusTranscriptSegmentTextarea.mockClear();
+    cancelTranscriptSegmentFocusAttempts.mockClear();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowDown", bubbles: true }));
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(focusTranscriptSegmentTextarea).toHaveBeenCalledTimes(1);
+    expect(cancelTranscriptSegmentFocusAttempts).toHaveBeenCalled();
+  });
+
+  it("ignores orphan repeat ArrowDown after key was released", async () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    await flushAdvanceCoalesce();
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowDown", bubbles: true }));
+    });
+
+    const selectSegmentAt = result.current.selectSegmentAtRef.current as ReturnType<typeof vi.fn>;
+    selectSegmentAt.mockClear();
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(
+        0,
+        makeTextareaKeyEvent("ArrowDown", textarea, { repeat: true } as Partial<ReactKeyboardEvent<HTMLTextAreaElement>>),
+      );
+    });
+    await flushAdvanceCoalesce();
+
+    expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
+  });
+
+  it("anchors ArrowDown on chrome primary when pending advance was flushed", async () => {
+    commitSelectionChrome({ fileId: "f1", primaryIdx: 1, selectedSet: new Set([1]) });
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    await flushAdvanceCoalesce();
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard", { burst: true });
   });
 });

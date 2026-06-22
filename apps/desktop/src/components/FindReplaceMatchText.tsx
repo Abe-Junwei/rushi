@@ -1,6 +1,6 @@
-import type { CSSProperties, ElementType } from "react";
+import type { ElementType } from "react";
 import { CspLayout } from "./CspLayout";
-import type { CspLayoutRules } from "../utils/cspElementLayout";
+import { segmentTextTypographyLayout, type SegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
 
 type Props = {
   text: string;
@@ -9,7 +9,7 @@ type Props = {
   /** 浮窗单行预览：与左侧元信息同一行，超长截断。 */
   variant?: "block" | "inline";
   /** 语段列表等高亮镜像：与 `useSegmentRowTextStyle` 对齐，避免 text-sm 缩小正文。 */
-  textStyle?: CSSProperties;
+  textStyle?: SegmentRowTextStyle;
   className?: string;
 };
 
@@ -29,17 +29,19 @@ export function FindReplaceMatchText({
   const bodyClass = [variant === "inline" ? inlineClass : blockClass, className].filter(Boolean).join(" ");
   const Tag = (variant === "inline" ? "span" : "p") as ElementType;
 
+  const typographyLayout = textStyle ? segmentTextTypographyLayout(textStyle) : undefined;
+
   if (safeStart === safeEnd) {
-    return textStyle ? (
-      <CspLayout as={Tag} className={bodyClass} layout={textStyle as CspLayoutRules}>
+    return typographyLayout ? (
+      <CspLayout as={Tag} className={bodyClass} layout={typographyLayout}>
         {display}
       </CspLayout>
     ) : (
       <Tag className={bodyClass}>{display}</Tag>
     );
   }
-  return textStyle ? (
-    <CspLayout as={Tag} className={bodyClass} layout={textStyle as CspLayoutRules}>
+  return typographyLayout ? (
+    <CspLayout as={Tag} className={bodyClass} layout={typographyLayout}>
       {text.slice(0, safeStart)}
       <mark className="rounded-sm bg-accent-action/20 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
       {text.slice(safeEnd)}

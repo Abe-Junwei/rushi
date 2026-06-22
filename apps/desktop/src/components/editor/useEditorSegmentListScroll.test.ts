@@ -162,7 +162,9 @@ describe("useEditorSegmentListScroll", () => {
 
     const win = result.current.virtualWindow;
     expect(win.endIndex - win.startIndex).toBeLessThan(80);
-    expect(win.endIndex).toBeLessThanOrEqual(55);
+    expect(win.startIndex).toBeLessThanOrEqual(55);
+    expect(win.endIndex).toBeGreaterThan(55);
+    expect(root.scrollTop).toBeGreaterThan(0);
   });
 
   it("scrolls list keyboard selection into view on first frame (S5 projection)", () => {
@@ -213,7 +215,7 @@ describe("useEditorSegmentListScroll", () => {
       /layoutScrollCorrectionRef\.current\?\.generation !== scrollGenerationRef\.current/,
     );
     expect(source.default).toMatch(
-      /if \(Math\.abs\(corrected - root\.scrollTop\) < 1\) \{\s*selectionScrollProjectionRef\.current = false;/,
+      /if \(Math\.abs\(corrected - root\.scrollTop\) < 1\) \{\s*layoutScrollCorrectionRef\.current = null;/,
     );
   });
 });

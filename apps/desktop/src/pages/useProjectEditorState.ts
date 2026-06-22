@@ -1,5 +1,5 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
@@ -36,7 +36,9 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
 
   const selectedIdxRef = useRef(selectedIdx);
-  selectedIdxRef.current = selectedIdx;
+  useEffect(() => {
+    selectedIdxRef.current = selectedIdx;
+  }, [selectedIdx]);
 
   const openFile = useCallback(async (fileId: string): Promise<SegmentDto[] | null> => {
     segmentDraftStore.resetAll();

@@ -3,6 +3,7 @@ import {
   hitSegmentEdgeFromTimelinePointer,
   resolveSegmentIndexAtWaveformPointer,
 } from "../utils/waveformSegmentBounds";
+import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import {
   isSegmentSnapEnabled,
   readSegmentOverlayModifiers,
@@ -149,6 +150,7 @@ export function useWaveformSegmentDrag(
       if (a.disabled || ev.button !== 0) return;
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
+      const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
       const hitIdx = resolveSegmentIndexAtWaveformPointer({
         segments: a.segments,
         timeSec,
@@ -157,7 +159,7 @@ export function useWaveformSegmentDrag(
         layoutHeightPx: a.layoutHeightPx,
         laneByIndex: a.laneByIndex,
         laneCount: a.laneCount,
-        selectedIdx: a.selectedIdx,
+        selectedIdx: chromePrimary >= 0 ? chromePrimary : a.selectedIdx,
         durationSec: a.durationSec,
       });
       if (hitIdx >= 0) {

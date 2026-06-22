@@ -54,12 +54,8 @@ function areEditorSegmentWorkbenchPropsEqual(
   return (
     prev.controller.busy === next.controller.busy &&
     prev.controller.currentFileId === next.controller.currentFileId &&
-    prev.controller.selectedIdx === next.controller.selectedIdx &&
-    prev.controller.selectionCount === next.controller.selectionCount &&
-    prev.controller.selectedIndicesArray === next.controller.selectedIndicesArray &&
     prev.controller.segments === next.controller.segments &&
     prev.controller.segments.length === next.controller.segments.length &&
-    prev.controller.selectedIndicesArray === next.controller.selectedIndicesArray &&
     prev.filteredIndices === next.filteredIndices &&
     prev.filterActive === next.filterActive &&
     prev.onResetSegmentListFilter === next.onResetSegmentListFilter &&

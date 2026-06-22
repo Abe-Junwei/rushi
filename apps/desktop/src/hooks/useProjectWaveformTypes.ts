@@ -1,5 +1,13 @@
+import type { RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectTypes";
 import type { PeakCache } from "../services/waveform/PeakCache";
+import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
+
+/** Live tier metrics for pointer → time mapping (populated after tier scroll sync mounts). */
+export type TierViewportMetricsRef = RefObject<{
+  tierScrollLive: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
+} | null>;
 
 /** Options for `useProjectWaveform` (shared to break hook import cycle). */
 export type UseProjectWaveformOptions = {
@@ -37,6 +45,8 @@ export type UseProjectWaveformOptions = {
   layoutTimelineWidthPxRef?: React.MutableRefObject<number>;
   /** Tier scroll container for pointer → time mapping on overlay gestures. */
   tierScrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** Tier scroll live/layout metrics — same read path as band canvas / playhead. */
+  tierViewportMetricsRef?: TierViewportMetricsRef;
   /** After reveal/flushTierScrollFrame, skip redundant seeking resync (ms timestamp). */
   selectionSeekChromeSuppressUntilRef?: React.MutableRefObject<number>;
   /** Sticky waveform clip shell — resize sync writes width imperatively. */

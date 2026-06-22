@@ -35,6 +35,8 @@ export type EditorShortcutExecuteDeps = {
 export type EditorShortcutExecuteMods = {
   shiftKey?: boolean;
   eventTarget?: EventTarget | null;
+  /** 焦点在波形 tier/shell 内（非正文 textarea）。 */
+  inWaveform?: boolean;
 };
 
 /** 结构操作与 focus 文本均锚定 selectedIdx（focus=selected 不变量）。 */
@@ -44,6 +46,27 @@ function resolveSelectedSegmentIdx(ctx: TranscriptionLayerInput): number {
 
 function readCtx(deps: EditorShortcutExecuteDeps): TranscriptionLayerInput {
   return deps.getCtx?.() ?? deps.ctx;
+}
+
+function advanceAdjacentSegment(
+  direction: -1 | 1,
+  deps: EditorShortcutExecuteDeps,
+  mods: EditorShortcutExecuteMods,
+): void {
+  const ctx = readCtx(deps);
+  const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
+  const targetIdx = resolveKeyboardAdvanceTarget(
+    anchorIdx,
+    direction,
+    ctx.segments.length,
+    deps.segmentListFilterNavState,
+  );
+  if (targetIdx == null || targetIdx === anchorIdx) return;
+  if (mods.inWaveform) {
+    deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+    return;
+  }
+  deps.scheduleAdvanceToSegment(targetIdx);
 }
 
 export function executeEditorShortcut(
@@ -103,25 +126,11 @@ export function executeEditorShortcut(
       return true;
     }
     case "segment.advancePrev": {
-      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
-      const targetIdx = resolveKeyboardAdvanceTarget(
-        anchorIdx,
-        -1,
-        ctx.segments.length,
-        deps.segmentListFilterNavState,
-      );
-      if (targetIdx != null && targetIdx !== anchorIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      advanceAdjacentSegment(-1, deps, mods);
       return true;
     }
     case "segment.advanceNext": {
-      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
-      const targetIdx = resolveKeyboardAdvanceTarget(
-        anchorIdx,
-        1,
-        ctx.segments.length,
-        deps.segmentListFilterNavState,
-      );
-      if (targetIdx != null && targetIdx !== anchorIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      advanceAdjacentSegment(1, deps, mods);
       return true;
     }
     case "segment.delete": {
@@ -198,17 +207,29 @@ export function executeEditorShortcut(
       }
       return true;
     case "waveform.selectSegmentPrev": {
-      if (ctx.selectedIdx <= 0) return true;
-      deps.selectSegmentAt(ctx.selectedIdx - 1, "waveform", {
-        shiftKey: mods.shiftKey,
-      });
+      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
+      const targetIdx = resolveKeyboardAdvanceTarget(
+        anchorIdx,
+        -1,
+        ctx.segments.length,
+        deps.segmentListFilterNavState,
+      );
+      if (targetIdx != null && targetIdx !== anchorIdx) {
+        deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+      }
       return true;
     }
     case "waveform.selectSegmentNext": {
-      if (ctx.selectedIdx >= ctx.segments.length - 1) return true;
-      deps.selectSegmentAt(ctx.selectedIdx + 1, "waveform", {
-        shiftKey: mods.shiftKey,
-      });
+      const anchorIdx = resolveListSelectionNavAnchor(ctx.selectedIdx);
+      const targetIdx = resolveKeyboardAdvanceTarget(
+        anchorIdx,
+        1,
+        ctx.segments.length,
+        deps.segmentListFilterNavState,
+      );
+      if (targetIdx != null && targetIdx !== anchorIdx) {
+        deps.selectSegmentAt(targetIdx, "waveform", { shiftKey: mods.shiftKey });
+      }
       return true;
     }
     case "waveform.seekFramePrev":

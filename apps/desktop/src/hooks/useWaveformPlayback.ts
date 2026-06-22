@@ -1,8 +1,12 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
-import { clientXToTimelinePx, clientXToTimeSecInTierScroll } from "../utils/waveformPointerTime";
+import {
+  clientXToTimelinePx,
+  resolveWaveformPointerTimeSecFromClientX,
+} from "../utils/waveformPointerTime";
 import { timelinePxToTime } from "../utils/waveformProjection";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
+import type { TierViewportMetricsRef } from "./useProjectWaveformTypes";
 
 export function useWaveformPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
@@ -12,6 +16,7 @@ export function useWaveformPlayback(
   layoutTimelineWidthPxRef: React.MutableRefObject<number>,
   applyGlobalPlaybackRateRef: React.MutableRefObject<() => void>,
   tierScrollRef?: React.RefObject<HTMLDivElement | null>,
+  tierViewportMetricsRef?: TierViewportMetricsRef,
 ) {
   const seek = useCallback(
     (timeSec: number) => {
@@ -65,11 +70,12 @@ export function useWaveformPlayback(
 
       const tier = tierScrollRef?.current;
       if (tier) {
-        const rect = tier.getBoundingClientRect();
-        return clientXToTimeSecInTierScroll({
+        const tierMetrics = tierViewportMetricsRef?.current;
+        return resolveWaveformPointerTimeSecFromClientX({
           clientX,
-          tierViewportLeftPx: rect.left,
-          tierScrollLeftPx: tier.scrollLeft,
+          tierScrollEl: tier,
+          tierScrollLive: tierMetrics?.tierScrollLive,
+          tierScrollLayout: tierMetrics?.tierScrollLayout,
           timelineWidthPx: tw,
           durationSec: dur,
         });
@@ -81,7 +87,15 @@ export function useWaveformPlayback(
       const relPx = clientXToTimelinePx(clientX, rect.left);
       return timelinePxToTime(relPx, tw, dur);
     },
-    [isReady, wsRef, containerRef, layoutDurationSecRef, layoutTimelineWidthPxRef, tierScrollRef],
+    [
+      isReady,
+      wsRef,
+      containerRef,
+      layoutDurationSecRef,
+      layoutTimelineWidthPxRef,
+      tierScrollRef,
+      tierViewportMetricsRef,
+    ],
   );
 
   return {

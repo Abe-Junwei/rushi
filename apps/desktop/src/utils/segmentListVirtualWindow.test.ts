@@ -11,6 +11,7 @@ import {
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
   segmentListIndexNeedsScrollAdjustment,
+  segmentListVirtualWindowIncludesDisplayIndex,
   resolveVirtualListScrollTopForWindow,
   resolveSegmentListRowIndexFromPoint,
   resolveSegmentListRangeDragHoverIndex,
@@ -88,6 +89,48 @@ describe("segmentListVirtualWindow", () => {
         itemStridePx: stride,
       }),
     ).toBe(true);
+  });
+
+  it("scrollSegmentListIndexIntoView keyboard align keeps bottom stride margin", () => {
+    const stride = 80;
+    const rowMin = 70;
+    const index = 5;
+    const viewport = 480;
+    const scrollTop = 0;
+    expect(
+      scrollSegmentListIndexIntoView({
+        scrollTop,
+        viewportHeight: viewport,
+        index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+        align: "minimal",
+      }),
+    ).toBeNull();
+    expect(
+      scrollSegmentListIndexIntoView({
+        scrollTop,
+        viewportHeight: viewport,
+        index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+        align: "keyboard",
+      }),
+    ).toBe(index * stride + rowMin - viewport + stride);
+  });
+
+  it("segmentListVirtualWindowIncludesDisplayIndex detects in-window rows", () => {
+    const stride = 80;
+    const win = computeSegmentListVirtualWindow({
+      scrollTop: 0,
+      viewportHeight: 400,
+      itemStridePx: stride,
+      totalCount: 200,
+      overscan: 4,
+    });
+    expect(segmentListVirtualWindowIncludesDisplayIndex(win, win.startIndex)).toBe(true);
+    expect(segmentListVirtualWindowIncludesDisplayIndex(win, win.endIndex)).toBe(false);
+    expect(segmentListVirtualWindowIncludesDisplayIndex(win, 500)).toBe(false);
   });
 
   it("scrolls selected row into view when off-screen (minimal align)", () => {

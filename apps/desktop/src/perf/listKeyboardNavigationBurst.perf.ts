@@ -28,6 +28,7 @@ import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 export const LIST_KEYBOARD_BURST_PLAN_MAX_MS = 2;
 export const LIST_KEYBOARD_BURST_STEPS = 10;
 export const LIST_KEYBOARD_BURST_SEGMENT_COUNT = 5000;
+export const LIST_KEYBOARD_BURST_SC1_COMMIT_MAX_MS = 120;
 
 function makeSegments(count: number) {
   return Array.from({ length: count }, (_, idx) => ({
@@ -269,5 +270,56 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
       expect(win.startIndex).toBeLessThanOrEqual(idx);
       expect(win.endIndex).toBeGreaterThan(idx);
     }
+  });
+
+  it("LKB-2: listKeyboard burst defers SC1 commit until keyup flush", () => {
+    const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
+    const ctx = makeCtx(segmentCount, 0);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline(segmentCount);
+    const setSelectedIdxUi = vi.fn();
+
+    const rowMin = segmentListRowMinHeightPx(70);
+    const stride = segmentListItemStridePx(rowMin);
+    const displayCount = segmentCount;
+    const scrollHeight = displayCount * stride;
+    const listRoot = createScrollRoot(0, 480, scrollHeight);
+    document.body.appendChild(listRoot);
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef: { current: listRoot },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      for (let step = 1; step <= LIST_KEYBOARD_BURST_STEPS; step += 1) {
+        const idx = step * 17;
+        result.current.selectSegmentAt(idx, "listKeyboard", { burst: true });
+      }
+    });
+
+    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+
+    const finalIdx = LIST_KEYBOARD_BURST_STEPS * 17;
+    act(() => {
+      result.current.commitListKeyboardBurst(finalIdx);
+      selectionProfileFlush();
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(finalIdx);
+
+    const parsed = parseSelectionProfileLine(
+      latestProfileLine((line) => line.includes(`listKeyboard commit idx=${finalIdx}`)),
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed!.spans.listCommit).not.toBeUndefined();
+    expect(parsed!.spans.listCommit).toBeLessThanOrEqual(LIST_KEYBOARD_BURST_SC1_COMMIT_MAX_MS);
   });
 });

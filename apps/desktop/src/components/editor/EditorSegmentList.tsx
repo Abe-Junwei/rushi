@@ -277,9 +277,6 @@ function areEditorSegmentListPropsEqual(
 ): boolean {
   if (prev.controller.busy !== next.controller.busy) return false;
   if (prev.controller.currentFileId !== next.controller.currentFileId) return false;
-  if (prev.controller.selectedIdx !== next.controller.selectedIdx) return false;
-  if (prev.controller.selectionCount !== next.controller.selectionCount) return false;
-  if (prev.controller.selectedIndicesArray !== next.controller.selectedIndicesArray) return false;
   if (prev.controller.segments !== next.controller.segments) return false;
   if (prev.controller.segments.length !== next.controller.segments.length) return false;
   if (prev.filteredIndices !== next.filteredIndices) return false;

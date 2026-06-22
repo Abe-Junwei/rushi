@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useMemo, useRef, type MutableRefObject, type RefObject } from "react";
 import { startTransition } from "react";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
@@ -11,7 +11,7 @@ import { computeZoomInPxPerSec, computeZoomOutPxPerSec } from "../utils/waveform
 import { assignSegmentOverlapLanes } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
 import { segmentStartSec } from "../utils/formatMediaTime";
-import type { SegmentSelectSource } from "../utils/waveformViewMode";
+import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import { shouldFocusWaveformShellForSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import {
@@ -23,8 +23,19 @@ import {
 import { publishSelectionChromeForInput } from "../services/selection/publishSelectionChromeForInput";
 import { resolveSelectionChromePreview } from "../services/selection/resolveSelectionChromePreview";
 import { applyContextMenuSelectionBeforeOpen } from "../services/selection/segmentContextMenuSelection";
+import {
+  getSelectionChromeSnapshot,
+  selectionChromePrimaryOutOfSync,
+} from "../services/selection/selectionChromeStore";
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
+import {
+  cancelListKeyboardKeyupReveal,
+  clearListKeyboardImperativeScrollKey,
+  clearListKeyboardVirtualDisplayPin,
+} from "../services/selection/listKeyboardBurstCoordinator";
+import { useListKeyboardBurstSelection } from "../hooks/useListKeyboardBurstSelection";
+import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import {
   shouldRevealOnSegmentSelect,
   shouldSeekOnSegmentSelect,
@@ -32,9 +43,14 @@ import {
 import { isListSegmentSelectSource } from "../utils/segmentListSelectSource";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
-const LIST_KEYBOARD_REVEAL_DEBOUNCE_MS = 180;
-
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
+
+function isListKeyboardBurstStep(
+  source: SegmentSelectSource,
+  opts?: SegmentSelectAtOptions,
+): boolean {
+  return source === "listKeyboard" && opts?.burst === true && !opts?.shiftKey && !opts?.toggle;
+}
 
 export function useTranscriptionLayerSelection(opts: {
   ctx: TranscriptionLayerInput;
@@ -42,9 +58,22 @@ export function useTranscriptionLayerSelection(opts: {
   timeline: TimelineApi;
   waveformShellRef: RefObject<HTMLElement | null>;
   segmentListRef: RefObject<HTMLDivElement | null>;
-  setSelectedIdxUi: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  setSelectedIdxUi: (idx: number, opts?: SegmentSelectAtOptions) => void;
+  selectedIdxRef?: MutableRefObject<number>;
+  segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
+  transcriptRowHeightPx?: number;
 }) {
-  const { ctx, ctxRef, timeline, waveformShellRef, segmentListRef, setSelectedIdxUi } = opts;
+  const {
+    ctx,
+    ctxRef,
+    timeline,
+    waveformShellRef,
+    segmentListRef,
+    setSelectedIdxUi,
+    selectedIdxRef,
+    segmentListFilterNavRef,
+    transcriptRowHeightPx = 70,
+  } = opts;
 
   const scrollFitRef = useRef({ timeline });
   scrollFitRef.current = { timeline };
@@ -69,13 +98,11 @@ export function useTranscriptionLayerSelection(opts: {
   };
 
   const selectSegmentAtRef = useRef<
-    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
+    (idx: number, source?: SegmentSelectSource, opts?: SegmentSelectAtOptions) => void
   >(() => {});
 
   /** 最近一次语段选中来源（供列表 scroll coalesce 分支）。 */
   const lastSegmentSelectSourceRef = useRef<SegmentSelectSource>("waveform");
-  const pendingRevealRafRef = useRef(0);
-  const pendingRevealTimeoutRef = useRef(0);
 
   const laneBoundsSig = useMemo(() => p1LaneBoundsSignature(ctx.segments), [ctx.segments]);
   const segmentLaneLayout = useMemo(() => {
@@ -94,7 +121,7 @@ export function useTranscriptionLayerSelection(opts: {
     (
       idx: number,
       source: SegmentSelectSource,
-      opts?: { shiftKey?: boolean; toggle?: boolean },
+      opts?: SegmentSelectAtOptions,
     ) => {
       if (isListSegmentSelectSource(source)) {
         setSelectedIdxUi(idx, opts);
@@ -125,7 +152,8 @@ export function useTranscriptionLayerSelection(opts: {
         },
         {
           markFirstPaint: isSelectionLatencyProfileEnabled(),
-          skipBandPaint: source != null && isListSegmentSelectSource(source),
+          // listKeyboard defers SC1 — band must repaint from chrome store, not React selectedIdx.
+          skipBandPaint: source === "list" || source === "listAdvance",
         },
       );
     },
@@ -142,40 +170,28 @@ export function useTranscriptionLayerSelection(opts: {
     });
   }, [ctxRef]);
 
-  const scheduleRevealSelectedSegment = useCallback(
-    (seg: { start_sec: number; end_sec: number }, source: SegmentSelectSource) => {
-      cancelAnimationFrame(pendingRevealRafRef.current);
-      pendingRevealRafRef.current = 0;
-      window.clearTimeout(pendingRevealTimeoutRef.current);
-
-      const reveal = () => {
-        selectionProfileTime("viewport", () => {
-          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
-        });
-      };
-
-      if (source === "listKeyboard") {
-        pendingRevealTimeoutRef.current = window.setTimeout(reveal, LIST_KEYBOARD_REVEAL_DEBOUNCE_MS);
-        return;
-      }
-
-      pendingRevealRafRef.current = requestAnimationFrame(() => {
-        pendingRevealRafRef.current = 0;
-        reveal();
-      });
-    },
-    [],
-  );
+  const burst = useListKeyboardBurstSelection({
+    ctxRef,
+    scrollFitRef,
+    segmentListRef,
+    segmentListFilterNavRef,
+    waveformShellRef,
+    setSelectedIdxUi,
+    transcriptRowHeightPx,
+    lastSegmentSelectSourceRef,
+  });
 
   const selectSegmentAt = useCallback(
-    (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+    (idx: number, source: SegmentSelectSource = "waveform", opts?: SegmentSelectAtOptions) => {
       const c = ctxRef.current;
       if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
+      if (!isListKeyboardBurstStep(source, opts)) {
+        clearListKeyboardImperativeScrollKey();
+        clearListKeyboardVirtualDisplayPin();
+        cancelListKeyboardKeyupReveal();
+      }
       const idxChanged = idx !== c.selectedIdx;
       const editorFocusGateOpen = isEditorFocusGateOpen({
         segmentsLength: c.segments.length,
@@ -200,21 +216,64 @@ export function useTranscriptionLayerSelection(opts: {
           tl.wfApiRef.current.seek(segmentStartSec(s));
         });
       }
+
+      if (isListKeyboardBurstStep(source, opts)) {
+        const chromePrimaryBeforeStep = getSelectionChromeSnapshot().primaryIdx;
+        selectionProfileTime("flushSelectedIdx", () => {
+          const idxChangedForChrome =
+            idx !== c.selectedIdx ||
+            selectionChromePrimaryOutOfSync(idx) ||
+            Boolean(opts?.shiftKey) ||
+            Boolean(opts?.toggle);
+          if (idxChangedForChrome) {
+            paintSelectionChrome(c, idx, opts, source);
+          }
+          if (selectedIdxRef) {
+            selectedIdxRef.current = idx;
+          }
+          burst.runListKeyboardBurstListScroll(idx);
+        });
+        const burstRevealIdxChanged =
+          idx !== chromePrimaryBeforeStep || selectionChromePrimaryOutOfSync(idx);
+        if (burstRevealIdxChanged) {
+          burst.scheduleRevealSelectedSegment("listKeyboard");
+        }
+        if (isSelectionLatencyProfileEnabled()) {
+          selectionProfileScheduleFlush("list");
+        }
+        return;
+      }
+
       selectionProfileTime("flushSelectedIdx", () => {
         const idxChangedForChrome =
-          idx !== c.selectedIdx || Boolean(opts?.shiftKey) || Boolean(opts?.toggle);
+          idx !== c.selectedIdx ||
+          selectionChromePrimaryOutOfSync(idx) ||
+          Boolean(opts?.shiftKey) ||
+          Boolean(opts?.toggle);
         if (idxChangedForChrome) {
           paintSelectionChrome(c, idx, opts, source);
         }
+        if (source === "waveform" && idxChangedForChrome) {
+          burst.runWaveformSelectListScroll(idx);
+        }
         commitSelectedIdxUi(idx, source, opts);
-        // List scroll is owned by useEditorSegmentListScroll layout effect to avoid
-        // duplicate forced layout and rAF coalesce conflicts (RUSHI-KEYBOARD-LAG).
         if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
       });
-      if (shouldReveal) {
-        scheduleRevealSelectedSegment(seg, source);
+      if (shouldReveal && !isListKeyboardBurstStep(source, opts)) {
+        if (source === "waveform") {
+          burst.cancelPendingSelectionReveal();
+          selectionProfileTime("viewport", () => {
+            scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+              start_sec: seg.start_sec,
+              end_sec: seg.end_sec,
+            });
+          });
+          flushTierScrollFrame({ force: true });
+        } else {
+          burst.scheduleRevealSelectedSegment(source);
+        }
       }
       if (isSelectionLatencyProfileEnabled()) {
         selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
@@ -223,7 +282,15 @@ export function useTranscriptionLayerSelection(opts: {
         selectionProfileTime("focus", focusWaveformShell);
       }
     },
-    [commitSelectedIdxUi, ctxRef, focusWaveformShell, paintSelectionChrome, scheduleRevealSelectedSegment, waveformShellRef],
+    [
+      burst,
+      commitSelectedIdxUi,
+      ctxRef,
+      focusWaveformShell,
+      paintSelectionChrome,
+      selectedIdxRef,
+      waveformShellRef,
+    ],
   );
 
   selectSegmentAtRef.current = selectSegmentAt;
@@ -280,6 +347,9 @@ export function useTranscriptionLayerSelection(opts: {
     segmentLaneLayout,
     focusWaveformShell,
     revealSelectedSegmentInViewport,
+    cancelPendingSelectionReveal: burst.cancelPendingSelectionReveal,
+    finalizeListKeyboardViewport: burst.finalizeListKeyboardViewport,
+    commitListKeyboardBurst: burst.commitListKeyboardBurst,
     selectSegmentAt,
     selectSegmentAtRef,
     lastSegmentSelectSourceRef,

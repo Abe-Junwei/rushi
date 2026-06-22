@@ -47,3 +47,15 @@ export function segmentTextAreaLayoutVars(
     ...(selected ? {} : { "--seg-text-max-height": `${textAreaMinHeight}px` }),
   };
 }
+
+/** 镜像层内文：与 textarea / seg-text-layout-scope 同一套排版（含加粗 700）。 */
+export function segmentTextTypographyLayout(textStyle: SegmentRowTextStyle): CspLayoutRules {
+  return {
+    fontSize: textStyle.fontSize,
+    lineHeight: textStyle.lineHeight,
+    letterSpacing: textStyle.letterSpacing,
+    fontWeight: textStyle.fontWeight,
+    fontStyle: textStyle.fontStyle,
+    fontFamily: textStyle.fontFamily,
+  };
+}

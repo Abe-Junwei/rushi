@@ -5,6 +5,7 @@ import {
   resetSelectionChromeStoreForTests,
   SELECTION_ROW_STATE,
   selectionRowState,
+  selectionChromePrimaryOutOfSync,
   subscribeSelectionChrome,
 } from "./selectionChromeStore";
 
@@ -45,5 +46,12 @@ describe("selectionChromeStore", () => {
     expect(selectionRowState(2)).toBe(SELECTION_ROW_STATE.primary);
     expect(selectionRowState(99)).toBe(SELECTION_ROW_STATE.none);
     expect(selectionRowState(99)).toBe(SELECTION_ROW_STATE.none);
+  });
+
+  it("selectionChromePrimaryOutOfSync detects reset store vs React selectedIdx", () => {
+    expect(selectionChromePrimaryOutOfSync(0)).toBe(true);
+    commitSelectionChrome({ fileId: "f1", primaryIdx: 0, selectedSet: new Set([0]) });
+    expect(selectionChromePrimaryOutOfSync(0)).toBe(false);
+    expect(selectionChromePrimaryOutOfSync(1)).toBe(true);
   });
 });

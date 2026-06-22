@@ -93,6 +93,11 @@ export function selectionSetsEqual(a: ReadonlySet<number>, b: ReadonlySet<number
   return true;
 }
 
+/** True when imperative chrome must repaint for a single-primary list/waveform tap. */
+export function selectionChromePrimaryOutOfSync(primaryIdx: number): boolean {
+  return getSelectionChromeSnapshot().primaryIdx !== primaryIdx;
+}
+
 /** Test-only */
 export function resetSelectionChromeStoreForTests(): void {
   snapshot = {

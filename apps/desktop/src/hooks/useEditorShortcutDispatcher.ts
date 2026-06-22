@@ -14,6 +14,7 @@ import type { ConfirmAdvanceTabQueueRef } from "../utils/confirmAdvanceTabQueue"
 import { executeEditorShortcut } from "../utils/executeEditorShortcut";
 import { hasOpenDialogEscapeHandler } from "../utils/dialogEscapeStack";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import { isWaveformShortcutContext } from "../utils/waveformShortcutContext";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -44,12 +45,6 @@ function isTranscriptTextarea(target: EventTarget | null): boolean {
   return Boolean(el.closest(TRANSCRIPT_TEXTAREA_SELECTOR));
 }
 
-function isWaveformShellTarget(target: EventTarget | null, shell: HTMLElement | null): boolean {
-  const el = target as Node | null;
-  if (!el || !shell) return false;
-  return shell.contains(el);
-}
-
 function isFloatingEditorPanelOpen(): boolean {
   return isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
 }
@@ -78,6 +73,7 @@ export function useEditorShortcutDispatcher(args: {
   ctxRef: React.MutableRefObject<TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
   waveformShellRef: React.RefObject<HTMLElement | null>;
+  tierScrollRef: React.RefObject<HTMLElement | null>;
   selectSegmentAtRef: React.MutableRefObject<
     (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
   >;
@@ -111,7 +107,11 @@ export function useEditorShortcutDispatcher(args: {
       }
 
       const def = getEditorShortcutDefinition(shortcutId);
-      const inWaveform = isWaveformShellTarget(e.target, argsRef.current.waveformShellRef.current);
+      const inWaveform = isWaveformShortcutContext(
+        e.target,
+        argsRef.current.waveformShellRef.current,
+        argsRef.current.tierScrollRef.current,
+      );
       if (def.scope === "waveform" && !inWaveform) return;
 
       const a = argsRef.current;
@@ -148,7 +148,7 @@ export function useEditorShortcutDispatcher(args: {
           },
           confirmAdvanceQueueRef: confirmAdvanceQueueRef.current,
         },
-        { shiftKey: e.shiftKey, eventTarget: e.target },
+        { shiftKey: e.shiftKey, eventTarget: e.target, inWaveform },
       );
     };
 

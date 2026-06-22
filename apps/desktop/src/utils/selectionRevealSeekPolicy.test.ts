@@ -26,7 +26,7 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(true);
   });
 
-  it("listKeyboard reveals only when editor focus gate is open", () => {
+  it("listKeyboard reveals on idx change regardless of focus gate", () => {
     expect(
       shouldRevealOnSegmentSelect({
         source: "listKeyboard",
@@ -39,6 +39,13 @@ describe("selectionRevealSeekPolicy", () => {
         source: "listKeyboard",
         idxChanged: true,
         editorFocusGateOpen: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "listKeyboard",
+        idxChanged: false,
+        editorFocusGateOpen: true,
       }),
     ).toBe(false);
   });

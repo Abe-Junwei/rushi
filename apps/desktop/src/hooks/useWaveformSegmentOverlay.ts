@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { applySegmentOverlayTap } from "../utils/waveformSegmentOverlayActions";
 import { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
@@ -151,9 +152,10 @@ export function useWaveformSegmentOverlay(
     const a = argsRef.current;
     const seg = a.segments[idx];
     if (!seg) return;
+    const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
     applySegmentOverlayTap(
       {
-        selectedIdx: a.selectedIdx,
+        selectedIdx: chromePrimary >= 0 ? chromePrimary : a.selectedIdx,
         segmentIdx: idx,
         pointerTimeSec,
         segment: seg,
