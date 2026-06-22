@@ -91,6 +91,25 @@
 
 **硬规则**：SC2 **不得**驱动 persist/undo；波形/列表点击 **先 SC2 publish（store + 波形 imperative；列表行 `useSegmentRowSelection`）→ reveal/seek → SC1 `startTransition`**。结构突变（merge/delete/undo/clearMulti）经 [`selectionChromePublishBridge`](../../apps/desktop/src/services/selection/selectionChromePublishBridge.ts) 显式 publish。Spec：[`selection-chrome-bus-plan.md`](../execution/specs/selection-chrome-bus-plan.md)。
 
+**Waveform selection repair（2026-06）**：调研见 [`waveform-selection-chain-repair-research.md`](../execution/specs/waveform-selection-chain-repair-research.md)。波形语段链路采用三层边界：
+
+| 层 | 责任 | 禁止 |
+|----|------|------|
+| Input state machine | 只处理 pointer session 生命周期（pending tap / edit drag / lasso / cancel / commit）与 session id | 不直接写 SC1/SC2，不 seek/reveal |
+| Selection command | 将产品矩阵解析为 `selectAndSeekStart` / `seekWithinSegment` / `selectOnly` / `blankSeek` / `lassoSelect` / `commitBounds` | 不操作 DOM，不推导 canvas/overlay skip |
+| Render projection | 统一决定 canvas band、DOM overlay、imperative chrome、fallback 的绘制归属 | 各渲染层不得重复自建 selected/skip/fallback 策略 |
+
+命令矩阵：
+
+| 命令 | 触发 | SC1 | SC2 | seek | reveal | 备注 |
+|------|------|-----|-----|------|--------|------|
+| `selectAndSeekStart` | 波形首点未选中语段 | ✓ | ✓（pointerdown preview） | 语段头 | ✓ | pointerup 用同一 session 消费 preview，禁止 TTL double consume |
+| `seekWithinSegment` | 已选中语段内再点 | — | — | 点击点钳在语段内 | — | 只移动 playhead，不重选 |
+| `selectOnly` | shift/meta、右键菜单或非 waveform 源 | ✓ | ✓ | — | 按来源策略 | 不触发 waveform preview seek |
+| `blankSeek` | 空白短点 | — | — | anchor 时间 | — | suppress 播放跟随 |
+| `lassoSelect` | 空白拖拽命中语段集合 | 多选 | ✓ | — | — | 不 reveal/seek |
+| `commitBounds` | move/resize 拖拽结束且 bounds 变化 | — | 随 React commit | — | — | `update` 与 `update-end` 语义分离 |
+
 唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ SC2 chrome + `publishSelectionChrome` → SC1（`startTransition`）→ `flushTierScrollFrame`（band/overlay 同帧，仅 waveform 源）→ suppress + seek（仅 waveform 源）→ focus（仅 waveform 源）**。策略真源：[`selectionRevealSeekPolicy.ts`](../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) + [`editorFocusGate.ts`](../../apps/desktop/src/utils/editorFocusGate.ts)。
 
 | 入口 | 选中 | reveal/居中 | seek | suppress 跟随 | 焦点 | 走 `selectSegmentAt`? |
