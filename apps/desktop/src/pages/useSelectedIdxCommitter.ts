@@ -11,7 +11,7 @@ export function useSelectedIdxCommitter(
         setSelectedIdxUi(idx, opts);
         return;
       }
-      if (source === "waveformKeyboard") {
+      if (source === "waveformKeyboard" || source === "waveform") {
         setSelectedIdxUi(idx, opts);
         return;
       }

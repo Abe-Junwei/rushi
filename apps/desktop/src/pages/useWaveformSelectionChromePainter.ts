@@ -2,7 +2,10 @@ import { useCallback, type RefObject } from "react";
 import { publishSelectionChromeForInput } from "../services/selection/publishSelectionChromeForInput";
 import { resolveSelectionChromePreview } from "../services/selection/resolveSelectionChromePreview";
 import { isSelectionLatencyProfileEnabled } from "../services/ui/selectionLatencyProfile";
-import type { SegmentSelectSource } from "../utils/waveformViewMode";
+import {
+  shouldSkipImperativeSelectionChrome,
+  type SegmentSelectSource,
+} from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
@@ -18,7 +21,7 @@ export function useWaveformSelectionChromePainter(args: {
       idx: number,
       opts: { shiftKey?: boolean; toggle?: boolean } | undefined,
       source: SegmentSelectSource,
-      publishOpts?: { skipBandPaint?: boolean },
+      publishOpts?: { skipBandPaint?: boolean; skipListRows?: boolean; skipImperative?: boolean },
     ) => {
       const preview = resolveSelectionChromePreview(c, idx, opts);
       const tier = args.timelineRef.current.timeline.tierScrollRef.current;
@@ -36,6 +39,12 @@ export function useWaveformSelectionChromePainter(args: {
             source === "list" ||
             source === "listAdvance" ||
             source === "waveformKeyboard",
+          skipListRows:
+            publishOpts?.skipListRows === true ||
+            source === "waveformKeyboard" ||
+            shouldSkipImperativeSelectionChrome(source),
+          skipImperative:
+            publishOpts?.skipImperative === true || shouldSkipImperativeSelectionChrome(source),
         },
       );
     },

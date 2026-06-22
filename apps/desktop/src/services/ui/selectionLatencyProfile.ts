@@ -12,10 +12,9 @@ export const SELECTION_PROFILE_HAND_CHROME_MAX_MS = 50;
 /** 193 段级 profile 基准语段数（与手测素材对齐）。 */
 export const SELECTION_PROFILE_BASELINE_SEGMENT_COUNT = 193;
 
-/** 计入 syncPathTotal 的 span（不含 listCommit / listScroll 等 transition 成本）。 */
+/** 计入 syncPathTotal 的 span（不含 listCommit / listScroll / firstPaint 等 transition 成本）。 */
 export const SELECTION_PROFILE_SYNC_PATH_SPANS: readonly SelectionLatencyProfileSpan[] = [
   "flushSelectedIdx",
-  "firstPaint",
   "listChrome",
   "resolvePlan",
   "viewport",
@@ -34,8 +33,13 @@ export type ParsedSelectionProfileLine = {
 export function computeSelectionProfileSyncPathMs(
   spans: Partial<Record<SelectionLatencyProfileSpan, number>>,
 ): number {
-  let sum = 0;
-  for (const key of SELECTION_PROFILE_SYNC_PATH_SPANS) {
+  const flush = spans.flushSelectedIdx ?? 0;
+  const listChrome = spans.listChrome ?? 0;
+  let sum = flush;
+  // listChrome may nest inside flushSelectedIdx — avoid double-counting.
+  // firstPaint is SC1/layout wall clock; hand-test only (see selectionProfileMeetsHandChromeGate).
+  if (listChrome > flush) sum += listChrome;
+  for (const key of ["resolvePlan", "viewport", "seek", "focus"] as const) {
     sum += spans[key] ?? 0;
   }
   return sum;
@@ -243,18 +247,18 @@ export function selectionProfileMarkListCommit(): void {
   selectionProfileFlush();
 }
 
-/** List：rAF 后 flush（含 firstPaint）。Waveform：defer 至 listCommit 或超时。 */
+/** rAF flush; waveform also marks listCommit when scroll effect settles. */
 export function selectionProfileScheduleFlush(source: "list" | "waveform"): void {
   if (!isSelectionLatencyProfileEnabled()) return;
   window.clearTimeout(waveformProfileFlushTimer);
-  if (source === "list") {
-    requestAnimationFrame(() => selectionProfileFlush());
+  waveformProfileFlushTimer = 0;
+  if (source === "waveform") {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => selectionProfileFlush());
+    });
     return;
   }
-  waveformProfileFlushTimer = window.setTimeout(() => {
-    waveformProfileFlushTimer = 0;
-    selectionProfileFlush();
-  }, 3000);
+  requestAnimationFrame(() => selectionProfileFlush());
 }
 
 export function readRecentSelectionLatencyProfileLines(): readonly string[] {

@@ -18,6 +18,10 @@ export function publishSelectionChrome(input: {
   markFirstPaint?: boolean;
   /** Skip waveform band force-repaint (list keyboard / click path). */
   skipBandPaint?: boolean;
+  /** Waveform keyboard burst: skip imperative list row chrome. */
+  skipListRows?: boolean;
+  /** Store + subscribers only — skip imperative DOM (waveform keyboard burst). */
+  skipImperative?: boolean;
 }): SelectionChromeSnapshot {
   const prevSnapshot = getSelectionChromeSnapshot();
   const nextSnapshot = commitSelectionChrome({
@@ -26,15 +30,18 @@ export function publishSelectionChrome(input: {
     selectedSet: input.selectedSet,
   });
 
-  selectionProfileTime("listChrome", () => {
-    applySelectionChromeImperative({
-      overlayRoot: input.overlayRoot,
-      listRoot: input.listRoot,
-      segments: input.segments,
-      prevSnapshot,
-      nextSnapshot,
+  if (!input.skipImperative) {
+    selectionProfileTime("listChrome", () => {
+      applySelectionChromeImperative({
+        overlayRoot: input.overlayRoot,
+        listRoot: input.listRoot,
+        segments: input.segments,
+        prevSnapshot,
+        nextSnapshot,
+        skipListRows: input.skipListRows,
+      });
     });
-  });
+  }
 
   // Force band repaint so selection chrome is not dropped by scroll coalesce within 12ms.
   if (!input.skipBandPaint) {

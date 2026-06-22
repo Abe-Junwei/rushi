@@ -38,6 +38,7 @@ export function publishSelectionChromeForControllerState(input: {
     selectedSet,
     listRoot: publishRoots.getListRoot(),
     overlayRoot: publishRoots.getOverlayRoot(),
+    skipImperative: true,
   });
 }
 

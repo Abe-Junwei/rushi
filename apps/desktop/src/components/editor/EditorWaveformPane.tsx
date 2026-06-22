@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { CspLayout } from "../CspLayout";
@@ -7,17 +8,16 @@ import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { EditorWaveformPeaksStage } from "./EditorWaveformPeaksStage";
 import { resolveEditorWaveformPaneMetrics } from "./editorWaveformPaneMetrics";
+import { editorWaveformPanePropsEqual } from "./editorShellRenderCompare";
 
 interface EditorWaveformPaneProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
-  filterExcludesPrimary?: boolean;
 }
 
-export function EditorWaveformPane({
+export const EditorWaveformPane = memo(function EditorWaveformPane({
   controller: c,
   tx,
-  filterExcludesPrimary = false,
 }: EditorWaveformPaneProps) {
   const tierViewport = resolveTierViewportMetrics({
     tierScrollEl: tx.tierScrollRef.current,
@@ -70,7 +70,6 @@ export function EditorWaveformPane({
           <EditorWaveformPeaksStage
             controller={c}
             tx={tx}
-            filterExcludesPrimary={filterExcludesPrimary}
             viewportWidthPx={viewportWidthPx}
             peaksPaneHeightPx={peaksPaneHeightPx}
             peaksPaintedHeightPx={Math.max(1, tx.waveformPaintedHeightPx)}
@@ -108,4 +107,4 @@ export function EditorWaveformPane({
       ) : null}
     </div>
   );
-}
+}, editorWaveformPanePropsEqual);

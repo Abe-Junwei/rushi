@@ -58,6 +58,22 @@ describe("useSegmentSelectionController", () => {
     expect(result.current.isMultiSegmentSelection).toBe(true);
   });
 
+  it("does not reset multi-select when selectedIdx syncs to an index already in the set", () => {
+    const { result } = renderHook(() => useTestSelection(2, 6));
+
+    act(() => {
+      result.current.selectSegmentAt(5, { shiftKey: true });
+    });
+    act(() => {
+      result.current.setSelectedIdx(2);
+    });
+
+    expect(result.current.selectionLo).toBe(2);
+    expect(result.current.selectionHi).toBe(5);
+    expect(result.current.selectionCount).toBe(4);
+    expect(result.current.isMultiSegmentSelection).toBe(true);
+  });
+
   it("replaces selection on plain click", () => {
     const { result } = renderHook(() => useTestSelection(2, 6));
 

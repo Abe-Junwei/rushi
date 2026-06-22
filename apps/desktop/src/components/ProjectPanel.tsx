@@ -9,6 +9,7 @@ import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useWelcomeWorkflowShortcuts } from "../hooks/useWelcomeWorkflowShortcuts";
+import { useStableTranscriptionLayerInput } from "../pages/useStableTranscriptionLayerInput";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import { CollapsibleWorkspaceShell } from "./CollapsibleWorkspaceShell";
 import { WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
@@ -56,51 +57,11 @@ export function ProjectPanel() {
     onOpenSettings: openEnvironment,
   });
 
-  const txInput = {
-    projectId: c.current?.id ?? null,
-    fileId: c.currentFileId,
-    mediaUrl: c.audioSrc,
-    mediaDiskPath: c.audioStoragePath,
-    segments: c.segments,
-    selectedIdx: c.selectedIdx,
-    selectedIdxRef: c.selectedIdxRef,
-    busy: c.busy,
-    selectionLo: c.selectionLo,
-    selectionHi: c.selectionHi,
-    selectionRangeAnchorIdx: c.selectionRangeAnchorIdx,
-    selectionCount: c.selectionCount,
-    isMultiSegmentSelection: c.isMultiSegmentSelection,
-    isContiguousSelection: c.isContiguousSelection,
-    selectedIndicesArray: c.selectedIndicesArray,
-    isIndexInSelection: c.isIndexInSelection,
-    selectSegmentAt: c.selectSegmentAt,
-    selectSegmentRange: c.selectSegmentRange,
-    selectSegmentIndices: c.selectSegmentIndices,
-    clearMultiSelection: c.clearMultiSelection,
-    requestDeleteSelectedIndices: c.requestDeleteSelectedIndices,
-    undo: c.undo,
-    redo: c.redo,
-    updateSegmentBounds: c.updateSegmentBounds,
-    insertSegmentFromTimeRange: c.insertSegmentFromTimeRange,
-    splitAtSelection: c.splitAtSelection,
-    splitAtPlayhead: c.splitAtPlayhead,
-    mergeWithNext: c.mergeWithNext,
-    mergeWithPrev: c.mergeWithPrev,
-    mergeWithNextAt: c.mergeWithNextAt,
-    mergeWithPrevAt: c.mergeWithPrevAt,
-    mergeSegmentRange: c.mergeSegmentRange,
-    insertSegmentAfter: c.insertSegmentAfter,
-    deleteSegmentAt: c.deleteSegmentAt,
-    requestDeleteSelection: c.requestDeleteSelection,
-    confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
-    saveSegments: c.saveSegments,
-    triggerFindReplaceShortcut: c.triggerFindReplaceShortcut,
-    closeFile: c.closeFile,
+  const txInput = useStableTranscriptionLayerInput({
+    controller: c,
     openEnvironment,
-    openSegmentAnnotationDialog: c.openSegmentAnnotationDialog,
-    openManualCorrectionMemoryDialog: c.openManualCorrectionMemoryDialog,
     onOpenSegmentContextMenu: openSegmentContextMenu,
-  };
+  });
 
   const transcribeBanners = (
     <TranscribeWorkspaceBanners

@@ -12,7 +12,7 @@ export type WaveformSegmentRegionItemProps = {
   seg: SegmentDto;
   startSec: number;
   endSec: number;
-  showHandles?: boolean;
+  isDraftSegment?: boolean;
   multiSelectActive?: boolean;
   timelineWidthPx: number;
   durationSec: number;
@@ -31,7 +31,7 @@ export const WaveformSegmentRegionItem = memo(
     seg,
     startSec,
     endSec,
-    showHandles = false,
+    isDraftSegment = false,
     multiSelectActive = false,
     timelineWidthPx,
     durationSec,
@@ -44,6 +44,7 @@ export const WaveformSegmentRegionItem = memo(
     onSegmentDoubleClick,
   }: WaveformSegmentRegionItemProps) {
     const { selected, inSelection } = useSegmentRowSelection(idx);
+    const showHandles = isDraftSegment || selected;
 
     const geom = useMemo(
       () =>
@@ -106,7 +107,7 @@ export const WaveformSegmentRegionItem = memo(
     prev.seg === next.seg &&
     prev.startSec === next.startSec &&
     prev.endSec === next.endSec &&
-    prev.showHandles === next.showHandles &&
+    prev.isDraftSegment === next.isDraftSegment &&
     prev.multiSelectActive === next.multiSelectActive &&
     prev.timelineWidthPx === next.timelineWidthPx &&
     prev.durationSec === next.durationSec &&

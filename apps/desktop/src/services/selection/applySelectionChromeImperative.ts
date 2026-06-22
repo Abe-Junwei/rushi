@@ -47,8 +47,11 @@ export function applySelectionChromeImperative(input: {
   segments: readonly SegmentDto[];
   prevSnapshot: SelectionChromeSnapshot;
   nextSnapshot: SelectionChromeSnapshot;
+  /** Waveform keyboard burst: overlay only; list rows catch up on SC1 commit. */
+  skipListRows?: boolean;
 }): void {
-  const { overlayRoot, listRoot, segments, prevSnapshot, nextSnapshot } = input;
+  const { overlayRoot, listRoot, segments, prevSnapshot, nextSnapshot, skipListRows = false } =
+    input;
   if (!overlayRoot && !listRoot) return;
 
   const prevPrimary = prevSnapshot.primaryIdx;
@@ -77,7 +80,7 @@ export function applySelectionChromeImperative(input: {
       }
     }
 
-    if (listRoot) {
+    if (listRoot && !skipListRows) {
       const rowEl = segmentListRowEl(listRoot, idx);
       if (rowEl) {
         applyListRowLook(rowEl, selected, inSelection);

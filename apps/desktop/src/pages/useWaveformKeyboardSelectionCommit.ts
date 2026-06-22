@@ -2,8 +2,6 @@ import { useCallback, useEffect, useRef } from "react";
 import { selectionProfileFlush } from "../services/ui/selectionLatencyProfile";
 import type { SegmentSelectAtOptions } from "../utils/waveformViewMode";
 
-const WAVEFORM_KEYBOARD_COMMIT_DEBOUNCE_MS = 120;
-
 type PendingWaveformKeyboardCommit = {
   idx: number;
   opts?: SegmentSelectAtOptions;
@@ -11,37 +9,28 @@ type PendingWaveformKeyboardCommit = {
 
 export function useWaveformKeyboardSelectionCommit(
   setSelectedIdxUi: (idx: number, opts?: SegmentSelectAtOptions) => void,
+  onFlush?: (idx: number) => void,
 ) {
   const pendingRef = useRef<PendingWaveformKeyboardCommit | null>(null);
-  const timerRef = useRef(0);
-
-  const clearTimer = useCallback(() => {
-    window.clearTimeout(timerRef.current);
-    timerRef.current = 0;
-  }, []);
+  const onFlushRef = useRef(onFlush);
+  onFlushRef.current = onFlush;
 
   const flush = useCallback(() => {
-    clearTimer();
     const pending = pendingRef.current;
     pendingRef.current = null;
     if (!pending) return;
     selectionProfileFlush();
     setSelectedIdxUi(pending.idx, pending.opts);
-  }, [clearTimer, setSelectedIdxUi]);
+    onFlushRef.current?.(pending.idx);
+  }, [setSelectedIdxUi]);
 
   const cancel = useCallback(() => {
-    clearTimer();
     pendingRef.current = null;
-  }, [clearTimer]);
+  }, []);
 
-  const queue = useCallback(
-    (idx: number, opts?: SegmentSelectAtOptions) => {
-      pendingRef.current = { idx, opts };
-      clearTimer();
-      timerRef.current = window.setTimeout(flush, WAVEFORM_KEYBOARD_COMMIT_DEBOUNCE_MS);
-    },
-    [clearTimer, flush],
-  );
+  const queue = useCallback((idx: number, opts?: SegmentSelectAtOptions) => {
+    pendingRef.current = { idx, opts };
+  }, []);
 
   useEffect(() => {
     const onKeyUp = (event: KeyboardEvent) => {
@@ -61,5 +50,5 @@ export function useWaveformKeyboardSelectionCommit(
     };
   }, [cancel, flush]);
 
-  return { queue, cancel };
+  return { queue, cancel, flush };
 }

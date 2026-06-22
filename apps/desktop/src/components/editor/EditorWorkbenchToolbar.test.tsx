@@ -1,7 +1,9 @@
 /** @vitest-environment jsdom */
+import type { ReactElement } from "react";
 import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EditorWorkbenchToolbar } from "./EditorWorkbenchToolbar";
+import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 
 vi.mock("../WaveformZoomBar", () => ({
   WaveformZoomBar: () => <div data-testid="waveform-zoom-bar" />,
@@ -89,15 +91,33 @@ function makeTx() {
   } as never;
 }
 
+function wrapToolbar(ui: ReactElement) {
+  return (
+    <WaveformSelectionChromeViewProvider
+      input={{
+        fileId: "f1",
+        selectedIdx: 0,
+        segmentCount: 0,
+      }}
+      filterActive={false}
+      filteredIndices={[]}
+    >
+      {ui}
+    </WaveformSelectionChromeViewProvider>
+  );
+}
+
 describe("EditorWorkbenchToolbar", () => {
   it("uses compact solo layout when hasAudio is false", () => {
     const { container, queryByTestId } = render(
+      wrapToolbar(
       <EditorWorkbenchToolbar
         controller={makeController()}
         tx={makeTx()}
         hasAudio={false}
         segmentFilter={makeSegmentFilter()}
       />,
+      ),
     );
 
     expect(container.querySelector(".editor-workbench-toolbar--no-audio")).toBeTruthy();
@@ -111,12 +131,14 @@ describe("EditorWorkbenchToolbar", () => {
 
   it("renders transport and zoom when hasAudio is true", () => {
     const { container, getByTestId } = render(
+      wrapToolbar(
       <EditorWorkbenchToolbar
         controller={makeController()}
         tx={makeTx()}
         hasAudio
         segmentFilter={makeSegmentFilter()}
       />,
+      ),
     );
 
     expect(container.querySelector(".editor-workbench-toolbar--no-audio")).toBeNull();

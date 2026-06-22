@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { PRODUCT_ICON } from "../../config/productIcons";
 import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
-import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
+import { useWaveformSelectionChromeViewContext } from "../../hooks/WaveformSelectionChromeViewContext";
 import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -12,6 +13,10 @@ import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import { EditorSegmentListFilterMenu } from "./EditorSegmentListFilterMenu";
 import { EditorSegmentTranscribeActions } from "./EditorSegmentToolbarActions";
+import {
+  projectControllerShellRenderEqual,
+  transcriptionLayerWorkbenchToolbarRenderEqual,
+} from "./editorShellRenderCompare";
 
 interface EditorWorkbenchToolbarProps {
   controller: ProjectControllerApi;
@@ -21,7 +26,7 @@ interface EditorWorkbenchToolbarProps {
 }
 
 /** 波形区与语段区之间的统一单行工具条（左播放滚屏 / 中转录编辑 / 右缩放）。 */
-export function EditorWorkbenchToolbar({
+export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   controller: c,
   tx,
   hasAudio,
@@ -60,16 +65,7 @@ export function EditorWorkbenchToolbar({
     );
   }
 
-  const selectionView = useWaveformSelectionChromeView({
-    fileId: c.currentFileId,
-    selectedIdx: c.selectedIdx,
-    selectionLo: c.selectionLo,
-    selectionHi: c.selectionHi,
-    selectionCount: c.selectionCount,
-    isContiguousSelection: c.isContiguousSelection,
-    selectedIndices: c.selectedIndices,
-    segmentCount: c.segments.length,
-  });
+  const { view: selectionView } = useWaveformSelectionChromeViewContext();
   const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const tierViewport = resolveTierViewportMetrics({
     tierScrollEl: tx.tierScrollRef.current,
@@ -149,5 +145,22 @@ export function EditorWorkbenchToolbar({
         </div>
       </div>
     </div>
+  );
+}, areEditorWorkbenchToolbarPropsEqual);
+
+function areEditorWorkbenchToolbarPropsEqual(
+  prev: EditorWorkbenchToolbarProps,
+  next: EditorWorkbenchToolbarProps,
+): boolean {
+  if (prev.hasAudio !== next.hasAudio) return false;
+  if (prev.segmentFilter.filter !== next.segmentFilter.filter) return false;
+  if (prev.segmentFilter.filteredIndices !== next.segmentFilter.filteredIndices) return false;
+  if (prev.segmentFilter.isActive !== next.segmentFilter.isActive) return false;
+  if (prev.segmentFilter.toggleStage !== next.segmentFilter.toggleStage) return false;
+  if (prev.segmentFilter.setAnnotation !== next.segmentFilter.setAnnotation) return false;
+  if (prev.segmentFilter.resetFilter !== next.segmentFilter.resetFilter) return false;
+  return (
+    projectControllerShellRenderEqual(prev.controller, next.controller) &&
+    transcriptionLayerWorkbenchToolbarRenderEqual(prev.tx, next.tx)
   );
 }

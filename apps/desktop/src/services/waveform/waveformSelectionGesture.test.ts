@@ -5,7 +5,7 @@ import {
   dispatchWaveformSelectionGestureDown,
   dispatchWaveformSelectionGestureUp,
 } from "./waveformSelectionGesture";
-import { resetSelectionChromeStoreForTests } from "../selection/selectionChromeStore";
+import { resetSelectionChromeStoreForTests, getSelectionChromeSnapshot } from "../selection/selectionChromeStore";
 import { publishSelectionChromeForInput } from "../selection/publishSelectionChromeForInput";
 import type { TranscriptionLayerInput } from "../../pages/transcriptionLayerTypes";
 
@@ -141,6 +141,44 @@ describe("dispatchWaveformSelectionGestureDown", () => {
     });
 
     expect(result).toEqual({ applied: true, viewportSyncedOnDown: false });
+  });
+
+  it("pointerdown then pointerup with matching store bumps version once", () => {
+    const ctx = makeCtx(0);
+    const timeline = makeTimeline();
+    const paintChrome = vi.fn((_ctx, idx, _opts, _source, publishOpts) => {
+      publishSelectionChromeForInput(
+        _ctx,
+        { primaryIdx: idx, selectedSet: new Set([idx]) },
+        { listRoot: null, overlayRoot: null },
+        { skipImperative: true, skipBandPaint: publishOpts?.skipBandPaint },
+      );
+    });
+    const selectSegmentAt = vi.fn();
+
+    dispatchWaveformSelectionGestureDown(
+      ctx,
+      timeline,
+      1,
+      { paintChrome, commitSelectedIdxRef: vi.fn(), runListScroll: vi.fn() },
+      "s1",
+    );
+    expect(getSelectionChromeSnapshot().version).toBe(1);
+
+    dispatchWaveformSelectionGestureUp(
+      ctx,
+      {
+        idx: 1,
+        pointerTimeSec: 2.5,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+        sessionId: "s1",
+      },
+      { selectSegmentAt, seekToTime: vi.fn() },
+    );
+
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { previewSessionId: "s1" });
+    expect(getSelectionChromeSnapshot().version).toBe(1);
   });
 });
 

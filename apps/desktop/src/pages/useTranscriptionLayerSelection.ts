@@ -3,10 +3,11 @@ import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { assignSegmentOverlapLanes } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
 import { syncWaveformSegmentSelectReveal, syncWaveformSegmentSelectSeek } from "../services/waveform/syncWaveformSegmentSelectViewport";
-import { clearWaveformSegmentPreviewViewportSync, consumeWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
+import { clearWaveformSegmentPreviewViewportSync, consumeWaveformSegmentPreviewViewportSync, hasWaveformSegmentPreviewViewportSynced } from "../services/waveform/waveformSegmentSelectPreviewSync";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import {
   isListKeyboardBurstStep,
+  isWaveformKeyboardBurstStep,
   shouldFocusWaveformShellForSelectSource,
 } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
@@ -20,6 +21,7 @@ import {
   getSelectionChromeSnapshot,
   selectionChromePrimaryOutOfSync,
 } from "../services/selection/selectionChromeStore";
+import { selectionChromeMatchesPreview } from "../services/selection/selectionChromeMatchesPreview";
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
 import {
@@ -95,7 +97,6 @@ export function useTranscriptionLayerSelection(opts: {
     segmentListRef,
   });
   const commitSelectedIdxUi = useSelectedIdxCommitter(setSelectedIdxUi);
-  const waveformKeyboardCommit = useWaveformKeyboardSelectionCommit(setSelectedIdxUi);
 
   const commitWaveformSelectPreviewSc1 = useCallback((idx: number) => {
     if (selectedIdxRef) selectedIdxRef.current = idx;
@@ -114,6 +115,25 @@ export function useTranscriptionLayerSelection(opts: {
     lastSegmentSelectSourceRef,
   });
 
+  const finalizeWaveformKeyboardCommit = useCallback(
+    (idx: number) => {
+      const c = ctxRef.current;
+      const seg = c.segments[idx];
+      if (seg) {
+        selectionProfileTime("seek", () => {
+          syncWaveformSegmentSelectSeek(scrollFitRef.current.timeline, seg);
+        });
+      }
+      burst.finalizeListKeyboardViewport(idx);
+    },
+    [burst, ctxRef, scrollFitRef],
+  );
+
+  const waveformKeyboardCommit = useWaveformKeyboardSelectionCommit(
+    setSelectedIdxUi,
+    finalizeWaveformKeyboardCommit,
+  );
+
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform", opts?: SegmentSelectAtOptions) => {
       const c = ctxRef.current;
@@ -121,6 +141,7 @@ export function useTranscriptionLayerSelection(opts: {
       const s = c.segments[idx];
       if (!s) return;
       const isWaveformKeyboard = source === "waveformKeyboard";
+      const isWaveformKbBurst = isWaveformKeyboardBurstStep(source, opts);
       const isWaveformLike = source === "waveform" || isWaveformKeyboard;
       if (!isWaveformKeyboard) waveformKeyboardCommit.cancel();
       if (!isListKeyboardBurstStep(source, opts)) {
@@ -129,6 +150,27 @@ export function useTranscriptionLayerSelection(opts: {
         cancelListKeyboardKeyupReveal();
       }
       const idxChanged = idx !== c.selectedIdx;
+      const previewPendingForIdx =
+        source === "waveform" &&
+        !opts?.shiftKey &&
+        !opts?.toggle &&
+        hasWaveformSegmentPreviewViewportSynced(idx);
+      const previewViewportAlreadySynced =
+        source === "waveform" &&
+        idxChanged &&
+        !opts?.shiftKey &&
+        !opts?.toggle &&
+        consumeWaveformSegmentPreviewViewportSync(idx, opts?.previewSessionId);
+      const skipPointerUpDuplicateWork =
+        source === "waveform" &&
+        !opts?.shiftKey &&
+        !opts?.toggle &&
+        (previewViewportAlreadySynced ||
+          (previewPendingForIdx && getSelectionChromeSnapshot().primaryIdx === idx) ||
+          selectionChromeMatchesPreview(c, idx, opts));
+      if (skipPointerUpDuplicateWork && previewPendingForIdx && !previewViewportAlreadySynced) {
+        clearWaveformSegmentPreviewViewportSync();
+      }
       const editorFocusGateOpen = isEditorFocusGateOpen({
         segmentsLength: c.segments.length,
         waveformShell: waveformShellRef.current,
@@ -142,14 +184,8 @@ export function useTranscriptionLayerSelection(opts: {
       if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
         clearWaveformSegmentPreviewViewportSync();
       }
-      const previewViewportAlreadySynced =
-        source === "waveform" &&
-        idxChanged &&
-        !opts?.shiftKey &&
-        !opts?.toggle &&
-        consumeWaveformSegmentPreviewViewportSync(idx, opts?.previewSessionId);
 
-      if (previewViewportAlreadySynced) {
+      if (previewViewportAlreadySynced || skipPointerUpDuplicateWork) {
         selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
         lastSegmentSelectSourceRef.current = source;
         if (selectedIdxRef) selectedIdxRef.current = idx;
@@ -157,7 +193,7 @@ export function useTranscriptionLayerSelection(opts: {
           commitSelectedIdxUi(idx, source, opts);
         }
         if (isSelectionLatencyProfileEnabled()) {
-          selectionProfileScheduleFlush("waveform");
+          selectionProfileScheduleFlush("list");
         }
         if (shouldFocusWaveformShellForSelectSource(source)) {
           selectionProfileTime("focus", focusWaveformShell);
@@ -172,7 +208,7 @@ export function useTranscriptionLayerSelection(opts: {
           ? selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s)).segment
           : s;
 
-      if (isListKeyboardBurstStep(source, opts)) {
+      if (isListKeyboardBurstStep(source, opts) || isWaveformKbBurst) {
         const chromePrimaryBeforeStep = getSelectionChromeSnapshot().primaryIdx;
         selectionProfileTime("flushSelectedIdx", () => {
           const idxChangedForChrome =
@@ -186,14 +222,15 @@ export function useTranscriptionLayerSelection(opts: {
           if (selectedIdxRef) selectedIdxRef.current = idx;
           burst.runListKeyboardBurstListScroll(idx);
         });
-        const burstRevealIdxChanged =
-          idx !== chromePrimaryBeforeStep || selectionChromePrimaryOutOfSync(idx);
-        if (burstRevealIdxChanged) {
+        if (isWaveformKbBurst) waveformKeyboardCommit.queue(idx, opts);
+        if (
+          (idx !== chromePrimaryBeforeStep || selectionChromePrimaryOutOfSync(idx)) &&
+          !isWaveformKbBurst
+        ) {
           burst.scheduleRevealSelectedSegment("listKeyboard");
         }
-        if (isSelectionLatencyProfileEnabled()) {
-          selectionProfileScheduleFlush("list");
-        }
+        if (isSelectionLatencyProfileEnabled()) selectionProfileScheduleFlush("list");
+        if (shouldFocusWaveformShellForSelectSource(source)) selectionProfileTime("focus", focusWaveformShell);
         return;
       }
 
@@ -203,8 +240,7 @@ export function useTranscriptionLayerSelection(opts: {
           selectionChromePrimaryOutOfSync(idx) ||
           Boolean(opts?.shiftKey) ||
           Boolean(opts?.toggle);
-        const skipPreviewDuplicateWork =
-          previewViewportAlreadySynced && source === "waveform";
+        const skipPreviewDuplicateWork = skipPointerUpDuplicateWork;
         if (idxChangedForChrome && !skipPreviewDuplicateWork) {
           paintSelectionChrome(c, idx, opts, source);
         }
@@ -212,7 +248,7 @@ export function useTranscriptionLayerSelection(opts: {
           burst.runWaveformSelectListScroll(idx);
         }
         const tl = scrollFitRef.current.timeline;
-        if (shouldSeek && !previewViewportAlreadySynced) {
+        if (shouldSeek && !skipPointerUpDuplicateWork) {
           selectionProfileTime("seek", () => {
             syncWaveformSegmentSelectSeek(tl, s);
           });
@@ -220,7 +256,7 @@ export function useTranscriptionLayerSelection(opts: {
         if (selectedIdxRef) selectedIdxRef.current = idx;
         if (isWaveformKeyboard) waveformKeyboardCommit.queue(idx, opts);
         else commitSelectedIdxUi(idx, source, opts);
-        if (shouldReveal && isWaveformLike && !previewViewportAlreadySynced) {
+        if (shouldReveal && isWaveformLike && !skipPointerUpDuplicateWork) {
           burst.cancelPendingSelectionReveal();
           selectionProfileTime("viewport", () => {
             syncWaveformSegmentSelectReveal(
@@ -238,11 +274,9 @@ export function useTranscriptionLayerSelection(opts: {
         burst.scheduleRevealSelectedSegment(source);
       }
       if (isSelectionLatencyProfileEnabled()) {
-        selectionProfileScheduleFlush(isWaveformKeyboard || !isWaveformLike ? "list" : "waveform");
+        selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
       }
-      if (shouldFocusWaveformShellForSelectSource(source)) {
-        selectionProfileTime("focus", focusWaveformShell);
-      }
+      if (shouldFocusWaveformShellForSelectSource(source)) selectionProfileTime("focus", focusWaveformShell);
     },
     [
       burst,

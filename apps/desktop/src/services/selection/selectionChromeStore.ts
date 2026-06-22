@@ -53,6 +53,15 @@ export function commitSelectionChrome(input: {
       : primaryIdx >= 0
         ? new Set([primaryIdx])
         : EMPTY_SET;
+
+  if (
+    snapshot.fileId === input.fileId &&
+    snapshot.primaryIdx === primaryIdx &&
+    selectionSetsEqual(snapshot.selectedSet, selectedSet)
+  ) {
+    return snapshot;
+  }
+
   snapshot = {
     primaryIdx,
     selectedSet,

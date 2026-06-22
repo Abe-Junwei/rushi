@@ -4,7 +4,6 @@ import {
   dispatchWaveformSelectionGestureUp,
   type WaveformSelectionGesture,
 } from "../services/waveform/waveformSelectionGesture";
-import { selectionProfileTime } from "../services/ui/selectionLatencyProfile";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
@@ -42,18 +41,16 @@ export function useWaveformSelectionGestureDispatcher(args: {
       if (gesture.phase === "down") {
         args.lastSegmentSelectSourceRef.current = "waveform";
         return (
-          selectionProfileTime("viewport", () =>
-            dispatchWaveformSelectionGestureDown(
-              c,
-              tl,
-              gesture.idx,
-              {
-                paintChrome: args.paintSelectionChrome,
-                commitSelectedIdxRef: args.commitWaveformSelectPreviewSc1,
-                runListScroll: args.runWaveformSelectListScroll,
-              },
-              gesture.sessionId,
-            ),
+          dispatchWaveformSelectionGestureDown(
+            c,
+            tl,
+            gesture.idx,
+            {
+              paintChrome: args.paintSelectionChrome,
+              commitSelectedIdxRef: args.commitWaveformSelectPreviewSc1,
+              runListScroll: args.runWaveformSelectListScroll,
+            },
+            gesture.sessionId,
           )?.viewportSyncedOnDown ?? false
         );
       }

@@ -290,16 +290,21 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     segments,
     durationSec,
     timelineWidthPx,
+    dominantSpanIndices,
+    filterExcludesPrimary,
+  ]);
+
+  useLayoutEffect(() => {
+    requestWaveformSegmentBandPaint();
+  }, [
+    chromeVersion,
     selectedIdx,
     selectionLo,
     selectionHi,
     selectionCount,
     isContiguousSelection,
     selectedIndices,
-    dominantSpanIndices,
     draftIdx,
-    filterExcludesPrimary,
-    chromeVersion,
   ]);
 
   return (

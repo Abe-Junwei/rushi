@@ -41,7 +41,7 @@ export function useSegmentSelectionController(args: Args) {
     if (segmentCount <= 0) return;
     const clamped = clampSegmentIndex(selectedIdx, segmentCount);
     const prev = selectedIndicesRef.current;
-    if (prev.has(clamped) && prev.size > 1) return;
+    if (prev.has(clamped)) return;
     setSelectedIndices(singleSelection(clamped));
     setRangeAnchorIdx(clamped);
   }, [selectedIdx, segmentCount]);

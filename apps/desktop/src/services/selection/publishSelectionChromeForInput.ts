@@ -5,7 +5,12 @@ export function publishSelectionChromeForInput(
   c: TranscriptionLayerInput,
   input: { primaryIdx: number; selectedSet: ReadonlySet<number> },
   roots: { listRoot: ParentNode | null; overlayRoot: ParentNode | null },
-  opts?: { markFirstPaint?: boolean; skipBandPaint?: boolean },
+  opts?: {
+    markFirstPaint?: boolean;
+    skipBandPaint?: boolean;
+    skipListRows?: boolean;
+    skipImperative?: boolean;
+  },
 ): void {
   publishSelectionChrome({
     fileId: c.fileId,
@@ -16,6 +21,8 @@ export function publishSelectionChromeForInput(
     overlayRoot: roots.overlayRoot,
     markFirstPaint: opts?.markFirstPaint,
     skipBandPaint: opts?.skipBandPaint,
+    skipListRows: opts?.skipListRows,
+    skipImperative: opts?.skipImperative,
   });
 }
 
@@ -38,6 +45,8 @@ export function publishSelectionChromeForIndices(
       : selectedSet.has(primaryIdx)
         ? primaryIdx
         : Math.min(...selectedSet);
-  publishSelectionChromeForInput(c, { primaryIdx: primary, selectedSet }, roots);
+  publishSelectionChromeForInput(c, { primaryIdx: primary, selectedSet }, roots, {
+    skipImperative: true,
+  });
   return { primaryIdx: primary, selectedSet };
 }

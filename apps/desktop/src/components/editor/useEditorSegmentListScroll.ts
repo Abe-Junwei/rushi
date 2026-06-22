@@ -84,6 +84,9 @@ export function useEditorSegmentListScroll({
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
   const useVirtualList = displayCount >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
 
+  const selectedDisplayIndexRef = useRef(selectedDisplayIndex);
+  selectedDisplayIndexRef.current = selectedDisplayIndex;
+
   const filteredIndicesScrollKey = useMemo(() => {
     const first = filteredIndices[0] ?? -1;
     const last = filteredIndices[filteredIndices.length - 1] ?? -1;
@@ -326,7 +329,7 @@ export function useEditorSegmentListScroll({
       computeEditorSegmentListVirtualWindow({
         segmentListRoot: segmentListRef.current,
         scrollMetricsRef,
-        selectedDisplayIndex,
+        selectedDisplayIndex: selectedDisplayIndexRef.current,
         displayCount,
         itemStridePx,
         useVirtualList,
@@ -338,7 +341,6 @@ export function useEditorSegmentListScroll({
       useVirtualList,
       itemStridePx,
       displayCount,
-      selectedDisplayIndex,
       segmentListRef,
       lastSegmentSelectSourceRef,
     ],

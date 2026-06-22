@@ -30,7 +30,7 @@ describe("applyImperativeSegmentListSelectionScroll", () => {
     resetListKeyboardBurstCoordinatorForTests();
   });
 
-  it("waveform scrolls list into view synchronously without marking listKeyboard layout skip key", () => {
+  it("waveform scroll marks layout skip key so React layout effect does not duplicate scroll", () => {
     const rowMin = segmentListRowMinHeightPx(70);
     const stride = segmentListItemStridePx(rowMin);
     const viewport = 480;
@@ -54,7 +54,7 @@ describe("applyImperativeSegmentListSelectionScroll", () => {
     expect(changed).toBe(true);
     expect(root.scrollTop).toBeGreaterThan(0);
     expect(readListKeyboardVirtualDisplayPin()).toBeNull();
-    expect(shouldSkipLayoutScrollForListKeyboard(scrollKey)).toBe(false);
+    expect(shouldSkipLayoutScrollForListKeyboard(scrollKey)).toBe(true);
   });
 
   it("listKeyboard burst scroll marks layout skip key and pins virtual display index", () => {

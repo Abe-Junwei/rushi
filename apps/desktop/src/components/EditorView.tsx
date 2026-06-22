@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import { useEffect } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { resolveLegacyWaveformFallbackFile } from "../utils/legacyWaveformFallback";
@@ -32,7 +32,7 @@ interface EditorViewProps {
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
 }
 
-export const EditorView = memo(function EditorView({
+export function EditorView({
   controller: c,
   txInput,
   exportKey,
@@ -152,4 +152,4 @@ export const EditorView = memo(function EditorView({
       editorDialogs={editorDialogs}
     />
   );
-});
+}

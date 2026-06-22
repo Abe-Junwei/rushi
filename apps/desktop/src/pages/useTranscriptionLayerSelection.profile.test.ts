@@ -421,14 +421,9 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(selectedIdxRef.current).toBe(3);
     expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(setSelectedIdxUi).not.toHaveBeenCalled();
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(2);
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
-      expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
-    );
-    expect(document.activeElement).toBe(waveformShell);
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
 
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
@@ -436,6 +431,12 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
     expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledTimes(1);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
+      expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
+    );
   });
 
   it("paints selection chrome before waveform seek on segment change", () => {

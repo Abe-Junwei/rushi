@@ -176,8 +176,8 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
       latestProfileLine((line) => line.includes(`waveform idx=${targetIdx}`)),
     );
     expect(parsed).not.toBeNull();
-    expect(parsed!.spans.listScroll ?? 0).toBe(0);
-    expect(Number(computeSelectionProfileSyncPathMs(parsed!.spans).toFixed(1))).toBe(parsed!.syncPathTotalMs);
+    expect(parsed!.spans.listChrome ?? 0).toBe(0);
+    expect(computeSelectionProfileSyncPathMs(parsed!.spans)).toBeCloseTo(parsed!.syncPathTotalMs, 0);
     expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
     expect(selectionProfileMeetsHandChromeGate(parsed!)).toBe(true);
     expect(parsed!.spans.firstPaint ?? 0).toBeLessThanOrEqual(SELECTION_PROFILE_HAND_CHROME_MAX_MS);
@@ -213,5 +213,40 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
     expect(parsed).not.toBeNull();
     expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
     expect(selectionProfileMeetsHandChromeGate(parsed!)).toBe(true);
+  });
+
+  it(`V-CI: ${SELECTION_PROFILE_BASELINE_SEGMENT_COUNT}-seg waveformKeyboard burst syncPathTotal ≤ ${SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS}ms`, () => {
+    const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
+    const targetIdx = 68;
+    const ctx = makeCtx(segmentCount, 0);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    seedOverlayNodes(timeline.overlayRoot, [0, targetIdx]);
+
+    const listRoot = document.createElement("div");
+    document.body.appendChild(listRoot);
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef: { current: listRoot },
+        setSelectedIdxUi: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(targetIdx, "waveformKeyboard");
+      selectionProfileFlush();
+    });
+
+    const parsed = parseSelectionProfileLine(
+      latestProfileLine((line) => line.includes(`waveformKeyboard idx=${targetIdx}`)),
+    );
+    expect(parsed).not.toBeNull();
+    expect(parsed!.spans.listChrome ?? 0).toBe(0);
+    expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
   });
 });

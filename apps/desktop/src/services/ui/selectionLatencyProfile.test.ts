@@ -75,24 +75,36 @@ describe("selectionLatencyProfile", () => {
 
   it("parseSelectionProfileLine extracts syncPathTotal and spans", () => {
     const line =
-      "[selection-profile] #2 waveform idx=68 segments=193 flushSelectedIdx=2.0ms firstPaint=3.5ms listChrome=1.2ms syncPathTotal=6.7ms total=120.0ms";
+      "[selection-profile] #2 waveform idx=68 segments=193 flushSelectedIdx=2.0ms firstPaint=3.5ms listChrome=1.2ms syncPathTotal=5.5ms total=120.0ms";
     const parsed = parseSelectionProfileLine(line);
     expect(parsed).not.toBeNull();
     expect(parsed!.label).toBe("waveform idx=68 segments=193");
     expect(parsed!.spans.firstPaint).toBe(3.5);
-    expect(parsed!.syncPathTotalMs).toBe(6.7);
-    expect(computeSelectionProfileSyncPathMs(parsed!.spans)).toBe(6.7);
+    expect(parsed!.syncPathTotalMs).toBe(5.5);
+    expect(computeSelectionProfileSyncPathMs(parsed!.spans)).toBe(2);
     expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
   });
 
-  it("computeSelectionProfileSyncPathMs excludes listCommit and listScroll", () => {
+  it("computeSelectionProfileSyncPathMs avoids nested listChrome inside flushSelectedIdx", () => {
+    expect(
+      computeSelectionProfileSyncPathMs({
+        flushSelectedIdx: 119,
+        firstPaint: 100,
+        listChrome: 100,
+        listScroll: 18,
+        seek: 1,
+      }),
+    ).toBe(120);
+  });
+
+  it("computeSelectionProfileSyncPathMs excludes firstPaint and listCommit", () => {
     const sync = computeSelectionProfileSyncPathMs({
       flushSelectedIdx: 5,
       firstPaint: 10,
       listCommit: 400,
       listScroll: 20,
     });
-    expect(sync).toBe(15);
+    expect(sync).toBe(5);
     expect(sync).toBeLessThanOrEqual(SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS);
   });
 

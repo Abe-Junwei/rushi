@@ -1,6 +1,8 @@
+import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { EditorWaveformPeaksStage } from "./EditorWaveformPeaksStage";
+import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 import { readCspLayoutRulesForElement } from "../../utils/cspElementLayout";
 import { clearAllCspScopeRulesForTests } from "../../utils/cspNonceStyleRegistry";
 import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../../services/selection/selectionChromeStore";
@@ -78,6 +80,27 @@ function createTranscriptionLayer() {
   };
 }
 
+function wrapPeaksStage(ui: ReactElement, controller = createController()) {
+  return (
+    <WaveformSelectionChromeViewProvider
+      input={{
+        fileId: controller.currentFileId,
+        selectedIdx: controller.selectedIdx,
+        selectionLo: controller.selectionLo,
+        selectionHi: controller.selectionHi,
+        selectionCount: controller.selectionCount,
+        isContiguousSelection: controller.isContiguousSelection,
+        selectedIndices: controller.selectedIndices,
+        segmentCount: controller.segments.length,
+      }}
+      filterActive={false}
+      filteredIndices={controller.segments.map((_, idx) => idx)}
+    >
+      {ui}
+    </WaveformSelectionChromeViewProvider>
+  );
+}
+
 describe("EditorWaveformPeaksStage", () => {
   afterEach(() => {
     clearAllCspScopeRulesForTests();
@@ -86,6 +109,7 @@ describe("EditorWaveformPeaksStage", () => {
 
   it("keeps timeline waveform and overlay layers at timeline width for pointer hit-testing", () => {
     const { container } = render(
+      wrapPeaksStage(
       <EditorWaveformPeaksStage
         controller={createController() as never}
         tx={createTranscriptionLayer() as never}
@@ -109,6 +133,7 @@ describe("EditorWaveformPeaksStage", () => {
           },
         }}
       />,
+      ),
     );
 
     const waveLayer = container.querySelector(".waveform-timeline-wave-layer");
@@ -129,6 +154,7 @@ describe("EditorWaveformPeaksStage", () => {
     const controller = createController();
 
     const { container } = render(
+      wrapPeaksStage(
       <EditorWaveformPeaksStage
         controller={controller as never}
         tx={createTranscriptionLayer() as never}
@@ -152,6 +178,7 @@ describe("EditorWaveformPeaksStage", () => {
           },
         }}
       />,
+      ),
     );
 
     const overlay = container.querySelector(".region-action-overlay");

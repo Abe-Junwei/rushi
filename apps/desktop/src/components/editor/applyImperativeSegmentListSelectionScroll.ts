@@ -40,7 +40,7 @@ export function applyImperativeSegmentListSelectionScroll(
   if (pinVirtualDisplayIndex) {
     pinListKeyboardVirtualDisplayIndex(selectedDisplayIndex);
   }
-  if (source === "listKeyboard") {
+  if (source === "listKeyboard" || source === "waveform" || source === "waveformKeyboard") {
     markListKeyboardImperativeScrollKey(scrollKey);
   }
 

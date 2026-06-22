@@ -28,6 +28,14 @@ export function isListKeyboardBurstStep(
   return source === "listKeyboard" && opts?.burst === true && !opts?.shiftKey && !opts?.toggle;
 }
 
+/** Waveform arrow keys: SC2 + seek only; SC1 + tier reveal on keyup. */
+export function isWaveformKeyboardBurstStep(
+  source: SegmentSelectSource,
+  opts?: SegmentSelectAtOptions,
+): boolean {
+  return source === "waveformKeyboard" && !opts?.shiftKey && !opts?.toggle;
+}
+
 export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean {
   return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }
@@ -40,4 +48,17 @@ export function shouldFocusWaveformShellForSelectSource(source: SegmentSelectSou
 /** 仅 waveform 单选：列表行已在视口内时跳过 scroll/pin（SCB-2）。 */
 export function shouldSkipListScrollWhenInViewport(source: SegmentSelectSource): boolean {
   return source === "waveform" || source === "waveformKeyboard";
+}
+
+/** Store + React subscribers — skip imperative overlay CSP on hot select paths. */
+export function shouldSkipImperativeSelectionChrome(source: SegmentSelectSource): boolean {
+  return (
+    source === "waveform" ||
+    source === "waveformKeyboard" ||
+    source === "list" ||
+    source === "listAdvance" ||
+    source === "listKeyboard" ||
+    source === "contextMenu" ||
+    source === "multiSelect"
+  );
 }

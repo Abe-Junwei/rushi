@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { EditorToolbar } from "../EditorToolbar";
 import { EditorStatusFooter } from "./EditorStatusFooter";
@@ -10,8 +11,8 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { useSegmentListFilter } from "../../hooks/useSegmentListFilter";
-import { isSegmentListFilterHidingPrimary } from "../../utils/segmentListFilterNav";
-import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
+import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
+import { EditorSelectionProvider } from "../../hooks/EditorSelectionContext";
 
 type EditHistory = ReturnType<typeof useEditorEditHistory>;
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -60,24 +61,36 @@ export function EditorViewLayout({
   transcriptStats,
   editorDialogs,
 }: EditorViewLayoutProps) {
-  const preFilterSelectionView = useWaveformSelectionChromeView({
-    fileId: c.currentFileId,
-    selectedIdx: c.selectedIdx,
-    selectionLo: c.selectionLo,
-    selectionHi: c.selectionHi,
-    selectionCount: c.selectionCount,
-    isContiguousSelection: c.isContiguousSelection,
-    selectedIndices: c.selectedIndices,
-    segmentCount: c.segments.length,
-  });
-  const filterExcludesPrimary = isSegmentListFilterHidingPrimary({
-    filterActive: segmentFilter.isActive,
-    filteredIndices: segmentFilter.filteredIndices,
-    primaryIdx: preFilterSelectionView.selectedIdx,
-    segmentCount: c.segments.length,
-  });
+  const chromeViewInput = useMemo(
+    () => ({
+      fileId: c.currentFileId,
+      selectedIdx: c.selectedIdx,
+      selectionLo: c.selectionLo,
+      selectionHi: c.selectionHi,
+      selectionCount: c.selectionCount,
+      isContiguousSelection: c.isContiguousSelection,
+      selectedIndices: c.selectedIndices,
+      segmentCount: c.segments.length,
+    }),
+    [
+      c.currentFileId,
+      c.isContiguousSelection,
+      c.selectedIdx,
+      c.selectedIndices,
+      c.selectionCount,
+      c.selectionHi,
+      c.selectionLo,
+      c.segments.length,
+    ],
+  );
 
   return (
+    <EditorSelectionProvider controller={c}>
+    <WaveformSelectionChromeViewProvider
+      input={chromeViewInput}
+      filterActive={segmentFilter.isActive}
+      filteredIndices={segmentFilter.filteredIndices}
+    >
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
       <EditorToolbar
         controller={c}
@@ -94,7 +107,7 @@ export function EditorViewLayout({
 
       <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
         {c.audioSrc ? (
-          <EditorWaveformPane controller={c} tx={tx} filterExcludesPrimary={filterExcludesPrimary} />
+          <EditorWaveformPane controller={c} tx={tx} />
         ) : (
           <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">
             <p>当前文件不包含音频轨道，因此无法显示波形。</p>
@@ -142,5 +155,7 @@ export function EditorViewLayout({
       />
       {editorDialogs}
     </div>
+    </WaveformSelectionChromeViewProvider>
+    </EditorSelectionProvider>
   );
 }

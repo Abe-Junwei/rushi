@@ -36,6 +36,23 @@ describe("selectionChromeStore", () => {
     unsub();
   });
 
+  it("skips version bump and notify when selection unchanged", () => {
+    commitSelectionChrome({ fileId: "f1", primaryIdx: 2, selectedSet: new Set([2]) });
+    const afterFirst = getSelectionChromeSnapshot();
+    let calls = 0;
+    const unsub = subscribeSelectionChrome(() => {
+      calls += 1;
+    });
+    const afterSecond = commitSelectionChrome({
+      fileId: "f1",
+      primaryIdx: 2,
+      selectedSet: new Set([2]),
+    });
+    expect(afterSecond.version).toBe(afterFirst.version);
+    expect(calls).toBe(0);
+    unsub();
+  });
+
   it("selectionRowState returns stable references until store changes", () => {
     commitSelectionChrome({
       fileId: "f1",

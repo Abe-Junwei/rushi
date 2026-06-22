@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { memo, useCallback, useState } from "react";
 import { CspLayout } from "../CspLayout";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
@@ -6,7 +6,7 @@ import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../../services/waveform/drawW
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
-import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
+import { useWaveformSelectionChromeViewContext } from "../../hooks/WaveformSelectionChromeViewContext";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
 import {
   WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS,
@@ -14,6 +14,7 @@ import {
 } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
+import { editorWaveformPanePropsEqual } from "./editorShellRenderCompare";
 
 type TierScrollProps = {
   tierScrollRef: TranscriptionLayerApi["tierScrollRef"];
@@ -33,10 +34,9 @@ type Props = {
   waveformHeightPreviewActive: boolean;
   stripDisabled: boolean;
   tierScrollProps: TierScrollProps;
-  filterExcludesPrimary?: boolean;
 };
 
-export function EditorWaveformPeaksStage({
+export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
   controller: c,
   tx,
   viewportWidthPx,
@@ -48,19 +48,8 @@ export function EditorWaveformPeaksStage({
   waveformHeightPreviewActive,
   stripDisabled,
   tierScrollProps,
-  filterExcludesPrimary = false,
 }: Props) {
-  const selectionView = useWaveformSelectionChromeView({
-    fileId: c.currentFileId,
-    selectedIdx: c.selectedIdx,
-    selectionLo: c.selectionLo,
-    selectionHi: c.selectionHi,
-    selectionCount: c.selectionCount,
-    isContiguousSelection: c.isContiguousSelection,
-    selectedIndices: c.selectedIndices,
-    segmentCount: c.segments.length,
-    filterExcludesPrimary,
-  });
+  const { view: selectionView, filterExcludesPrimary } = useWaveformSelectionChromeViewContext();
   const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const mediaDurationSec = tx.mediaDurationSec;
   const rulerHeightPx = WAVEFORM_EMBEDDED_RULER_HEIGHT_PX;
@@ -263,5 +252,5 @@ export function EditorWaveformPeaksStage({
       </div>
     </CspLayout>
   );
-}
+}, editorWaveformPanePropsEqual);
 
