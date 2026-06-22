@@ -6,6 +6,7 @@ import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../../services/waveform/drawW
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
+import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
 import {
   WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS,
@@ -49,7 +50,18 @@ export function EditorWaveformPeaksStage({
   tierScrollProps,
   filterExcludesPrimary = false,
 }: Props) {
-  const selectedSegment = c.segments[c.selectedIdx] ?? null;
+  const selectionView = useWaveformSelectionChromeView({
+    fileId: c.currentFileId,
+    selectedIdx: c.selectedIdx,
+    selectionLo: c.selectionLo,
+    selectionHi: c.selectionHi,
+    selectionCount: c.selectionCount,
+    isContiguousSelection: c.isContiguousSelection,
+    selectedIndices: c.selectedIndices,
+    segmentCount: c.segments.length,
+    filterExcludesPrimary,
+  });
+  const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const mediaDurationSec = tx.mediaDurationSec;
   const rulerHeightPx = WAVEFORM_EMBEDDED_RULER_HEIGHT_PX;
   const [overlayDraftIdx, setOverlayDraftIdx] = useState<number | null>(null);
@@ -160,6 +172,7 @@ export function EditorWaveformPeaksStage({
                 enableCreateRange
                 clientXToTimeSec={tx.clientXToTimeSec}
                 onSelectSegmentAt={(idx, opts) => tx.selectSegmentAt(idx, "waveform", opts)}
+                onWaveformSelectionGesture={tx.dispatchWaveformSelectionGesture}
                 onSelectSegmentIndices={(indices, primaryIdx) => tx.selectSegmentIndices(indices, primaryIdx)}
                 getSelectedIndices={() => c.selectedIndices}
                 isIndexInSelection={c.isIndexInSelection}
@@ -209,6 +222,8 @@ export function EditorWaveformPeaksStage({
             </CspLayout>
             <WaveformSegmentPlaybackControls
               disabled={stripDisabled}
+              fileId={c.currentFileId}
+              segments={c.segments}
               rulerBandHeightPx={rulerHeightPx}
               isPlaying={tx.isSelectedSegmentPlaying}
               timelineWidthPx={tx.timelineWidthPx}

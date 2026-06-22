@@ -11,6 +11,7 @@ import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { useSegmentListFilter } from "../../hooks/useSegmentListFilter";
 import { isSegmentListFilterHidingPrimary } from "../../utils/segmentListFilterNav";
+import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
 
 type EditHistory = ReturnType<typeof useEditorEditHistory>;
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -59,10 +60,20 @@ export function EditorViewLayout({
   transcriptStats,
   editorDialogs,
 }: EditorViewLayoutProps) {
+  const preFilterSelectionView = useWaveformSelectionChromeView({
+    fileId: c.currentFileId,
+    selectedIdx: c.selectedIdx,
+    selectionLo: c.selectionLo,
+    selectionHi: c.selectionHi,
+    selectionCount: c.selectionCount,
+    isContiguousSelection: c.isContiguousSelection,
+    selectedIndices: c.selectedIndices,
+    segmentCount: c.segments.length,
+  });
   const filterExcludesPrimary = isSegmentListFilterHidingPrimary({
     filterActive: segmentFilter.isActive,
     filteredIndices: segmentFilter.filteredIndices,
-    primaryIdx: c.selectedIdx,
+    primaryIdx: preFilterSelectionView.selectedIdx,
     segmentCount: c.segments.length,
   });
 

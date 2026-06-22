@@ -4,7 +4,7 @@ import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { useWaveformSelectionChromeView } from "../hooks/useWaveformSelectionChromeView";
 import { resolveWaveformSegmentFillState } from "../utils/segmentChrome";
-import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
+import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 import { CspLayout } from "./CspLayout";
 
@@ -31,6 +31,11 @@ export type WaveformSegmentOverlayProps = {
   getPlayheadSec: () => number;
   onDraftIdxChange?: (idx: number | null) => void;
   onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onWaveformSelectionGesture?: (
+    gesture: import("../services/waveform/waveformSelectionGesture").WaveformSelectionGesture,
+  ) => boolean | void;
+  /** @deprecated 使用 onWaveformSelectionGesture down phase */
+  onPreviewSegmentSelect?: (idx: number) => boolean;
   onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
   getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
@@ -90,7 +95,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
 
   const segmentIndices = useMemo(
     () =>
-      selectOverlayInteractiveSegmentIndices({
+      resolveWaveformSelectionRenderProjection({
         segmentCount: segments.length,
         selectedIdx: selectionView.selectedIdx,
         selectedIndices: selectionView.selectedIndices,
@@ -99,7 +104,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         selectionCount: selectionView.selectionCount,
         isContiguousSelection: selectionView.isContiguousSelection,
         draftIdx: segmentDraftIdx,
-      }),
+      }).overlayInteractiveIndices,
     [
       segments.length,
       selectionView.selectedIdx,

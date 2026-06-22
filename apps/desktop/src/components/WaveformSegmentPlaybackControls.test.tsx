@@ -26,6 +26,8 @@ function baseProps(scrollLeftPx: number) {
   const tier = makeTier();
   return {
     disabled: false,
+    fileId: "f1",
+    segments: [{ start_sec: 10, end_sec: 20 } as unknown as import("../tauri/projectApi").SegmentDto],
     rulerBandHeightPx: 12,
     isPlaying: false,
     timelineWidthPx: 10_000,

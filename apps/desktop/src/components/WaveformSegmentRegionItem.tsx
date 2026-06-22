@@ -1,7 +1,7 @@
 import { memo, useMemo, type MouseEvent, type PointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useSegmentRowSelection } from "../hooks/useSegmentRowSelection";
-import { waveformRegionFillColor } from "../utils/segmentChrome";
+import { resolveWaveformRegionFillColor } from "../utils/segmentChrome";
 import type { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
 import { CspLayout } from "./CspLayout";
 
@@ -77,7 +77,7 @@ export const WaveformSegmentRegionItem = memo(
           width: geom.widthPx,
           top: geom.topPx,
           height: geom.heightPx,
-          background: waveformRegionFillColor(seg, selected, inSelection, undefined, {
+          background: resolveWaveformRegionFillColor(seg, selected, inSelection, undefined, {
             multiSelectActive,
           }),
         }}

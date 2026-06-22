@@ -3,6 +3,9 @@ import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { requestWaveformSegmentBandPaint } from "../utils/tierScrollFrameCoordinator";
+import { applyWaveSurferProgressWithoutClip } from "../services/waveform/waveformSurferProgressCoverage";
+import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
+import { shouldCoalesceSelectionSeekChrome } from "../utils/waveformSelectionSeekChrome";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformGlobalPlayback } from "./useWaveformGlobalPlayback";
@@ -77,6 +80,26 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const globalPlayback = useWaveformGlobalPlayback(wsRef, isReady);
   const applyGlobalPlaybackRateRef = useRef(globalPlayback.applyGlobalPlaybackRate);
   applyGlobalPlaybackRateRef.current = globalPlayback.applyGlobalPlaybackRate;
+  const commitSeekUi = useCallback(
+    (timeSec: number) => {
+      const ws = wsRef.current;
+      if (!ws || !isReady) return;
+      const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
+      const clamped = d > 0 ? Math.max(0, Math.min(timeSec, d)) : Math.max(0, timeSec);
+      lastTimeUiCommitRef.current = clamped;
+      lastTimeUiCommitMsRef.current = performance.now();
+      setCurrentTime(clamped);
+      if (d > 0) {
+        applyWaveSurferProgressWithoutClip(ws, clamped / d);
+      }
+      const suppressUntilMs = optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
+      if (shouldCoalesceSelectionSeekChrome(performance.now(), suppressUntilMs)) {
+        return;
+      }
+      requestWaveformSegmentBandPaint();
+    },
+    [isReady, layoutDurationSecRef],
+  );
   const playback = useWaveformPlayback(
     wsRef,
     containerRef,
@@ -86,6 +109,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     applyGlobalPlaybackRateRef,
     options.tierScrollRef,
     options.tierViewportMetricsRef,
+    commitSeekUi,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());

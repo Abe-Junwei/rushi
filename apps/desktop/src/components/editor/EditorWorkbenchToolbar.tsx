@@ -1,5 +1,6 @@
 import { PRODUCT_ICON } from "../../config/productIcons";
 import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
+import { useWaveformSelectionChromeView } from "../../hooks/useWaveformSelectionChromeView";
 import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -59,7 +60,17 @@ export function EditorWorkbenchToolbar({
     );
   }
 
-  const selectedSegment = c.segments[c.selectedIdx] ?? null;
+  const selectionView = useWaveformSelectionChromeView({
+    fileId: c.currentFileId,
+    selectedIdx: c.selectedIdx,
+    selectionLo: c.selectionLo,
+    selectionHi: c.selectionHi,
+    selectionCount: c.selectionCount,
+    isContiguousSelection: c.isContiguousSelection,
+    selectedIndices: c.selectedIndices,
+    segmentCount: c.segments.length,
+  });
+  const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const tierViewport = resolveTierViewportMetrics({
     tierScrollEl: tx.tierScrollRef.current,
     tierScrollLive: tx.tierScrollLive,

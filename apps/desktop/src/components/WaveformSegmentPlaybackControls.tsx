@@ -5,11 +5,14 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { subscribeSelectionChrome, getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type WaveformSegmentPlaybackControlsProps = {
   disabled: boolean;
+  fileId: string | null;
+  segments: SegmentDto[];
   /** 底部嵌入时间尺占用高度，控件在其上方居中 */
   rulerBandHeightPx?: number;
   isPlaying: boolean;
@@ -30,6 +33,8 @@ type WaveformSegmentPlaybackControlsProps = {
  */
 export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlaybackControls({
   disabled,
+  fileId,
+  segments,
   rulerBandHeightPx = 0,
   isPlaying,
   timelineWidthPx,
@@ -52,6 +57,8 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   } | null>(null);
 
   const layoutArgsRef = useRef({
+    fileId,
+    segments,
     selectedSegment,
     timelineWidthPx,
     durationSec,
@@ -61,6 +68,8 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     tierScrollLayout,
   });
   layoutArgsRef.current = {
+    fileId,
+    segments,
     selectedSegment,
     timelineWidthPx,
     durationSec,
@@ -68,6 +77,15 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     tierScrollRef,
     tierScrollLive,
     tierScrollLayout,
+  };
+
+  const resolveLayoutSegment = (): SegmentDto | null => {
+    const a = layoutArgsRef.current;
+    const snap = getSelectionChromeSnapshot();
+    if (a.fileId != null && snap.fileId === a.fileId && snap.primaryIdx >= 0) {
+      return a.segments[snap.primaryIdx] ?? null;
+    }
+    return a.selectedSegment;
   };
 
   const segStartSec = selectedSegment
@@ -83,7 +101,7 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
       const a = layoutArgsRef.current;
       const container = containerRef.current;
       if (!container) return;
-      const seg = a.selectedSegment;
+      const seg = resolveLayoutSegment();
       if (!seg) {
         setCspLayoutRules(container, { display: "none" });
         return;
@@ -150,9 +168,11 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     if (container) setCspLayoutRules(container, { bottom: rulerBandHeightPx + 4 });
     lastOverlayLayoutRef.current = null;
     applyOverlayLayout();
-    const unsub = subscribeTierScrollFrame(applyOverlayLayout);
+    const unsubScroll = subscribeTierScrollFrame(applyOverlayLayout);
+    const unsubChrome = subscribeSelectionChrome(applyOverlayLayout);
     return () => {
-      unsub();
+      unsubScroll();
+      unsubChrome();
       const container = containerRef.current;
       if (container) clearCspLayoutRules(container);
       const loopBtn = loopBtnRef.current;
@@ -161,17 +181,17 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     // tierScrollLayout.clientWidthPx 仅随视口 resize 变化（滚动 burst commit 不改），
     // 入 deps 以在窗口缩放后重算可见性/居中——补回移除 useTierViewportMetricsFrame 的 resize 监听。
   }, [
+    fileId,
     segStartSec,
     segEndSec,
     timelineWidthPx,
     durationSec,
     rulerBandHeightPx,
     selectedSegment,
+    segments,
     tierScrollLayout.clientWidthPx,
   ]);
   /* eslint-enable react-hooks/exhaustive-deps */
-
-  if (!selectedSegment) return null;
 
   return (
     <div ref={containerRef} className="region-action-overlay">
