@@ -1,0 +1,5 @@
+# Transitive via gtk/glib proc-macros; no patched release available.
+[advisories]
+ignore = [
+  "RUSTSEC-2024-0370",
+]
