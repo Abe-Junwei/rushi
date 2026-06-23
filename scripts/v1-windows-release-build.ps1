@@ -1,4 +1,4 @@
-# Local Windows release build — portable zip (+ optional NSIS). Not uploaded by CI.
+# Local Windows release build — portable zip (+ optional NSIS). CI uploads on tag push.
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
