@@ -46,6 +46,10 @@ if [ -z "$TAG" ] || [ -z "$REPO" ]; then
   usage
 fi
 
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# OTA compares against tauri.conf.json / package.json — not git tag suffix (e.g. v0.1.8.3 tag → app 0.1.8).
+VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
+
 MACOS_DIR="${BUNDLE_ROOT}/macos"
 TAR_GZ="${MACOS_DIR}/${UPDATER_BUNDLE_NAME}"
 SIG_FILE="${TAR_GZ}.sig"
@@ -58,7 +62,6 @@ if [ ! -f "$TAR_GZ" ] || [ ! -f "$SIG_FILE" ]; then
   exit 1
 fi
 
-VERSION="${TAG#v}"
 URL="https://github.com/${REPO}/releases/download/${TAG}/${UPDATER_BUNDLE_NAME}"
 PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 SIGNATURE="$(tr -d '\n' < "$SIG_FILE")"

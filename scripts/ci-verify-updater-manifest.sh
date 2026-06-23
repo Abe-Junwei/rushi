@@ -81,11 +81,19 @@ trap cleanup_verify_dir EXIT
 gh release download "$TAG" --repo "$REPO" --pattern "latest.json" --dir "$VERIFY_DIR"
 JSON="$(cat "${VERIFY_DIR}/latest.json")"
 MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
+APP_VERSION="$(node -p "require('./apps/desktop/package.json').version")"
 TAR_URL="$(echo "$JSON" | jq -r '.platforms["darwin-aarch64"].url // empty')"
 EXPECTED_SUFFIX="/releases/download/${TAG}/app.tar.gz"
 
 if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
   echo "latest.json missing version field." >&2
+  exit 1
+fi
+
+if [ "$MANIFEST_VERSION" != "$APP_VERSION" ]; then
+  echo "latest.json version must match apps/desktop/package.json for OTA semver." >&2
+  echo "  manifest: ${MANIFEST_VERSION}" >&2
+  echo "  package.json: ${APP_VERSION}" >&2
   exit 1
 fi
 
