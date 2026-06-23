@@ -106,7 +106,9 @@ fn should_fail_fast_verify_treats_http_5xx_as_terminal() {
     assert!(should_fail_fast_verify("local_runtime_verify_http_500"));
     assert!(should_fail_fast_verify("local_runtime_verify_http_503"));
     assert!(!should_fail_fast_verify("local_runtime_verify_http_404"));
-    assert!(!should_fail_fast_verify("local_runtime_verify_health_unreachable: connection refused"));
+    assert!(!should_fail_fast_verify(
+        "local_runtime_verify_health_unreachable: connection refused"
+    ));
 }
 
 #[cfg(unix)]
