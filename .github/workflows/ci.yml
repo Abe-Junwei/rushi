@@ -75,7 +75,7 @@ jobs:
           cache: npm
 
       - name: Install npm dependencies (workspaces)
-        run: npm ci
+        run: npm ci || npm ci || npm ci
 
       - name: ESLint
         run: npm run lint
