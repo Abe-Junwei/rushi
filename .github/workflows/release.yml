@@ -1,4 +1,5 @@
 # Full Tauri bundles — tag push creates draft Release, CI uploads macOS + Windows, then publishes.
+# Linux desktop: NOT published (no .deb / AppImage / tauri-linux job). See asr-bundled-models-implementation-v2.md §3.
 # Windows portable/NSIS: CI on tag push; local smoke — `npm run release:win` on a Windows machine.
 # Do NOT run `gh release create` before CI: push tag only (`git push origin vX.Y.Z`).
 # Sidecar is built before Tauri bundle; artifacts upload via gh release upload.

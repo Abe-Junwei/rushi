@@ -8,8 +8,7 @@
 ## 机器门禁
 
 - [ ] `release.yml` **tauri-windows** 绿（tag push）
-- [ ] GitHub Release 含 `windows-portable-x64.zip` + `.sha256`
-- [ ] GitHub Release 含 `rushi-asr-sidecar-*-win*.zip` + runtime manifest（与 mac/linux 同轨）
+- [ ] GitHub Release 含 `windows-portable-x64.zip` + `.sha256`（侧车已内嵌安装包，**无**独立 sidecar zip / runtime manifest）
 - [ ] `npm run typecheck` · `npm run test` · `check-architecture-guard` 无回归
 
 ---
