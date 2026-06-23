@@ -3,6 +3,8 @@ use std::fs;
 use uuid::Uuid;
 
 #[cfg(unix)]
+use super::probe::{should_fail_fast_verify, VERIFY_HEALTH_TIMEOUT};
+#[cfg(unix)]
 use super::verify_installed_runtime;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
@@ -100,6 +102,15 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
 
 #[cfg(unix)]
 #[test]
+fn should_fail_fast_verify_treats_http_5xx_as_terminal() {
+    assert!(should_fail_fast_verify("local_runtime_verify_http_500"));
+    assert!(should_fail_fast_verify("local_runtime_verify_http_503"));
+    assert!(!should_fail_fast_verify("local_runtime_verify_http_404"));
+    assert!(!should_fail_fast_verify("local_runtime_verify_health_unreachable: connection refused"));
+}
+
+#[cfg(unix)]
+#[test]
 fn verify_installed_runtime_fails_fast_on_health_http_500() {
     let temp = std::env::temp_dir().join(format!("rushi-local-runtime-http500-{}", Uuid::new_v4()));
     fs::create_dir_all(&temp).unwrap();
@@ -132,7 +143,8 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
     let start = Instant::now();
     let err = verify_installed_runtime(&exe, None, None).unwrap_err();
     assert!(err.contains("local_runtime_verify_http_500"));
-    assert!(start.elapsed().as_secs() < 10);
+    // Cold Python startup on CI can exceed 10s; still must finish well before the 90s poll loop.
+    assert!(start.elapsed() < VERIFY_HEALTH_TIMEOUT / 2);
 
     let _ = fs::remove_dir_all(&temp);
 }
