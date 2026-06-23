@@ -7,3 +7,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** Injected by vitest.perf.config.ts when running perf gates on CI. */
+declare const __PERF_CI__: boolean | undefined;

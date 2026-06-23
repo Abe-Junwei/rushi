@@ -13,6 +13,7 @@ import {
 } from "../services/waveform/audiowaveformDat";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
 import { capWaveformPeakColumns, computeTimelineWidthPx, MAX_WAVESURFER_PEAK_COLUMNS } from "../utils/pxPerSec";
+import { isPerfCiRunner } from "./perfCi";
 import type { SegmentDto } from "../tauri/projectApi";
 
 type Timed = { label: string; ms: number; detail?: string };
@@ -104,8 +105,6 @@ function mockSegmentBandCtx(): CanvasRenderingContext2D {
 }
 
 describe("waveform zoom frame breakdown", () => {
-  const isCiRunner = Boolean(process.env.CI);
-
   it("cross-LOD / high zoom — resample dominates (10 min)", () => {
     const durationSec = 600;
     const l3 = createSyntheticWaveformData(durationSec, 800);
@@ -158,7 +157,7 @@ describe("waveform zoom frame breakdown", () => {
 
     expect(rows[0].ms).toBeGreaterThan(1);
     // Resample + toPeaks should exceed segment-band paint in cross-LOD zoom (CI runners vary).
-    const dominanceRatio = isCiRunner ? 0.4 : 0.5;
+    const dominanceRatio = isPerfCiRunner ? 0.4 : 0.5;
     expect(rows[0].ms + rows[1].ms).toBeGreaterThan(rows[2].ms * dominanceRatio);
   });
 
