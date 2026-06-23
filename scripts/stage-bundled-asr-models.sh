@@ -10,15 +10,15 @@ VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
 BUILD_CACHE="${ROOT}/dist/bundled-asr-models/.modelscope-cache"
 STAGING="${ROOT}/dist/bundled-asr-models/staging"
 DEST="${ROOT}/apps/desktop/src-tauri/resources/bundled-asr-models"
-ASR_VENV="${ROOT}/services/asr/.venv/bin/python"
 
 echo "== stage bundled ASR models (Plan B) =="
 echo "    version=${VERSION}"
 echo "    dest=${DEST}"
 
-if [[ ! -x "${ASR_VENV}" ]]; then
+if ! ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh" 2>/dev/null)"; then
   echo "==> bootstrapping services/asr/.venv"
   bash "${ROOT}/scripts/bootstrap-asr-venv.sh"
+  ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh")"
 fi
 
 export_asr_model_env

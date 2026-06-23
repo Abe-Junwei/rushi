@@ -15,8 +15,16 @@ fi
 command -v python3 >/dev/null 2>&1 || { echo "python3 not found"; exit 1; }
 
 python3 -m venv .venv
-# shellcheck source=/dev/null
-source .venv/bin/activate
+if [[ -f ".venv/Scripts/activate" ]]; then
+  # shellcheck source=/dev/null
+  source ".venv/Scripts/activate"
+elif [[ -f ".venv/bin/activate" ]]; then
+  # shellcheck source=/dev/null
+  source ".venv/bin/activate"
+else
+  echo "venv activate script not found under $ASR/.venv"
+  exit 1
+fi
 python -m pip install -U pip
 python -m pip install -e ".[funasr,dev]"
 

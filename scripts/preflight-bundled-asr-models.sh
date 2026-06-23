@@ -17,8 +17,8 @@ for required in manifest.json NOTICE.txt LICENSE-APACHE-2.0.txt modelscope; do
   fi
 done
 
-ASR_VENV="${ROOT}/services/asr/.venv/bin/python"
-if [[ ! -x "${ASR_VENV}" ]]; then
+ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh" 2>/dev/null || true)"
+if [[ -z "${ASR_VENV}" ]] || [[ ! -f "${ASR_VENV}" ]]; then
   echo "WARN: ASR venv missing; skipping weight size checks"
   exit 0
 fi
