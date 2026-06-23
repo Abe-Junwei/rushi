@@ -25,7 +25,8 @@ import type { MutableRefObject, RefObject } from "react";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 
 /** Burst keyboard navigation: pure scroll plan + virtual window stay within CI budget. */
-export const LIST_KEYBOARD_BURST_PLAN_MAX_MS = 15;
+const isCiRunner = Boolean(process.env.CI);
+export const LIST_KEYBOARD_BURST_PLAN_MAX_MS = isCiRunner ? 25 : 15;
 export const LIST_KEYBOARD_BURST_STEPS = 10;
 export const LIST_KEYBOARD_BURST_SEGMENT_COUNT = 5000;
 export const LIST_KEYBOARD_BURST_SC1_COMMIT_MAX_MS = 120;

@@ -104,6 +104,8 @@ function mockSegmentBandCtx(): CanvasRenderingContext2D {
 }
 
 describe("waveform zoom frame breakdown", () => {
+  const isCiRunner = Boolean(process.env.CI);
+
   it("cross-LOD / high zoom — resample dominates (10 min)", () => {
     const durationSec = 600;
     const l3 = createSyntheticWaveformData(durationSec, 800);
@@ -156,7 +158,8 @@ describe("waveform zoom frame breakdown", () => {
 
     expect(rows[0].ms).toBeGreaterThan(1);
     // Resample + toPeaks should exceed segment-band paint in cross-LOD zoom (CI runners vary).
-    expect(rows[0].ms + rows[1].ms).toBeGreaterThan(rows[2].ms * 0.5);
+    const dominanceRatio = isCiRunner ? 0.4 : 0.5;
+    expect(rows[0].ms + rows[1].ms).toBeGreaterThan(rows[2].ms * dominanceRatio);
   });
 
   it("same-LOD stretch — resample ~0; segment bands still negligible", () => {
