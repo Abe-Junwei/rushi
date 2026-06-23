@@ -36,6 +36,9 @@ fixtures/sherpa-vad/
 # Spike 评估 JSON 输出（手测生成，勿提交）
 docs/execution/spike-output/
 
+# Agent / 手测临时文件（勿提交）
+docs/tmp/
+
 # 本机 LRC / runtime manifest 历史 fixture（v0.1.8 前脚本生成，含侧车 zip，勿提交）
 fixtures/local-runtime/**/*.zip
 fixtures/local-runtime/**/rushi-runtime-manifest*.json
