@@ -429,7 +429,6 @@ jobs:
 
       - name: Upload Windows bundles to GitHub Release
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: windows_release_upload
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -437,20 +436,6 @@ jobs:
           bash scripts/ci-upload-windows-release-assets.sh \
             --tag "${{ github.ref_name }}" \
             --bundle-root "${{ env.BUNDLE_ROOT }}"
-          if [ -d .ci-windows-offsite ] && [ -n "$(ls -A .ci-windows-offsite 2>/dev/null)" ]; then
-            echo "offsite=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "offsite=false" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload Windows offsite bundles (artifact)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.windows_release_upload.outputs.offsite == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: windows-offsite-bundles-${{ github.ref_name }}
-          path: .ci-windows-offsite/**
-          retention-days: 90
-          if-no-files-found: error
 
   publish-release:
     needs: [prepare-release, tauri-macos, tauri-windows]
