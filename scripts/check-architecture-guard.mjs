@@ -1002,6 +1002,23 @@ checkTauriInvokeAcl();
 checkSegmentListRapidSelectGuard();
 checkControlBtnGhostDuplicates();
 checkProductSemanticLucideImports();
+checkPerfGateEnvGuard();
+
+function checkPerfGateEnvGuard() {
+  const perfRoot = path.join(ROOT, 'apps/desktop/src/perf');
+  if (!fs.existsSync(perfRoot)) return;
+  walk(perfRoot, (fullPath) => {
+    if (!fullPath.endsWith('.ts')) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel === 'apps/desktop/src/perf/perfCi.ts') return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    if (/process\.env/.test(source)) {
+      errors.push(
+        `${rel}: perf 门限须经 perfCi.ts / __PERF_CI__，禁止直接读 process.env（会破坏 lint 与 production tsc）`,
+      );
+    }
+  });
+}
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));

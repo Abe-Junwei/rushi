@@ -20,6 +20,7 @@
     "lint": "npm run lint -w @rushi/desktop",
     "test": "npm run test -w @rushi/desktop",
     "typecheck": "npm run typecheck -w @rushi/desktop",
+    "check:desktop-ci": "bash scripts/check-desktop-ci-gate.sh",
     "build": "npm run build -w @rushi/desktop",
     "test:all": "npm run test && npm run asr:test && cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml",
     "p0:acceptance": "bash scripts/p0-acceptance.sh",

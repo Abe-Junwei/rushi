@@ -8,7 +8,7 @@ export default tseslint.config(
   { ignores: ["coverage", "dist", "src-tauri/target"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "tests/**/*.ts"],
+    files: ["vite.config.ts", "vitest.config.ts", "vitest.perf.config.ts", "playwright.config.ts", "tests/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.node,
@@ -17,7 +17,24 @@ export default tseslint.config(
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    files: ["src/perf/**/*.ts"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.browser, ...globals.node },
+      parser: tseslint.parser,
+      parserOptions: {
+        project: "./tsconfig.perf.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+    rules: {
+      "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+    },
+  },
+  {
+    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
     files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/perf/**"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.browser,

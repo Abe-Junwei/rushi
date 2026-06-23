@@ -65,6 +65,7 @@ jobs:
           pip-audit
 
   desktop:
+    # Local mirror: npm run check:desktop-ci (scripts/check-desktop-ci-gate.sh)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
