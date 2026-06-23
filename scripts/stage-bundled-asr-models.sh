@@ -41,6 +41,9 @@ from rushi_asr.defaults import (
     DEFAULT_FUNASR_PUNC_MODEL_ID,
     DEFAULT_FUNASR_VAD_MODEL_ID,
 )
+from rushi_asr.model_prepare_network import snapshot_download_with_retry
+
+max_attempts = int(os.environ.get("STAGE_MODEL_MAX_ATTEMPTS", "6"))
 
 for model_id in (
     DEFAULT_FUNASR_MODEL_ID,
@@ -48,7 +51,12 @@ for model_id in (
     DEFAULT_FUNASR_PUNC_MODEL_ID,
 ):
     print(f"downloading {model_id} …", flush=True)
-    snapshot_download(model_id)
+    snapshot_download_with_retry(
+        model_id,
+        snapshot_download,
+        [],
+        max_attempts=max_attempts,
+    )
 print("OK: snapshot_download complete")
 PY
 

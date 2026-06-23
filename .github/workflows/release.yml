@@ -90,9 +90,18 @@ jobs:
       - name: Bootstrap ASR venv (bundled models)
         run: bash scripts/bootstrap-asr-venv.sh
 
+      - name: Cache ModelScope download (Plan B staging)
+        uses: actions/cache@v4
+        with:
+          path: dist/bundled-asr-models/.modelscope-cache
+          key: bundled-asr-models-v1-macos-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
+          restore-keys: bundled-asr-models-v1-macos-
+
       - name: Stage bundled ASR models (Plan B)
+        env:
+          STAGE_MODEL_MAX_ATTEMPTS: "8"
         run: npm run asr:stage-bundled-models
-        timeout-minutes: 120
+        timeout-minutes: 180
 
 
       - name: Detect macOS signing secrets
@@ -322,10 +331,19 @@ jobs:
         shell: bash
         run: bash scripts/bootstrap-asr-venv.sh
 
+      - name: Cache ModelScope download (Plan B staging)
+        uses: actions/cache@v4
+        with:
+          path: dist/bundled-asr-models/.modelscope-cache
+          key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
+          restore-keys: bundled-asr-models-v1-windows-
+
       - name: Stage bundled ASR models (Plan B)
         shell: bash
+        env:
+          STAGE_MODEL_MAX_ATTEMPTS: "8"
         run: npm run asr:stage-bundled-models
-        timeout-minutes: 120
+        timeout-minutes: 180
 
       - name: Tauri build binary (Windows)
         working-directory: apps/desktop
