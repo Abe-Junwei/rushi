@@ -16,6 +16,7 @@
     "release:waveform-probe": "bash scripts/waveform-release-probe.sh",
     "release:postbuild-verify": "bash scripts/release-postbuild-verify.sh",
     "release:mac": "bash scripts/v1-personal-release-build.sh",
+    "release:win": "powershell -ExecutionPolicy Bypass -File scripts/v1-windows-release-build.ps1",
     "lint": "npm run lint -w @rushi/desktop",
     "test": "npm run test -w @rushi/desktop",
     "typecheck": "npm run typecheck -w @rushi/desktop",

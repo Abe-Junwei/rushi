@@ -18,6 +18,7 @@
 | `release:waveform-probe` | `waveform-release-probe.sh` | 波形 release 探针 |
 | `release:postbuild-verify` | `release-postbuild-verify.sh` | 构建后校验 |
 | `release:mac` | `v1-personal-release-build.sh` | 个人 macOS 发版流水线 |
+| `release:win` | `v1-windows-release-build.ps1` | 本地 Windows 便携包（不上传 GitHub Release） |
 | `p0:acceptance` | `p0-acceptance.sh` | P0 验收 |
 | `eval:placeholders` | `eval-generate-placeholders.sh` | 评测占位 wav |
 | `eval:run` / `eval:run:*` | `eval-run.py` | ASR 评测矩阵 |
