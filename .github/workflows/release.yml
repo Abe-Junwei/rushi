@@ -282,8 +282,23 @@ jobs:
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/sidecar-build-stamp.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/sidecar-build-stamp.txt"
 
+      - name: Detect Windows signing secrets
+        id: win_sign
+        shell: bash
+        env:
+          WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          WINDOWS_SIGN_PFX_PATH: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+        run: |
+          if [ -z "$WINDOWS_SIGNTOOL_PATH" ] || [ -z "$WINDOWS_SIGN_PFX_PATH" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "No Windows signing secrets — building unsigned sidecars."
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "Valid Windows signing secrets detected."
+
       - name: Authenticode sign bundled sidecars (release tag)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
         shell: pwsh
         env:
           SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
@@ -291,6 +306,10 @@ jobs:
           SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
           RELEASE_BUILD: "1"
         run: pwsh scripts/sign-windows-sidecar.ps1
+
+      - name: Skip Windows sidecar signing (no secrets)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled != 'true'
+        run: echo "::warning::Skipping Authenticode signing — set WINDOWS_SIGNTOOL_PATH + WINDOWS_SIGN_PFX_PATH for signed releases."
 
       - name: Post-build sidecar health smoke
         shell: pwsh
