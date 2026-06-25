@@ -17,6 +17,8 @@ colors:
   ink: '#2C2C2C'
   paper: '#F2EFE8'
   saffron: '#C58A43'
+  primary: '#C58A43'
+  primary-foreground: '#ffffff'
   saffron-light: '#ffddba'
   saffron-mid: '#85530f'
   saffron-deep: '#452800'
