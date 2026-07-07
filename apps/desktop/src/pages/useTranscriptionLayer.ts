@@ -131,13 +131,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onCancelScrollMotion: () => timeline.cancelTransientScrollMotion("pointer"),
   });
 
-  const seek = useCallback(
-    (timeSec: number) => {
-      wf.seek(timeSec);
-      timeline.syncDisplayPlayheadAfterSeek(timeSec);
-    },
-    [timeline.syncDisplayPlayheadAfterSeek, wf.seek],
-  );
+  const seek = useCallback((timeSec: number) => {
+    wf.seek(timeSec);
+  }, [wf.seek]);
 
   useLayoutEffect(() => {
     registerSelectionChromePublishRoots({

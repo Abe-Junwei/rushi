@@ -62,4 +62,10 @@ export type UseProjectWaveformOptions = {
   /** Refit fit-all px/s when tier viewport grows (e.g. fullscreen). */
   refitFitAllPxPerSec?: (viewportWidthPx: number) => number | null;
   onFitAllPxPerSecRefit?: (pxPerSec: number) => void;
+  /** Set by timeline after visual playhead clock mounts — segment play / bound reads. */
+  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>;
+  /** Peaks-order seek: imperative playhead before media (`ws.setTime`). */
+  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  /** WS audioprocess → visual clock + unified viewport frame. */
+  onWsAudioprocessRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
 };

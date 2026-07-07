@@ -1,6 +1,10 @@
 import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
+import { segmentStartSec } from "./formatMediaTime";
 import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 import type { OverlayPointerUpIntent } from "./waveformSegmentOverlayGestures";
+
+/** Pointer farther than this from segment start after preview sync ⇒ seek-within on pointerup. */
+export const SEEK_WITHIN_FROM_SYNC_EPSILON_SEC = 0.05;
 
 export type SegmentOverlayTapGesture = {
   selectedIdxAtPointerDown: number;
@@ -39,7 +43,15 @@ export function resolveSegmentOverlayTap(args: {
   pointerTimeSec: number;
   segment: { start_sec: number; end_sec: number };
 }): SegmentOverlayTapResolution {
+  const lo = Math.min(args.segment.start_sec, args.segment.end_sec);
+  const hi = Math.max(args.segment.start_sec, args.segment.end_sec);
+  const clampedPointer = Math.max(lo, Math.min(hi, args.pointerTimeSec));
+
   if (args.viewportSyncedOnDown) {
+    const startSec = segmentStartSec(args.segment);
+    if (Math.abs(clampedPointer - startSec) > SEEK_WITHIN_FROM_SYNC_EPSILON_SEC) {
+      return { kind: "seek-within", timeSec: clampedPointer };
+    }
     return { kind: "select", segmentIdx: args.segmentIdx };
   }
   const committedSelectedIdx =
@@ -48,11 +60,9 @@ export function resolveSegmentOverlayTap(args: {
   if (committedSelectedIdx !== args.segmentIdx) {
     return { kind: "select", segmentIdx: args.segmentIdx };
   }
-  const lo = Math.min(args.segment.start_sec, args.segment.end_sec);
-  const hi = Math.max(args.segment.start_sec, args.segment.end_sec);
   return {
     kind: "seek-within",
-    timeSec: Math.max(lo, Math.min(hi, args.pointerTimeSec)),
+    timeSec: clampedPointer,
   };
 }
 

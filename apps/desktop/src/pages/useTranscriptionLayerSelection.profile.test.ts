@@ -515,7 +515,7 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.dispatchWaveformSelectionGesture({
         phase: "up",
         idx: 3,
-        pointerTimeSec: 6.5,
+        pointerTimeSec: 6.02,
         selectedIdxAtPointerDown: 0,
         viewportSyncedOnDown: true,
       });

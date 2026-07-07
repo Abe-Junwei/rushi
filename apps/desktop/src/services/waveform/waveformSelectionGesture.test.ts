@@ -62,7 +62,6 @@ function makeTimeline() {
     suppressPlaybackFollowForSelectionSeek: vi.fn(),
     wfApiRef: { current: { seek: vi.fn() } },
     viewportFit: { revealSegmentInViewport: vi.fn() },
-    syncDisplayPlayheadAfterSeek: vi.fn(),
   };
 }
 
@@ -97,10 +96,36 @@ describe("dispatchWaveformSelectionGestureDown", () => {
       skipBandPaint: true,
     });
     expect(commitSelectedIdxRef).toHaveBeenCalledWith(1);
-    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.syncDisplayPlayheadAfterSeek.mock.invocationCallOrder[0],
+    expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
     expect(runListScroll).toHaveBeenCalledWith(1);
+  });
+
+  it("defers preview seek to pointerup while media is playing", () => {
+    const ctx = makeCtx(0);
+    const timeline = makeTimeline();
+    const paintChrome = vi.fn();
+    const runListScroll = vi.fn();
+
+    const result = dispatchWaveformSelectionGestureDown(
+      ctx,
+      timeline,
+      1,
+      {
+        paintChrome,
+        runListScroll,
+        commitSelectedIdxRef: vi.fn(),
+        isMediaPlaying: () => true,
+      },
+      "s1",
+    );
+
+    expect(result).toEqual({ applied: true, viewportSyncedOnDown: false });
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(runListScroll).toHaveBeenCalledWith(1);
+    expect(paintChrome).toHaveBeenCalled();
   });
 
   it("skips preview seek when chrome primary already matches tapped idx", () => {
@@ -196,7 +221,7 @@ describe("dispatchWaveformSelectionGestureDown", () => {
       ctx,
       {
         idx: 1,
-        pointerTimeSec: 2.5,
+        pointerTimeSec: 2.02,
         selectedIdxAtPointerDown: 0,
         viewportSyncedOnDown: true,
         sessionId: "s1",
@@ -234,7 +259,7 @@ describe("dispatchWaveformSelectionGestureUp", () => {
     expect(selectSegmentAt).not.toHaveBeenCalled();
   });
 
-  it("commits select via selectSegmentAt when down synced viewport", () => {
+  it("commits select via selectSegmentAt when down synced viewport near segment start", () => {
     const ctx = makeCtx(0);
     const selectSegmentAt = vi.fn();
     const seekToTime = vi.fn();
@@ -249,7 +274,7 @@ describe("dispatchWaveformSelectionGestureUp", () => {
       ctx,
       {
         idx: 1,
-        pointerTimeSec: 2.5,
+        pointerTimeSec: 2.02,
         selectedIdxAtPointerDown: 0,
         viewportSyncedOnDown: true,
         sessionId: "s1",
@@ -260,6 +285,29 @@ describe("dispatchWaveformSelectionGestureUp", () => {
     expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { previewSessionId: "s1" });
     expect(seekToTime).not.toHaveBeenCalled();
     expect(focusWaveformShell).not.toHaveBeenCalled();
+  });
+
+  it("seeks within when down synced viewport but pointer is away from segment start", () => {
+    const ctx = makeCtx(0);
+    const selectSegmentAt = vi.fn();
+    const seekToTime = vi.fn();
+    const focusWaveformShell = vi.fn();
+
+    dispatchWaveformSelectionGestureUp(
+      ctx,
+      {
+        idx: 1,
+        pointerTimeSec: 2.5,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+        sessionId: "s1",
+      },
+      { selectSegmentAt, seekToTime, focusWaveformShell },
+    );
+
+    expect(seekToTime).toHaveBeenCalledWith(2.5);
+    expect(focusWaveformShell).toHaveBeenCalledOnce();
+    expect(selectSegmentAt).not.toHaveBeenCalled();
   });
 
   it("focuses waveform shell on seek-within tap", () => {

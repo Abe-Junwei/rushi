@@ -186,7 +186,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                   if (idx == null || idx < 0) return;
                   tx.focusSegmentAfterWaveformCreate(idx);
                 }}
-                onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
+                onPlaySegment={(idx, fromSec) => void tx.playSegmentAtIndex(idx, { fromSec })}
                 seekToTime={tx.seek}
                 suppressPlaybackFollowForSelectionSeek={tx.suppressPlaybackFollowForSelectionSeek}
               />

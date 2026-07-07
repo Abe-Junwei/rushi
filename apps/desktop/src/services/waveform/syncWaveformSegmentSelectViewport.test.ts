@@ -43,25 +43,13 @@ describe("syncWaveformSegmentSelectViewport", () => {
     );
   });
 
-  it("seek notifies imperative playhead sync when provided", () => {
-    const syncDisplayPlayheadAfterSeek = vi.fn();
-    const tl = { ...makeTimeline(), syncDisplayPlayheadAfterSeek };
-    syncWaveformSegmentSelectSeek(tl, seg);
-    expect(syncDisplayPlayheadAfterSeek).toHaveBeenCalledWith(10);
-    expect(syncDisplayPlayheadAfterSeek.mock.invocationCallOrder[0]).toBeGreaterThan(
-      tl.wfApiRef.current.seek.mock.invocationCallOrder[0],
-    );
-  });
-
-  it("preview viewport sync reveals before publishing playhead to avoid viewport-coordinate jump", () => {
-    const syncDisplayPlayheadAfterSeek = vi.fn();
-    const tl = { ...makeTimeline(), syncDisplayPlayheadAfterSeek };
+  it("preview viewport sync seeks then reveals after playhead publish", () => {
+    const tl = makeTimeline();
     syncWaveformSegmentSelectPreviewViewport(tl, seg);
     expect(tl.wfApiRef.current.seek).toHaveBeenCalledWith(10);
     expect(tl.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(seg);
-    expect(syncDisplayPlayheadAfterSeek).toHaveBeenCalledWith(10);
-    expect(tl.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
-      syncDisplayPlayheadAfterSeek.mock.invocationCallOrder[0],
+    expect(tl.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
+      tl.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
   });
 });

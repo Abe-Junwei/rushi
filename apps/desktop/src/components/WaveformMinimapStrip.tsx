@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import {
@@ -43,8 +43,11 @@ type WaveformMinimapStripProps = {
   peakCacheGeneration?: number;
   peaksLoading?: boolean;
   isReady: boolean;
+  isPlaying?: boolean;
   exportMinimapPeaks?: (overviewWidthPx: number) => Float32Array | null;
   currentTimeSec: number;
+  getDisplayPlayheadTimeSec?: () => number;
+  subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
   onSeek: (timeSec: number) => void;
   onSetScrollLeftPx: (scrollLeftPx: number) => void;
   /** Pause playback-follow so a scrub during playback isn't yanked back by auto-scroll. */
@@ -63,8 +66,11 @@ export function WaveformMinimapStrip({
   peakCacheGeneration = 0,
   peaksLoading = false,
   isReady,
+  isPlaying = false,
   exportMinimapPeaks,
   currentTimeSec,
+  getDisplayPlayheadTimeSec,
+  subscribePlayheadFrame,
   onSeek,
   onSetScrollLeftPx,
   suppressPlaybackFollowForSelectionSeek,
@@ -79,6 +85,37 @@ export function WaveformMinimapStrip({
   const exportMinimapPeaksRef = useRef(exportMinimapPeaks);
   exportMinimapPeaksRef.current = exportMinimapPeaks;
   const rasterCacheRef = useRef<MinimapRasterCacheEntry | null>(null);
+  const playheadRef = useRef<HTMLElement | null>(null);
+  const getDisplayPlayheadTimeSecRef = useRef(getDisplayPlayheadTimeSec);
+  getDisplayPlayheadTimeSecRef.current = getDisplayPlayheadTimeSec;
+
+  const writePlayheadLeft = useCallback(
+    (timeSec: number) => {
+      const el = playheadRef.current;
+      if (!el || durationSec <= 0 || overviewWidthPx <= 0) return;
+      const leftPx =
+        (Math.max(0, Math.min(durationSec, timeSec)) / durationSec) * overviewWidthPx;
+      setCspLayoutRules(el, { left: leftPx });
+    },
+    [durationSec, overviewWidthPx],
+  );
+
+  useEffect(() => {
+    if (!isReady || !getDisplayPlayheadTimeSec || !subscribePlayheadFrame) return;
+    writePlayheadLeft(getDisplayPlayheadTimeSec());
+    return subscribePlayheadFrame((timeSec) => writePlayheadLeft(timeSec));
+  }, [getDisplayPlayheadTimeSec, isReady, subscribePlayheadFrame, writePlayheadLeft]);
+
+  useEffect(() => {
+    if (isPlaying || !isReady) return;
+    const t = getDisplayPlayheadTimeSecRef.current?.() ?? currentTimeSec;
+    writePlayheadLeft(t);
+  }, [currentTimeSec, isPlaying, isReady, writePlayheadLeft]);
+
+  const playheadLeftPx =
+    durationSec > 0 && overviewWidthPx > 0
+      ? (Math.max(0, Math.min(durationSec, currentTimeSec)) / durationSec) * overviewWidthPx
+      : 0;
 
   const MINIMAP_RESIZE_DEBOUNCE_MS = 100;
 
@@ -251,11 +288,6 @@ export function WaveformMinimapStrip({
     };
   }, [overviewWidthPx, timelineWidthPx, tierScrollRef, tierScrollLive, tierScrollLayout]);
 
-  const playheadLeftPx =
-    durationSec > 0 && overviewWidthPx > 0
-      ? (Math.max(0, Math.min(durationSec, currentTimeSec)) / durationSec) * overviewWidthPx
-      : 0;
-
   const showPeaksPending = peaksLoading && !minimapPeaksReady && durationSec > 0 && isReady;
   const off = disabled || !isReady;
 
@@ -297,6 +329,7 @@ export function WaveformMinimapStrip({
         ) : null}
         {durationSec > 0 ? (
           <CspLayout
+            ref={playheadRef}
             className="waveform-minimap-playhead"
             layout={{ left: playheadLeftPx }}
           />

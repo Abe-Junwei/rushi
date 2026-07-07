@@ -18,6 +18,19 @@ describe("resolveSegmentOverlayTap", () => {
         pointerTimeSec: 9.5,
         segment,
       }),
+    ).toEqual({ kind: "seek-within", timeSec: 9.5 });
+  });
+
+  it("selects when preview synced on pointerdown and pointer is near segment start", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: true,
+        segmentIdx: 2,
+        pointerTimeSec: 4.02,
+        segment,
+      }),
     ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
@@ -43,14 +56,14 @@ describe("resolveSegmentOverlayTap", () => {
     ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
-  it("selects when SC2 preview already synced viewport on pointerdown", () => {
+  it("selects when SC2 preview already synced viewport on pointerdown near segment start", () => {
     expect(
       resolveSegmentOverlayTap({
         selectedIdx: 2,
         selectedIdxAtPointerDown: 0,
         viewportSyncedOnDown: true,
         segmentIdx: 2,
-        pointerTimeSec: 9.5,
+        pointerTimeSec: 4.02,
         segment,
       }),
     ).toEqual({ kind: "select", segmentIdx: 2 });

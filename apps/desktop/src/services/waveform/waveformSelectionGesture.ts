@@ -45,6 +45,8 @@ export type WaveformSelectionGestureDownDeps = {
   /** SC1 ref + microtask commit — pointerup 不等待 React 即可读逻辑 idx。 */
   commitSelectedIdxRef: (idx: number) => void;
   runListScroll?: (idx: number) => void;
+  /** When true, defer media seek to pointerup so playback playhead does not jump on down. */
+  isMediaPlaying?: () => boolean;
 };
 
 export type WaveformSelectionGestureDownResult = {
@@ -84,12 +86,15 @@ export function dispatchWaveformSelectionGestureDown(
 
   if (idxChanged) {
     const planSeg = resolveSelectSegmentViewportPlan(segment).segment;
+    const mediaPlaying = deps.isMediaPlaying?.() ?? false;
     deps.paintChrome(ctx, idx, undefined, "waveform", publishOpts);
-    syncWaveformSegmentSelectPreviewViewport(timeline, planSeg);
-    markWaveformSegmentPreviewViewportSynced(idx, sessionId);
+    if (!mediaPlaying) {
+      syncWaveformSegmentSelectPreviewViewport(timeline, planSeg);
+      markWaveformSegmentPreviewViewportSynced(idx, sessionId);
+    }
     deps.commitSelectedIdxRef(idx);
     deps.runListScroll?.(idx);
-    return { applied: true, viewportSyncedOnDown: true };
+    return { applied: true, viewportSyncedOnDown: !mediaPlaying };
   }
 
   deps.paintChrome(ctx, idx, undefined, "waveform", publishOpts);

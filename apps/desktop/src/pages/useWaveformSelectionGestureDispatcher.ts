@@ -4,6 +4,7 @@ import {
   dispatchWaveformSelectionGestureUp,
   type WaveformSelectionGesture,
 } from "../services/waveform/waveformSelectionGesture";
+import { waveformAtomicSeek } from "../services/waveform/waveformAtomicSeek";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
@@ -49,6 +50,7 @@ export function useWaveformSelectionGestureDispatcher(args: {
               paintChrome: args.paintSelectionChrome,
               commitSelectedIdxRef: args.commitWaveformSelectPreviewSc1,
               runListScroll: args.runWaveformSelectListScroll,
+              isMediaPlaying: () => args.timelineRef.current?.timeline?.wf?.isPlaying ?? false,
             },
             gesture.sessionId,
           )?.viewportSyncedOnDown ?? false
@@ -58,8 +60,7 @@ export function useWaveformSelectionGestureDispatcher(args: {
         selectSegmentAt: args.selectSegmentAt,
         seekToTime: (timeSec) => {
           tl.suppressPlaybackFollowForSelectionSeek();
-          tl.wfApiRef.current.seek(timeSec);
-          tl.syncDisplayPlayheadAfterSeek?.(timeSec);
+          waveformAtomicSeek(tl, timeSec);
         },
         focusWaveformShell: args.focusWaveformShell,
       });

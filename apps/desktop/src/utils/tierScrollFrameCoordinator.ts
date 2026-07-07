@@ -2,11 +2,20 @@
 
 type TierScrollFrameSubscriber = () => void;
 
+type PlaybackFrameSubscriber = {
+  cb: (timeSec: number) => void;
+  priority: number;
+};
+
 const subscribers = new Set<TierScrollFrameSubscriber>();
+const playbackSubscribers = new Set<PlaybackFrameSubscriber>();
 let frameRafId = 0;
+let frameScheduled = false;
 let coalescedScrollLeftPx: number | null = null;
 let coalescedAtMs = 0;
 let forceNextTierScrollFrame = false;
+let pendingPlaybackTimeSec: number | null = null;
+let playbackTimeDuringFrame: number | null = null;
 
 export type TierViewportMetricsSnapshot = {
   scrollLeftPx: number;
@@ -42,6 +51,8 @@ export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
   coalescedScrollLeftPx = null;
   coalescedAtMs = 0;
   forceNextTierScrollFrame = false;
+  pendingPlaybackTimeSec = null;
+  playbackTimeDuringFrame = null;
 }
 
 import {
@@ -49,6 +60,7 @@ import {
 } from "../services/waveform/waveformScrollProfile";
 
 function runTierScrollFrame(): void {
+  frameScheduled = false;
   frameRafId = 0;
   scrollFrameActive = true;
   scrollFrameMetricsSnapshot = metricsSupplier?.() ?? null;
@@ -58,6 +70,7 @@ function runTierScrollFrame(): void {
   forceNextTierScrollFrame = false;
   if (
     !force &&
+    pendingPlaybackTimeSec == null &&
     scrollLeftPx != null &&
     scrollLeftPx === coalescedScrollLeftPx &&
     now - coalescedAtMs < 12
@@ -69,16 +82,26 @@ function runTierScrollFrame(): void {
   coalescedScrollLeftPx = scrollLeftPx;
   coalescedAtMs = now;
   waveformScrollProfileBeginBurst();
+  if (pendingPlaybackTimeSec != null) {
+    playbackTimeDuringFrame = pendingPlaybackTimeSec;
+    const ordered = [...playbackSubscribers].sort((a, b) => a.priority - b.priority);
+    for (const sub of ordered) {
+      sub.cb(pendingPlaybackTimeSec);
+    }
+    pendingPlaybackTimeSec = null;
+  }
   for (const fn of subscribers) {
     fn();
   }
+  playbackTimeDuringFrame = null;
   scrollFrameMetricsSnapshot = null;
   scrollFrameActive = false;
 }
 
 /** Schedule one coalesced scroll frame for viewport chrome paints. */
 export function scheduleTierScrollFrame(): void {
-  if (frameRafId !== 0) return;
+  if (frameScheduled) return;
+  frameScheduled = true;
   frameRafId = requestAnimationFrame(runTierScrollFrame);
 }
 
@@ -87,6 +110,32 @@ export function subscribeTierScrollFrame(fn: TierScrollFrameSubscriber): () => v
   return () => {
     subscribers.delete(fn);
   };
+}
+
+/** Playback UI tick — runs in the same rAF as tier scroll chrome (WaveSurfer audioprocess-driven). */
+export function subscribePlaybackFrame(
+  cb: (timeSec: number) => void,
+  priority = 1,
+): () => void {
+  const entry: PlaybackFrameSubscriber = { cb, priority };
+  playbackSubscribers.add(entry);
+  return () => {
+    playbackSubscribers.delete(entry);
+  };
+}
+
+/** @deprecated Prefer {@link subscribePlaybackFrame}. */
+export const subscribePlayheadFrame = subscribePlaybackFrame;
+
+/** Schedule one viewport frame: playback subscribers then scroll chrome (single rAF). */
+export function schedulePlaybackViewportFrame(timeSec: number): void {
+  pendingPlaybackTimeSec = timeSec;
+  scheduleTierScrollFrame();
+}
+
+/** Playhead time for the current viewport frame (while subscribers run). */
+export function readPlaybackTimeDuringViewportFrame(): number | null {
+  return playbackTimeDuringFrame;
 }
 
 /** @deprecated Prefer {@link subscribeTierScrollFrame}. */
@@ -116,6 +165,7 @@ export function flushTierScrollFrame(options?: WaveformSegmentBandPaintOptions):
     cancelAnimationFrame(frameRafId);
     frameRafId = 0;
   }
+  frameScheduled = false;
   runTierScrollFrame();
 }
 
@@ -130,10 +180,14 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
     cancelAnimationFrame(frameRafId);
     frameRafId = 0;
   }
+  frameScheduled = false;
   subscribers.clear();
+  playbackSubscribers.clear();
   scrollFrameMetricsSnapshot = null;
   metricsSupplier = null;
   coalescedScrollLeftPx = null;
   coalescedAtMs = 0;
   forceNextTierScrollFrame = false;
+  pendingPlaybackTimeSec = null;
+  playbackTimeDuringFrame = null;
 }

@@ -18,7 +18,16 @@ export function useWaveformPlayback(
   tierScrollRef?: React.RefObject<HTMLDivElement | null>,
   tierViewportMetricsRef?: TierViewportMetricsRef,
   commitSeekUi?: (timeSec: number) => void,
+  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
+  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>,
 ) {
+  const resolvePlayheadSec = useCallback(() => {
+    const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
+    if (fromAuthority != null && Number.isFinite(fromAuthority)) return fromAuthority;
+    const ws = wsRef.current;
+    return ws?.getCurrentTime() ?? 0;
+  }, [getAuthoritativePlayheadSecRef, wsRef]);
+
   const seek = useCallback(
     (timeSec: number) => {
       const ws = wsRef.current;
@@ -26,10 +35,11 @@ export function useWaveformPlayback(
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
       const clamped =
         d <= 0 ? Math.max(0, timeSec) : Math.max(0, Math.min(timeSec, d));
+      syncDisplayPlayheadAfterSeekRef?.current?.(clamped);
       ws.setTime(clamped);
       commitSeekUi?.(clamped);
     },
-    [commitSeekUi, isReady, layoutDurationSecRef, wsRef],
+    [commitSeekUi, isReady, layoutDurationSecRef, syncDisplayPlayheadAfterSeekRef, wsRef],
   );
 
   const togglePlay = useCallback(async () => {
@@ -43,24 +53,22 @@ export function useWaveformPlayback(
   }, [applyGlobalPlaybackRateRef, isReady, wsRef]);
 
   const getPlayheadTime = useCallback((): number => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return 0;
-    return ws.getCurrentTime();
-  }, [isReady, wsRef]);
+    return resolvePlayheadSec();
+  }, [resolvePlayheadSec]);
 
   const seekByDelta = useCallback(
     (deltaSec: number) => {
       const ws = wsRef.current;
       if (!ws || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
+      const base = resolvePlayheadSec();
       const t =
-        d > 0
-          ? Math.max(0, Math.min(d, ws.getCurrentTime() + deltaSec))
-          : Math.max(0, ws.getCurrentTime() + deltaSec);
+        d > 0 ? Math.max(0, Math.min(d, base + deltaSec)) : Math.max(0, base + deltaSec);
+      syncDisplayPlayheadAfterSeekRef?.current?.(t);
       ws.setTime(t);
       commitSeekUi?.(t);
     },
-    [commitSeekUi, isReady, layoutDurationSecRef, wsRef],
+    [commitSeekUi, isReady, layoutDurationSecRef, resolvePlayheadSec, syncDisplayPlayheadAfterSeekRef, wsRef],
   );
 
   const clientXToTimeSec = useCallback(

@@ -89,7 +89,12 @@ export function bindProjectWaveformWaveSurferEvents(
       setLoadError(msg);
       setIsReady(false);
     }),
-    ws.on("play", () => setIsPlaying(true)),
+    ws.on("play", () => {
+      setIsPlaying(true);
+      const t = ws.getCurrentTime();
+      lastTimeUiCommitRef.current = t;
+      optsRef.current.onWsAudioprocessRef?.current?.(t);
+    }),
     ws.on("pause", () => {
       setIsPlaying(false);
       if (!disposed()) {
@@ -106,16 +111,22 @@ export function bindProjectWaveformWaveSurferEvents(
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
       if (ws.isPlaying()) {
-        scheduleSegmentBandPaint();
         return;
       }
       setCurrentTime(t);
       scheduleSegmentBandPaint();
     }),
+    ws.on("audioprocess", (t) => {
+      if (disposed()) return;
+      lastTimeUiCommitRef.current = t;
+      if (!ws.isPlaying()) return;
+      optsRef.current.onWsAudioprocessRef?.current?.(t);
+    }),
     ws.on("seeking", (t) => {
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
+      optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
       setCurrentTime(t);
       const duration = ws.getDuration();
       if (duration > 0) {

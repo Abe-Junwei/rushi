@@ -13,6 +13,8 @@ import {
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
   loop?: boolean;
+  /** 显式起播时刻（点击/双击）；钳在语段内。 */
+  fromSec?: number;
 };
 
 export function useWaveformSegmentPlaybackControls(args: {
@@ -21,8 +23,18 @@ export function useWaveformSegmentPlaybackControls(args: {
   segments: SegmentDto[];
   selectedIdx: number;
   getGlobalPlaybackRate: () => number;
+  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>;
+  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
 }) {
-  const { wsRef, isReady, segments, selectedIdx, getGlobalPlaybackRate } = args;
+  const {
+    wsRef,
+    isReady,
+    segments,
+    selectedIdx,
+    getGlobalPlaybackRate,
+    getAuthoritativePlayheadSecRef,
+    syncDisplayPlayheadAfterSeekRef,
+  } = args;
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const [isSelectedSegmentPlaying, setIsSelectedSegmentPlaying] = useState(false);
   const latestSegmentsRef = useRef(segments);
@@ -59,6 +71,21 @@ export function useWaveformSegmentPlaybackControls(args: {
     ws.setPlaybackRate(getGlobalPlaybackRate());
   }, [getGlobalPlaybackRate, wsRef]);
 
+  const resolvePlayheadSec = useCallback(() => {
+    const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
+    if (fromAuthority != null && Number.isFinite(fromAuthority)) return fromAuthority;
+    const ws = wsRef.current;
+    return ws?.getCurrentTime() ?? 0;
+  }, [getAuthoritativePlayheadSecRef, wsRef]);
+
+  const atomicMediaSeek = useCallback(
+    (timeSec: number) => {
+      syncDisplayPlayheadAfterSeekRef?.current?.(timeSec);
+      wsRef.current?.setTime(timeSec);
+    },
+    [syncDisplayPlayheadAfterSeekRef, wsRef],
+  );
+
   const playSegmentAtIndex = useCallback(
     async (idx: number, options?: PlaySegmentAtIndexOptions) => {
       const ws = wsRef.current;
@@ -74,11 +101,15 @@ export function useWaveformSegmentPlaybackControls(args: {
         start: Math.min(seg.start_sec, seg.end_sec),
         end: Math.max(seg.start_sec, seg.end_sec),
       };
-      const playFrom = resolveSegmentPlaybackStartSec(ws.getCurrentTime(), seg);
+      const playFrom =
+        options?.fromSec != null
+          ? Math.max(range.start, Math.min(range.end, options.fromSec))
+          : resolveSegmentPlaybackStartSec(resolvePlayheadSec(), seg);
       applyGlobalPlaybackRate();
       if (options?.loop) {
         setSegmentLoopPlayback(true);
       }
+      atomicMediaSeek(playFrom);
       try {
         await ws.play(playFrom);
       } catch {
@@ -100,7 +131,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       };
       setIsSelectedSegmentPlaying(true);
     },
-    [applyGlobalPlaybackRate, clearSegmentPlaybackBound, isReady, wsRef],
+    [applyGlobalPlaybackRate, atomicMediaSeek, clearSegmentPlaybackBound, isReady, resolvePlayheadSec, wsRef],
   );
 
   const playSelectedSegment = useCallback(async () => {
@@ -149,7 +180,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       const bound = segmentPlaybackBoundRef.current;
       if (!isActiveSegmentPlaybackBound(bound, playGenerationRef.current)) return;
       if (!ws.isPlaying()) return;
-      const currentSec = ws.getCurrentTime();
+      const currentSec = resolvePlayheadSec();
       if (bound.armed && currentSec < bound.endSec - 0.1) return;
       if (!armSegmentPlaybackSession(bound, currentSec)) return;
       if (!segmentPlaybackReachedEnd(currentSec, bound.endSec)) return;
@@ -168,14 +199,14 @@ export function useWaveformSegmentPlaybackControls(args: {
         if (loop) {
           const clampedEnd = Math.min(endSec, ws.getDuration());
           if (Number.isFinite(clampedEnd)) {
-            ws.setTime(clampedEnd);
+            atomicMediaSeek(clampedEnd);
           }
         } else {
           segmentPlaybackBoundRef.current = null;
           setIsSelectedSegmentPlaying(false);
           const clampedStart = Math.max(0, Math.min(startSec, ws.getDuration()));
           if (Number.isFinite(clampedStart)) {
-            ws.setTime(clampedStart);
+            atomicMediaSeek(clampedStart);
           }
         }
       });
@@ -185,7 +216,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     return () => {
       unsubAudio();
     };
-  }, [isReady, wsRef]);
+  }, [atomicMediaSeek, isReady, resolvePlayheadSec, wsRef]);
 
   useEffect(() => {
     if (preserveLoopOnNextSelectRef.current) {
@@ -209,7 +240,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (replayScheduled || !segmentLoopPlaybackRef.current) return;
       const range = resolveSelectedPlaybackRange();
       if (!range) return;
-      const t = ws.getCurrentTime();
+      const t = resolvePlayheadSec();
       // 仅在当前时间位于语段范围内且接近末尾时才 replay，防止 seek 到语段外后误触发
       if (t < range.start || t + 0.04 < range.end) return;
       replayScheduled = true;
@@ -227,7 +258,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       unsubPause();
       unsubFinish();
     };
-  }, [isReady, playSelectedSegment, resolveSelectedPlaybackRange, segmentLoopPlayback, wsRef]);
+  }, [isReady, playSelectedSegment, resolvePlayheadSec, resolveSelectedPlaybackRange, segmentLoopPlayback, wsRef]);
 
   return {
     segmentLoopPlayback,

@@ -110,6 +110,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     options.tierScrollRef,
     options.tierViewportMetricsRef,
     commitSeekUi,
+    options.syncDisplayPlayheadAfterSeekRef,
+    options.getAuthoritativePlayheadSecRef,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
@@ -121,6 +123,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     segments,
     selectedIdx,
     getGlobalPlaybackRate: () => globalPlayback.globalPlaybackRate,
+    getAuthoritativePlayheadSecRef: options.getAuthoritativePlayheadSecRef,
+    syncDisplayPlayheadAfterSeekRef: options.syncDisplayPlayheadAfterSeekRef,
   });
 
   const requestViewportChromeFrame = useCallback(() => {
@@ -256,7 +260,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const seek = useCallback(
     (timeSec: number) => {
-      segmentPlayback.clearSegmentPlaybackBound();
+      if (segmentPlayback.isSelectedSegmentPlaying) {
+        segmentPlayback.clearSegmentPlaybackBound();
+      }
       playback.seek(timeSec);
     },
     [playback, segmentPlayback],
@@ -264,7 +270,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const seekByDelta = useCallback(
     (deltaSec: number) => {
-      segmentPlayback.clearSegmentPlaybackBound();
+      if (segmentPlayback.isSelectedSegmentPlaying) {
+        segmentPlayback.clearSegmentPlaybackBound();
+      }
       playback.seekByDelta(deltaSec);
     },
     [playback, segmentPlayback],

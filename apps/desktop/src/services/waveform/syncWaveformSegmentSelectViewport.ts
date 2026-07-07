@@ -4,12 +4,12 @@ import {
   scheduleTierScrollFrame,
 } from "../../utils/tierScrollFrameCoordinator";
 import { resolveSelectSegmentViewportPlan, type SegmentTimeRange } from "./selectSegmentViewportPlan";
+import { waveformAtomicSeek } from "./waveformAtomicSeek";
 
 export type WaveformSegmentSelectViewportTimeline = {
   suppressPlaybackFollowForSelectionSeek: () => void;
   wfApiRef: { current: { seek: (timeSec: number) => void } };
   viewportFit: { revealSegmentInViewport: (seg: SegmentTimeRange) => void };
-  syncDisplayPlayheadAfterSeek?: (timeSec: number) => void;
 };
 
 /** Imperative seek + center for waveform segment select — no React commit. */
@@ -19,8 +19,7 @@ export function syncWaveformSegmentSelectSeek(
 ): void {
   const startSec = segmentStartSec(segment);
   timeline.suppressPlaybackFollowForSelectionSeek();
-  timeline.wfApiRef.current.seek(startSec);
-  timeline.syncDisplayPlayheadAfterSeek?.(startSec);
+  waveformAtomicSeek(timeline, startSec);
 }
 
 /**
@@ -33,9 +32,8 @@ export function syncWaveformSegmentSelectPreviewViewport(
 ): void {
   const startSec = segmentStartSec(segment);
   timeline.suppressPlaybackFollowForSelectionSeek();
-  timeline.wfApiRef.current.seek(startSec);
+  waveformAtomicSeek(timeline, startSec);
   syncWaveformSegmentSelectReveal(timeline, segment, { forceBandPaint: false });
-  timeline.syncDisplayPlayheadAfterSeek?.(startSec);
 }
 
 /** Imperative tier scroll to fit segment — defer band paint when called from preview rAF. */

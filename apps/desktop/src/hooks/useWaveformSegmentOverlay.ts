@@ -56,7 +56,7 @@ export function useWaveformSegmentOverlay(
       options?: { overlapPolicy?: SegmentOverlapPolicy },
     ) => void;
     onSelectTimeRange?: (startSec: number, endSec: number) => void;
-    onPlaySegment?: (idx: number) => void;
+    onPlaySegment?: (idx: number, fromSec?: number) => void;
     seekToTime: (timeSec: number) => void;
     suppressPlaybackFollowForSelectionSeek?: () => void;
     onDraftIdxChange?: (idx: number | null) => void;
@@ -273,7 +273,7 @@ export function useWaveformSegmentOverlay(
       } else {
         a.onFocusWaveformShell?.();
       }
-      void a.onPlaySegment?.(idx);
+      void a.onPlaySegment?.(idx, a.clientXToTimeSec(ev.clientX));
     },
     [suppressClickAfterPointer],
   );

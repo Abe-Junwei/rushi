@@ -8,12 +8,14 @@ import {
   subscribeSelectionChrome,
 } from "../services/selection/selectionChromeStore";
 import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
+import { resolveVisitedSegmentIndexAtPlayhead } from "../utils/segmentChrome";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
 import {
+  readPlaybackTimeDuringViewportFrame,
   requestWaveformSegmentBandPaint,
   scheduleTierScrollFrame,
   subscribeTierScrollFrame,
@@ -67,8 +69,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   dominantSpanIndices,
   draftIdx,
   filterExcludesPrimary = false,
-  getPlayheadSec: _getPlayheadSec,
-  subscribePlayheadFrame: _subscribePlayheadFrame,
+  getPlayheadSec,
+  subscribePlayheadFrame,
   tierScrollRef,
   tierScrollLive,
   tierScrollLayout,
@@ -132,11 +134,14 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   const lastCssLeftRef = useRef<number | null>(null);
   const lastPaintedChromeVersionRef = useRef(-1);
   const lastPaintedPrimaryIdxRef = useRef(-2);
+  const lastPaintedVisitedIdxRef = useRef(-2);
+  const playheadSecRef = useRef<number | undefined>(undefined);
 
   const invalidatePaintWindow = () => {
     lastPaintWindowRef.current = { leftPx: -1, widthPx: 0, heightPx: 0, bufferPx: 0 };
     lastCssLeftRef.current = null;
     lastPaintedPrimaryIdxRef.current = -2;
+    lastPaintedVisitedIdxRef.current = -2;
   };
 
   useLayoutEffect(() => {
@@ -186,10 +191,17 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const chromeVersionNow = getSelectionChromeSnapshot().version;
       const selectionChromeChanged = chromeVersionNow !== paintedChromeVersion;
       const selectionPrimaryChanged = selectionView.selectedIdx !== lastPaintedPrimaryIdxRef.current;
+      const playheadSec =
+        playheadSecRef.current ??
+        readPlaybackTimeDuringViewportFrame() ??
+        getPlayheadSec?.();
+      const visitedIdx = resolveVisitedSegmentIndexAtPlayhead(input.segments, playheadSec ?? -1);
+      const visitedChanged = visitedIdx !== lastPaintedVisitedIdxRef.current;
 
       if (
         !selectionChromeChanged &&
         !selectionPrimaryChanged &&
+        !visitedChanged &&
         !segmentBandCanvasNeedsRepaint({
           scrollLeftPx,
           viewportWidthPx,
@@ -246,6 +258,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           selectionHi: selectionView.selectionHi,
           selectionCount: selectionView.selectionCount,
           skipIndexSet,
+          playheadSec,
         });
       };
       if (wfProfileIsActive()) wfProfileTime("segmentBands", paintBands);
@@ -254,6 +267,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       lastPaintWindowRef.current = { leftPx, widthPx, heightPx, bufferPx };
       lastPaintedChromeVersionRef.current = chromeVersionNow;
       lastPaintedPrimaryIdxRef.current = selectionView.selectedIdx;
+      lastPaintedVisitedIdxRef.current = visitedIdx;
     };
 
     const schedulePaint = () => {
@@ -264,6 +278,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     invalidatePaintWindow();
     paint();
     const unsubFrame = subscribeTierScrollFrame(paint);
+    const unsubPlayhead = subscribePlayheadFrame?.((timeSec) => {
+      playheadSecRef.current = timeSec;
+    });
     const onResize = () => {
       invalidatePaintWindow();
       scheduleTierScrollFrame();
@@ -276,10 +293,11 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     return () => {
       unsubAppearance();
       unsubFrame();
+      unsubPlayhead?.();
       schedulePaintRef.current = null;
       window.removeEventListener("resize", onResize);
     };
-  }, [tierScrollRef, tierScrollLayout.clientWidthPx]);
+  }, [getPlayheadSec, subscribePlayheadFrame, tierScrollRef, tierScrollLayout.clientWidthPx]);
 
   // Segment / selection data changes repaint without re-registering scroll listeners.
   useLayoutEffect(() => {

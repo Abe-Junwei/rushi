@@ -83,6 +83,7 @@ ws.getCurrentTime()  (timeupdate 量化)
 
 - [x] 调研 brief 完成
 - [x] Phase 2 编码（单 tick + 单时钟）——typecheck / 全量 test / 架构守卫绿
+- [x] Phase 3（2026-07-07）：WS `audioprocess` 驱播放 tick；`tierScrollFrameCoordinator` 合并 playback + scroll 单 rAF；播放期 band 仅 visited 边界变时重绘
 - [ ] center/edge 手测无抖无跳（需在桌面运行时复验）
 
 **变更记录**

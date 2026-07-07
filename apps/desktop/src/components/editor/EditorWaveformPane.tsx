@@ -101,6 +101,9 @@ export const EditorWaveformPane = memo(function EditorWaveformPane({
           isReady={tx.isReady}
           exportMinimapPeaks={tx.exportMinimapPeaks}
           currentTimeSec={tx.currentTime}
+          getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
+          subscribePlayheadFrame={tx.subscribePlayheadFrame}
+          isPlaying={tx.isPlaying}
           onSeek={tx.seek}
           onSetScrollLeftPx={tx.minimapScrubScroll}
         />

@@ -4,7 +4,9 @@ import {
   flushTierScrollFrameForTests,
   registerTierScrollFrameMetricsSupplier,
   resetTierScrollFrameCoordinatorForTests,
+  schedulePlaybackViewportFrame,
   scheduleTierScrollFrame,
+  subscribePlaybackFrame,
   subscribeTierScrollFrame,
 } from "./tierScrollFrameCoordinator";
 
@@ -14,10 +16,47 @@ describe("tierScrollFrameCoordinator", () => {
     vi.unstubAllGlobals();
   });
 
-  it("coalesces multiple schedule calls into one rAF frame", () => {
+  it("runs playback subscribers before scroll subscribers in one frame", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);
       return 1;
+    });
+
+    const order: string[] = [];
+    subscribePlaybackFrame(() => order.push("playback"));
+    subscribeTierScrollFrame(() => order.push("scroll"));
+
+    schedulePlaybackViewportFrame(3.5);
+    expect(order).toEqual(["playback", "scroll"]);
+  });
+
+  it("does not coalesce away playback viewport frames when scroll is unchanged", () => {
+    const rafQueue: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      rafQueue.push(cb);
+      return rafQueue.length;
+    });
+    registerTierScrollFrameMetricsSupplier(() => ({
+      scrollLeftPx: 100,
+      viewportWidthPx: 800,
+    }));
+
+    const playback = vi.fn();
+    subscribePlaybackFrame(playback);
+
+    scheduleTierScrollFrame();
+    schedulePlaybackViewportFrame(4.2);
+    for (const cb of rafQueue) cb(0);
+
+    expect(playback).toHaveBeenCalledTimes(1);
+    expect(playback).toHaveBeenCalledWith(4.2);
+  });
+
+  it("coalesces multiple schedule calls into one rAF frame", () => {
+    const rafQueue: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      rafQueue.push(cb);
+      return rafQueue.length;
     });
 
     const a = vi.fn();
@@ -28,6 +67,7 @@ describe("tierScrollFrameCoordinator", () => {
     scheduleTierScrollFrame();
     scheduleTierScrollFrame();
     scheduleTierScrollFrame();
+    for (const cb of rafQueue) cb(0);
 
     expect(a).toHaveBeenCalledTimes(1);
     expect(b).toHaveBeenCalledTimes(1);

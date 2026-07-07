@@ -6,6 +6,27 @@ import { readWaveformSegmentBandPalette } from "./waveformThemeColors";
 /** 播放头已进入语段（含部分播放）；小 epsilon 避免边界闪烁。 */
 const PLAYHEAD_EPS_SEC = 0.04;
 
+export function resolveVisitedSegmentIndexAtPlayhead(
+  segments: readonly { start_sec: number; end_sec: number }[],
+  playheadSec: number,
+): number {
+  if (!Number.isFinite(playheadSec) || segments.length === 0) return -1;
+  let lo = 0;
+  let hi = segments.length - 1;
+  let ans = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const start = Math.min(segments[mid]!.start_sec, segments[mid]!.end_sec);
+    if (playheadSec > start + PLAYHEAD_EPS_SEC) {
+      ans = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return ans;
+}
+
 export type SegmentPlaybackVisits = "unplayed" | "visited";
 
 export function segmentPlaybackVisits(

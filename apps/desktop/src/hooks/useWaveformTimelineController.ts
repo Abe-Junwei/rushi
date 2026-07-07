@@ -43,6 +43,9 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
   const selectionSeekChromeSuppressUntilRef = useRef(0);
+  const getAuthoritativePlayheadSecRef = useRef<(() => number) | null>(null);
+  const syncDisplayPlayheadAfterSeekRef = useRef<((timeSec: number) => void) | null>(null);
+  const onWsAudioprocessRef = useRef<((timeSec: number) => void) | null>(null);
   const suppressPlaybackFollowForSelectionSeek = () => {
     const until = selectionSeekChromeSuppressUntil(performance.now());
     playbackFollowSuppressUntilRef.current = until;
@@ -100,6 +103,9 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     tierScrollRef,
     tierViewportMetricsRef,
     selectionSeekChromeSuppressUntilRef,
+    getAuthoritativePlayheadSecRef,
+    syncDisplayPlayheadAfterSeekRef,
+    onWsAudioprocessRef,
     refitFitAllPxPerSec: (viewportWidthPx) => refitFitAllPxPerSecRef.current(viewportWidthPx),
     onFitAllPxPerSecRefit: zoom.applyFitAllRefitPxPerSec,
     onZoomApplied: (pxPerSec) =>
@@ -158,6 +164,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     playbackRate: wf.globalPlaybackRate,
     getPlayheadTime: wf.getPlayheadTime,
   });
+
+  getAuthoritativePlayheadSecRef.current = visualPlayheadClock.getDisplayPlayheadTimeSec;
+  syncDisplayPlayheadAfterSeekRef.current = visualPlayheadClock.syncDisplayPlayheadAfterSeek;
+  onWsAudioprocessRef.current = visualPlayheadClock.onWsAudioprocess;
 
   useEffect(() => {
     const dur = timelineMetrics.mediaDurationSec;
