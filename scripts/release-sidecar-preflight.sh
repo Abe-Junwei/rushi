@@ -4,6 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SIDECAR="${ROOT}/apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar"
 
+if [[ "${RUSHI_SKIP_SIDECAR_CHECK:-0}" -eq 1 ]]; then
+  echo "== release sidecar preflight =="
+  echo "  SKIP: RUSHI_SKIP_SIDECAR_CHECK=1 (reuse local bundled-asr; no file or smoke gate)"
+  exit 0
+fi
+
 echo "== release sidecar preflight =="
 
 if [[ ! -x "${SIDECAR}" ]]; then
@@ -27,6 +33,12 @@ if [[ ! -s "${STAMP}" ]]; then
   exit 1
 fi
 echo "  sidecar stamp: $(tr '\n' ' ' < "${STAMP}" | sed 's/[[:space:]]*$//')"
+
+if [[ "${RUSHI_SKIP_SIDECAR_SMOKE:-0}" -eq 1 ]]; then
+  echo "  SKIP: RUSHI_SKIP_SIDECAR_SMOKE=1 (local sidecar present; no /health smoke)"
+  echo "OK: release sidecar preflight passed (files only)."
+  exit 0
+fi
 
 bash "${ROOT}/scripts/smoke-asr-sidecar-health.sh"
 echo "OK: release sidecar preflight passed."

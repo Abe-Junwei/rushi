@@ -1,9 +1,13 @@
 #!/usr/bin/env bash
 # Local .app build for hand-test (Plan B bundled models; skips updater artifacts).
+# Reuses local bundled-asr / bundled-asr-models when present (no sidecar rebuild, no ModelScope re-download).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${ROOT}"
+
+export RUSHI_SKIP_SIDECAR_SMOKE="${RUSHI_SKIP_SIDECAR_SMOKE:-1}"
+export RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT="${RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT:-1}"
 
 bash scripts/release-sidecar-preflight.sh
 bash scripts/release-cleanup-dmg-staging.sh

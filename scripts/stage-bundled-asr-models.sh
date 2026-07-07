@@ -15,6 +15,20 @@ echo "== stage bundled ASR models (Plan B) =="
 echo "    version=${VERSION}"
 echo "    dest=${DEST}"
 
+if [[ "${RUSHI_SKIP_BUNDLED_MODELS_STAGE:-0}" -eq 1 ]]; then
+  echo "  SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE=1"
+  exit 0
+fi
+
+if [[ "${RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT:-0}" -eq 1 ]]; then
+  if bash "${ROOT}/scripts/preflight-bundled-asr-models.sh" "${DEST}" 2>/dev/null; then
+    echo "  SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT=1 (reuse ${DEST})"
+    du -sh "${DEST}"
+    exit 0
+  fi
+  echo "  NOTE: bundled-asr-models not ready — continuing with download/stage"
+fi
+
 if ! ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh" 2>/dev/null)"; then
   echo "==> bootstrapping services/asr/.venv"
   bash "${ROOT}/scripts/bootstrap-asr-venv.sh"
