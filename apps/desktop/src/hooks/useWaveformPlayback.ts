@@ -22,11 +22,14 @@ export function useWaveformPlayback(
   getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>,
 ) {
   const resolvePlayheadSec = useCallback(() => {
+    const ws = wsRef.current;
+    if (!isReady) {
+      return ws?.getCurrentTime() ?? 0;
+    }
     const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
     if (fromAuthority != null && Number.isFinite(fromAuthority)) return fromAuthority;
-    const ws = wsRef.current;
     return ws?.getCurrentTime() ?? 0;
-  }, [getAuthoritativePlayheadSecRef, wsRef]);
+  }, [getAuthoritativePlayheadSecRef, isReady, wsRef]);
 
   const seek = useCallback(
     (timeSec: number) => {

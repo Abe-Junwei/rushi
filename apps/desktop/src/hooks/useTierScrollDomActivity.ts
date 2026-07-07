@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
-import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { flushTierScrollFrame, isTierScrollFrameActive } from "../utils/tierScrollFrameCoordinator";
 
 export function useTierScrollDomActivity(args: {
   tierScrollRef: RefObject<HTMLDivElement | null>;
@@ -30,7 +30,9 @@ export function useTierScrollDomActivity(args: {
       activityRef.current.syncScrollFromTierDom();
       activityRef.current.notifyScrollActivity();
       args.suppressPlaybackFollowForScrollEvent();
-      flushTierScrollFrame();
+      if (!isTierScrollFrameActive()) {
+        flushTierScrollFrame();
+      }
     };
     tier.addEventListener("scroll", onScroll, { passive: true });
     return () => tier.removeEventListener("scroll", onScroll);

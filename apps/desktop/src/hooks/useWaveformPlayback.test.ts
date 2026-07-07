@@ -87,6 +87,39 @@ describe("useWaveformPlayback", () => {
     expect(commitSeekUi).toHaveBeenCalledWith(12);
   });
 
+  it("getPlayheadTime uses ws time when not ready (avoids authority cycle)", () => {
+    const ws = {
+      setTime: vi.fn(),
+      getCurrentTime: () => 3.5,
+      isPlaying: () => false,
+    };
+    const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
+    const authorityRef = {
+      current: vi.fn(() => {
+        throw new Error("authority must not run before waveform is ready");
+      }),
+    };
+
+    const { result } = renderHook(() =>
+      useWaveformPlayback(
+        wsRef,
+        { current: null },
+        false,
+        { current: 60 },
+        { current: 1000 },
+        { current: vi.fn() },
+        undefined,
+        undefined,
+        vi.fn(),
+        { current: vi.fn() },
+        authorityRef,
+      ),
+    );
+
+    expect(result.current.getPlayheadTime()).toBe(3.5);
+    expect(authorityRef.current).not.toHaveBeenCalled();
+  });
+
   it("getPlayheadTime returns authoritative time when wired", () => {
     const ws = {
       setTime: vi.fn(),

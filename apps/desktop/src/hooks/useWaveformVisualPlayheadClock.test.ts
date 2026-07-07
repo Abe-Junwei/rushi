@@ -17,6 +17,29 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     vi.unstubAllGlobals();
   });
 
+  it("getDisplayPlayheadTimeSec does not recurse before waveform is ready", () => {
+    const ws = {
+      getCurrentTime: () => 2.25,
+      setTime: vi.fn(),
+      isPlaying: () => false,
+    };
+    const getPlayheadTime = vi.fn(() => ws.getCurrentTime());
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: false,
+        isReady: false,
+        durationSec: 0,
+        currentTimeSec: 0,
+        playbackRate: 1,
+        getPlayheadTime,
+      }),
+    );
+
+    expect(result.current.getDisplayPlayheadTimeSec()).toBe(2.25);
+    expect(getPlayheadTime).toHaveBeenCalledTimes(1);
+  });
+
   it("notifies subscribers in priority order via WS audioprocess + unified viewport frame", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);

@@ -91,6 +91,21 @@ describe("tierScrollFrameCoordinator", () => {
     expect(rafCb).not.toBeNull();
   });
 
+  it("ignores flush while a viewport frame is already running (scroll re-entrancy)", () => {
+    const scrollFollow = vi.fn(() => {
+      flushTierScrollFrame();
+    });
+    subscribePlaybackFrame(scrollFollow, 0);
+    const paint = vi.fn();
+    subscribeTierScrollFrame(paint);
+
+    schedulePlaybackViewportFrame(2.5);
+    flushTierScrollFrameForTests();
+
+    expect(scrollFollow).toHaveBeenCalledTimes(1);
+    expect(paint).toHaveBeenCalledTimes(1);
+  });
+
   it("flushTierScrollFrame force bypasses 12ms scroll coalesce", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);

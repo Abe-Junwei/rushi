@@ -60,6 +60,7 @@ import {
 } from "../services/waveform/waveformScrollProfile";
 
 function runTierScrollFrame(): void {
+  if (scrollFrameActive) return;
   frameScheduled = false;
   frameRafId = 0;
   scrollFrameActive = true;
@@ -160,6 +161,10 @@ export function requestWaveformSegmentBandPaint(options?: WaveformSegmentBandPai
  * (e.g. wheel-driven scroll), so sticky layers don't trail the natively-scrolled waveform by 1 frame.
  */
 export function flushTierScrollFrame(options?: WaveformSegmentBandPaintOptions): void {
+  // Programmatic scroll during an active viewport frame (e.g. playback follow) fires a
+  // synchronous scroll event; flushing here would re-enter runTierScrollFrame while
+  // pendingPlaybackTimeSec is still set and recurse until stack overflow.
+  if (scrollFrameActive) return;
   if (options?.force) forceNextTierScrollFrame = true;
   if (frameRafId !== 0) {
     cancelAnimationFrame(frameRafId);
