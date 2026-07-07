@@ -19,6 +19,8 @@ export type SegmentSelectAtOptions = {
   previewSessionId?: string;
   /** listKeyboard burst: SC2 + scroll only; SC1 commit on keyup. */
   burst?: boolean;
+  /** Caller focuses segment textarea; skip waveform shell focus (e.g. after drag-create). */
+  preferSegmentTextFocus?: boolean;
 };
 
 export function isListKeyboardBurstStep(

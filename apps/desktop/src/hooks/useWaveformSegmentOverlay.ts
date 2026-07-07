@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { applySegmentOverlayTap, type SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
 import type { WaveformSelectionGesture } from "../services/waveform/waveformSelectionGesture";
@@ -72,6 +73,45 @@ export function useWaveformSegmentOverlay(
 
   const segmentDraftIdx = segmentDraft?.idx ?? null;
   const createPreviewInitializedRef = useRef(false);
+  const lastCreatePreviewLayoutRef = useRef<{ left: number; width: number } | null>(null);
+  const createPreviewPendingRef = useRef<CreateRangePreview | null>(null);
+  const createPreviewRafRef = useRef(0);
+
+  const applyCreatePreviewLayout = useCallback(
+    (preview: CreateRangePreview | null) => {
+      const el = createPreviewRef.current;
+      if (!el) return;
+      if (!preview) {
+        lastCreatePreviewLayoutRef.current = null;
+        setCspLayoutRules(el, { display: "none" });
+        return;
+      }
+      const a = argsRef.current;
+      const layout = computeCreatePreviewStyle({
+        createPreview: preview,
+        timelineWidthPx: a.timelineWidthPx,
+        durationSec: a.durationSec,
+      });
+      const last = lastCreatePreviewLayoutRef.current;
+      if (last && last.left === layout.left && last.width === layout.width) {
+        return;
+      }
+      lastCreatePreviewLayoutRef.current = layout;
+      setCspLayoutRules(el, {
+        display: "block",
+        left: layout.left,
+        width: layout.width,
+      });
+    },
+    [createPreviewRef],
+  );
+
+  const flushCreatePreviewRaf = useCallback(() => {
+    createPreviewRafRef.current = 0;
+    const preview = createPreviewPendingRef.current;
+    if (preview === null) return;
+    applyCreatePreviewLayout(preview);
+  }, [applyCreatePreviewLayout]);
 
   const bindCreatePreviewRef = useCallback(
     (el: HTMLElement | null) => {
@@ -86,33 +126,20 @@ export function useWaveformSegmentOverlay(
 
   const updateCreatePreview = useCallback(
     (preview: CreateRangePreview | null) => {
-      const el = createPreviewRef.current;
-      if (!el) return;
       if (!preview) {
-        setCspLayoutRules(el, { display: "none" });
+        createPreviewPendingRef.current = null;
+        if (createPreviewRafRef.current) {
+          window.cancelAnimationFrame(createPreviewRafRef.current);
+          createPreviewRafRef.current = 0;
+        }
+        applyCreatePreviewLayout(null);
         return;
       }
-      const a = argsRef.current;
-      const layout = computeCreatePreviewStyle({
-        createPreview: preview,
-        timelineWidthPx: a.timelineWidthPx,
-        durationSec: a.durationSec,
-      });
-      setCspLayoutRules(el, {
-        display: "block",
-        left: layout.left,
-        width: layout.width,
-        top: null,
-        height: null,
-        bottom: null,
-        background: null,
-        border: null,
-        borderLeft: null,
-        borderRight: null,
-        zIndex: null,
-      });
+      createPreviewPendingRef.current = preview;
+      if (createPreviewRafRef.current) return;
+      createPreviewRafRef.current = window.requestAnimationFrame(flushCreatePreviewRaf);
     },
-    [createPreviewRef],
+    [applyCreatePreviewLayout, flushCreatePreviewRaf],
   );
 
   useLayoutEffect(() => {
@@ -173,7 +200,9 @@ export function useWaveformSegmentOverlay(
           phase: "up",
           idx,
           pointerTimeSec,
-          selectedIdxAtPointerDown: tapGesture?.selectedIdxAtPointerDown ?? a.selectedIdx,
+          selectedIdxAtPointerDown:
+            tapGesture?.selectedIdxAtPointerDown ??
+            selectionChromeEffectivePrimaryIdx(a.selectedIdx),
           viewportSyncedOnDown: tapGesture?.viewportSyncedOnDown,
           sessionId: tapGesture?.sessionId,
         });
@@ -223,7 +252,9 @@ export function useWaveformSegmentOverlay(
       onSegmentPointerTap(
         idx,
         a.clientXToTimeSec(ev.clientX),
-        consumeLastSegmentTapGesture(idx) ?? { selectedIdxAtPointerDown: a.selectedIdx },
+        consumeLastSegmentTapGesture(idx) ?? {
+          selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
+        },
       );
     },
     [consumeLastSegmentTapGesture, dragRef, suppressClickUntilRef, onSegmentPointerTap],
@@ -236,8 +267,12 @@ export function useWaveformSegmentOverlay(
       ev.stopPropagation();
       if (!a.segments[idx]) return;
       suppressClickAfterPointer();
-      a.onFocusWaveformShell?.();
-      a.onSelectSegmentAt(idx);
+      const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(a.selectedIdx);
+      if (effectiveSelectedIdx !== idx) {
+        a.onSelectSegmentAt(idx);
+      } else {
+        a.onFocusWaveformShell?.();
+      }
       void a.onPlaySegment?.(idx);
     },
     [suppressClickAfterPointer],

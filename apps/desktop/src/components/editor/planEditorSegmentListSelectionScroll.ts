@@ -40,7 +40,14 @@ export function planEditorSegmentListSelectionScroll({
 }: PlanEditorSegmentListSelectionScrollArgs): EditorSegmentListSelectionScrollPlan {
   const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
   const fromListKeyboard = isListKeyboardSelectSource(source);
-  const scrollAlign = fromListKeyboard ? "keyboard" : fromWaveform ? "center" : "minimal";
+  const rowVisibleInListViewport = isSelectedSegmentRowIntersectingListViewport(root, selectedIdx);
+  const scrollAlign = fromListKeyboard
+    ? "keyboard"
+    : fromWaveform
+      ? rowVisibleInListViewport
+        ? "minimal"
+        : "center"
+      : "minimal";
   const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
   const scrollInput = {
     scrollTop: root.scrollTop,
@@ -55,8 +62,6 @@ export function planEditorSegmentListSelectionScroll({
     ...scrollInput,
     align: scrollAlign,
   });
-
-  const rowVisibleInListViewport = isSelectedSegmentRowIntersectingListViewport(root, selectedIdx);
 
   if (fromWaveform && useVirtualList && !rowVisibleInListViewport) {
     const forcedScrollTop =
@@ -76,7 +81,7 @@ export function planEditorSegmentListSelectionScroll({
         kind: "write-scroll",
         nextScrollTop: forcedScrollTop,
         syncEpoch: true,
-        skipDomCorrection: false,
+        skipDomCorrection: true,
       };
     }
   }
@@ -154,8 +159,8 @@ export function planEditorSegmentListSelectionScroll({
     return {
       kind: "write-scroll",
       nextScrollTop,
-      syncEpoch: fromListKeyboard,
-      skipDomCorrection: fromListKeyboard,
+      syncEpoch: fromListKeyboard || fromWaveform,
+      skipDomCorrection: fromListKeyboard || fromWaveform,
     };
   }
 

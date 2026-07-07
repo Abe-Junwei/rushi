@@ -71,7 +71,7 @@ describe("dispatchWaveformSelectionGestureDown", () => {
     resetSelectionChromeStoreForTests();
   });
 
-  it("syncs seek immediately and defers reveal/list scroll to rAF when idx changes", async () => {
+  it("syncs seek immediately and list scroll in the same turn when idx changes", () => {
     const ctx = makeCtx(0);
     const timeline = makeTimeline();
     const paintChrome = vi.fn();
@@ -100,9 +100,28 @@ describe("dispatchWaveformSelectionGestureDown", () => {
     expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
       timeline.syncDisplayPlayheadAfterSeek.mock.invocationCallOrder[0],
     );
-    expect(runListScroll).not.toHaveBeenCalled();
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     expect(runListScroll).toHaveBeenCalledWith(1);
+  });
+
+  it("skips preview seek when chrome primary already matches tapped idx", () => {
+    const ctx = makeCtx(0);
+    publishSelectionChromeForInput(
+      ctx,
+      { primaryIdx: 1, selectedSet: new Set([1]) },
+      { listRoot: null, overlayRoot: null },
+    );
+    const timeline = makeTimeline();
+    const runListScroll = vi.fn();
+
+    const result = dispatchWaveformSelectionGestureDown(ctx, timeline, 1, {
+      paintChrome: vi.fn(),
+      runListScroll,
+      commitSelectedIdxRef: vi.fn(),
+    });
+
+    expect(result).toEqual({ applied: false, viewportSyncedOnDown: false });
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(runListScroll).not.toHaveBeenCalled();
   });
 
   it("skips viewport and list scroll when idx unchanged and chrome in sync", () => {

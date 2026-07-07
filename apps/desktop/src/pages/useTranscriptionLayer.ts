@@ -229,6 +229,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  const focusSegmentAfterWaveformCreate = useCallback((idx: number) => {
+    selection.lastSegmentSelectSourceRef.current = "waveform";
+    window.requestAnimationFrame(() => {
+      keyboard.focusSegmentTextarea(idx);
+    });
+  }, [keyboard.focusSegmentTextarea, selection.lastSegmentSelectSourceRef]);
+
   return {
     tierScrollRef: timeline.tierScrollRef,
     segmentListRef,
@@ -311,6 +318,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     focusWaveformShell: selection.focusWaveformShell,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     focusSegmentTextarea: keyboard.focusSegmentTextarea,
+    focusSegmentAfterWaveformCreate,
     containerRef: wf.containerRef,
     waveformStickyShellRef: wf.stickyShellRef,
     waveformStretchShellRef: wf.stretchShellRef,

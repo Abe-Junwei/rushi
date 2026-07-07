@@ -63,13 +63,7 @@ describe("planEditorSegmentListSelectionScroll", () => {
       useVirtualList: true,
       source: "waveform",
     });
-    expect(waveformAtFive.kind).toBe("write-scroll");
-    if (waveformAtFive.kind === "write-scroll") {
-      expect(waveformAtFive.nextScrollTop).toBeCloseTo(
-        expectedCenterScrollTop(index, rowMin, stride, viewport, scrollHeight),
-        0,
-      );
-    }
+    expect(waveformAtFive.kind).toBe("skip");
 
     const keyboardAtFive = planEditorSegmentListSelectionScroll({
       root,

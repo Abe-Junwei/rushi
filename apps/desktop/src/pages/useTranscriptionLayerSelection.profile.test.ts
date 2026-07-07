@@ -8,6 +8,7 @@ import {
   setSelectionLatencyProfileEnabled,
 } from "../services/ui/selectionLatencyProfile";
 import { resetSelectionChromeStoreForTests, getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
+import { publishSelectionChromeForInput } from "../services/selection/publishSelectionChromeForInput";
 import { resetWaveformSegmentPreviewViewportSyncForTests } from "../services/waveform/waveformSegmentSelectPreviewSync";
 
 function makeSegments(count: number) {
@@ -586,5 +587,66 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.suppressPlaybackFollowForSelectionSeek).not.toHaveBeenCalled();
+  });
+
+  it("selectSegmentAt skips seek when chrome primary matches but React SC1 lags", () => {
+    const ctx = makeCtx(5);
+    ctx.selectedIdx = 4;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const waveformShellRef = { current: document.createElement("div") };
+    resetSelectionChromeStoreForTests();
+    publishSelectionChromeForInput(
+      ctx,
+      { primaryIdx: 3, selectedSet: new Set([3]) },
+      { listRoot: null, overlayRoot: null },
+    );
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef,
+        segmentListRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "waveform");
+    });
+
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+  });
+
+  it("selectSegmentAt with preferSegmentTextFocus skips waveform shell focus", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const waveformShell = document.createElement("div");
+    const focusSpy = vi.spyOn(waveformShell, "focus");
+    const waveformShellRef = { current: waveformShell };
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef,
+        segmentListRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "waveform", { preferSegmentTextFocus: true });
+    });
+
+    expect(focusSpy).not.toHaveBeenCalled();
+    focusSpy.mockRestore();
   });
 });

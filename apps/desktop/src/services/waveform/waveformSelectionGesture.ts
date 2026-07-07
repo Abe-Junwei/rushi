@@ -8,7 +8,10 @@ import {
   applyWaveformSelectionCommand,
   resolveWaveformSelectionTapCommand,
 } from "../selection/waveformSelectionCommand";
-import { selectionChromePrimaryOutOfSync } from "../selection/selectionChromeStore";
+import {
+  selectionChromeEffectivePrimaryIdx,
+  selectionChromePrimaryOutOfSync,
+} from "../selection/selectionChromeStore";
 import type { TranscriptionLayerInput } from "../../pages/transcriptionLayerTypes";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../../utils/waveformViewMode";
 
@@ -60,7 +63,7 @@ export type WaveformSelectionGestureUpDeps = {
 };
 
 /**
- * pointerdown（Tier-0）：SC2 imperative + seek + playhead；Tier-1（rAF）：reveal + list scroll。
+ * pointerdown（Tier-0）：SC2 imperative + seek + playhead + list scroll。
  */
 export function dispatchWaveformSelectionGestureDown(
   ctx: TranscriptionLayerInput,
@@ -72,7 +75,8 @@ export function dispatchWaveformSelectionGestureDown(
   const segment = ctx.segments[idx];
   if (ctx.busy || !segment) return { applied: false, viewportSyncedOnDown: false };
 
-  const idxChanged = idx !== ctx.selectedIdx;
+  const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(ctx.selectedIdx);
+  const idxChanged = idx !== effectiveSelectedIdx;
   const needsPaint = idxChanged || selectionChromePrimaryOutOfSync(idx);
   if (!needsPaint) return { applied: false, viewportSyncedOnDown: false };
 
@@ -84,9 +88,7 @@ export function dispatchWaveformSelectionGestureDown(
     syncWaveformSegmentSelectPreviewViewport(timeline, planSeg);
     markWaveformSegmentPreviewViewportSynced(idx, sessionId);
     deps.commitSelectedIdxRef(idx);
-    requestAnimationFrame(() => {
-      deps.runListScroll?.(idx);
-    });
+    deps.runListScroll?.(idx);
     return { applied: true, viewportSyncedOnDown: true };
   }
 

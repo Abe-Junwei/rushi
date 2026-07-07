@@ -107,6 +107,12 @@ export function selectionChromePrimaryOutOfSync(primaryIdx: number): boolean {
   return getSelectionChromeSnapshot().primaryIdx !== primaryIdx;
 }
 
+/** SC2 primary when committed; otherwise fall back to React SC1 idx. Caller must reset SC2 on file switch. */
+export function selectionChromeEffectivePrimaryIdx(fallbackIdx: number): number {
+  const primary = getSelectionChromeSnapshot().primaryIdx;
+  return primary >= 0 ? primary : fallbackIdx;
+}
+
 /** Test-only */
 export function resetSelectionChromeStoreForTests(): void {
   snapshot = {

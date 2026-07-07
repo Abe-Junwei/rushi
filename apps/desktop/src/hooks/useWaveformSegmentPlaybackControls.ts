@@ -150,6 +150,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (!isActiveSegmentPlaybackBound(bound, playGenerationRef.current)) return;
       if (!ws.isPlaying()) return;
       const currentSec = ws.getCurrentTime();
+      if (bound.armed && currentSec < bound.endSec - 0.1) return;
       if (!armSegmentPlaybackSession(bound, currentSec)) return;
       if (!segmentPlaybackReachedEnd(currentSec, bound.endSec)) return;
 

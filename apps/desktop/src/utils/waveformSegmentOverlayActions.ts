@@ -1,3 +1,4 @@
+import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
 import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 import type { OverlayPointerUpIntent } from "./waveformSegmentOverlayGestures";
 
@@ -41,7 +42,9 @@ export function resolveSegmentOverlayTap(args: {
   if (args.viewportSyncedOnDown) {
     return { kind: "select", segmentIdx: args.segmentIdx };
   }
-  const committedSelectedIdx = args.selectedIdxAtPointerDown ?? args.selectedIdx;
+  const committedSelectedIdx =
+    args.selectedIdxAtPointerDown ??
+    selectionChromeEffectivePrimaryIdx(args.selectedIdx);
   if (committedSelectedIdx !== args.segmentIdx) {
     return { kind: "select", segmentIdx: args.segmentIdx };
   }

@@ -184,10 +184,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                     options?.overlapPolicy,
                   );
                   if (idx == null || idx < 0) return;
-                  requestAnimationFrame(() => {
-                    tx.selectSegmentAt(idx, "waveform");
-                    requestAnimationFrame(() => tx.focusSegmentTextarea(idx));
-                  });
+                  tx.focusSegmentAfterWaveformCreate(idx);
                 }}
                 onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
                 seekToTime={tx.seek}

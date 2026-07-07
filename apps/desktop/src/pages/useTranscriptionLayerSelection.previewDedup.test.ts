@@ -112,9 +112,6 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
     act(() => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
-    await act(async () => {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
-    });
     expect(applyListScroll).toHaveBeenCalledTimes(1);
     expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
 
@@ -147,9 +144,6 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
-    });
-    await act(async () => {
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
     });
 
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledTimes(1);

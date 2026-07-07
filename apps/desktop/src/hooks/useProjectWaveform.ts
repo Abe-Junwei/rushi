@@ -254,6 +254,22 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     await playback.togglePlay();
   }, [playback, segmentPlayback]);
 
+  const seek = useCallback(
+    (timeSec: number) => {
+      segmentPlayback.clearSegmentPlaybackBound();
+      playback.seek(timeSec);
+    },
+    [playback, segmentPlayback],
+  );
+
+  const seekByDelta = useCallback(
+    (deltaSec: number) => {
+      segmentPlayback.clearSegmentPlaybackBound();
+      playback.seekByDelta(deltaSec);
+    },
+    [playback, segmentPlayback],
+  );
+
   return {
     containerRef,
     stickyShellRef,
@@ -269,6 +285,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     syncShellLayoutForZoom,
     flushDeferredPeaksLoad: () => flushDeferredPeaksLoadRef.current?.(),
     ...playback,
+    seek,
+    seekByDelta,
     ...globalPlayback,
     ...segmentPlayback,
     togglePlay,

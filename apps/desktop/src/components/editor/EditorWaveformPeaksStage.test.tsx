@@ -69,6 +69,7 @@ function createTranscriptionLayer() {
     formatMediaTime: (sec: number) => `${sec}`,
     clientXToTimeSec: (clientX: number) => clientX / 40,
     selectSegmentAt: vi.fn(),
+    focusSegmentAfterWaveformCreate: vi.fn(),
     revealSelectedSegmentInViewport: vi.fn(),
     playSegmentAtIndex: vi.fn(),
     seek: vi.fn(),

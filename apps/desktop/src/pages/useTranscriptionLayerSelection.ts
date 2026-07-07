@@ -19,6 +19,7 @@ import {
 } from "../services/ui/selectionLatencyProfile";
 import {
   getSelectionChromeSnapshot,
+  selectionChromeEffectivePrimaryIdx,
   selectionChromePrimaryOutOfSync,
 } from "../services/selection/selectionChromeStore";
 import { selectionChromeMatchesPreview } from "../services/selection/selectionChromeMatchesPreview";
@@ -149,7 +150,8 @@ export function useTranscriptionLayerSelection(opts: {
         clearListKeyboardVirtualDisplayPin();
         cancelListKeyboardKeyupReveal();
       }
-      const idxChanged = idx !== c.selectedIdx;
+      const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(c.selectedIdx);
+      const idxChanged = idx !== effectiveSelectedIdx;
       const previewPendingForIdx =
         source === "waveform" &&
         !opts?.shiftKey &&
@@ -195,7 +197,7 @@ export function useTranscriptionLayerSelection(opts: {
         if (isSelectionLatencyProfileEnabled()) {
           selectionProfileScheduleFlush("list");
         }
-        if (shouldFocusWaveformShellForSelectSource(source)) {
+        if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
           selectionProfileTime("focus", focusWaveformShell);
         }
         return;
@@ -230,7 +232,9 @@ export function useTranscriptionLayerSelection(opts: {
           burst.scheduleRevealSelectedSegment("listKeyboard");
         }
         if (isSelectionLatencyProfileEnabled()) selectionProfileScheduleFlush("list");
-        if (shouldFocusWaveformShellForSelectSource(source)) selectionProfileTime("focus", focusWaveformShell);
+        if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
+          selectionProfileTime("focus", focusWaveformShell);
+        }
         return;
       }
 
@@ -266,7 +270,7 @@ export function useTranscriptionLayerSelection(opts: {
             );
           });
         }
-        if (source === "waveform") {
+        if (source === "waveform" && !skipPointerUpDuplicateWork) {
           flushTierScrollFrame({ force: true });
         }
       });
@@ -276,7 +280,9 @@ export function useTranscriptionLayerSelection(opts: {
       if (isSelectionLatencyProfileEnabled()) {
         selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
       }
-      if (shouldFocusWaveformShellForSelectSource(source)) selectionProfileTime("focus", focusWaveformShell);
+      if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
+        selectionProfileTime("focus", focusWaveformShell);
+      }
     },
     [
       burst,

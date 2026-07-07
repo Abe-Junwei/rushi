@@ -68,6 +68,18 @@ describe("resolveSegmentOverlayTap", () => {
     ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
+  it("seeks within when chrome primary matches but React SC1 lags", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 0,
+        selectedIdxAtPointerDown: 2,
+        segmentIdx: 2,
+        pointerTimeSec: 7.5,
+        segment,
+      }),
+    ).toEqual({ kind: "seek-within", timeSec: 7.5 });
+  });
+
   it("seeks within segment when tapping the selected segment", () => {
     expect(
       resolveSegmentOverlayTap({

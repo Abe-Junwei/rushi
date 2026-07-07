@@ -6,6 +6,7 @@ import {
   SELECTION_ROW_STATE,
   selectionRowState,
   selectionChromePrimaryOutOfSync,
+  selectionChromeEffectivePrimaryIdx,
   subscribeSelectionChrome,
 } from "./selectionChromeStore";
 
@@ -70,5 +71,13 @@ describe("selectionChromeStore", () => {
     commitSelectionChrome({ fileId: "f1", primaryIdx: 0, selectedSet: new Set([0]) });
     expect(selectionChromePrimaryOutOfSync(0)).toBe(false);
     expect(selectionChromePrimaryOutOfSync(1)).toBe(true);
+  });
+
+  it("selectionChromeEffectivePrimaryIdx prefers SC2 primary over React SC1", () => {
+    expect(selectionChromeEffectivePrimaryIdx(4)).toBe(4);
+    commitSelectionChrome({ fileId: "f1", primaryIdx: 3, selectedSet: new Set([3]) });
+    expect(selectionChromeEffectivePrimaryIdx(4)).toBe(3);
+    resetSelectionChromeStoreForTests();
+    expect(selectionChromeEffectivePrimaryIdx(-1)).toBe(-1);
   });
 });

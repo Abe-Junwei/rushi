@@ -1,6 +1,9 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { hitSegmentEdgeFromTimelinePointer, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
-import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
+import {
+  getSelectionChromeSnapshot,
+  selectionChromeEffectivePrimaryIdx,
+} from "../services/selection/selectionChromeStore";
 import { isSegmentSnapEnabled, readSegmentOverlayModifiers } from "../utils/segmentOverlayModifiers";
 import type { CreateRangePreview, OverlayDragState, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 import type { SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
@@ -154,7 +157,7 @@ export function useWaveformSegmentDrag(
         anchorClientX: ev.clientX,
         initialStartSec: seg.start_sec,
         initialEndSec: seg.end_sec,
-        selectedIdxAtPointerDown: a.selectedIdx,
+        selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
       });
       interactionStateRef.current = interaction.state;
       dragRef.current = interaction.state.drag;
@@ -211,7 +214,7 @@ export function useWaveformSegmentDrag(
           pointerId: ev.pointerId,
           anchorTimeSec: timeSec,
           anchorClientX: ev.clientX,
-          selectedIdxAtPointerDown: a.selectedIdx,
+          selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
           baseIndices,
         });
         interactionStateRef.current = interaction;
