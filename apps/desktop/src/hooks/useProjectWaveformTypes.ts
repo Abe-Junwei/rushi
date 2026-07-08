@@ -68,4 +68,6 @@ export type UseProjectWaveformOptions = {
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   /** WS audioprocess → visual clock + unified viewport frame. */
   onWsAudioprocessRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  /** Skip duplicate display sync on WS `seeking` after imperative seek (ms timestamp). */
+  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>;
 };

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef } from "react";
-import { createVisualPlayheadClockState } from "../utils/visualPlayheadClock";
+import {
+  createVisualPlayheadClockState,
+  readVisualPlayheadTimeSec,
+} from "../utils/visualPlayheadClock";
 import { resolveDisplayPlayheadTimeSec } from "../utils/waveformDisplayPlayhead";
 import {
   schedulePlaybackViewportFrame,
@@ -22,7 +25,7 @@ export function useWaveformVisualPlayheadClock(input: {
   durationSec: number;
   currentTimeSec: number;
   playbackRate: number;
-  getPlayheadTime: () => number;
+  getRawMediaPlayheadTimeSec: () => number;
 }) {
   const argsRef = useRef(input);
   argsRef.current = input;
@@ -45,7 +48,7 @@ export function useWaveformVisualPlayheadClock(input: {
         isPlaying: argsRef.current.isPlaying,
         isReady: argsRef.current.isReady,
         getVisualPlayheadTimeSec: () => visualTimeSecRef.current,
-        getMediaPlayheadTimeSec: argsRef.current.getPlayheadTime,
+        getRawMediaPlayheadTimeSec: argsRef.current.getRawMediaPlayheadTimeSec,
       }),
     [],
   );
@@ -79,12 +82,21 @@ export function useWaveformVisualPlayheadClock(input: {
       const live = argsRef.current;
       if (!live.isReady) return;
       const dur = live.durationSec;
+      const rate = live.playbackRate;
       const clamped =
         dur > 0 ? Math.max(0, Math.min(timeSec, dur)) : Math.max(0, timeSec);
-      syncPausedTime(clamped);
-      schedulePlaybackViewportFrame(clamped);
+      const nowMs = performance.now();
+      const extrapolated = readVisualPlayheadTimeSec({
+        state: clockStateRef.current,
+        nowMs,
+        rawTimeSec: clamped,
+        durationSec: dur,
+        playbackRate: rate,
+      });
+      visualTimeSecRef.current = extrapolated;
+      schedulePlaybackViewportFrame(extrapolated);
     },
-    [syncPausedTime],
+    [],
   );
 
   const syncDisplayPlayheadAfterSeek = useCallback(

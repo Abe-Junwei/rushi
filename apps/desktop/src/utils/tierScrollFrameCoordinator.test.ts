@@ -16,6 +16,20 @@ describe("tierScrollFrameCoordinator", () => {
     vi.unstubAllGlobals();
   });
 
+  it("runs playback subscribers in priority order without per-frame sort", () => {
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+
+    const order: string[] = [];
+    subscribePlaybackFrame(() => order.push("playhead"), 1);
+    subscribePlaybackFrame(() => order.push("scroll"), 0);
+
+    schedulePlaybackViewportFrame(1.5);
+    expect(order).toEqual(["scroll", "playhead"]);
+  });
+
   it("runs playback subscribers before scroll subscribers in one frame", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);

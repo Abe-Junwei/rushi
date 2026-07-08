@@ -264,7 +264,7 @@ node scripts/check-architecture-guard.mjs
 
 | 期望 | 结果 | 备注 |
 |------|------|------|
-| band visited 色与 playhead **同帧**，无 1 帧撕裂 | ☐ PASS ☐ FAIL | |
+| WS progress / playhead 与 zoom 后视口 **同帧**落位，无明显撕裂（band **无** visited 语段色） | ☐ PASS ☐ FAIL | |
 
 ---
 

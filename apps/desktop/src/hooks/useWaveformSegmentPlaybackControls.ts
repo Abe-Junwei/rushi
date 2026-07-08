@@ -3,6 +3,7 @@ import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 
 import { resolveSegmentPlaybackStartSec } from "../utils/formatMediaTime";
+import { imperativePlayheadSyncSuppressUntil } from "../utils/waveformImperativePlayheadSync";
 import {
   armSegmentPlaybackSession,
   isActiveSegmentPlaybackBound,
@@ -23,8 +24,9 @@ export function useWaveformSegmentPlaybackControls(args: {
   segments: SegmentDto[];
   selectedIdx: number;
   getGlobalPlaybackRate: () => number;
-  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>;
+  getPlayheadTime: () => number;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>;
 }) {
   const {
     wsRef,
@@ -32,8 +34,9 @@ export function useWaveformSegmentPlaybackControls(args: {
     segments,
     selectedIdx,
     getGlobalPlaybackRate,
-    getAuthoritativePlayheadSecRef,
+    getPlayheadTime,
     syncDisplayPlayheadAfterSeekRef,
+    imperativePlayheadSyncSuppressUntilRef,
   } = args;
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const [isSelectedSegmentPlaying, setIsSelectedSegmentPlaying] = useState(false);
@@ -72,18 +75,21 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, [getGlobalPlaybackRate, wsRef]);
 
   const resolvePlayheadSec = useCallback(() => {
-    const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
-    if (fromAuthority != null && Number.isFinite(fromAuthority)) return fromAuthority;
-    const ws = wsRef.current;
-    return ws?.getCurrentTime() ?? 0;
-  }, [getAuthoritativePlayheadSecRef, wsRef]);
+    const t = getPlayheadTime();
+    return Number.isFinite(t) ? t : 0;
+  }, [getPlayheadTime]);
 
   const atomicMediaSeek = useCallback(
     (timeSec: number) => {
       syncDisplayPlayheadAfterSeekRef?.current?.(timeSec);
+      if (imperativePlayheadSyncSuppressUntilRef) {
+        imperativePlayheadSyncSuppressUntilRef.current = imperativePlayheadSyncSuppressUntil(
+          performance.now(),
+        );
+      }
       wsRef.current?.setTime(timeSec);
     },
-    [syncDisplayPlayheadAfterSeekRef, wsRef],
+    [imperativePlayheadSyncSuppressUntilRef, syncDisplayPlayheadAfterSeekRef, wsRef],
   );
 
   const playSegmentAtIndex = useCallback(
@@ -111,7 +117,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       }
       atomicMediaSeek(playFrom);
       try {
-        await ws.play(playFrom);
+        await ws.play();
       } catch {
         if (gen !== playGenerationRef.current) return;
         clearSegmentPlaybackBound();

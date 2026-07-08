@@ -147,4 +147,40 @@ describe("useWaveformPlayback", () => {
 
     expect(result.current.getPlayheadTime()).toBe(9.75);
   });
+
+  it("marks imperative playhead sync suppress window before setTime", () => {
+    const ws = {
+      setTime: vi.fn(),
+      getCurrentTime: () => 0,
+      isPlaying: () => false,
+    };
+    const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
+    const suppressUntilRef = { current: 0 };
+    const before = performance.now();
+
+    const { result } = renderHook(() =>
+      useWaveformPlayback(
+        wsRef,
+        { current: null },
+        true,
+        { current: 60 },
+        { current: 1000 },
+        { current: vi.fn() },
+        undefined,
+        undefined,
+        vi.fn(),
+        { current: vi.fn() },
+        undefined,
+        suppressUntilRef,
+      ),
+    );
+
+    act(() => {
+      result.current.seek(7);
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(7);
+    expect(suppressUntilRef.current).toBeGreaterThan(before);
+    expect(suppressUntilRef.current).toBeLessThanOrEqual(performance.now() + 50);
+  });
 });

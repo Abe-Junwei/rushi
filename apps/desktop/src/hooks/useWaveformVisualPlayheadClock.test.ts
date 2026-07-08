@@ -23,7 +23,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
       setTime: vi.fn(),
       isPlaying: () => false,
     };
-    const getPlayheadTime = vi.fn(() => ws.getCurrentTime());
+    const getRawMediaPlayheadTimeSec = vi.fn(() => ws.getCurrentTime());
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -32,12 +32,12 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 0,
         currentTimeSec: 0,
         playbackRate: 1,
-        getPlayheadTime,
+        getRawMediaPlayheadTimeSec,
       }),
     );
 
     expect(result.current.getDisplayPlayheadTimeSec()).toBe(2.25);
-    expect(getPlayheadTime).toHaveBeenCalledTimes(1);
+    expect(getRawMediaPlayheadTimeSec).toHaveBeenCalledTimes(1);
   });
 
   it("notifies subscribers in priority order via WS audioprocess + unified viewport frame", () => {
@@ -53,7 +53,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getPlayheadTime: () => 0,
+        getRawMediaPlayheadTimeSec: () => 0,
       }),
     );
 
@@ -90,7 +90,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 5,
         playbackRate: 1,
-        getPlayheadTime: () => 5,
+        getRawMediaPlayheadTimeSec: () => 5,
       }),
     );
 
@@ -99,7 +99,40 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
       flushTierScrollFrameForTests();
     });
 
-    expect(result.current.getVisualPlayheadTimeSec()).toBe(5.4);
+    expect(result.current.getVisualPlayheadTimeSec()).toBeGreaterThanOrEqual(5.4);
+    expect(result.current.getVisualPlayheadTimeSec()).toBeLessThanOrEqual(5.45);
+  });
+
+  it("extrapolates visual playhead forward between audioprocess samples", () => {
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 1,
+        playbackRate: 1,
+        getRawMediaPlayheadTimeSec: () => 1,
+      }),
+    );
+
+    act(() => {
+      result.current.onWsAudioprocess(1);
+      flushTierScrollFrameForTests();
+    });
+    const first = result.current.getVisualPlayheadTimeSec();
+
+    act(() => {
+      result.current.onWsAudioprocess(1);
+      flushTierScrollFrameForTests();
+    });
+    const second = result.current.getVisualPlayheadTimeSec();
+
+    expect(second).toBeGreaterThanOrEqual(first);
   });
 
   it("stops notifying after unsubscribe", () => {
@@ -115,7 +148,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getPlayheadTime: () => 0,
+        getRawMediaPlayheadTimeSec: () => 0,
       }),
     );
 
@@ -139,7 +172,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(hits.length).toBe(1);
   });
 
-  it("getDisplayPlayheadTimeSec uses visual time when paused and visual when playing", () => {
+  it("getDisplayPlayheadTimeSec catches up to raw media while playing", () => {
     const { result, rerender } = renderHook(
       (props: { isPlaying: boolean }) =>
         useWaveformVisualPlayheadClock({
@@ -148,7 +181,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: 5,
           playbackRate: 1,
-          getPlayheadTime: () => 5,
+          getRawMediaPlayheadTimeSec: () => 8,
         }),
       { initialProps: { isPlaying: false } },
     );
@@ -157,7 +190,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
 
     rerender({ isPlaying: true });
     result.current.visualTimeSecRef.current = 7.25;
-    expect(result.current.getDisplayPlayheadTimeSec()).toBe(7.25);
+    expect(result.current.getDisplayPlayheadTimeSec()).toBe(8);
   });
 
   it("syncDisplayPlayheadAfterSeek notifies subscribers while paused", () => {
@@ -173,7 +206,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 2,
         playbackRate: 1,
-        getPlayheadTime: () => 2,
+        getRawMediaPlayheadTimeSec: () => 2,
       }),
     );
 
@@ -200,7 +233,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: props.currentTimeSec,
           playbackRate: 1,
-          getPlayheadTime: () => props.currentTimeSec,
+          getRawMediaPlayheadTimeSec: () => props.currentTimeSec,
         }),
       { initialProps: { currentTimeSec: 165 } },
     );
@@ -234,7 +267,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 12,
         playbackRate: 1,
-        getPlayheadTime: () => 12,
+        getRawMediaPlayheadTimeSec: () => 12,
       }),
     );
 

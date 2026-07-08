@@ -7,9 +7,10 @@ describe("projectWaveformWaveSurferEvents", () => {
     expect(source).toContain('ws.on("audioprocess"');
   });
 
-  it("primes visual clock on play and syncs on seeking", () => {
+  it("primes visual clock on play and syncs on seeking when not suppressed", () => {
     expect(source).toContain("optsRef.current.onWsAudioprocessRef?.current?.(t)");
     expect(source).toContain('ws.on("play"');
+    expect(source).toContain("shouldSuppressSeekingPlayheadSync");
     expect(source).toContain("syncDisplayPlayheadAfterSeekRef?.current?.(t)");
   });
 

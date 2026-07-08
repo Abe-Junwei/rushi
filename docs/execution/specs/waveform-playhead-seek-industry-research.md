@@ -180,4 +180,5 @@
 |------|------|
 | 2026-07-07 | 初版：WaveSurfer / Peaks / Audacity / Subtitle Edit 源码对照 + Rushi 差距与决策 |
 | 2026-07-07 | P0 落地：`waveformAtomicSeek`、权威 playhead 注入 `playSegmentAtIndex`、`fromSec` 双击播、Peaks 序 seek |
-| 2026-07-07 | P1 落地：audioprocess 统一帧、合并 playback+scroll rAF、band visited 边界重绘 |
+| 2026-07-07 | P1 落地：audioprocess 统一帧、合并 playback+scroll rAF |
+| 2026-07-08 | 更正：band visited 边界重绘已废弃（产品用 WS progress / playhead，不在 band 着色）；另落地 seek 去重 + display/authority 统一 catch-up |

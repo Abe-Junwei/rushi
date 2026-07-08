@@ -83,7 +83,8 @@ ws.getCurrentTime()  (timeupdate 量化)
 
 - [x] 调研 brief 完成
 - [x] Phase 2 编码（单 tick + 单时钟）——typecheck / 全量 test / 架构守卫绿
-- [x] Phase 3（2026-07-07）：WS `audioprocess` 驱播放 tick；`tierScrollFrameCoordinator` 合并 playback + scroll 单 rAF；播放期 band 仅 visited 边界变时重绘
+- [x] Phase 3（2026-07-07）：WS `audioprocess` 驱播放 tick；`tierScrollFrameCoordinator` 合并 playback + scroll 单 rAF
+- [x] Phase 3 follow-up（2026-07-08）：产品边界确认 — band **不**按 playhead 渲染 visited 色，故移除 `visitedChanged` 空转重绘门控；已播放仅由 WS progress / playhead 表示
 - [ ] center/edge 手测无抖无跳（需在桌面运行时复验）
 
 **变更记录**
@@ -91,3 +92,4 @@ ws.getCurrentTime()  (timeupdate 量化)
 | 日期 | 说明 |
 |------|------|
 | 2026-06-19 | 初版：对照 WaveSurfer 单 rAF timer / Peaks single loop / Audacity；定「单 tick 发布订阅 + 单时钟」决策 |
+| 2026-07-08 | 更正：band visited 着色已废弃（见 `desktop-waveform-engine.md`「已播放显示边界」），勿再把 visited 边界重绘当 P1 完成项 |

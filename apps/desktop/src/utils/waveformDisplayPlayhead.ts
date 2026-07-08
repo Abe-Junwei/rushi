@@ -3,10 +3,14 @@ export function resolveDisplayPlayheadTimeSec(input: {
   isPlaying: boolean;
   isReady: boolean;
   getVisualPlayheadTimeSec: () => number;
-  getMediaPlayheadTimeSec: () => number;
+  getRawMediaPlayheadTimeSec: () => number;
 }): number {
-  if (input.isReady) return input.getVisualPlayheadTimeSec();
-  return input.getMediaPlayheadTimeSec();
+  if (!input.isReady) return input.getRawMediaPlayheadTimeSec();
+  const visual = input.getVisualPlayheadTimeSec();
+  if (!input.isPlaying) return visual;
+  const media = input.getRawMediaPlayheadTimeSec();
+  if (Number.isFinite(media) && media > visual) return media;
+  return visual;
 }
 
 /** Playback / seek decisions — same contract as display playhead (single authority when ready). */

@@ -86,7 +86,7 @@
 
 | # | 场景 | 期望 |
 |---|------|------|
-| H16 | 播放中 zoom in/out | band visited 与 playhead **无 1 帧撕裂** |
+| H16 | 播放中 zoom in/out | WS progress / playhead 同帧落位，无明显撕裂（band 无 visited 语段色） |
 | H17 | seek / 点选语段 | band **立即**重绘 |
 | H18 | 长音频快速横滚 tier | band 与 tier **同步** |
 | H19 | Shift + 空白短 tap（已多选） | **不清**多选（S9） |

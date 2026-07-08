@@ -8,7 +8,6 @@ import {
   subscribeSelectionChrome,
 } from "../services/selection/selectionChromeStore";
 import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
-import { resolveVisitedSegmentIndexAtPlayhead } from "../utils/segmentChrome";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
@@ -134,14 +133,14 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   const lastCssLeftRef = useRef<number | null>(null);
   const lastPaintedChromeVersionRef = useRef(-1);
   const lastPaintedPrimaryIdxRef = useRef(-2);
-  const lastPaintedVisitedIdxRef = useRef(-2);
   const playheadSecRef = useRef<number | undefined>(undefined);
+  const overlayRootRef = useRef<HTMLElement | null>(null);
 
   const invalidatePaintWindow = () => {
     lastPaintWindowRef.current = { leftPx: -1, widthPx: 0, heightPx: 0, bufferPx: 0 };
     lastCssLeftRef.current = null;
     lastPaintedPrimaryIdxRef.current = -2;
-    lastPaintedVisitedIdxRef.current = -2;
+    overlayRootRef.current = null;
   };
 
   useLayoutEffect(() => {
@@ -162,6 +161,12 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         filterExcludesPrimary: input.filterExcludesPrimary,
       });
       const tierMetrics = tierMetricsRef.current;
+      let overlayRoot = overlayRootRef.current;
+      if (!overlayRoot || !overlayRoot.isConnected) {
+        overlayRoot =
+          tierMetrics.tierScrollRef.current?.querySelector(".waveform-segment-overlay") ?? null;
+        overlayRootRef.current = overlayRoot;
+      }
       const renderProjection = resolveWaveformSelectionRenderProjection({
         segmentCount: input.segments.length,
         selectedIdx: selectionView.selectedIdx,
@@ -171,8 +176,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         selectionCount: selectionView.selectionCount,
         isContiguousSelection: selectionView.isContiguousSelection,
         draftIdx: input.draftIdx,
-        overlayRoot:
-          tierMetrics.tierScrollRef.current?.querySelector(".waveform-segment-overlay") ?? null,
+        overlayRoot,
       });
       const skipIndexSet = renderProjection.canvasSkipIndexSet;
       const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetricsDuringScrollFrame({
@@ -195,13 +199,10 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         playheadSecRef.current ??
         readPlaybackTimeDuringViewportFrame() ??
         getPlayheadSec?.();
-      const visitedIdx = resolveVisitedSegmentIndexAtPlayhead(input.segments, playheadSec ?? -1);
-      const visitedChanged = visitedIdx !== lastPaintedVisitedIdxRef.current;
 
       if (
         !selectionChromeChanged &&
         !selectionPrimaryChanged &&
-        !visitedChanged &&
         !segmentBandCanvasNeedsRepaint({
           scrollLeftPx,
           viewportWidthPx,
@@ -267,7 +268,6 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       lastPaintWindowRef.current = { leftPx, widthPx, heightPx, bufferPx };
       lastPaintedChromeVersionRef.current = chromeVersionNow;
       lastPaintedPrimaryIdxRef.current = selectionView.selectedIdx;
-      lastPaintedVisitedIdxRef.current = visitedIdx;
     };
 
     const schedulePaint = () => {

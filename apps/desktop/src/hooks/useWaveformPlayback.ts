@@ -7,6 +7,7 @@ import {
 import { timelinePxToTime } from "../utils/waveformProjection";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import type { TierViewportMetricsRef } from "./useProjectWaveformTypes";
+import { imperativePlayheadSyncSuppressUntil } from "../utils/waveformImperativePlayheadSync";
 
 export function useWaveformPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
@@ -20,16 +21,31 @@ export function useWaveformPlayback(
   commitSeekUi?: (timeSec: number) => void,
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
   getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>,
+  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>,
 ) {
+  const markImperativePlayheadSync = useCallback(() => {
+    if (imperativePlayheadSyncSuppressUntilRef) {
+      imperativePlayheadSyncSuppressUntilRef.current = imperativePlayheadSyncSuppressUntil(
+        performance.now(),
+      );
+    }
+  }, [imperativePlayheadSyncSuppressUntilRef]);
+
   const resolvePlayheadSec = useCallback(() => {
     const ws = wsRef.current;
     if (!isReady) {
       return ws?.getCurrentTime() ?? 0;
     }
     const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
-    if (fromAuthority != null && Number.isFinite(fromAuthority)) return fromAuthority;
+    if (fromAuthority != null && Number.isFinite(fromAuthority)) {
+      return fromAuthority;
+    }
     return ws?.getCurrentTime() ?? 0;
   }, [getAuthoritativePlayheadSecRef, isReady, wsRef]);
+
+  const getRawMediaPlayheadTimeSec = useCallback((): number => {
+    return wsRef.current?.getCurrentTime() ?? 0;
+  }, [wsRef]);
 
   const seek = useCallback(
     (timeSec: number) => {
@@ -39,10 +55,18 @@ export function useWaveformPlayback(
       const clamped =
         d <= 0 ? Math.max(0, timeSec) : Math.max(0, Math.min(timeSec, d));
       syncDisplayPlayheadAfterSeekRef?.current?.(clamped);
+      markImperativePlayheadSync();
       ws.setTime(clamped);
       commitSeekUi?.(clamped);
     },
-    [commitSeekUi, isReady, layoutDurationSecRef, syncDisplayPlayheadAfterSeekRef, wsRef],
+    [
+      commitSeekUi,
+      isReady,
+      layoutDurationSecRef,
+      markImperativePlayheadSync,
+      syncDisplayPlayheadAfterSeekRef,
+      wsRef,
+    ],
   );
 
   const togglePlay = useCallback(async () => {
@@ -68,10 +92,19 @@ export function useWaveformPlayback(
       const t =
         d > 0 ? Math.max(0, Math.min(d, base + deltaSec)) : Math.max(0, base + deltaSec);
       syncDisplayPlayheadAfterSeekRef?.current?.(t);
+      markImperativePlayheadSync();
       ws.setTime(t);
       commitSeekUi?.(t);
     },
-    [commitSeekUi, isReady, layoutDurationSecRef, resolvePlayheadSec, syncDisplayPlayheadAfterSeekRef, wsRef],
+    [
+      commitSeekUi,
+      isReady,
+      layoutDurationSecRef,
+      markImperativePlayheadSync,
+      resolvePlayheadSec,
+      syncDisplayPlayheadAfterSeekRef,
+      wsRef,
+    ],
   );
 
   const clientXToTimeSec = useCallback(
@@ -114,6 +147,7 @@ export function useWaveformPlayback(
     seek,
     togglePlay,
     getPlayheadTime,
+    getRawMediaPlayheadTimeSec,
     seekByDelta,
     clientXToTimeSec,
   };

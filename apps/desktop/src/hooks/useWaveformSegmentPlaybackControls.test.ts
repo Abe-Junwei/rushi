@@ -28,7 +28,6 @@ describe("useWaveformSegmentPlaybackControls", () => {
   it("uses authoritative playhead instead of stale ws.getCurrentTime", async () => {
     const ws = makeWs({ getCurrentTime: () => 2 });
     const wsRef = { current: ws };
-    const authorityRef = { current: () => 15 };
 
     const { result } = renderHook(() =>
       useWaveformSegmentPlaybackControls({
@@ -37,7 +36,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         segments: [...segments],
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
-        getAuthoritativePlayheadSecRef: authorityRef,
+        getPlayheadTime: () => 15,
       }),
     );
 
@@ -46,7 +45,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(ws.setTime).toHaveBeenCalledWith(15);
-    expect(ws.play).toHaveBeenCalledWith(15);
+    expect(ws.play).toHaveBeenCalledWith();
   });
 
   it("syncs imperative playhead before ws.setTime on segment play", async () => {
@@ -62,6 +61,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         segments: [...segments],
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => 2,
         syncDisplayPlayheadAfterSeekRef: syncRef,
       }),
     );
@@ -80,7 +80,6 @@ describe("useWaveformSegmentPlaybackControls", () => {
   it("prefers explicit fromSec over authority", async () => {
     const ws = makeWs();
     const wsRef = { current: ws };
-    const authorityRef = { current: () => 11 };
 
     const { result } = renderHook(() =>
       useWaveformSegmentPlaybackControls({
@@ -89,7 +88,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         segments: [...segments],
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
-        getAuthoritativePlayheadSecRef: authorityRef,
+        getPlayheadTime: () => 11,
       }),
     );
 
@@ -98,6 +97,6 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(ws.setTime).toHaveBeenCalledWith(16.5);
-    expect(ws.play).toHaveBeenCalledWith(16.5);
+    expect(ws.play).toHaveBeenCalledWith();
   });
 });

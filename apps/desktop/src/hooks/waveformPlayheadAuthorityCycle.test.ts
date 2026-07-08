@@ -2,7 +2,6 @@
 
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformVisualPlayheadClock } from "./useWaveformVisualPlayheadClock";
 
 /** Regression: band canvas paint calls getDisplayPlayheadTimeSec before ws ready. */
@@ -13,24 +12,7 @@ describe("waveform playhead authority cycle", () => {
       setTime: vi.fn(),
       isPlaying: () => false,
     };
-    const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
     const authorityRef: { current: (() => number) | null } = { current: null };
-
-    const playback = renderHook(() =>
-      useWaveformPlayback(
-        wsRef,
-        { current: null },
-        false,
-        { current: 120 },
-        { current: 2000 },
-        { current: vi.fn() },
-        undefined,
-        undefined,
-        vi.fn(),
-        { current: vi.fn() },
-        authorityRef,
-      ),
-    );
 
     const clock = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -39,7 +21,7 @@ describe("waveform playhead authority cycle", () => {
         durationSec: 0,
         currentTimeSec: 0,
         playbackRate: 1,
-        getPlayheadTime: () => playback.result.current.getPlayheadTime(),
+        getRawMediaPlayheadTimeSec: () => ws.getCurrentTime(),
       }),
     );
 

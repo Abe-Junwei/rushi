@@ -11,6 +11,7 @@ import {
 
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
 import { shouldCoalesceSelectionSeekChrome } from "../utils/waveformSelectionSeekChrome";
+import { shouldSuppressSeekingPlayheadSync } from "../utils/waveformImperativePlayheadSync";
 
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
@@ -126,14 +127,19 @@ export function bindProjectWaveformWaveSurferEvents(
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
-      optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
+      const nowMs = performance.now();
+      const suppressUntilMs = optsRef.current.imperativePlayheadSyncSuppressUntilRef?.current ?? 0;
+      if (!shouldSuppressSeekingPlayheadSync(nowMs, suppressUntilMs)) {
+        optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
+      }
       setCurrentTime(t);
       const duration = ws.getDuration();
       if (duration > 0) {
         applyWaveSurferProgressWithoutClip(ws, t / duration);
       }
-      const suppressUntilMs = optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
-      if (shouldCoalesceSelectionSeekChrome(performance.now(), suppressUntilMs)) {
+      const selectionChromeSuppressUntilMs =
+        optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
+      if (shouldCoalesceSelectionSeekChrome(performance.now(), selectionChromeSuppressUntilMs)) {
         requestWaveformSegmentBandPaint();
         return;
       }

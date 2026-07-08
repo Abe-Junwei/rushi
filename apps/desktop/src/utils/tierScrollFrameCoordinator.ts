@@ -8,7 +8,16 @@ type PlaybackFrameSubscriber = {
 };
 
 const subscribers = new Set<TierScrollFrameSubscriber>();
-const playbackSubscribers = new Set<PlaybackFrameSubscriber>();
+const playbackSubscribers: PlaybackFrameSubscriber[] = [];
+
+function insertPlaybackSubscriber(entry: PlaybackFrameSubscriber): void {
+  const insertAt = playbackSubscribers.findIndex((sub) => sub.priority > entry.priority);
+  if (insertAt === -1) {
+    playbackSubscribers.push(entry);
+    return;
+  }
+  playbackSubscribers.splice(insertAt, 0, entry);
+}
 let frameRafId = 0;
 let frameScheduled = false;
 let coalescedScrollLeftPx: number | null = null;
@@ -85,8 +94,7 @@ function runTierScrollFrame(): void {
   waveformScrollProfileBeginBurst();
   if (pendingPlaybackTimeSec != null) {
     playbackTimeDuringFrame = pendingPlaybackTimeSec;
-    const ordered = [...playbackSubscribers].sort((a, b) => a.priority - b.priority);
-    for (const sub of ordered) {
+    for (const sub of playbackSubscribers) {
       sub.cb(pendingPlaybackTimeSec);
     }
     pendingPlaybackTimeSec = null;
@@ -119,9 +127,10 @@ export function subscribePlaybackFrame(
   priority = 1,
 ): () => void {
   const entry: PlaybackFrameSubscriber = { cb, priority };
-  playbackSubscribers.add(entry);
+  insertPlaybackSubscriber(entry);
   return () => {
-    playbackSubscribers.delete(entry);
+    const idx = playbackSubscribers.indexOf(entry);
+    if (idx >= 0) playbackSubscribers.splice(idx, 1);
   };
 }
 
@@ -187,7 +196,7 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
   }
   frameScheduled = false;
   subscribers.clear();
-  playbackSubscribers.clear();
+  playbackSubscribers.length = 0;
   scrollFrameMetricsSnapshot = null;
   metricsSupplier = null;
   coalescedScrollLeftPx = null;

@@ -59,6 +59,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
   const lastTimeUiCommitMsRef = useRef(0);
+  const imperativePlayheadSyncSuppressUntilRef = useRef(0);
   const scrollNotifyRafRef = useRef(0);
   const pendingScrollLeftRef = useRef(0);
   const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(layoutPxPerSec));
@@ -112,6 +113,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     commitSeekUi,
     options.syncDisplayPlayheadAfterSeekRef,
     options.getAuthoritativePlayheadSecRef,
+    options.imperativePlayheadSyncSuppressUntilRef ?? imperativePlayheadSyncSuppressUntilRef,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
@@ -123,8 +125,10 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     segments,
     selectedIdx,
     getGlobalPlaybackRate: () => globalPlayback.globalPlaybackRate,
-    getAuthoritativePlayheadSecRef: options.getAuthoritativePlayheadSecRef,
+    getPlayheadTime: playback.getPlayheadTime,
     syncDisplayPlayheadAfterSeekRef: options.syncDisplayPlayheadAfterSeekRef,
+    imperativePlayheadSyncSuppressUntilRef:
+      options.imperativePlayheadSyncSuppressUntilRef ?? imperativePlayheadSyncSuppressUntilRef,
   });
 
   const requestViewportChromeFrame = useCallback(() => {
