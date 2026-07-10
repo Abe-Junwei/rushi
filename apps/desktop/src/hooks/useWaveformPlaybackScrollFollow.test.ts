@@ -200,7 +200,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(playbackFollowScroll).toHaveBeenCalledWith(1300);
+    expect(playbackFollowScroll).toHaveBeenCalledWith(1300, { deferLayoutCommit: false });
   });
 
   it("pauses follow while user tier scroll suppress is active", () => {

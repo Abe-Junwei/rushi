@@ -38,6 +38,13 @@ export const WAVEFORM_BACKGROUND_PEAKS_ENABLED = true;
 /** 程序内设定：peaks 就绪时在播放中立即热切换（否则暂停后切换）。 */
 export const WAVEFORM_HOT_SWITCH_WHILE_PLAYING = true;
 
+/**
+ * 程序内设定：播放跟随写入 tier scroll 时延迟 React `tierScrollLayout` commit
+ *（live refs / DOM 仍每帧更新）。设为 `false` 可回滚到每帧立即 refreshLayout。
+ * WS-2a 签收后可退役。
+ */
+export const WAVEFORM_PLAYBACK_FOLLOW_DEFER_LAYOUT_COMMIT = true;
+
 export const WAVEFORM_HEIGHT_MIN = 56;
 export const WAVEFORM_HEIGHT_MAX = 280;
 /** 与 Stitch 波形区默认视觉高度一致（`19-stitch-waveform-polish-spec` §4.2）。 */

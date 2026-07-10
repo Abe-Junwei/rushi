@@ -429,7 +429,44 @@ describe("useTierScrollSync", () => {
     expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(240);
   });
 
-  it("playback follow writes scroll and commits layout immediately", async () => {
+  it("playback follow writes scroll and defers React layout commit while playing", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    const layoutBefore = result.current.tierScrollLayout.scrollLeftPx;
+
+    act(() => {
+      result.current.playbackFollowScroll(144);
+    });
+
+    expect(tier.scrollLeft).toBe(144);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(144);
+    // Live DOM/refs update immediately; React layout stays deferred (prefs default).
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(layoutBefore);
+
+    act(() => {
+      result.current.refreshTierScrollLayout();
+    });
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(144);
+  });
+
+  it("playback follow can force immediate layout commit via options", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -450,7 +487,7 @@ describe("useTierScrollSync", () => {
     });
 
     act(() => {
-      result.current.playbackFollowScroll(144);
+      result.current.playbackFollowScroll(144, { deferLayoutCommit: false });
     });
 
     expect(tier.scrollLeft).toBe(144);

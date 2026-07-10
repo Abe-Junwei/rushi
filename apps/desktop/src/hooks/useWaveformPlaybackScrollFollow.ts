@@ -15,7 +15,10 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   enabled: boolean;
   followMode: WaveformPlaybackScrollFollowMode;
   getPlayheadTimeSec: () => number;
-  playbackFollowScroll: (scrollLeftPx: number) => void;
+  playbackFollowScroll: (
+    scrollLeftPx: number,
+    options?: { deferLayoutCommit?: boolean },
+  ) => void;
   /** Pause follow while user manually scrolls the tier. */
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
   /** Single playback tick bus; follow runs here (priority 0) instead of its own rAF. */
@@ -33,6 +36,8 @@ function applyPlaybackScrollFollowTarget(args: {
   playheadTimeSec: number;
   playbackFollowScroll: UseWaveformPlaybackScrollFollowArgs["playbackFollowScroll"];
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
+  /** Playing frames defer React layout; paused snaps commit immediately. */
+  deferLayoutCommit?: boolean;
 }): void {
   if (args.userScrollSuppressUntilRef && performance.now() < args.userScrollSuppressUntilRef.current) {
     return;
@@ -53,7 +58,11 @@ function applyPlaybackScrollFollowTarget(args: {
     currentScrollLeftPx,
   });
   if (Math.abs(target - currentScrollLeftPx) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
-    args.playbackFollowScroll(target);
+    if (args.deferLayoutCommit !== undefined) {
+      args.playbackFollowScroll(target, { deferLayoutCommit: args.deferLayoutCommit });
+    } else {
+      args.playbackFollowScroll(target);
+    }
   }
 }
 
@@ -94,6 +103,8 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
       playheadTimeSec: getPlayheadTimeSec(),
       playbackFollowScroll,
       userScrollSuppressUntilRef,
+      // Paused / mode-change snaps must commit React layout immediately.
+      deferLayoutCommit: false,
     });
   }, [
     durationSec,
@@ -122,6 +133,7 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
         playheadTimeSec: timeSec,
         playbackFollowScroll,
         userScrollSuppressUntilRef,
+        // Prefer prefs default (defer while playing) — omit so flag controls rollback.
       });
     }, PLAYHEAD_FRAME_PRIORITY_SCROLL);
   }, [

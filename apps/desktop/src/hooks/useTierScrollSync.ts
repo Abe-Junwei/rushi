@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react"
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 import { registerTierScrollFrameMetricsSupplier, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { resolveTierViewportMetrics } from "../utils/waveformViewport";
+import { WAVEFORM_PLAYBACK_FOLLOW_DEFER_LAYOUT_COMMIT } from "../utils/waveformPrefs";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
 import { useTierScrollProgrammaticWrites, type PendingProgrammaticScrollWrite } from "./tierScrollProgrammaticWrites";
@@ -218,8 +219,10 @@ export function useTierScrollSync(args: {
         cancelTransientScrollMotion("minimap");
         applyScrollLeftPx(px, "program", { immediate: true });
       },
-      playbackFollowScroll: (px: number) => {
-        applyScrollLeftPx(px, "program", { deferLayoutCommit: false, immediate: true });
+      playbackFollowScroll: (px: number, options?: { deferLayoutCommit?: boolean }) => {
+        const defer =
+          options?.deferLayoutCommit ?? WAVEFORM_PLAYBACK_FOLLOW_DEFER_LAYOUT_COMMIT;
+        applyScrollLeftPx(px, "program", { deferLayoutCommit: defer, immediate: true });
       },
       userScrubScroll: commitUserScrubScroll,
       applyWheelScrollDelta,
