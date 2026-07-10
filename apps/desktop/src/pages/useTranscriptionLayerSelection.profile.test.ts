@@ -589,7 +589,8 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.suppressPlaybackFollowForSelectionSeek).not.toHaveBeenCalled();
   });
 
-  it("selectSegmentAt skips seek when chrome primary matches but React SC1 lags", () => {
+  it("selectSegmentAt still seeks when chrome already matches but SC1 lags (no preview seek)", () => {
+    // Playing-state pointerdown paints SC2 without seeking; pointerup must still seek.
     const ctx = makeCtx(5);
     ctx.selectedIdx = 4;
     const ctxRef = { current: ctx };
@@ -618,8 +619,54 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(3, "waveform");
     });
 
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+  });
+
+  it("playing pointerdown defers seek; pointerup selectAndSeekStart still seeks segment start", () => {
+    const ctx = makeCtx(5);
+    ctx.selectedIdx = 0;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    (timeline as { wf?: { isPlaying: boolean } }).wf = { isPlaying: true };
+    const setSelectedIdxUi = vi.fn();
+    resetSelectionChromeStoreForTests();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      const synced = result.current.dispatchWaveformSelectionGesture({
+        phase: "down",
+        idx: 3,
+        sessionId: "play-s1",
+      });
+      expect(synced).toBe(false);
+    });
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
-    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({
+        phase: "up",
+        idx: 3,
+        pointerTimeSec: 6.8,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: false,
+        sessionId: "play-s1",
+      });
+    });
+
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, { previewSessionId: "play-s1" });
   });
 
   it("selectSegmentAt with preferSegmentTextFocus skips waveform shell focus", () => {

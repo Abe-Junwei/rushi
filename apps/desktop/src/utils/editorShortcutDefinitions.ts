@@ -103,8 +103,8 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     id: "playback.toggle",
     bindings: [BINDING.plain(" "), BINDING.mod(" ", { shift: true, allowInTextarea: true })],
     keysLabel: "Space / ⇧⌘/Ctrl+Shift+Space",
-    footerAction: "播放/暂停",
-    panelAction: "播放或暂停；语段正文内请用 ⇧⌘Space（Space 会输入空格；勿用 ⌘Space，与 macOS 冲突）",
+    footerAction: "播放/暂停当前语段",
+    panelAction: "播放或暂停当前选中语段；语段正文内请用 ⇧⌘Space（Space 会输入空格；勿用 ⌘Space，与 macOS 冲突）",
     allowInTextarea: false,
   },
   {

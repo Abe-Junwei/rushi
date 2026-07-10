@@ -75,6 +75,7 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   const { viewportWidthPx } = tierViewport;
   const mediaDurationSec = tx.mediaDurationSec;
   const stripDisabled = c.busy || !tx.isReady;
+  const segmentPlayDisabled = stripDisabled || !selectedSegment;
 
   return (
     <div className="waveform-bottom-toolbar editor-workbench-toolbar">
@@ -84,11 +85,11 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
               <button
                 type="button"
                 className="waveform-playback-btn"
-                disabled={stripDisabled}
-                onClick={() => void tx.togglePlay()}
-                aria-label={tx.isPlaying ? "暂停" : "播放"}
+                disabled={segmentPlayDisabled}
+                onClick={() => void tx.handleToggleSelectedWaveformPlay()}
+                aria-label={tx.isSelectedSegmentPlaying ? "暂停当前语段" : "播放当前语段"}
               >
-                {tx.isPlaying ? (
+                {tx.isSelectedSegmentPlaying ? (
                   <PRODUCT_ICON.pauseAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 ) : (
                   <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />

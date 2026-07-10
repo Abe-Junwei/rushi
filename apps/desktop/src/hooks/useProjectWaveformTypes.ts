@@ -47,8 +47,8 @@ export type UseProjectWaveformOptions = {
   tierScrollRef?: React.RefObject<HTMLDivElement | null>;
   /** Tier scroll live/layout metrics — same read path as band canvas / playhead. */
   tierViewportMetricsRef?: TierViewportMetricsRef;
-  /** After reveal/flushTierScrollFrame, skip redundant seeking resync (ms timestamp). */
-  selectionSeekChromeSuppressUntilRef?: React.MutableRefObject<number>;
+  /** After reveal/flushTierScrollFrame, playback follow suppression window. */
+  playbackFollowSuppressUntilRef?: React.MutableRefObject<number>;
   /** Sticky waveform clip shell — resize sync writes width imperatively. */
   stickyShellRef?: React.RefObject<HTMLDivElement | null>;
   /** Inner stretch wrapper — temporary scaleX during viewport resize. */
@@ -62,12 +62,10 @@ export type UseProjectWaveformOptions = {
   /** Refit fit-all px/s when tier viewport grows (e.g. fullscreen). */
   refitFitAllPxPerSec?: (viewportWidthPx: number) => number | null;
   onFitAllPxPerSecRefit?: (pxPerSec: number) => void;
-  /** Set by timeline after visual playhead clock mounts — segment play / bound reads. */
-  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>;
+  /** Ref to getDisplayPlayheadTimeSec — seek delta base reads single time source. */
+  getDisplayPlayheadTimeSecRef?: React.MutableRefObject<(() => number) | null>;
   /** Peaks-order seek: imperative playhead before media (`ws.setTime`). */
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   /** WS audioprocess → visual clock + unified viewport frame. */
   onWsAudioprocessRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
-  /** Skip duplicate display sync on WS `seeking` after imperative seek (ms timestamp). */
-  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>;
 };

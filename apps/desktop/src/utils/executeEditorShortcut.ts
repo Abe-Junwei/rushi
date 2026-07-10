@@ -14,6 +14,7 @@ import {
   resolveConfirmAdvanceStartingIdx,
   type ConfirmAdvanceTabQueueRef,
 } from "./confirmAdvanceTabQueue";
+import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -148,7 +149,11 @@ export function executeEditorShortcut(
     }
     case "playback.toggle": {
       if (!ctx.mediaUrl) return true;
-      void wf.togglePlay();
+      // Space / ⇧⌘Space：当前选中语段 scoped 播放（与语段区播放钮同路径），非全局续播。
+      // Prefer SC2 chrome primary — SC1 may lag after select (H3: pause in A, select B, Space).
+      const playIdx = selectionChromeEffectivePrimaryIdx(ctx.selectedIdx);
+      if (playIdx < 0 || !ctx.segments[playIdx]) return true;
+      void wf.handleToggleSelectedWaveformPlay();
       return true;
     }
     case "edit.undo":

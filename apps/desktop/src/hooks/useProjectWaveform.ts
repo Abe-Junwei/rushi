@@ -3,9 +3,8 @@ import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { requestWaveformSegmentBandPaint } from "../utils/tierScrollFrameCoordinator";
-import { applyWaveSurferProgressWithoutClip } from "../services/waveform/waveformSurferProgressCoverage";
+import { applyWaveSurferProgressWithoutClip, syncWaveSurferScrollFromTier as applyWaveSurferTierScroll } from "../services/waveform/waveformSurferProgressCoverage";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
-import { shouldCoalesceSelectionSeekChrome } from "../utils/waveformSelectionSeekChrome";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformGlobalPlayback } from "./useWaveformGlobalPlayback";
@@ -18,6 +17,11 @@ import {
 import { useProjectWaveformDestroy } from "./useProjectWaveformDestroy";
 import { WAVEFORM_HEIGHT_DEFAULT } from "../utils/waveformPrefs";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
+import {
+  dispatchTransportIntent,
+  type TransportIntent,
+} from "../services/waveform/transport";
+import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -59,7 +63,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
   const lastTimeUiCommitMsRef = useRef(0);
-  const imperativePlayheadSyncSuppressUntilRef = useRef(0);
   const scrollNotifyRafRef = useRef(0);
   const pendingScrollLeftRef = useRef(0);
   const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(layoutPxPerSec));
@@ -93,10 +96,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       if (d > 0) {
         applyWaveSurferProgressWithoutClip(ws, clamped / d);
       }
-      const suppressUntilMs = optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
-      if (shouldCoalesceSelectionSeekChrome(performance.now(), suppressUntilMs)) {
-        return;
-      }
       requestWaveformSegmentBandPaint();
     },
     [isReady, layoutDurationSecRef],
@@ -112,8 +111,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     options.tierViewportMetricsRef,
     commitSeekUi,
     options.syncDisplayPlayheadAfterSeekRef,
-    options.getAuthoritativePlayheadSecRef,
-    options.imperativePlayheadSyncSuppressUntilRef ?? imperativePlayheadSyncSuppressUntilRef,
+    options.getDisplayPlayheadTimeSecRef,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
@@ -126,10 +124,62 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
     getGlobalPlaybackRate: () => globalPlayback.globalPlaybackRate,
     getPlayheadTime: playback.getPlayheadTime,
+    getRawMediaPlayheadTimeSec: playback.getRawMediaPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef: options.syncDisplayPlayheadAfterSeekRef,
-    imperativePlayheadSyncSuppressUntilRef:
-      options.imperativePlayheadSyncSuppressUntilRef ?? imperativePlayheadSyncSuppressUntilRef,
+    layoutDurationSecRef,
+    commitSeekUi,
   });
+
+  const segmentsRef = useRef(segments);
+  segmentsRef.current = segments;
+  const selectedIdxForTransportRef = useRef(selectedIdx);
+  selectedIdxForTransportRef.current = selectedIdx;
+
+  const suppressPlaybackFollow = useCallback(() => {
+    const untilRef = optsRef.current.playbackFollowSuppressUntilRef;
+    if (untilRef) untilRef.current = performance.now() + 1200;
+  }, []);
+
+  const dispatchTransport = useCallback(
+    async (intent: TransportIntent) => {
+      const ws = wsRef.current;
+      await dispatchTransportIntent(intent, {
+        isReady,
+        getDurationSec: () =>
+          resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current }),
+        syncDisplayPlayheadAfterSeek: (t) =>
+          optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        commitSeekUi,
+        suppressPlaybackFollow,
+        media: {
+          setTime: (t) => ws?.setTime(t),
+          play: () => ws?.play(),
+          pause: () => ws?.pause(),
+          isPlaying: () => ws?.isPlaying() ?? false,
+        },
+        applySeek: (timeSec, seekOpts) => {
+          if (seekOpts?.suppressFollow) suppressPlaybackFollow();
+          if (segmentPlayback.isSelectedSegmentPlaying) {
+            segmentPlayback.clearSegmentPlaybackBound();
+          }
+          playback.seek(timeSec);
+        },
+        runPlaySegment: (playArgs) => segmentPlayback.runPlaySegmentResolved(playArgs),
+        runToggleSegmentPlay: () => segmentPlayback.toggleSelectedWaveformPlayImpl(),
+        resolvePlayFromInput: (idx, fromSec) => {
+          const seg = segmentsRef.current[idx];
+          if (!seg) return null;
+          return {
+            segment: seg,
+            fromSec,
+            displaySec: playback.getPlayheadTime(),
+            rawMediaSec: playback.getRawMediaPlayheadTimeSec(),
+          };
+        },
+      });
+    },
+    [commitSeekUi, isReady, layoutDurationSecRef, playback, segmentPlayback, suppressPlaybackFollow],
+  );
 
   const requestViewportChromeFrame = useCallback(() => {
     const ws = wsRef.current;
@@ -141,10 +191,27 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     }
   }, []);
 
+  const getTierScrollLeftPxRef = useRef<() => number>(() => 0);
+  getTierScrollLeftPxRef.current = () => {
+    const tier = options.tierScrollRef?.current;
+    if (tier) return tier.scrollLeft;
+    const live = options.tierViewportMetricsRef?.current?.tierScrollLive.scrollLeftRef.current;
+    if (typeof live === "number" && Number.isFinite(live)) return live;
+    return 0;
+  };
+
   const syncTierScrollAfterRenderRef = useRef<() => void>(() => {});
   syncTierScrollAfterRenderRef.current = () => {
+    const ws = wsRef.current;
+    if (ws) applyWaveSurferTierScroll(ws, getTierScrollLeftPxRef.current());
     requestViewportChromeFrame();
   };
+
+  const syncWaveSurferScrollFromTier = useCallback((scrollLeftPx: number) => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    applyWaveSurferTierScroll(ws, scrollLeftPx);
+  }, []);
 
   const mountRefs = useMemo(
     () => ({
@@ -160,6 +227,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       pendingAppliedWaveformHeightRef,
       appliedZoom,
       syncTierScrollAfterRenderRef,
+      getTierScrollLeftPxRef,
       lastTimeUiCommitRef,
       lastTimeUiCommitMsRef,
       scrollNotifyRafRef,
@@ -264,23 +332,40 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const seek = useCallback(
     (timeSec: number) => {
-      if (segmentPlayback.isSelectedSegmentPlaying) {
-        segmentPlayback.clearSegmentPlaybackBound();
-      }
-      playback.seek(timeSec);
+      void dispatchTransport({ kind: "seek", timeSec, source: "segmentSelect" });
     },
-    [playback, segmentPlayback],
+    [dispatchTransport],
   );
 
   const seekByDelta = useCallback(
     (deltaSec: number) => {
-      if (segmentPlayback.isSelectedSegmentPlaying) {
-        segmentPlayback.clearSegmentPlaybackBound();
-      }
-      playback.seekByDelta(deltaSec);
+      const base = playback.getPlayheadTime();
+      void dispatchTransport({
+        kind: "seek",
+        timeSec: base + deltaSec,
+        source: "keyboardFrame",
+      });
     },
-    [playback, segmentPlayback],
+    [dispatchTransport, playback],
   );
+
+  const playSegmentAtIndex = useCallback(
+    async (idx: number, playOpts?: { loop?: boolean; fromSec?: number }) => {
+      await dispatchTransport({
+        kind: "playSegment",
+        idx,
+        fromSec: playOpts?.fromSec,
+        loop: playOpts?.loop,
+      });
+    },
+    [dispatchTransport],
+  );
+
+  const handleToggleSelectedWaveformPlay = useCallback(async () => {
+    const idx = selectionChromeEffectivePrimaryIdx(selectedIdxForTransportRef.current);
+    if (idx < 0 || !segmentsRef.current[idx]) return;
+    await dispatchTransport({ kind: "toggleSegmentPlay" });
+  }, [dispatchTransport]);
 
   return {
     containerRef,
@@ -300,7 +385,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     seek,
     seekByDelta,
     ...globalPlayback,
-    ...segmentPlayback,
+    segmentLoopPlayback: segmentPlayback.segmentLoopPlayback,
+    isSelectedSegmentPlaying: segmentPlayback.isSelectedSegmentPlaying,
+    preserveLoopForNextSegmentSelect: segmentPlayback.preserveLoopForNextSegmentSelect,
+    clearSegmentPlaybackBound: segmentPlayback.clearSegmentPlaybackBound,
+    handleToggleSelectedWaveformLoop: segmentPlayback.handleToggleSelectedWaveformLoop,
+    playSegmentAtIndex,
+    handleToggleSelectedWaveformPlay,
+    dispatchTransportIntent: dispatchTransport,
     togglePlay,
     formatMediaTime,
     destroyWave,
@@ -308,5 +400,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     peaksHotSwitchPending: zoomSync.peaksHotSwitchPending,
     peaksApplied: zoomSync.peaksApplied,
     exportMinimapPeaks,
+    syncWaveSurferScrollFromTier,
   };
 }

@@ -89,7 +89,7 @@ export function dispatchWaveformSelectionGestureDown(
     const mediaPlaying = deps.isMediaPlaying?.() ?? false;
     deps.paintChrome(ctx, idx, undefined, "waveform", publishOpts);
     if (!mediaPlaying) {
-      syncWaveformSegmentSelectPreviewViewport(timeline, planSeg);
+      syncWaveformSegmentSelectPreviewViewport(timeline, planSeg, { segmentIdx: idx });
       markWaveformSegmentPreviewViewportSynced(idx, sessionId);
     }
     deps.commitSelectedIdxRef(idx);

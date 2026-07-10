@@ -3,7 +3,7 @@ import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { assignSegmentOverlapLanes } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
 import { syncWaveformSegmentSelectReveal, syncWaveformSegmentSelectSeek } from "../services/waveform/syncWaveformSegmentSelectViewport";
-import { clearWaveformSegmentPreviewViewportSync, consumeWaveformSegmentPreviewViewportSync, hasWaveformSegmentPreviewViewportSynced } from "../services/waveform/waveformSegmentSelectPreviewSync";
+import { clearWaveformSegmentPreviewViewportSync, consumeWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/waveformViewMode";
 import {
   isListKeyboardBurstStep,
@@ -19,10 +19,8 @@ import {
 } from "../services/ui/selectionLatencyProfile";
 import {
   getSelectionChromeSnapshot,
-  selectionChromeEffectivePrimaryIdx,
   selectionChromePrimaryOutOfSync,
 } from "../services/selection/selectionChromeStore";
-import { selectionChromeMatchesPreview } from "../services/selection/selectionChromeMatchesPreview";
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
 import {
@@ -122,7 +120,7 @@ export function useTranscriptionLayerSelection(opts: {
       const seg = c.segments[idx];
       if (seg) {
         selectionProfileTime("seek", () => {
-          syncWaveformSegmentSelectSeek(scrollFitRef.current.timeline, seg);
+          syncWaveformSegmentSelectSeek(scrollFitRef.current.timeline, seg, { segmentIdx: idx });
         });
       }
       burst.finalizeListKeyboardViewport(idx);
@@ -150,44 +148,36 @@ export function useTranscriptionLayerSelection(opts: {
         clearListKeyboardVirtualDisplayPin();
         cancelListKeyboardKeyupReveal();
       }
-      const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(c.selectedIdx);
-      const idxChanged = idx !== effectiveSelectedIdx;
-      const previewPendingForIdx =
-        source === "waveform" &&
-        !opts?.shiftKey &&
-        !opts?.toggle &&
-        hasWaveformSegmentPreviewViewportSynced(idx);
+      // Seek/reveal "changed" follows React SC1 (Transport Authority).
+      // SC2 chrome may already match after a playing-state pointerdown that painted
+      // chrome but deferred media seek — never treat SC2 match as "already sought".
+      const idxChangedFromSc1 = idx !== c.selectedIdx;
+      const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
+      const idxChangedFromChrome = chromePrimary >= 0 ? idx !== chromePrimary : idxChangedFromSc1;
       const previewViewportAlreadySynced =
         source === "waveform" &&
-        idxChanged &&
+        idxChangedFromSc1 &&
         !opts?.shiftKey &&
         !opts?.toggle &&
         consumeWaveformSegmentPreviewViewportSync(idx, opts?.previewSessionId);
-      const skipPointerUpDuplicateWork =
-        source === "waveform" &&
-        !opts?.shiftKey &&
-        !opts?.toggle &&
-        (previewViewportAlreadySynced ||
-          (previewPendingForIdx && getSelectionChromeSnapshot().primaryIdx === idx) ||
-          selectionChromeMatchesPreview(c, idx, opts));
-      if (skipPointerUpDuplicateWork && previewPendingForIdx && !previewViewportAlreadySynced) {
-        clearWaveformSegmentPreviewViewportSync();
-      }
       const editorFocusGateOpen = isEditorFocusGateOpen({
         segmentsLength: c.segments.length,
         waveformShell: waveformShellRef.current,
       });
       const shouldReveal = shouldRevealOnSegmentSelect({
         source,
-        idxChanged,
+        idxChanged: idxChangedFromSc1 || idxChangedFromChrome,
         editorFocusGateOpen,
       });
-      const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChanged;
+      const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChangedFromSc1;
       if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
         clearWaveformSegmentPreviewViewportSync();
       }
 
-      if (previewViewportAlreadySynced || skipPointerUpDuplicateWork) {
+      // Skip seek/reveal only when pointerdown actually ran preview seek+reveal
+      // (`viewportSyncedOnDown` / preview token). Transport Authority: SC2 chrome
+      // match must not skip the seek half of selectSegmentTransport.
+      if (previewViewportAlreadySynced) {
         selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
         lastSegmentSelectSourceRef.current = source;
         if (selectedIdxRef) selectedIdxRef.current = idx;
@@ -195,7 +185,7 @@ export function useTranscriptionLayerSelection(opts: {
           commitSelectedIdxUi(idx, source, opts);
         }
         if (isSelectionLatencyProfileEnabled()) {
-          selectionProfileScheduleFlush("list");
+          selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
         }
         if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
           selectionProfileTime("focus", focusWaveformShell);
@@ -244,23 +234,22 @@ export function useTranscriptionLayerSelection(opts: {
           selectionChromePrimaryOutOfSync(idx) ||
           Boolean(opts?.shiftKey) ||
           Boolean(opts?.toggle);
-        const skipPreviewDuplicateWork = skipPointerUpDuplicateWork;
-        if (idxChangedForChrome && !skipPreviewDuplicateWork) {
+        if (idxChangedForChrome) {
           paintSelectionChrome(c, idx, opts, source);
         }
-        if (isWaveformLike && idxChangedForChrome && !skipPreviewDuplicateWork) {
+        if (isWaveformLike && idxChangedForChrome) {
           burst.runWaveformSelectListScroll(idx);
         }
         const tl = scrollFitRef.current.timeline;
-        if (shouldSeek && !skipPointerUpDuplicateWork) {
+        if (shouldSeek) {
           selectionProfileTime("seek", () => {
-            syncWaveformSegmentSelectSeek(tl, s);
+            syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx });
           });
         }
         if (selectedIdxRef) selectedIdxRef.current = idx;
         if (isWaveformKeyboard) waveformKeyboardCommit.queue(idx, opts);
         else commitSelectedIdxUi(idx, source, opts);
-        if (shouldReveal && isWaveformLike && !skipPointerUpDuplicateWork) {
+        if (shouldReveal && isWaveformLike) {
           burst.cancelPendingSelectionReveal();
           selectionProfileTime("viewport", () => {
             syncWaveformSegmentSelectReveal(
@@ -270,7 +259,7 @@ export function useTranscriptionLayerSelection(opts: {
             );
           });
         }
-        if (source === "waveform" && !skipPointerUpDuplicateWork) {
+        if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
       });

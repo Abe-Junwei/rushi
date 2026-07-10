@@ -878,6 +878,55 @@ function checkDevReleaseBehaviorForks() {
   });
 }
 
+const DIRECT_STYLE_WRAPPER = 'apps/desktop/src/utils/cspElementLayout.ts';
+
+/**
+ * Transport Authority: components/pages must not call WaveSurfer setTime directly.
+ * Seek/play go through useWaveformPlayback / transport / segment playback / zoom engine.
+ */
+function checkWaveformTransportSetTimeGuard() {
+  const allowlist = new Set([
+    'apps/desktop/src/hooks/useWaveformPlayback.ts',
+    'apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts',
+    'apps/desktop/src/services/waveform/transport/dispatchTransportIntent.ts',
+    'apps/desktop/src/services/waveform/waveformZoomSyncEngine.ts',
+    'apps/desktop/src/hooks/projectWaveformWaveSurferEvents.ts',
+  ]);
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  let productionDispatchImport = false;
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    if (
+      !rel.startsWith('apps/desktop/src/services/waveform/transport/') &&
+      /dispatchTransportIntent/.test(source)
+    ) {
+      productionDispatchImport = true;
+    }
+    if (allowlist.has(rel)) return;
+    // Only ban in UI orchestration layers; hooks/services that are not allowlisted still warn via review.
+    if (
+      !rel.startsWith('apps/desktop/src/components/') &&
+      !rel.startsWith('apps/desktop/src/pages/') &&
+      !rel.startsWith('apps/desktop/src/utils/')
+    ) {
+      return;
+    }
+    if (/\.setTime\s*\(/.test(source)) {
+      errors.push(
+        `${rel}: 禁止直接 ws.setTime（Transport Authority：经 useWaveformPlayback.seek / applyPeaksOrderedSeek / waveformAtomicSeek）`,
+      );
+    }
+  });
+  if (!productionDispatchImport) {
+    errors.push(
+      'Transport Authority: dispatchTransportIntent 须在 transport/ 外至少有一处生产接线（当前无 import）',
+    );
+  }
+}
+
 function checkInlineStyleDebt() {
   const srcRoot = path.join(ROOT, 'apps/desktop/src');
   walk(srcRoot, (fullPath) => {
@@ -888,8 +937,21 @@ function checkInlineStyleDebt() {
     if (/style=\{\{/.test(source)) {
       errors.push(`${rel}: 禁止 React style={{}}（CSP-HARDEN v1.2：改用 CspLayout / cspNonceStyleRegistry）`);
     }
-    if (/\.style\./.test(source)) {
-      errors.push(`${rel}: 禁止 element.style.*（CSP-HARDEN v1.2：改用 setCspLayoutRules）`);
+    // `cssText` / `setAttribute('style')` go through the HTML parser and ARE blocked by
+    // CSP `style-src-attr`; banned everywhere including the direct-style allowlist below.
+    if (/\.style\.cssText\b/.test(source)) {
+      errors.push(`${rel}: 禁止 element.style.cssText（CSP style-src-attr 拦截；用 setDirectLayoutStyle 逐属性写）`);
+    }
+    if (/\.setAttribute\(\s*["']style["']/.test(source)) {
+      errors.push(`${rel}: 禁止 setAttribute('style')（CSP style-src-attr 拦截；用 setDirectLayoutStyle）`);
+    }
+    // Direct `element.style.<prop> = ` / `.style.setProperty` is CSP-legal (never parsed
+    // as inline attribute) and is the performant path for high-frequency geometry.
+    // Confine it to the single wrapper so imperative style writes stay auditable.
+    if (rel !== DIRECT_STYLE_WRAPPER && /\.style\./.test(source)) {
+      errors.push(
+        `${rel}: 禁止散落 element.style.*（改用 utils/cspElementLayout 的 setDirectLayoutStyle[高频几何] / setCspLayoutRules[需选择器的动态 <style>]）`,
+      );
     }
   });
 }
@@ -996,6 +1058,7 @@ checkDevReleaseBehaviorForks();
 checkTailwindV4Entry();
 checkReleaseUserCopyDrift();
 checkInlineStyleDebt();
+checkWaveformTransportSetTimeGuard();
 checkTauriProductionCsp();
 checkTauriStyleNonceProbe();
 checkTauriInvokeAcl();

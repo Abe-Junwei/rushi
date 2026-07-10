@@ -1,14 +1,19 @@
-import { segmentStartSec } from "../../utils/formatMediaTime";
 import {
   requestWaveformSegmentBandPaint,
   scheduleTierScrollFrame,
 } from "../../utils/tierScrollFrameCoordinator";
+import { resolveSelectTransportSeekTime } from "./transport";
 import { resolveSelectSegmentViewportPlan, type SegmentTimeRange } from "./selectSegmentViewportPlan";
 import { waveformAtomicSeek } from "./waveformAtomicSeek";
 
 export type WaveformSegmentSelectViewportTimeline = {
   suppressPlaybackFollowForSelectionSeek: () => void;
-  wfApiRef: { current: { seek: (timeSec: number) => void } };
+  wfApiRef: {
+    current: {
+      seek: (timeSec: number) => void;
+      dispatchTransportIntent?: (intent: import("./transport").TransportIntent) => Promise<void>;
+    };
+  };
   viewportFit: { revealSegmentInViewport: (seg: SegmentTimeRange) => void };
 };
 
@@ -16,8 +21,25 @@ export type WaveformSegmentSelectViewportTimeline = {
 export function syncWaveformSegmentSelectSeek(
   timeline: WaveformSegmentSelectViewportTimeline,
   segment: SegmentTimeRange,
+  opts?: { segmentIdx?: number },
 ): void {
-  const startSec = segmentStartSec(segment);
+  const idx = opts?.segmentIdx;
+  const dispatch = timeline.wfApiRef.current.dispatchTransportIntent;
+  if (typeof idx === "number" && dispatch) {
+    timeline.suppressPlaybackFollowForSelectionSeek();
+    void dispatch({
+      kind: "selectSegmentTransport",
+      idx,
+      source: "waveform",
+      seekPolicy: "segmentStart",
+    });
+    return;
+  }
+  const startSec = resolveSelectTransportSeekTime({
+    seekPolicy: "segmentStart",
+    segment,
+  });
+  if (startSec == null) return;
   timeline.suppressPlaybackFollowForSelectionSeek();
   waveformAtomicSeek(timeline, startSec);
 }
@@ -29,10 +51,9 @@ export function syncWaveformSegmentSelectSeek(
 export function syncWaveformSegmentSelectPreviewViewport(
   timeline: WaveformSegmentSelectViewportTimeline,
   segment: SegmentTimeRange,
+  opts?: { segmentIdx?: number },
 ): void {
-  const startSec = segmentStartSec(segment);
-  timeline.suppressPlaybackFollowForSelectionSeek();
-  waveformAtomicSeek(timeline, startSec);
+  syncWaveformSegmentSelectSeek(timeline, segment, opts);
   syncWaveformSegmentSelectReveal(timeline, segment, { forceBandPaint: false });
 }
 

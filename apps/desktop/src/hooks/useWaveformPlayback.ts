@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
+import { applyPeaksOrderedSeek } from "../services/waveform/transport";
 import {
   clientXToTimelinePx,
   resolveWaveformPointerTimeSecFromClientX,
@@ -7,7 +8,6 @@ import {
 import { timelinePxToTime } from "../utils/waveformProjection";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import type { TierViewportMetricsRef } from "./useProjectWaveformTypes";
-import { imperativePlayheadSyncSuppressUntil } from "../utils/waveformImperativePlayheadSync";
 
 export function useWaveformPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
@@ -20,31 +20,20 @@ export function useWaveformPlayback(
   tierViewportMetricsRef?: TierViewportMetricsRef,
   commitSeekUi?: (timeSec: number) => void,
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
-  getAuthoritativePlayheadSecRef?: React.MutableRefObject<(() => number) | null>,
-  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>,
+  getDisplayPlayheadTimeSecRef?: React.MutableRefObject<(() => number) | null>,
 ) {
-  const markImperativePlayheadSync = useCallback(() => {
-    if (imperativePlayheadSyncSuppressUntilRef) {
-      imperativePlayheadSyncSuppressUntilRef.current = imperativePlayheadSyncSuppressUntil(
-        performance.now(),
-      );
-    }
-  }, [imperativePlayheadSyncSuppressUntilRef]);
-
   const resolvePlayheadSec = useCallback(() => {
-    const ws = wsRef.current;
-    if (!isReady) {
-      return ws?.getCurrentTime() ?? 0;
-    }
-    const fromAuthority = getAuthoritativePlayheadSecRef?.current?.();
-    if (fromAuthority != null && Number.isFinite(fromAuthority)) {
-      return fromAuthority;
-    }
-    return ws?.getCurrentTime() ?? 0;
-  }, [getAuthoritativePlayheadSecRef, isReady, wsRef]);
+    const displayFn = getDisplayPlayheadTimeSecRef?.current;
+    if (displayFn) return displayFn();
+    return wsRef.current?.getCurrentTime() ?? 0;
+  }, [getDisplayPlayheadTimeSecRef, wsRef]);
 
   const getRawMediaPlayheadTimeSec = useCallback((): number => {
     return wsRef.current?.getCurrentTime() ?? 0;
+  }, [wsRef]);
+
+  const getRawMediaIsPlaying = useCallback((): boolean => {
+    return wsRef.current?.isPlaying() ?? false;
   }, [wsRef]);
 
   const seek = useCallback(
@@ -52,18 +41,18 @@ export function useWaveformPlayback(
       const ws = wsRef.current;
       if (!ws || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
-      const clamped =
-        d <= 0 ? Math.max(0, timeSec) : Math.max(0, Math.min(timeSec, d));
-      syncDisplayPlayheadAfterSeekRef?.current?.(clamped);
-      markImperativePlayheadSync();
-      ws.setTime(clamped);
-      commitSeekUi?.(clamped);
+      applyPeaksOrderedSeek({
+        timeSec,
+        durationSec: d,
+        syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        setTime: (t) => ws.setTime(t),
+        commitSeekUi,
+      });
     },
     [
       commitSeekUi,
       isReady,
       layoutDurationSecRef,
-      markImperativePlayheadSync,
       syncDisplayPlayheadAfterSeekRef,
       wsRef,
     ],
@@ -89,18 +78,18 @@ export function useWaveformPlayback(
       if (!ws || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
       const base = resolvePlayheadSec();
-      const t =
-        d > 0 ? Math.max(0, Math.min(d, base + deltaSec)) : Math.max(0, base + deltaSec);
-      syncDisplayPlayheadAfterSeekRef?.current?.(t);
-      markImperativePlayheadSync();
-      ws.setTime(t);
-      commitSeekUi?.(t);
+      applyPeaksOrderedSeek({
+        timeSec: base + deltaSec,
+        durationSec: d,
+        syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        setTime: (t) => ws.setTime(t),
+        commitSeekUi,
+      });
     },
     [
       commitSeekUi,
       isReady,
       layoutDurationSecRef,
-      markImperativePlayheadSync,
       resolvePlayheadSec,
       syncDisplayPlayheadAfterSeekRef,
       wsRef,
@@ -148,6 +137,7 @@ export function useWaveformPlayback(
     togglePlay,
     getPlayheadTime,
     getRawMediaPlayheadTimeSec,
+    getRawMediaIsPlaying,
     seekByDelta,
     clientXToTimeSec,
   };

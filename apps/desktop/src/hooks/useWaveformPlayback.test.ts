@@ -49,18 +49,18 @@ describe("useWaveformPlayback", () => {
     expect(commitSeekUi).toHaveBeenCalledWith(12.5);
   });
 
-  it("seekByDelta uses authoritative playhead as base", () => {
+  it("seekByDelta uses display playhead as base when ref is wired", () => {
     const ws = {
       setTime: vi.fn(),
-      getCurrentTime: () => 1,
+      getCurrentTime: () => 10,
       isPlaying: () => true,
     };
     const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
     const layoutDurationSecRef = { current: 60 };
     const layoutTimelineWidthPxRef = { current: 1000 };
     const applyGlobalPlaybackRateRef = { current: vi.fn() };
-    const authorityRef = { current: () => 10 };
     const syncDisplayPlayheadAfterSeekRef = { current: vi.fn() };
+    const getDisplayPlayheadTimeSecRef = { current: () => 8 };
     const commitSeekUi = vi.fn();
 
     const { result } = renderHook(() =>
@@ -75,7 +75,7 @@ describe("useWaveformPlayback", () => {
         undefined,
         commitSeekUi,
         syncDisplayPlayheadAfterSeekRef,
-        authorityRef,
+        getDisplayPlayheadTimeSecRef,
       ),
     );
 
@@ -83,8 +83,8 @@ describe("useWaveformPlayback", () => {
       result.current.seekByDelta(2);
     });
 
-    expect(ws.setTime).toHaveBeenCalledWith(12);
-    expect(commitSeekUi).toHaveBeenCalledWith(12);
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(commitSeekUi).toHaveBeenCalledWith(10);
   });
 
   it("getPlayheadTime uses ws time when not ready (avoids authority cycle)", () => {
@@ -94,11 +94,6 @@ describe("useWaveformPlayback", () => {
       isPlaying: () => false,
     };
     const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
-    const authorityRef = {
-      current: vi.fn(() => {
-        throw new Error("authority must not run before waveform is ready");
-      }),
-    };
 
     const { result } = renderHook(() =>
       useWaveformPlayback(
@@ -112,22 +107,20 @@ describe("useWaveformPlayback", () => {
         undefined,
         vi.fn(),
         { current: vi.fn() },
-        authorityRef,
       ),
     );
 
     expect(result.current.getPlayheadTime()).toBe(3.5);
-    expect(authorityRef.current).not.toHaveBeenCalled();
   });
 
-  it("getPlayheadTime returns authoritative time when wired", () => {
+  it("getPlayheadTime uses display time when ref is wired", () => {
     const ws = {
       setTime: vi.fn(),
-      getCurrentTime: () => 1,
+      getCurrentTime: () => 9.75,
       isPlaying: () => true,
     };
     const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
-    const authorityRef = { current: () => 9.75 };
+    const getDisplayPlayheadTimeSecRef = { current: () => 11.25 };
 
     const { result } = renderHook(() =>
       useWaveformPlayback(
@@ -141,46 +134,10 @@ describe("useWaveformPlayback", () => {
         undefined,
         vi.fn(),
         { current: vi.fn() },
-        authorityRef,
+        getDisplayPlayheadTimeSecRef,
       ),
     );
 
-    expect(result.current.getPlayheadTime()).toBe(9.75);
-  });
-
-  it("marks imperative playhead sync suppress window before setTime", () => {
-    const ws = {
-      setTime: vi.fn(),
-      getCurrentTime: () => 0,
-      isPlaying: () => false,
-    };
-    const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
-    const suppressUntilRef = { current: 0 };
-    const before = performance.now();
-
-    const { result } = renderHook(() =>
-      useWaveformPlayback(
-        wsRef,
-        { current: null },
-        true,
-        { current: 60 },
-        { current: 1000 },
-        { current: vi.fn() },
-        undefined,
-        undefined,
-        vi.fn(),
-        { current: vi.fn() },
-        undefined,
-        suppressUntilRef,
-      ),
-    );
-
-    act(() => {
-      result.current.seek(7);
-    });
-
-    expect(ws.setTime).toHaveBeenCalledWith(7);
-    expect(suppressUntilRef.current).toBeGreaterThan(before);
-    expect(suppressUntilRef.current).toBeLessThanOrEqual(performance.now() + 50);
+    expect(result.current.getPlayheadTime()).toBe(11.25);
   });
 });

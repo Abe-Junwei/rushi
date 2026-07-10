@@ -2,14 +2,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 
-import { resolveSegmentPlaybackStartSec } from "../utils/formatMediaTime";
-import { imperativePlayheadSyncSuppressUntil } from "../utils/waveformImperativePlayheadSync";
 import {
   armSegmentPlaybackSession,
   isActiveSegmentPlaybackBound,
   segmentPlaybackReachedEnd,
   type ActiveSegmentPlaybackBound,
 } from "../utils/segmentPlaybackBound";
+import {
+  applyPeaksOrderedSeek,
+  resolveSegmentPlayFrom,
+  type SegmentPlayFromResolution,
+} from "../services/waveform/transport";
+import {
+  selectionChromeEffectivePrimaryIdx,
+  subscribeSelectionChrome,
+} from "../services/selection/selectionChromeStore";
+import { subscribePlaybackFrame } from "../utils/tierScrollFrameCoordinator";
+import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
@@ -25,8 +34,11 @@ export function useWaveformSegmentPlaybackControls(args: {
   selectedIdx: number;
   getGlobalPlaybackRate: () => number;
   getPlayheadTime: () => number;
+  /** Raw media `currentTime` — used only to detect "already inside this segment" on resume. */
+  getRawMediaPlayheadTimeSec?: () => number;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
-  imperativePlayheadSyncSuppressUntilRef?: React.MutableRefObject<number>;
+  layoutDurationSecRef?: React.MutableRefObject<number>;
+  commitSeekUi?: (timeSec: number) => void;
 }) {
   const {
     wsRef,
@@ -35,8 +47,10 @@ export function useWaveformSegmentPlaybackControls(args: {
     selectedIdx,
     getGlobalPlaybackRate,
     getPlayheadTime,
+    getRawMediaPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef,
-    imperativePlayheadSyncSuppressUntilRef,
+    layoutDurationSecRef,
+    commitSeekUi,
   } = args;
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const [isSelectedSegmentPlaying, setIsSelectedSegmentPlaying] = useState(false);
@@ -50,18 +64,25 @@ export function useWaveformSegmentPlaybackControls(args: {
   isSelectedSegmentPlayingRef.current = isSelectedSegmentPlaying;
   const preserveLoopOnNextSelectRef = useRef(false);
 
+  /** Visual chrome (SC2) may lead React SC1 after select — Space must play the painted segment. */
+  const resolveEffectiveSelectedIdx = useCallback(() => {
+    return selectionChromeEffectivePrimaryIdx(selectedIdxRef.current);
+  }, []);
+
   const resolveSelectedPlaybackRange = useCallback(() => {
-    const seg = latestSegmentsRef.current[selectedIdxRef.current];
+    const idx = resolveEffectiveSelectedIdx();
+    const seg = latestSegmentsRef.current[idx];
     if (!seg) return null;
     return {
       start: Math.min(seg.start_sec, seg.end_sec),
       end: Math.max(seg.start_sec, seg.end_sec),
     };
-  }, []);
+  }, [resolveEffectiveSelectedIdx]);
 
   const playGenerationRef = useRef(0);
   const segmentPlaybackBoundRef = useRef<ActiveSegmentPlaybackBound | null>(null);
   const segmentBoundStopInFlightRef = useRef(false);
+  const playStartInFlightGenerationRef = useRef<number | null>(null);
 
   const clearSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
@@ -81,24 +102,35 @@ export function useWaveformSegmentPlaybackControls(args: {
 
   const atomicMediaSeek = useCallback(
     (timeSec: number) => {
-      syncDisplayPlayheadAfterSeekRef?.current?.(timeSec);
-      if (imperativePlayheadSyncSuppressUntilRef) {
-        imperativePlayheadSyncSuppressUntilRef.current = imperativePlayheadSyncSuppressUntil(
-          performance.now(),
-        );
-      }
-      wsRef.current?.setTime(timeSec);
+      const ws = wsRef.current;
+      if (!ws) return;
+      const d = layoutDurationSecRef
+        ? resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current })
+        : ws.getDuration() || 0;
+      applyPeaksOrderedSeek({
+        timeSec,
+        durationSec: d,
+        syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        setTime: (t) => ws.setTime(t),
+        commitSeekUi,
+      });
     },
-    [imperativePlayheadSyncSuppressUntilRef, syncDisplayPlayheadAfterSeekRef, wsRef],
+    [commitSeekUi, layoutDurationSecRef, syncDisplayPlayheadAfterSeekRef, wsRef],
   );
 
-  const playSegmentAtIndex = useCallback(
-    async (idx: number, options?: PlaySegmentAtIndexOptions) => {
+  /** Transport Authority: play with play-from already resolved by dispatcher. */
+  const runPlaySegmentResolved = useCallback(
+    async (playArgs: {
+      idx: number;
+      playFrom: SegmentPlayFromResolution;
+      loop?: boolean;
+    }) => {
       const ws = wsRef.current;
       if (!ws || !isReady) return;
-      const seg = latestSegmentsRef.current[idx];
+      const seg = latestSegmentsRef.current[playArgs.idx];
       if (!seg) return;
       const gen = ++playGenerationRef.current;
+      playStartInFlightGenerationRef.current = gen;
       clearSegmentPlaybackBound();
       if (ws.isPlaying()) {
         ws.pause();
@@ -107,25 +139,32 @@ export function useWaveformSegmentPlaybackControls(args: {
         start: Math.min(seg.start_sec, seg.end_sec),
         end: Math.max(seg.start_sec, seg.end_sec),
       };
-      const playFrom =
-        options?.fromSec != null
-          ? Math.max(range.start, Math.min(range.end, options.fromSec))
-          : resolveSegmentPlaybackStartSec(resolvePlayheadSec(), seg);
       applyGlobalPlaybackRate();
-      if (options?.loop) {
+      if (playArgs.loop) {
         setSegmentLoopPlayback(true);
       }
-      atomicMediaSeek(playFrom);
+      if (playArgs.playFrom.kind === "seek") {
+        atomicMediaSeek(playArgs.playFrom.timeSec);
+      }
       try {
         await ws.play();
       } catch {
+        if (playStartInFlightGenerationRef.current === gen) {
+          playStartInFlightGenerationRef.current = null;
+        }
         if (gen !== playGenerationRef.current) return;
         clearSegmentPlaybackBound();
         return;
       }
       if (gen !== playGenerationRef.current) {
+        if (playStartInFlightGenerationRef.current === gen) {
+          playStartInFlightGenerationRef.current = null;
+        }
         if (ws.isPlaying()) ws.pause();
         return;
+      }
+      if (playStartInFlightGenerationRef.current === gen) {
+        playStartInFlightGenerationRef.current = null;
       }
       if (!ws.isPlaying()) return;
 
@@ -137,30 +176,71 @@ export function useWaveformSegmentPlaybackControls(args: {
       };
       setIsSelectedSegmentPlaying(true);
     },
-    [applyGlobalPlaybackRate, atomicMediaSeek, clearSegmentPlaybackBound, isReady, resolvePlayheadSec, wsRef],
+    [applyGlobalPlaybackRate, atomicMediaSeek, clearSegmentPlaybackBound, isReady, wsRef],
+  );
+
+  const playSegmentAtIndex = useCallback(
+    async (idx: number, options?: PlaySegmentAtIndexOptions) => {
+      const seg = latestSegmentsRef.current[idx];
+      if (!seg) return;
+      const playFrom = resolveSegmentPlayFrom({
+        segment: seg,
+        fromSec: options?.fromSec,
+        displaySec: resolvePlayheadSec(),
+        rawMediaSec: getRawMediaPlayheadTimeSec?.(),
+      });
+      await runPlaySegmentResolved({
+        idx,
+        playFrom,
+        loop: options?.loop,
+      });
+    },
+    [getRawMediaPlayheadTimeSec, resolvePlayheadSec, runPlaySegmentResolved],
   );
 
   const playSelectedSegment = useCallback(async () => {
     const ws = wsRef.current;
+    const idx = resolveEffectiveSelectedIdx();
     const range = resolveSelectedPlaybackRange();
-    if (!ws || !isReady || !range) return;
-    applyGlobalPlaybackRate();
-    await playSegmentAtIndex(selectedIdxRef.current);
-  }, [applyGlobalPlaybackRate, isReady, playSegmentAtIndex, resolveSelectedPlaybackRange, wsRef]);
+    if (!ws || !isReady || idx < 0 || !range) return;
+    await playSegmentAtIndex(idx);
+  }, [
+    isReady,
+    playSegmentAtIndex,
+    resolveEffectiveSelectedIdx,
+    resolveSelectedPlaybackRange,
+    wsRef,
+  ]);
 
-  const handleToggleSelectedWaveformPlay = useCallback(async () => {
+  /** Impl for Transport dispatcher — do not wrap again with dispatch. */
+  const toggleSelectedWaveformPlayImpl = useCallback(async () => {
     const ws = wsRef.current;
     if (!ws || !isReady) return;
-    if (isSelectedSegmentPlayingRef.current) {
+    // Pause decision must follow live media only. A stale `isSelectedSegmentPlaying`
+    // (React lag / select-while-playing sync) must not block starting playback.
+    if (ws.isPlaying()) {
       clearSegmentPlaybackBound();
-      if (ws.isPlaying()) ws.pause();
+      ws.pause();
+      const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
+      const freezeSec =
+        typeof rawFreezeSec === "number" && Number.isFinite(rawFreezeSec)
+          ? rawFreezeSec
+          : resolvePlayheadSec();
+      syncDisplayPlayheadAfterSeekRef?.current?.(freezeSec);
       return;
     }
-    if (ws.isPlaying()) {
-      ws.pause();
-    }
     await playSelectedSegment();
-  }, [clearSegmentPlaybackBound, isReady, playSelectedSegment, wsRef]);
+  }, [
+    clearSegmentPlaybackBound,
+    getRawMediaPlayheadTimeSec,
+    isReady,
+    playSelectedSegment,
+    resolvePlayheadSec,
+    syncDisplayPlayheadAfterSeekRef,
+    wsRef,
+  ]);
+
+  const handleToggleSelectedWaveformPlay = toggleSelectedWaveformPlayImpl;
 
   const handleToggleSelectedWaveformLoop = useCallback(async () => {
     const ws = wsRef.current;
@@ -176,6 +256,72 @@ export function useWaveformSegmentPlaybackControls(args: {
     setSegmentLoopPlayback(true);
     await playSelectedSegment();
   }, [clearSegmentPlaybackBound, isReady, playSelectedSegment, resolveSelectedPlaybackRange, wsRef]);
+
+  /**
+   * Keep overlay/toolbar play icon + segment end-bound in sync with live media
+   * and the selected segment. Selecting while playing used to clear the bound and
+   * leave the control stuck on "play".
+   */
+  const syncSelectedSegmentPlayingUi = useCallback((playheadTimeSec?: number) => {
+    const ws = wsRef.current;
+    if (!ws || !isReady) {
+      if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+      return;
+    }
+    if (!ws.isPlaying()) {
+      if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+      if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+      return;
+    }
+    const range = resolveSelectedPlaybackRange();
+    if (!range) {
+      if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+      if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+      return;
+    }
+    const t =
+      typeof playheadTimeSec === "number" && Number.isFinite(playheadTimeSec)
+        ? playheadTimeSec
+        : resolvePlayheadSec();
+    const inside = t >= range.start && t < range.end;
+    if (inside) {
+      const bound = segmentPlaybackBoundRef.current;
+      const boundMatches =
+        bound != null &&
+        bound.startSec === range.start &&
+        bound.endSec === range.end &&
+        bound.generation === playGenerationRef.current;
+      if (!boundMatches) {
+        const inFlightGen = playStartInFlightGenerationRef.current;
+        const gen = inFlightGen ?? ++playGenerationRef.current;
+        segmentPlaybackBoundRef.current = {
+          startSec: range.start,
+          endSec: range.end,
+          generation: gen,
+          armed: false,
+        };
+      }
+      if (!isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(true);
+      return;
+    }
+    if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+    if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+  }, [isReady, resolvePlayheadSec, resolveSelectedPlaybackRange, wsRef]);
+
+  useEffect(() => {
+    const syncAfterChromeCommit = () => {
+      queueMicrotask(() => {
+        syncSelectedSegmentPlayingUi();
+      });
+    };
+    return subscribeSelectionChrome(syncAfterChromeCommit);
+  }, [syncSelectedSegmentPlayingUi]);
+
+  useEffect(() => {
+    return subscribePlaybackFrame((timeSec) => {
+      syncSelectedSegmentPlayingUi(timeSec);
+    });
+  }, [syncSelectedSegmentPlayingUi]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -218,11 +364,15 @@ export function useWaveformSegmentPlaybackControls(args: {
       });
     };
 
-    const unsubAudio = ws.on("audioprocess", enforceSegmentPlaybackBound);
+    const onAudio = () => {
+      syncSelectedSegmentPlayingUi();
+      enforceSegmentPlaybackBound();
+    };
+    const unsubAudio = ws.on("audioprocess", onAudio);
     return () => {
       unsubAudio();
     };
-  }, [atomicMediaSeek, isReady, resolvePlayheadSec, wsRef]);
+  }, [atomicMediaSeek, isReady, resolvePlayheadSec, syncSelectedSegmentPlayingUi, wsRef]);
 
   useEffect(() => {
     if (preserveLoopOnNextSelectRef.current) {
@@ -230,8 +380,27 @@ export function useWaveformSegmentPlaybackControls(args: {
       return;
     }
     setSegmentLoopPlayback(false);
-    clearSegmentPlaybackBound();
-  }, [clearSegmentPlaybackBound, selectedIdx]);
+    // Do not blindly clear playing UI while media is still playing — sync against
+    // the new selection (re-arms bound when playhead is already inside / after seek).
+    syncSelectedSegmentPlayingUi();
+  }, [selectedIdx, syncSelectedSegmentPlayingUi]);
+
+  useEffect(() => {
+    const ws = wsRef.current;
+    if (!ws || !isReady) return;
+    const onPlayPause = () => {
+      syncSelectedSegmentPlayingUi();
+    };
+    const unsubPlay = ws.on("play", onPlayPause);
+    const unsubPause = ws.on("pause", onPlayPause);
+    const unsubFinish = ws.on("finish", onPlayPause);
+    syncSelectedSegmentPlayingUi();
+    return () => {
+      unsubPlay();
+      unsubPause();
+      unsubFinish();
+    };
+  }, [isReady, syncSelectedSegmentPlayingUi, wsRef]);
 
   const preserveLoopForNextSegmentSelect = useCallback(() => {
     preserveLoopOnNextSelectRef.current = true;
@@ -271,6 +440,8 @@ export function useWaveformSegmentPlaybackControls(args: {
     isSelectedSegmentPlaying,
     preserveLoopForNextSegmentSelect,
     playSegmentAtIndex,
+    runPlaySegmentResolved,
+    toggleSelectedWaveformPlayImpl,
     clearSegmentPlaybackBound,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay,

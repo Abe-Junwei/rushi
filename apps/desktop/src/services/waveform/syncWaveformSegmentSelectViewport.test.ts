@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, vi } from "vitest";
 import {
   syncWaveformSegmentSelectPreviewViewport,
@@ -51,5 +53,23 @@ describe("syncWaveformSegmentSelectViewport", () => {
     expect(tl.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
       tl.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
     );
+  });
+
+  it("seek via dispatchTransportIntent when segmentIdx provided", () => {
+    const dispatch = vi.fn(async () => {});
+    const tl = {
+      suppressPlaybackFollowForSelectionSeek: vi.fn(),
+      wfApiRef: { current: { seek: vi.fn(), dispatchTransportIntent: dispatch } },
+      viewportFit: { revealSegmentInViewport: vi.fn() },
+    };
+    syncWaveformSegmentSelectSeek(tl, seg, { segmentIdx: 3 });
+    expect(tl.suppressPlaybackFollowForSelectionSeek).toHaveBeenCalledOnce();
+    expect(dispatch).toHaveBeenCalledWith({
+      kind: "selectSegmentTransport",
+      idx: 3,
+      source: "waveform",
+      seekPolicy: "segmentStart",
+    });
+    expect(tl.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 });

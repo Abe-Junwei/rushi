@@ -65,6 +65,7 @@ function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]
     wf: {
       getPlayheadTime: () => 1.5,
       togglePlay: vi.fn(),
+      handleToggleSelectedWaveformPlay: vi.fn(),
       seekByDelta: vi.fn(),
       seek: vi.fn(),
       playSegmentAtIndex: vi.fn(),
@@ -82,6 +83,76 @@ function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]
 }
 
 describe("executeEditorShortcut", () => {
+  it("playback.toggle uses selected-segment play, not global togglePlay", () => {
+    const handleToggleSelectedWaveformPlay = vi.fn();
+    const togglePlay = vi.fn();
+    const deps = makeDeps({
+      wf: {
+        getPlayheadTime: () => 1.5,
+        togglePlay,
+        handleToggleSelectedWaveformPlay,
+        seekByDelta: vi.fn(),
+        seek: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+      } as never,
+    });
+
+    executeEditorShortcut("playback.toggle", deps);
+
+    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
+    expect(togglePlay).not.toHaveBeenCalled();
+  });
+
+  it("playback.toggle is a no-op when no segment is selected", () => {
+    const handleToggleSelectedWaveformPlay = vi.fn();
+    const deps = makeDeps({
+      ctx: makeCtx({ selectedIdx: -1 }),
+      wf: {
+        getPlayheadTime: () => 0,
+        togglePlay: vi.fn(),
+        handleToggleSelectedWaveformPlay,
+        seekByDelta: vi.fn(),
+        seek: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+      } as never,
+    });
+
+    expect(executeEditorShortcut("playback.toggle", deps)).toBe(true);
+    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
+  });
+
+  it("playback.toggle uses SC2 chrome when React SC1 still lags (H3)", async () => {
+    const {
+      commitSelectionChrome,
+      resetSelectionChromeStoreForTests,
+    } = await import("../services/selection/selectionChromeStore");
+    resetSelectionChromeStoreForTests();
+    commitSelectionChrome({
+      fileId: "f1",
+      primaryIdx: 1,
+      selectedSet: new Set([1]),
+    });
+    const handleToggleSelectedWaveformPlay = vi.fn();
+    const deps = makeDeps({
+      ctx: makeCtx({ selectedIdx: 0 }),
+      wf: {
+        getPlayheadTime: () => 0.5,
+        togglePlay: vi.fn(),
+        handleToggleSelectedWaveformPlay,
+        seekByDelta: vi.fn(),
+        seek: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+      } as never,
+    });
+
+    expect(executeEditorShortcut("playback.toggle", deps)).toBe(true);
+    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
+    resetSelectionChromeStoreForTests();
+  });
+
   it("splits at playhead for selectedIdx even when another textarea is focused", () => {
     const splitAtPlayhead = vi.fn();
     const mergeWithNextAt = vi.fn();
@@ -171,6 +242,7 @@ describe("executeEditorShortcut", () => {
     const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
     const wf = {
       togglePlay: vi.fn(),
+      handleToggleSelectedWaveformPlay: vi.fn(),
       getPlayheadTime: () => 0,
       seekByDelta: vi.fn(),
       seek: vi.fn(),
@@ -366,6 +438,7 @@ describe("executeEditorShortcut", () => {
     const wf = {
       getPlayheadTime: () => 0,
       togglePlay: vi.fn(),
+      handleToggleSelectedWaveformPlay: vi.fn(),
       seekByDelta: vi.fn(),
       seek: vi.fn(),
       playSegmentAtIndex: vi.fn(),

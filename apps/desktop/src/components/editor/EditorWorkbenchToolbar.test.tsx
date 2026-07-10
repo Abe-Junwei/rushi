@@ -21,11 +21,15 @@ vi.mock("../WaveformPlaybackTime", () => ({
   WaveformPlaybackTime: () => <div data-testid="playback-time" />,
 }));
 
-function makeController() {
+function makeController(overrides: { segments?: unknown[]; selectedIdx?: number; busy?: boolean } = {}) {
   return {
-    busy: false,
-    segments: [],
-    selectedIdx: 0,
+    busy: overrides.busy ?? false,
+    segments:
+      overrides.segments ??
+      [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+      ],
+    selectedIdx: overrides.selectedIdx ?? 0,
   } as never;
 }
 
@@ -70,6 +74,7 @@ function makeTx() {
     },
     isReady: true,
     isPlaying: false,
+    isSelectedSegmentPlaying: false,
     mediaDurationSec: 120,
     currentTime: 0,
     globalPlaybackRate: 1,
@@ -78,6 +83,7 @@ function makeTx() {
     pxPerSec: 50,
     layoutIntent: undefined,
     togglePlay: vi.fn(),
+    handleToggleSelectedWaveformPlay: vi.fn(),
     getDisplayPlayheadTimeSec: () => 0,
     subscribePlayheadFrame: undefined,
     formatMediaTime: (t: number) => String(t),
@@ -91,13 +97,16 @@ function makeTx() {
   } as never;
 }
 
-function wrapToolbar(ui: ReactElement) {
+function wrapToolbar(
+  ui: ReactElement,
+  chrome: { selectedIdx?: number; segmentCount?: number } = {},
+) {
   return (
     <WaveformSelectionChromeViewProvider
       input={{
         fileId: "f1",
-        selectedIdx: 0,
-        segmentCount: 0,
+        selectedIdx: chrome.selectedIdx ?? 0,
+        segmentCount: chrome.segmentCount ?? 1,
       }}
       filterActive={false}
       filteredIndices={[]}
@@ -146,5 +155,26 @@ describe("EditorWorkbenchToolbar", () => {
     expect(container.querySelector(".workbench-toolbar-right")).toBeTruthy();
     expect(getByTestId("waveform-zoom-bar")).toBeTruthy();
     expect(getByTestId("playback-speed")).toBeTruthy();
+    expect((container.querySelector(".waveform-playback-btn") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+  });
+
+  it("disables segment play button when no segment is selected", () => {
+    const { container } = render(
+      wrapToolbar(
+        <EditorWorkbenchToolbar
+          controller={makeController({ selectedIdx: -1 })}
+          tx={makeTx()}
+          hasAudio
+          segmentFilter={makeSegmentFilter()}
+        />,
+        { selectedIdx: -1, segmentCount: 1 },
+      ),
+    );
+
+    expect((container.querySelector(".waveform-playback-btn") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
   });
 });
