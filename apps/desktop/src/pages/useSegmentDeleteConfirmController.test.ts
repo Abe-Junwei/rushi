@@ -1,8 +1,7 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useCallback, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
 
 function makeSeg(text: string): SegmentDto {
@@ -51,9 +50,6 @@ function useTestDeleteConfirm(initial: SegmentDto[]) {
 }
 
 describe("useSegmentDeleteConfirmController", () => {
-  beforeEach(() => {
-    segmentDraftStore.resetAll();
-  });
   it("deletes empty segments immediately", () => {
     const { result } = renderHook(() => useTestDeleteConfirm([makeSeg("")]));
 

@@ -1,5 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { normalizeSegmentDraftText } from "../hooks/useSegmentDraftStore";
+import { normalizeSegmentDraftText } from "../utils/segmentTextNormalize";
 
 /** S1 下 ref 可能领先 React state；同长度同 uid 且 ref 正文更新时保留 ref。 */
 export function reconcileSegmentsRefWithState(

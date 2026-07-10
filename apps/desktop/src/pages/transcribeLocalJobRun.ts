@@ -1,6 +1,5 @@
 import { asrBaseUrl } from "../config/env";
 import * as p1 from "../tauri/projectApi";
-import { materializeSegmentTextDrafts } from "../hooks/useSegmentDraftStore";
 import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } from "./transcribeAsyncPoll";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
@@ -45,7 +44,7 @@ function onTranscribeStatusTick(
     logFirstSegmentsVisibleMs(Date.now() - refs.transcribeStartedAtMs.current);
   }
   if (st.segments_delta?.length) {
-    const base = materializeSegmentTextDrafts(segmentPublish.getCurrentSegmentsSnapshot());
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
     const merged = mergeTranscribeStatusSegments(base, st, refs.appliedSegmentCount);
     if (merged.length !== base.length) {
       segmentPublish.publishStructure(merged);

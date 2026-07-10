@@ -18,10 +18,6 @@ vi.mock("../services/lastWorkspace", () => ({
   writeLastWorkspace: vi.fn(),
 }));
 
-vi.mock("../hooks/useSegmentDraftStore", () => ({
-  segmentDraftStore: { resetAll: vi.fn() },
-}));
-
 vi.mock("../tauri/projectApi", () => ({
   projectLoad: vi.fn(),
 }));

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import {
-  segmentDraftStore,
-  subscribeSegmentDraftStore,
-} from "../hooks/useSegmentDraftStore";
+import { isTranscriptEditorComposing } from "../components/editor/core/onDocChanged";
 
 const AUTO_SAVE_DEBOUNCE_MS = 1500;
 
@@ -80,7 +77,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
   }, [notifyPersisted, registerOnPersisted]);
 
   const scheduleAutoSave = useCallback(() => {
-    if (segmentDraftStore.hasActiveComposition()) return;
+    if (isTranscriptEditorComposing()) return;
     if (!enabledRef.current || !currentFileIdRef.current || busyRef.current || saveInFlightRef.current)
       return;
     if (!hasUnsavedRef.current()) {
@@ -91,6 +88,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
     markPendingIfNeeded();
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null;
+      if (isTranscriptEditorComposing()) return;
       if (!enabledRef.current || !currentFileIdRef.current || busyRef.current || saveInFlightRef.current)
         return;
       if (!hasUnsavedRef.current()) {
@@ -123,11 +121,6 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
     if (!enabled || !currentFileId) return;
     scheduleAutoSave();
   }, [currentFileId, enabled, scheduleAutoSave, segments]);
-
-  useEffect(() => {
-    if (!enabled || !currentFileId) return;
-    return subscribeSegmentDraftStore(() => scheduleAutoSave());
-  }, [currentFileId, enabled, scheduleAutoSave]);
 
   useEffect(() => () => clearScheduledSave(), [clearScheduledSave]);
 

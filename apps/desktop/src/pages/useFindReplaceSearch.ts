@@ -7,6 +7,8 @@ import {
   type FindMatch,
 } from "../services/editor/segmentFindReplace";
 import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import { dispatchTranscriptFocusFindMatch } from "../components/editor/core/transcriptEditorViewHandle";
 
 const FIND_SEARCH_DEBOUNCE_MS = 320;
 
@@ -14,7 +16,7 @@ type Args = {
   segments: SegmentDto[];
   getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
 };
 
 export function useFindReplaceSearch(args: Args) {
@@ -65,6 +67,12 @@ export function useFindReplaceSearch(args: Args) {
     (match: FindMatch | undefined) => {
       if (!match) return;
       setSelectedIdx(match.segmentIdx);
+      if (
+        readTranscriptEditorCoreEnabled() &&
+        dispatchTranscriptFocusFindMatch(match.segmentIdx, match.charStart, match.charEnd)
+      ) {
+        return;
+      }
       scrollToMatchSegment(match.segmentIdx);
     },
     [scrollToMatchSegment, setSelectedIdx],

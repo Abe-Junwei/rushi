@@ -9,6 +9,11 @@ import {
 } from "../services/editor/segmentFindReplace";
 import { toast } from "../services/ui/toast";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import {
+  dispatchTranscriptApplyTextsBulk,
+  dispatchTranscriptReplaceCharRange,
+} from "../components/editor/core/transcriptEditorViewHandle";
 
 type Args = {
   busy: boolean;
@@ -54,6 +59,25 @@ export function useFindReplaceMutations(args: Args) {
     return collectLiteralFindMatches(getCurrentSegmentsSnapshot(), findText);
   }, [findText, flushSegmentTextDrafts, getCurrentSegmentsSnapshot]);
 
+  const applyOneReplace = useCallback(
+    (match: FindMatch, nextText: string) => {
+      if (
+        readTranscriptEditorCoreEnabled() &&
+        dispatchTranscriptReplaceCharRange(
+          match.segmentIdx,
+          match.charStart,
+          findText.length,
+          replaceText,
+        )
+      ) {
+        updateSegmentText(match.segmentIdx, nextText);
+        return;
+      }
+      updateSegmentText(match.segmentIdx, nextText);
+    },
+    [findText.length, replaceText, updateSegmentText],
+  );
+
   const findReplaceCurrent = useCallback(() => {
     if (!findText || activeMatchIndex < 0) return;
     const currentMatches = currentMatchesAfterDraftFlush();
@@ -63,7 +87,7 @@ export function useFindReplaceMutations(args: Args) {
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText === row.text) return;
-    updateSegmentText(match.segmentIdx, nextText);
+    applyOneReplace(match, nextText);
     const projected = getCurrentSegmentsSnapshot().map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
     );
@@ -75,12 +99,12 @@ export function useFindReplaceMutations(args: Args) {
     applySearchResults(nextMatches, nextActive >= 0 ? nextActive : undefined);
   }, [
     activeMatchIndex,
+    applyOneReplace,
     applySearchResults,
     currentMatchesAfterDraftFlush,
     findText,
     getCurrentSegmentsSnapshot,
     replaceText,
-    updateSegmentText,
   ]);
 
   const findReplaceReplaceAndNext = useCallback(() => {
@@ -92,7 +116,7 @@ export function useFindReplaceMutations(args: Args) {
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText !== row.text) {
-      updateSegmentText(match.segmentIdx, nextText);
+      applyOneReplace(match, nextText);
     }
     const projected = getCurrentSegmentsSnapshot().map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
@@ -106,12 +130,12 @@ export function useFindReplaceMutations(args: Args) {
     applySearchResults(nextMatches, next);
   }, [
     activeMatchIndex,
+    applyOneReplace,
     applySearchResults,
     currentMatchesAfterDraftFlush,
     findText,
     replaceText,
     getCurrentSegmentsSnapshot,
-    updateSegmentText,
   ]);
 
   const findReplaceRequestReplaceAll = useCallback(() => {
@@ -127,7 +151,14 @@ export function useFindReplaceMutations(args: Args) {
     if (!currentMatches.length) return;
     const matchCount = currentMatches.length;
     pushUndo();
-    const next = applyReplaceAllToSegments(getCurrentSegmentsSnapshot(), findText, replaceText, currentMatches);
+    const baseline = getCurrentSegmentsSnapshot();
+    const next = applyReplaceAllToSegments(baseline, findText, replaceText, currentMatches);
+    if (readTranscriptEditorCoreEnabled()) {
+      const updates = next
+        .map((s, i) => ({ segmentIdx: i, text: s.text ?? "" }))
+        .filter((u, i) => (baseline[i]?.text ?? "") !== u.text);
+      dispatchTranscriptApplyTextsBulk(updates);
+    }
     segmentPublish.publishTextBulk(next);
     const explicitPairs =
       findText.trim() !== replaceText.trim()

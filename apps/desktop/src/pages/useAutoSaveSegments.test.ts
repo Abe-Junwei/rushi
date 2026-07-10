@@ -1,6 +1,5 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { segmentDraftStore, segmentDraftKey } from "../hooks/useSegmentDraftStore";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
 
@@ -17,12 +16,10 @@ function seg(text: string, idx = 0): SegmentDto {
 describe("useAutoSaveSegments", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    segmentDraftStore.resetAll();
   });
 
   afterEach(() => {
     vi.useRealTimers();
-    segmentDraftStore.resetAll();
   });
 
   it("debounces save after segment text change", () => {
@@ -56,25 +53,23 @@ describe("useAutoSaveSegments", () => {
     rerender({ segments: [seg("b")] });
   });
 
-  it("schedules save when draft store updates", () => {
+  it("schedules save when segment text updates", () => {
     const saveSegments = vi.fn().mockResolvedValue(true);
-    const segments = [seg("committed", 0)];
-    renderHook(() =>
-      useAutoSaveSegments({
-        enabled: true,
-        currentFileId: "f1",
-        segments,
-        busy: false,
-        saveInFlightRef: { current: false },
-        hasUnsavedSegmentChanges: () => true,
-        saveSegments,
-      }),
+    const { rerender } = renderHook(
+      (props: { segments: SegmentDto[] }) =>
+        useAutoSaveSegments({
+          enabled: true,
+          currentFileId: "f1",
+          segments: props.segments,
+          busy: false,
+          saveInFlightRef: { current: false },
+          hasUnsavedSegmentChanges: () => true,
+          saveSegments,
+        }),
+      { initialProps: { segments: [seg("committed", 0)] } },
     );
 
-    act(() => {
-      segmentDraftStore.setDraft(segmentDraftKey(segments[0], 0), "draft edit");
-      segmentDraftStore.flushPendingEmit();
-    });
+    rerender({ segments: [seg("draft edit", 0)] });
 
     act(() => {
       vi.advanceTimersByTime(1500);

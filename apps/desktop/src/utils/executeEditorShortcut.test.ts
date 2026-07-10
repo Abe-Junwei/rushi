@@ -1,4 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { executeEditorShortcut } from "./executeEditorShortcut";
 import { createEmptySegmentListFilterNavState } from "./segmentListFilterNav";
@@ -83,6 +87,11 @@ function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]
 }
 
 describe("executeEditorShortcut", () => {
+  afterEach(() => {
+    resetTranscriptProjectionForTests();
+    document.body.innerHTML = "";
+  });
+
   it("playback.toggle uses selected-segment play, not global togglePlay", () => {
     const handleToggleSelectedWaveformPlay = vi.fn();
     const togglePlay = vi.fn();
@@ -123,16 +132,17 @@ describe("executeEditorShortcut", () => {
     expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
-  it("playback.toggle uses SC2 chrome when React SC1 still lags (H3)", async () => {
+  it("playback.toggle uses CM6 projection when React SC1 still lags (H3)", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({
-      fileId: "f1",
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
       primaryIdx: 1,
       selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 2,
     });
     const handleToggleSelectedWaveformPlay = vi.fn();
     const deps = makeDeps({
@@ -150,7 +160,7 @@ describe("executeEditorShortcut", () => {
 
     expect(executeEditorShortcut("playback.toggle", deps)).toBe(true);
     expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("splits at playhead for selectedIdx even when another textarea is focused", () => {
@@ -342,7 +352,7 @@ describe("executeEditorShortcut", () => {
     expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
   });
 
-  it("confirmAdvance finalizes focused textarea row, not stale selectedIdx", async () => {
+  it("confirmAdvance finalizes CM6 projection primary, not stale selectedIdx", async () => {
     const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
     const ctx = makeCtx({
       selectedIdx: 0,
@@ -354,12 +364,12 @@ describe("executeEditorShortcut", () => {
       ],
     });
     const selectSegmentAt = vi.fn();
-    document.body.innerHTML = `
-      <div data-seg-row="1">
-        <textarea aria-label="语段正文"></textarea>
-      </div>
-    `;
-    document.querySelector("textarea")!.focus();
+    seedTranscriptProjectionForTests({
+      primaryIdx: 1,
+      selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 3,
+    });
 
     executeEditorShortcut(
       "workflow.confirmAdvance",
@@ -370,7 +380,6 @@ describe("executeEditorShortcut", () => {
       expect(confirmSegmentEditAndAdvance).toHaveBeenCalledWith(1);
       expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
     });
-    document.body.innerHTML = "";
   });
 
   it("confirmAdvance respects active list filter", async () => {

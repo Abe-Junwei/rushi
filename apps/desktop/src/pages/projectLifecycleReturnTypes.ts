@@ -2,7 +2,7 @@ import type { CloseGateLifecycleFacade, ExportLifecycleFacade } from "./projectL
 import type { useProjectEditorToolsController } from "./useProjectEditorToolsController";
 import type { useTranscribeJobController } from "./useTranscribeJobController";
 import type { useSegmentMutationController } from "./useSegmentMutationController";
-import type { useSegmentSelectionController } from "./useSegmentSelectionController";
+import type { useTranscriptSelectionFromProjection } from "./useTranscriptSelectionFromProjection";
 import type { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
 import type { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
 import type { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
@@ -21,7 +21,7 @@ import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/project
 type EditorTools = ReturnType<typeof useProjectEditorToolsController>;
 type TranscribeJob = ReturnType<typeof useTranscribeJobController>;
 type Mutations = ReturnType<typeof useSegmentMutationController>;
-type SegmentSelection = ReturnType<typeof useSegmentSelectionController>;
+type SegmentSelection = ReturnType<typeof useTranscriptSelectionFromProjection>;
 type SegmentDeleteConfirm = ReturnType<typeof useSegmentDeleteConfirmController>;
 type GlossaryLearn = ReturnType<typeof useGlossaryLearnPromptController>;
 type ManualCorrectionMemory = ReturnType<typeof useManualCorrectionMemoryDialog>;
@@ -41,7 +41,7 @@ export type ProjectLifecycleReturnInput = {
   currentFileId: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   audioSrc: string | null;
   audioStoragePath: string | null;
   error: string;

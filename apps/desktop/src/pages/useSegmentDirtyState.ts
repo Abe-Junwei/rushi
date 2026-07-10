@@ -5,7 +5,6 @@ import {
   segmentsPersistSignature,
   snapshotSegmentsForPersist,
 } from "./segmentListHelpers";
-import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 
 /** 关闭应用时对话框正文（由 `UnsavedCloseDialog` 展示，勿依赖 `window.confirm`）。 */
 export const UNSAVED_CLOSE_DISCARD_PROMPT =
@@ -18,7 +17,6 @@ export const UNSAVED_NAV_DISCARD_PROMPT =
 export interface SegmentDirtyStateDeps {
   currentFileId: string | null;
   getCurrentSegmentsSnapshot: () => SegmentDto[];
-  flushSegmentTextDrafts: () => void;
 }
 
 export interface SegmentDirtyStateApi {
@@ -33,13 +31,12 @@ export interface SegmentDirtyStateApi {
 }
 
 export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyStateApi {
-  const { currentFileId, getCurrentSegmentsSnapshot, flushSegmentTextDrafts } = deps;
+  const { currentFileId, getCurrentSegmentsSnapshot } = deps;
   const savedSegmentsRef = useRef<SegmentDto[]>([]);
 
   const markSegmentsSaved = useCallback(() => {
-    flushSegmentTextDrafts();
     savedSegmentsRef.current = snapshotSegmentsForPersist(getCurrentSegmentsSnapshot());
-  }, [flushSegmentTextDrafts, getCurrentSegmentsSnapshot]);
+  }, [getCurrentSegmentsSnapshot]);
 
   const setSavedSnapshot = useCallback((segments: SegmentDto[]) => {
     savedSegmentsRef.current = snapshotSegmentsForPersist(segments);
@@ -56,10 +53,10 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
 
   const hasUnsavedSegmentChanges = useCallback(() => {
     if (!currentFileId) return false;
-    const withDrafts = segmentsWithDraftsApplied(getCurrentSegmentsSnapshot());
+    const live = snapshotSegmentsForPersist(getCurrentSegmentsSnapshot());
     const saved = savedSegmentsRef.current;
-    if (segmentsPersistSignature(withDrafts) === segmentsPersistSignature(saved)) return false;
-    return !segmentsEqualForPersist(withDrafts, saved);
+    if (segmentsPersistSignature(live) === segmentsPersistSignature(saved)) return false;
+    return !segmentsEqualForPersist(live, saved);
   }, [currentFileId, getCurrentSegmentsSnapshot]);
 
   const confirmDiscardUnsavedIfNeeded = useCallback(() => {

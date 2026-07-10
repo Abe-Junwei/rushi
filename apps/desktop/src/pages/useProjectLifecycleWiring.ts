@@ -40,7 +40,6 @@ export function useProjectLifecycleWiring(
     currentFileId,
     segments,
     setSegments,
-    selectedIdx,
     setSelectedIdx,
     audioSrc,
     setAudioSrc,
@@ -67,7 +66,6 @@ export function useProjectLifecycleWiring(
     current,
     currentFileId,
     segments,
-    selectedIdx,
     setSelectedIdx,
     selectedIdxRef,
     setCurrent,
@@ -91,6 +89,8 @@ export function useProjectLifecycleWiring(
     getCurrentSegmentsSnapshot,
     segmentPublish,
   } = editorStack;
+
+  const selectedIdx = segmentSelection.selectedIdx;
 
   const applyDetailBaseOnly = useCallback(
     (d: ProjectDetail) => {

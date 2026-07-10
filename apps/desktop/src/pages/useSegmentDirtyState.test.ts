@@ -10,17 +10,14 @@ function seg(text: string, idx = 0): SegmentDto {
 describe("useSegmentDirtyState", () => {
   it("reports no dirty when snapshot matches", () => {
     const currentSegments = [seg("a")];
-    const flush = vi.fn();
     const { result } = renderHook(() =>
       useSegmentDirtyState({
         currentFileId: "f1",
         getCurrentSegmentsSnapshot: () => currentSegments,
-        flushSegmentTextDrafts: flush,
       }),
     );
     act(() => result.current.markSegmentsSaved());
     expect(result.current.hasUnsavedSegmentChanges()).toBe(false);
-    expect(flush).toHaveBeenCalled();
   });
 
   it("reports dirty after text change", () => {
@@ -29,7 +26,6 @@ describe("useSegmentDirtyState", () => {
       useSegmentDirtyState({
         currentFileId: "f1",
         getCurrentSegmentsSnapshot: () => currentSegments,
-        flushSegmentTextDrafts: vi.fn(),
       }),
     );
     act(() => result.current.markSegmentsSaved());
@@ -44,7 +40,6 @@ describe("useSegmentDirtyState", () => {
       useSegmentDirtyState({
         currentFileId: "f1",
         getCurrentSegmentsSnapshot: () => currentSegments,
-        flushSegmentTextDrafts: vi.fn(),
       }),
     );
     act(() => result.current.markSegmentsSaved());

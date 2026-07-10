@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { makeSeg, useTestSegmentMutationController } from "./useSegmentMutationController.testHelpers";
 
 describe("useSegmentMutationController core", () => {
@@ -48,19 +47,14 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segmentsRef.current[0]?.start_sec).toBe(0.5);
   });
 
-  it("undo flushes draft then restores committed text", () => {
+  it("undo restores committed text after updateSegmentText", () => {
     const seg = makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "u1" });
     const { result } = renderHook(() => useTestSegmentMutationController([seg]));
-    const key = segmentDraftKey(seg, 0);
 
     act(() => result.current.mutations.updateSegmentText(0, "world"));
-    act(() => {
-      segmentDraftStore.setDraft(key, "draft-only");
-    });
     act(() => result.current.mutations.undo());
 
     expect(result.current.segments[0].text).toBe("hello");
-    expect(segmentDraftStore.getDraft(key)).toBeUndefined();
   });
 
   it("redo works after undo when segmentsRef was ahead of React state", () => {
@@ -140,7 +134,6 @@ describe("useSegmentMutationController core", () => {
   });
 
   it("splitAtSelection keeps committed text on both halves", () => {
-    segmentDraftStore.resetAll();
     const seg = makeSeg({ text: "abcdef", start_sec: 0, end_sec: 10, uid: "uid-split" });
     const { result } = renderHook(() => useTestSegmentMutationController([seg]));
 
@@ -151,8 +144,7 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[1]?.text).toBe("def");
   });
 
-  it("mergeWithNextAt includes live segment text without draft store", () => {
-    segmentDraftStore.resetAll();
+  it("mergeWithNextAt includes live segment text", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([
         makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "uid-a" }),
@@ -168,7 +160,6 @@ describe("useSegmentMutationController core", () => {
   });
 
   it("mergeWithNextAt uses segmentsRef when React state lags behind ref", () => {
-    segmentDraftStore.resetAll();
     const { result } = renderHook(() =>
       useTestSegmentMutationController([
         makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "uid-a" }),

@@ -6,7 +6,6 @@ import {
   segmentHasUnsavedText,
 } from "./segmentConfirmEligible";
 import type { SegmentDto } from "../tauri/projectApi";
-import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 
 function seg(uid: string, text: string): SegmentDto {
   return {
@@ -22,20 +21,16 @@ function seg(uid: string, text: string): SegmentDto {
 }
 
 describe("segmentConfirmEligible", () => {
-  it("detects unsaved draft text", () => {
-    segmentDraftStore.resetAll();
-    const rows = [seg("u1", "甲")];
-    segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "乙");
-    expect(segmentHasUnsavedText(rows, rows, 0)).toBe(true);
-    segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
+  it("detects unsaved segment text vs saved snapshot", () => {
+    const live = [seg("u1", "乙")];
+    const saved = [seg("u1", "甲")];
+    expect(segmentHasUnsavedText(live, saved, 0)).toBe(true);
   });
 
   it("allows keyboard confirm when text unsaved", () => {
-    segmentDraftStore.resetAll();
-    const rows = [seg("u1", "甲")];
-    segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "乙");
-    expect(segmentCanConfirmEdit(rows, rows, 0)).toBe(true);
-    segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
+    const live = [seg("u1", "乙")];
+    const saved = [seg("u1", "甲")];
+    expect(segmentCanConfirmEdit(live, saved, 0)).toBe(true);
   });
 
   it("allows finalize for non-finalized segments", () => {
@@ -48,12 +43,10 @@ describe("segmentConfirmEligible", () => {
     expect(segmentCanFinalize(rows, 0, false)).toBe(false);
   });
 
-  it("detects segment text content including drafts", () => {
-    segmentDraftStore.resetAll();
-    const rows = [seg("u1", "")];
-    expect(segmentHasTextContent(rows, 0)).toBe(false);
-    segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "草稿");
-    expect(segmentHasTextContent(rows, 0)).toBe(true);
-    segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
+  it("detects segment text content from segment.text", () => {
+    const empty = [seg("u1", "")];
+    expect(segmentHasTextContent(empty, 0)).toBe(false);
+    const filled = [seg("u1", "正文")];
+    expect(segmentHasTextContent(filled, 0)).toBe(true);
   });
 });

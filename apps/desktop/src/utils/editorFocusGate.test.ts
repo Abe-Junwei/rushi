@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { TRANSCRIPT_EDITOR_CORE_ATTR } from "../components/editor/core/transcriptEditorDom";
 import { isEditorFocusGateOpen, isWaveformShellFocused } from "./editorFocusGate";
 
 describe("editorFocusGate", () => {
@@ -6,14 +7,12 @@ describe("editorFocusGate", () => {
     document.body.innerHTML = "";
   });
 
-  it("opens when segment textarea is focused", () => {
+  it("opens when CM6 transcript core is focused", () => {
     document.body.innerHTML = `
-      <div data-seg-row="2">
-        <textarea aria-label="语段正文" class="seg-text"></textarea>
-      </div>
+      <div class="cm-editor" ${TRANSCRIPT_EDITOR_CORE_ATTR}="1" tabindex="0"></div>
     `;
-    const textarea = document.querySelector("textarea")!;
-    textarea.focus();
+    const core = document.querySelector(".cm-editor") as HTMLElement;
+    core.focus();
     expect(isEditorFocusGateOpen({ segmentsLength: 5, waveformShell: null })).toBe(true);
   });
 
@@ -25,7 +24,7 @@ describe("editorFocusGate", () => {
     expect(isEditorFocusGateOpen({ segmentsLength: 1, waveformShell: shell })).toBe(true);
   });
 
-  it("closed when focus is outside shell and no textarea", () => {
+  it("closed when focus is outside shell and CM6", () => {
     document.body.innerHTML = `
       <div id="shell"></div>
       <button id="hub" type="button">hub</button>

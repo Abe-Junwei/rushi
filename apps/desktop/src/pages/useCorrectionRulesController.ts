@@ -9,6 +9,8 @@ import {
   type CorrectionRulesDialogTrigger,
 } from "./correctionRulesPanelTypes";
 import { useCorrectionRulesApply } from "./useCorrectionRulesApply";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import { dispatchTranscriptFocusFindMatch } from "../components/editor/core/transcriptEditorViewHandle";
 
 export type { CorrectionRulesDialogTrigger, CorrectionRulesDialogState } from "./correctionRulesPanelTypes";
 
@@ -43,6 +45,12 @@ export function useCorrectionRulesController(args: Args) {
   const [previewFocusSegmentIdx, setPreviewFocusSegmentIdx] = useState<number | null>(null);
 
   const scrollToPreviewSegment = useCallback((segmentIdx: number) => {
+    if (
+      readTranscriptEditorCoreEnabled() &&
+      dispatchTranscriptFocusFindMatch(segmentIdx)
+    ) {
+      return;
+    }
     scheduleScrollSegmentListIndexToView(segmentIdx);
   }, []);
 

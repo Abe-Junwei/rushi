@@ -1,10 +1,10 @@
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "../hooks/useProjectWaveform";
-import { readFocusedSegmentTextareaIdx } from "../pages/flushSegmentTextDrafts";
 import type { SegmentListFilterNavState } from "./segmentListFilterNav";
 import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
 import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
 import type { SegmentSelectSource } from "./waveformViewMode";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -24,9 +24,7 @@ export type ConfirmAdvanceTabQueueDeps = {
 };
 
 export function resolveConfirmAdvanceStartingIdx(ctx: TranscriptionLayerInput): number {
-  const focusedIdx = readFocusedSegmentTextareaIdx(ctx.segments.length);
-  if (focusedIdx != null) return focusedIdx;
-  return ctx.selectedIdx;
+  return effectiveTranscriptPrimaryIdx(ctx.selectedIdx);
 }
 
 function resolveConfirmAdvanceSegmentIdx(ctx: TranscriptionLayerInput): number {

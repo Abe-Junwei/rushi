@@ -32,7 +32,7 @@ export type SavePersistPipelineArgs = {
   savedSnapshot: SegmentDto[];
   pendingAiRevisedUids: Set<string>;
   setCurrent: Dispatch<SetStateAction<ProjectDetail | null>>;
-  setSelectedIdx: Dispatch<SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   options?: SavePersistPipelineOptions;
 };
 

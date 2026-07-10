@@ -1,20 +1,17 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
-  commitSegmentTextDraftsForStructureMutation,
-  flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
   publishSegmentStructureMutation,
   publishSegmentTextBulkMutation,
   publishTranscribeSegmentClear,
   publishTranscribeSegmentRestore,
   type SegmentListNext,
 } from "./flushSegmentTextDrafts";
+import { flushCm6TextProjection } from "../components/editor/core/onDocChanged";
 
 export type SegmentPublishApi = {
   getCurrentSegmentsSnapshot: () => SegmentDto[];
-  flushSegmentTextDrafts: (
-    options?: Parameters<typeof flushSegmentTextDraftsImpl>[2],
-  ) => void;
+  /** Sync CM6 text into SegmentDto[] (no undo). Used before structure mutations. */
   commitTextDraftsForStructureMutation: () => void;
   publishStructure: (next: SegmentListNext) => void;
   /** Live drag preview: React state only; ref reconciles on next render, commit via publishStructure. */
@@ -35,11 +32,19 @@ export function createSegmentPublishApi(
   };
   return {
     getCurrentSegmentsSnapshot,
-    flushSegmentTextDrafts: (options) => {
-      remember(flushSegmentTextDraftsImpl(getCurrentSegmentsSnapshot, setSegments, options));
-    },
     commitTextDraftsForStructureMutation: () => {
-      remember(commitSegmentTextDraftsForStructureMutation(getCurrentSegmentsSnapshot, setSegments));
+      flushCm6TextProjection({
+        baseline: getCurrentSegmentsSnapshot(),
+        updateSegmentText: (idx, text) => {
+          const prev = segmentsRef.current;
+          const cur = prev[idx];
+          if (!cur || cur.text === text) return;
+          const next = [...prev];
+          next[idx] = { ...cur, text };
+          segmentsRef.current = next;
+          setSegments(next);
+        },
+      });
     },
     publishStructure: (next) => {
       remember(publishSegmentStructureMutation(getCurrentSegmentsSnapshot, setSegments, next));

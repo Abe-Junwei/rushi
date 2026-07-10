@@ -11,7 +11,6 @@ import {
   segmentCanFinalize,
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
-import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { pushEditHistoryRestoreActivity } from "../services/ui/pushActivity";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
@@ -39,7 +38,7 @@ type Args = {
   segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
   setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   setError: (msg: string) => void;
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
@@ -209,7 +208,6 @@ export function useProjectSaveController(args: Args) {
       setError("");
       try {
         mutations.resetMutationHistory();
-        segmentDraftStore.resetAll();
         await p1.fileRestoreSegmentsFromEditLog(currentFileId, editLogId);
         const fd = await fileApi.loadFile(currentFileId);
         const prevUid = getCurrentSegmentsSnapshot()[selectedIdxRef.current]?.uid;

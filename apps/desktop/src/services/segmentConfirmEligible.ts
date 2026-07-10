@@ -1,8 +1,4 @@
-import {
-  normalizeSegmentDraftText,
-  segmentDraftKey,
-  segmentDraftStore,
-} from "../hooks/useSegmentDraftStore";
+import { normalizeSegmentDraftText } from "../utils/segmentTextNormalize";
 import type { SegmentDto } from "../tauri/projectApi";
 
 function segmentTextAt(
@@ -13,9 +9,7 @@ function segmentTextAt(
   const liveSeg = segments[idx];
   if (!liveSeg) return null;
   const uid = liveSeg.uid?.trim();
-  const key = segmentDraftKey(liveSeg, idx);
-  const draft = segmentDraftStore.getDraft(key);
-  const live = normalizeSegmentDraftText(draft ?? liveSeg.text ?? "");
+  const live = normalizeSegmentDraftText(liveSeg.text ?? "");
   const savedSeg = uid
     ? savedSnapshot.find((s) => s.uid?.trim() === uid)
     : savedSnapshot[idx];
@@ -43,7 +37,7 @@ export function segmentCanConfirmEdit(
   return segmentHasUnsavedText(segments, savedSnapshot, segmentIdx);
 }
 
-/** 语段当前可见正文（含 draft）是否有非空白字符。 */
+/** 语段当前正文是否有非空白字符。 */
 export function segmentHasTextContent(segments: SegmentDto[], segmentIdx: number): boolean {
   const pair = segmentTextAt(segments, segments, segmentIdx);
   if (!pair) return false;

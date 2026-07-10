@@ -11,7 +11,7 @@ type Args = {
   segments: SegmentDto[];
   segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   pushUndo: () => void;
   setError: (msg: string) => void;
   saveSegments: (options?: {

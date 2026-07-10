@@ -6,7 +6,6 @@ import { useFindReplaceController } from "./useFindReplaceController";
 import { usePostTranscribeOrchestrationController } from "./usePostTranscribeOrchestrationController";
 import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
-import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 import { segmentCanFinalize } from "../services/segmentConfirmEligible";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 
@@ -23,7 +22,7 @@ type Args = {
   selectedIdx: number;
   segments: SegmentDto[];
   segmentPublish: SegmentPublishApi;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   flushSegmentTextDrafts: () => void;
   updateSegmentText: (idx: number, text: string) => void;
   pushUndo: () => void;
@@ -91,7 +90,7 @@ export function useProjectEditorToolsController(args: Args) {
   const canConfirmSegmentEdit = useCallback(
     (segmentIdx: number) => {
       if (!currentFileId) return false;
-      return segmentCanFinalize(segmentsWithDraftsApplied(segments), segmentIdx, busy);
+      return segmentCanFinalize(segments, segmentIdx, busy);
     },
     [busy, currentFileId, segments],
   );

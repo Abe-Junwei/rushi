@@ -68,13 +68,6 @@ describe("confirmAdvanceTabQueue", () => {
     const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
     ctx.confirmSegmentEditAndAdvance = confirmSegmentEditAndAdvance;
 
-    document.body.innerHTML = `
-      <div data-seg-row="0">
-        <textarea aria-label="语段正文"></textarea>
-      </div>
-    `;
-    document.querySelector("textarea")!.focus();
-
     const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pendingSteps: 0 };
     const deps = {
       getCtx,
@@ -104,7 +97,6 @@ describe("confirmAdvanceTabQueue", () => {
     expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledTimes(1);
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledWith(2, { loop: true });
-    document.body.innerHTML = "";
   });
 
   it("caps queued Tab steps", () => {

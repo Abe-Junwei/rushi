@@ -19,7 +19,7 @@ export interface ProjectLifecycleApi {
   segments: SegmentDto[];
   selectedIdx: number;
   selectedIdxRef: React.MutableRefObject<number>;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   audioSrc: string | null;
   /** Raw on-disk audio path for Tauri blob URL load (bypasses asset:// truncation). */
   audioStoragePath: string | null;

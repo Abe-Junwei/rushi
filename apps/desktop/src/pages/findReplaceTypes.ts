@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type {
   FindMatchListItem,
@@ -44,7 +43,7 @@ export type UseFindReplaceControllerArgs = {
   segmentPublish: SegmentPublishApi;
   selectedIdx: number;
   flushSegmentTextDrafts: () => void;
-  setSelectedIdx: Dispatch<SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   pushUndo: () => void;
   saveSegments: (options?: {

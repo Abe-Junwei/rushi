@@ -1,6 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useRef, useState } from "react";
-import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { writeLastWorkspace, type WorkspaceFileTarget } from "../services/lastWorkspace";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./ProjectLifecycleApi";
@@ -274,7 +273,6 @@ export function useProjectCloseGateController(
   }
 
   async function finishNavigateAfterDiscard() {
-    segmentDraftStore.resetAll();
     setCloseGateOpen(false);
     const proceed = navigateProceedRef.current;
     navigateProceedRef.current = null;
@@ -286,7 +284,6 @@ export function useProjectCloseGateController(
       await finishNavigateAfterDiscard();
       return;
     }
-    segmentDraftStore.resetAll();
     await requestAppClose();
   }
 

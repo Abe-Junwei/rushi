@@ -71,6 +71,7 @@ function useTestCrud(opts: {
     deleteSegmentAt: vi.fn(),
     insertSegmentAfter: vi.fn(),
     insertSegmentFromTimeRange: vi.fn(),
+    flushTranscriptTextProjection: vi.fn(),
     flushSegmentTextDrafts: vi.fn(),
     resetMutationHistory: vi.fn(),
   });

@@ -2,6 +2,8 @@ import { useCallback } from "react";
 import type { CorrectionRulesDialogState } from "./correctionRulesPanelTypes";
 import { findSegmentIndexByUid } from "./segmentListHelpers";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import { dispatchTranscriptApplyTextsBulk } from "../components/editor/core/transcriptEditorViewHandle";
 
 type Args = {
   dialog: CorrectionRulesDialogState;
@@ -32,6 +34,7 @@ export function useCorrectionRulesApply(args: Args) {
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
     const next = [...segmentPublish.getCurrentSegmentsSnapshot()];
+    const updates: { segmentIdx: number; text: string }[] = [];
     let applied = 0;
     for (const ch of dialog.changes) {
       if (!selected.has(ch.segmentIdx)) continue;
@@ -40,11 +43,15 @@ export function useCorrectionRulesApply(args: Args) {
       const row = next[idx];
       if (!row) continue;
       next[idx] = { ...row, text: ch.afterText };
+      updates.push({ segmentIdx: idx, text: ch.afterText });
       applied += 1;
     }
     if (applied === 0) {
       setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
       return;
+    }
+    if (readTranscriptEditorCoreEnabled()) {
+      dispatchTranscriptApplyTextsBulk(updates);
     }
     segmentPublish.publishTextBulk(next);
     closeStageA();

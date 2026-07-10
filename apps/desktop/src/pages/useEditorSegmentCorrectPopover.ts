@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { CorrectSuggestion } from "../services/editor/correctSuggestions";
 import type { CorrectableSpan } from "../services/editor/findCorrectableSpans";
 import { applySpanCorrection } from "../services/editor/applySpanCorrection";
-import { normalizeSegmentDraftText, segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
+import { normalizeSegmentDraftText } from "../utils/segmentTextNormalize";
 import { applySegmentTextChange } from "./segmentTextLearnMeta";
 import type { SegmentDto } from "../tauri/projectApi";
 export type SegmentCorrectPopoverState = {
@@ -50,13 +50,10 @@ export function useEditorSegmentCorrectPopover({
       const idx = popover.segmentIdx;
       const seg = getCurrentSegmentsSnapshot()[idx];
       if (!seg) return;
-      const key = segmentDraftKey(seg, idx);
-      const draft = segmentDraftStore.getDraft(key);
-      const liveBase = normalizeSegmentDraftText(draft ?? seg.text ?? "");
+      const liveBase = normalizeSegmentDraftText(seg.text ?? "");
       const replacement = item.kind === "rule" ? item.right : item.term;
       const next = applySpanCorrection(liveBase, popover.span, replacement);
       applySegmentTextChange(seg, idx, next, updateSegmentText);
-      segmentDraftStore.setDraft(key, next);
       setPopover(null);
     },
     [busy, getCurrentSegmentsSnapshot, popover, updateSegmentText],

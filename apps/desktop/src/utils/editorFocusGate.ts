@@ -1,4 +1,4 @@
-import { readFocusedSegmentTextareaIdx } from "../pages/flushSegmentTextDrafts";
+import { isTranscriptEditorCoreFocused } from "../components/editor/core/transcriptEditorDom";
 
 export function isWaveformShellFocused(waveformShell: HTMLElement | null): boolean {
   if (typeof document === "undefined" || !waveformShell) return false;
@@ -7,11 +7,12 @@ export function isWaveformShellFocused(waveformShell: HTMLElement | null): boole
   return waveformShell.contains(active);
 }
 
-/** Editor focus gate (F3): textarea or waveform shell holds focus. */
+/** Editor focus gate (F3): CM6 transcript core or waveform shell holds focus. */
 export function isEditorFocusGateOpen(input: {
   segmentsLength: number;
   waveformShell: HTMLElement | null;
 }): boolean {
-  if (readFocusedSegmentTextareaIdx(input.segmentsLength) != null) return true;
+  void input.segmentsLength;
+  if (isTranscriptEditorCoreFocused()) return true;
   return isWaveformShellFocused(input.waveformShell);
 }

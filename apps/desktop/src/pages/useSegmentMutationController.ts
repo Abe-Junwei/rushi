@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
-import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import { syncDomTextareasFromSegments } from "./flushSegmentTextDrafts";
+import { flushCm6TextProjection } from "../components/editor/core/onDocChanged";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   clampSegmentBoundsToNeighbors,
@@ -42,6 +41,8 @@ export interface SegmentMutationApi {
     mediaDurationSec?: number,
     policy?: import("../utils/segmentTimeRange").SegmentOverlapPolicy,
   ) => number | null;
+  flushTranscriptTextProjection: () => void;
+  /** @deprecated Alias of flushTranscriptTextProjection */
   flushSegmentTextDrafts: () => void;
   resetMutationHistory: () => void;
 }
@@ -49,7 +50,7 @@ export interface SegmentMutationApi {
 type SegmentMutationDeps = {
   segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   setError: (msg: string) => void;
   busy: boolean;
   pendingAiRevisedUidsRef?: React.MutableRefObject<Set<string>>;
@@ -76,31 +77,49 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
 
-  const flushSegmentTextDrafts = useCallback(() => {
-    segmentPublish.flushSegmentTextDrafts({
-      beforeApplyUpdates: (updates) => {
-        for (const { idx } of updates) {
-          pushUndoForTextEdit(idx);
-        }
-      },
+  const updateSegmentText = useCallback(
+    (idx: number, text: string, options?: { fromLlm?: boolean }) => {
+      if (busy) return;
+      const prev = getCurrentSegmentsSnapshot();
+      const cur = prev[idx];
+      if (!cur || cur.text === text) return;
+      pushUndoForTextEdit(idx);
+      const uid = cur.uid?.trim();
+      if (!options?.fromLlm && uid && pendingAiRevisedUidsRef) {
+        pendingAiRevisedUidsRef.current.delete(uid);
+      }
+      const nextRow = { ...cur, text };
+      const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
+      segmentPublish.publishTextBulk((base) => {
+        const out = [...base];
+        out[idx] = patched;
+        return out;
+      });
+      if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
+        pendingAiRevisedUidsRef.current.add(uid);
+      }
+    },
+    [busy, getCurrentSegmentsSnapshot, segmentPublish, pushUndoForTextEdit, pendingAiRevisedUidsRef],
+  );
+
+  const flushTranscriptTextProjection = useCallback(() => {
+    flushCm6TextProjection({
+      baseline: getCurrentSegmentsSnapshot(),
+      updateSegmentText: (idx, text) => updateSegmentText(idx, text),
     });
-  }, [segmentPublish, pushUndoForTextEdit]);
+  }, [getCurrentSegmentsSnapshot, updateSegmentText]);
 
   const undo = useCallback(() => {
     if (busy) return;
-    syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
-    segmentDraftStore.discardEditingSession();
     undoStackPop();
     onSegmentsStructureRestored?.();
-  }, [busy, getCurrentSegmentsSnapshot, onSegmentsStructureRestored, undoStackPop]);
+  }, [busy, onSegmentsStructureRestored, undoStackPop]);
 
   const redo = useCallback(() => {
     if (busy) return;
-    syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
-    segmentDraftStore.discardEditingSession();
     redoStackPop();
     onSegmentsStructureRestored?.();
-  }, [busy, getCurrentSegmentsSnapshot, onSegmentsStructureRestored, redoStackPop]);
+  }, [busy, onSegmentsStructureRestored, redoStackPop]);
 
   const mergeDelete = useMemo(
     () =>
@@ -149,33 +168,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     pushUndo,
     onSelectionCollapsed,
   });
-
-  const updateSegmentText = useCallback(
-    (idx: number, text: string, options?: { fromLlm?: boolean }) => {
-      if (busy) return;
-      const prev = getCurrentSegmentsSnapshot();
-      const cur = prev[idx];
-      if (!cur || cur.text === text) return;
-      pushUndoForTextEdit(idx);
-      const uid = cur.uid?.trim();
-      if (!options?.fromLlm && uid && pendingAiRevisedUidsRef) {
-        pendingAiRevisedUidsRef.current.delete(uid);
-      }
-      const nextRow = { ...cur, text };
-      const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
-      segmentPublish.publishTextBulk((base) => {
-        const out = [...base];
-        out[idx] = patched;
-        return out;
-      });
-      segmentDraftStore.endComposition(segmentDraftKey(cur, idx));
-      segmentDraftStore.clearDraft(segmentDraftKey(patched, idx));
-      if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
-        pendingAiRevisedUidsRef.current.add(uid);
-      }
-    },
-    [busy, getCurrentSegmentsSnapshot, segmentPublish, pushUndoForTextEdit, pendingAiRevisedUidsRef],
-  );
 
   const updateSegmentTime = useCallback(
     (idx: number, field: "start_sec" | "end_sec", value: number) => {
@@ -255,7 +247,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     deleteSegmentIndices: mergeDelete.deleteSegmentIndices,
     insertSegmentAfter: insertActions.insertSegmentAfter,
     insertSegmentFromTimeRange: insertActions.insertSegmentFromTimeRange,
-    flushSegmentTextDrafts,
+    flushTranscriptTextProjection,
+    flushSegmentTextDrafts: flushTranscriptTextProjection,
     resetMutationHistory: undoRedo.reset,
   };
 }
