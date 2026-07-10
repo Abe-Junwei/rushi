@@ -89,6 +89,13 @@ export function useWaveformSegmentPlaybackControls(args: {
     setIsSelectedSegmentPlaying(false);
   }, []);
 
+  /** Drop bound and invalidate queued end-stop microtasks (user pause / stop). */
+  const cancelSegmentPlaybackBound = useCallback(() => {
+    segmentPlaybackBoundRef.current = null;
+    playGenerationRef.current += 1;
+    setIsSelectedSegmentPlaying(false);
+  }, []);
+
   const applyGlobalPlaybackRate = useCallback(() => {
     const ws = wsRef.current;
     if (!ws) return;
@@ -219,7 +226,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     // Pause decision must follow live media only. A stale `isSelectedSegmentPlaying`
     // (React lag / select-while-playing sync) must not block starting playback.
     if (ws.isPlaying()) {
-      clearSegmentPlaybackBound();
+      cancelSegmentPlaybackBound();
       ws.pause();
       const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
       const freezeSec =
@@ -231,7 +238,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     }
     await playSelectedSegment();
   }, [
-    clearSegmentPlaybackBound,
+    cancelSegmentPlaybackBound,
     getRawMediaPlayheadTimeSec,
     isReady,
     playSelectedSegment,
@@ -247,7 +254,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     if (!ws || !isReady) return;
     if (segmentLoopPlaybackRef.current) {
       setSegmentLoopPlayback(false);
-      clearSegmentPlaybackBound();
+      cancelSegmentPlaybackBound();
       ws.pause();
       return;
     }
@@ -255,7 +262,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     if (!range) return;
     setSegmentLoopPlayback(true);
     await playSelectedSegment();
-  }, [clearSegmentPlaybackBound, isReady, playSelectedSegment, resolveSelectedPlaybackRange, wsRef]);
+  }, [cancelSegmentPlaybackBound, isReady, playSelectedSegment, resolveSelectedPlaybackRange, wsRef]);
 
   /**
    * Keep overlay/toolbar play icon + segment end-bound in sync with live media
@@ -338,14 +345,15 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (!segmentPlaybackReachedEnd(currentSec, bound.endSec)) return;
 
       segmentBoundStopInFlightRef.current = true;
-      const startSec = bound.startSec;
       const endSec = bound.endSec;
       const loop = segmentLoopPlaybackRef.current;
-      playGenerationRef.current += 1;
+      const stopGen = ++playGenerationRef.current;
 
       queueMicrotask(() => {
         segmentBoundStopInFlightRef.current = false;
         if (!wsRef.current || wsRef.current !== ws) return;
+        // User pause / new play bumped generation — do not move the playhead.
+        if (stopGen !== playGenerationRef.current) return;
 
         ws.pause();
         if (loop) {
@@ -356,9 +364,11 @@ export function useWaveformSegmentPlaybackControls(args: {
         } else {
           segmentPlaybackBoundRef.current = null;
           setIsSelectedSegmentPlaying(false);
-          const clampedStart = Math.max(0, Math.min(startSec, ws.getDuration()));
-          if (Number.isFinite(clampedStart)) {
-            atomicMediaSeek(clampedStart);
+          // Freeze at segment end — never seek back to start on auto-stop.
+          // Next Space uses resolveSegmentPlayFrom → segment start when display >= end.
+          const clampedEnd = Math.max(0, Math.min(endSec, ws.getDuration()));
+          if (Number.isFinite(clampedEnd)) {
+            atomicMediaSeek(clampedEnd);
           }
         }
       });

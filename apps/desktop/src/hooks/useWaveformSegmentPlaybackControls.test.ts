@@ -460,4 +460,112 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
     resetSelectionChromeStoreForTests();
   });
+
+  it("auto-stops at segment end without seeking back to segment start", async () => {
+    let playhead = 10;
+    let playing = false;
+    const handlers = new Map<string, () => void>();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      on: vi.fn((event: string, cb: () => void) => {
+        handlers.set(event, cb);
+        return () => handlers.delete(event);
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+    expect(playing).toBe(true);
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+
+    // Arm the bound while still inside the segment, then cross the end.
+    playhead = 15;
+    await act(async () => {
+      handlers.get("audioprocess")?.();
+    });
+    playhead = 19.99;
+    await act(async () => {
+      handlers.get("audioprocess")?.();
+      await Promise.resolve();
+    });
+
+    expect(ws.pause).toHaveBeenCalled();
+    expect(ws.setTime).toHaveBeenCalledWith(20);
+    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+  });
+
+  it("user pause cancels a pending segment-end seek so playhead does not jump", async () => {
+    let playhead = 10;
+    let playing = false;
+    const handlers = new Map<string, () => void>();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on: vi.fn((event: string, cb: () => void) => {
+        handlers.set(event, cb);
+        return () => handlers.delete(event);
+      }),
+    });
+    const wsRef = { current: ws };
+    const syncDisplay = vi.fn();
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+        syncDisplayPlayheadAfterSeekRef: { current: syncDisplay },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+    playhead = 15;
+    await act(async () => {
+      handlers.get("audioprocess")?.();
+    });
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+
+    // Reach end — schedules microtask stop — then user pauses before it runs.
+    playhead = 19.99;
+    handlers.get("audioprocess")?.();
+    playhead = 19.5;
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+      await Promise.resolve();
+    });
+
+    expect(playing).toBe(false);
+    expect(ws.setTime).not.toHaveBeenCalled();
+    expect(syncDisplay).toHaveBeenCalledWith(19.5);
+  });
 });
