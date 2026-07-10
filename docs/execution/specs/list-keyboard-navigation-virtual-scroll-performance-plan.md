@@ -17,9 +17,9 @@
 | LKB-ROOT-1 | 连按偏慢；松手后列表仍跳 | 每步 **sync SC1** → 整树 commit ~300–500ms；commit backlog | **3** | ✅ 已修复：burst 内 0 SC1 commit；keyup 一次 `startTransition` |
 | LKB-ROOT-2 | 松手后 tier 不 reveal；波形高亮飞出视口 | burst **禁 reveal** + keyup `finalize` 读 **滞后 React idx** 非 chrome `primaryIdx` | **2** | ✅ 已修复：keyup reveal 读 chrome primary；非 burst listKeyboard 恢复 reveal |
 | LKB-ROOT-3 | CI **LKB-1 测错对象**：`syncPathTotal` **故意不含** `listCommit`/`listScroll` | perf 全绿 + 手感 FAIL 并存 | **5** | ✅ 已修复：LKB-2 闸门量 `listCommit` |
-| LKB-ROOT-4 | `EditorSegmentWorkbench` / `EditorSegmentList` memo 仍比较 `selectedIdx`；`useSelectionChromePrimaryIdx` 在 list 内 → chrome 变仍整 list 重渲染 | SCB Phase 3 **未完成** | **4** | ⚠️ 部分：U13 memo 已去 selectedIdx；U11/U12 仍开放 |
-| LKB-REG-1 | Step 5 误归因 microtask | 文档/实现偏离实锤 | **5 文档回滚** | ⏳ 仍开放 |
-| LKB-REG-2 | working tree 堆叠补丁 | 未系统取舍 | **5** | ⏳ 仍开放 |
+| LKB-ROOT-4 | `EditorSegmentWorkbench` / `EditorSegmentList` memo 仍比较 `selectedIdx`；`useSelectionChromePrimaryIdx` 在 list 内 → chrome 变仍整 list 重渲染 | SCB Phase 3 **未完成** | **4** | ✅ U13 + U11/U12（SEL-1c） |
+| LKB-REG-1 | Step 5 误归因 microtask | 文档/实现偏离实锤 | **5 文档回滚** | ✅ research §2.2 |
+| LKB-REG-2 | working tree 堆叠补丁 | 未系统取舍 | **5** | ✅ 补丁表已取舍；180ms debounce 保留给 H5 |
 
 ---
 
@@ -67,7 +67,7 @@ keyup → finalizeListKeyboardBurst → commitListKeyboardBurst(idx)
 | U15 | **`syncListKeyboardSegmentFocus`** | focus 重试链 | **×** | **✓ 一次** | **3** | `useSegmentKeyboard.ts` | ✅ |
 | U16 | **`selectedIdxRef.current = idx`** | ref 只读路径 | **✓ 同步** | 已最新 | **3** | `useTranscriptionLayerSelection.ts` | ✅ |
 | U17 | **`SegmentTextListRow` React 选中态** | 行级 | **×**（已 store 订阅） | — | — | `useSegmentRowSelection` **已有** | ✅ |
-| U18 | **`selectionProfileBegin` 覆盖** | profile 噪声 | 记录 | 记录 | **2/5** | `selectionLatencyProfile.ts` | ⚠️ burst 每 step 仍 begin 一行 |
+| U18 | **`selectionProfileBegin` 覆盖** | profile 噪声 | **× 中步静默** | **✓ 一次 commit 行** | **5** | `runSelectSegmentAt.ts` · `useListKeyboardBurstSelection.ts` | ✅ |
 | U19 | **`skipBandPaint`（list 源）** | band canvas | **✓ 保留** | — | — | `paintSelectionChrome` | ✅ |
 | U20 | **working tree 禁 listKeyboard reveal** | tier 飞出视口 | **× 回滚** | — | **2** | `useTranscriptionLayerSelection.ts` | ✅（非 burst 已恢复） |
 
@@ -127,8 +127,8 @@ keyup → finalizeListKeyboardBurst → commitListKeyboardBurst(idx)
 Phase 1 [DONE]  虚拟 scroll 基础设施 + LKB-1
 Phase 2 [DONE]  Reveal chrome primary + debounce + keyup finalize
 Phase 3 [DONE]  Burst SC1 defer + LKB-2 CI
-Phase 4 [PARTIAL]  SCB Phase 2–3 收束：U13 done；U11/U12 仍开放
-Phase 5 [PARTIAL]  LKB-2 done；profile 噪声 U18 / guard hotspot / 补丁取舍仍开放
+Phase 4 [DONE]  SCB Phase 2–3 收束（U11–U13 · SEL-1c）
+Phase 5 [DONE]  LKB-2 + U18 profile 静默 + guard 拆分 + 补丁取舍
 ```
 
 ---
@@ -220,7 +220,7 @@ keyup 一次:
 
 ---
 
-## Phase 4 — SCB Phase 2–3 收束（**LKB-2c** · **部分完成**）
+## Phase 4 — SCB Phase 2–3 收束（**LKB-2c** · **已完成**）
 
 > 与 [`selection-chrome-bus-plan.md`](./selection-chrome-bus-plan.md) Phase 2–3 **合并实施**。
 
@@ -241,18 +241,18 @@ keyup 一次:
 
 ### Step 4.3 — keyup SC1 用 startTransition ✅
 
-**文件**：[`useTranscriptionLayerSelection.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)
+**文件**：[`useListKeyboardBurstSelection.ts`](../../../apps/desktop/src/hooks/useListKeyboardBurstSelection.ts)
 
 - ✅ `commitListKeyboardBurst` 使用 `startTransition`。
 
 ### Step 4.4 — 验证
 
-- [ ] React Profiler：193 段连按，`EditorSegmentList` render 次数 **≈ scroll 次数**，非每键一次。
-- [ ] 手测：LKB-H6「高亮即时、整体不黏」。
+- [x] 单测 / SEL-1c：virtualWindow 与 chrome 订阅已迁出 list 父级。
+- [ ] 手测：LKB-H6「高亮即时、整体不黏」（release `.app`）。
 
 ---
 
-## Phase 5 — LKB-2 CI + 清理（**部分完成**）
+## Phase 5 — LKB-2 CI + 清理（**已完成 · 2026-07-10**）
 
 ### Step 5.1 — LKB-2 perf 闸门 ✅
 
@@ -262,30 +262,36 @@ keyup 一次:
 |------|------|
 | LKB-2 burst 末步 | 193 段 · 10 coalesce 步 · **`listCommit` ≤ 120ms** |
 | LKB-2 keyup flush | 模拟 keyup 后 **恰好 1 次** SC1 commit |
+| LKB-2 U18 | burst 中步 **0** 条 `listKeyboard idx=` profile；keyup **1** 条 commit |
 | LKB-1 | **保留** scroll plan ≤2ms · syncPathTotal ≤80ms（必要非充分） |
 
-### Step 5.2 — working tree 补丁取舍 ⏳
+### Step 5.2 — working tree 补丁取舍 ✅
 
 | 补丁 | 处置 |
 |------|------|
 | `source !== "listKeyboard"` 禁 reveal | ✅ **已回滚**为 `!isListKeyboardBurstStep` |
-| keyup-only reveal 无 debounce | ⚠️ 保留 180ms debounce 但 keyup 取消；可简化为 `0` 或移除冗余 timer |
-| 去 scroll projection | **保留评估** |
+| keyup-only reveal 无 debounce | ✅ **保留** 180ms debounce（LKB-H5 hold）；keyup 取消 pending |
+| 去 scroll projection | **保留** |
 | `keyboard` align / mount fallback | **保留**（scroll 正确性） |
 | `syncListKeyboardSegmentFocus` in scroll hook | ✅ **已移除 burst 路径**；keyup 一次 focus |
 | `executeEditorShortcut` waveform ↑↓ | **保留**（WL 正交） |
-| Step 5 rAF 叙事 | **文档更正**（research §2.2） |
+| Step 5 rAF 叙事 | ✅ **文档更正**（research §2.2） |
 
-### Step 5.3 — Architecture guard 热点 ⏳
+### Step 5.3 — Architecture guard 热点 ✅
 
-- `useTranscriptionLayerSelection.ts`：482 行 / 14 hooks → 拆分 burst 相关逻辑出独立 hook/module。
-- `useEditorSegmentListScroll.ts`：316 行 → 将 layout effect 拆小。
-- `listKeyboardNavigationBurst.perf.ts`：326 行 → 拆辅助函数/工厂。
+- ✅ `runSelectSegmentAt.ts`：select 同步路径从 hook 抽出（hook ≤175 行）。
+- ✅ `useEditorSegmentListSelectionScrollLayout.ts`：selection scroll layout effect 拆出。
+- ✅ `listKeyboardNavigationBurst.fixtures.ts`：perf 辅助工厂拆出。
+- ✅ guard：`shouldSeekOnSegmentSelect` 检查覆盖 `runSelectSegmentAt.ts`。
 
-### Step 5.4 — 文档同步 ✅
+### Step 5.4 — U18 profile 噪声 ✅
 
-- 本 plan / acceptance / v0.1.8.1 checklist §6 profile 模板
-- `waveform-list-interaction-hand-test-evidence.md` §10–§11
+- ✅ burst 中步 **不** `selectionProfileBegin` / `scheduleFlush`。
+- ✅ keyup：`listKeyboard commit` / `waveformKeyboard commit` 各一行含 `listCommit`。
+
+### Step 5.5 — 文档同步 ✅
+
+- 本 plan / acceptance / research
 
 ---
 
@@ -333,3 +339,4 @@ node scripts/check-architecture-guard.mjs
 | 2026-06-21 | **v2 重规划**：LKB-ROOT-1/2/3/4 登记表；Phase 2–5；Phase 1 降级为必要非充分 |
 | 2026-06-21 | **§0.1 整树更新矩阵 U1–U20**：必要/可省/burst 禁止；目标态数据流 |
 | 2026-06-22 | **v2 代码侧收口**：Phase 2–3 标记 DONE；Phase 4–5 标记 PARTIAL；更新 U1–U20 状态；新增 §5.3 guard hotspot |
+| 2026-07-10 | **Phase 5 完成**：U18；`runSelectSegmentAt` / scroll layout / perf fixtures；Phase 4–5 DONE |

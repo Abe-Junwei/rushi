@@ -14,7 +14,7 @@
   WaveformSegmentBandCanvas              ← packable 语段色带（timeline-native virtual Canvas window）
   WaveformSegmentOverlay                 ← 语段 DOM（仅选中 + drag draft；非 WS Regions）
   WaveformLiveTimeRuler                  ← 时间尺 + playhead
-  EditorSegmentList                      ← 语段列表（虚拟窗口，长转写列表）
+  EditorSegmentList                      ← 语段列表（CM6 TranscriptEditorCore；一行一段）
 ```
 
 > **WS-2b（spike v4 PASS · Plan 定稿）**：可见主波形 = PeakCache 驱动的视口窗口 canvas（Peaks **模型**，非迁移 Peaks.js）；WS = media transport（stub peaks、silence 内部 timer/progress、host 1×1）。生产化见 [`waveform-ws2b-viewport-render-plan.md`](../execution/specs/waveform-ws2b-viewport-render-plan.md)。调研：[`waveform-ws2b-viewport-render-research.md`](../execution/specs/waveform-ws2b-viewport-render-research.md)。
@@ -87,45 +87,47 @@
 
 ## 点选 / 选择交互契约（统一矩阵）
 
-**SC 维度（2026-06 · Selection Chrome Bus）**
+> **P9a（2026-07-10）**：列表编辑真源已迁至 **CodeMirror 6**（[`TranscriptEditorCore`](../../apps/desktop/src/components/editor/core/TranscriptEditorCore.tsx)）。会话内选区/文本以 CM6 transaction 为准；[`transcriptProjection`](../../apps/desktop/src/components/editor/core/transcriptProjection.ts) **单向**投影到波形。  
+> **P9b2（2026-07-11）**：已删 SC1 React 选区真源与 SC2 `selectionChromeStore` / publish。ctx 上的 `selectedIdx` / multi-select 字段为 **投影镜像**（[`useTranscriptSelectionFromProjection`](../../apps/desktop/src/pages/useTranscriptSelectionFromProjection.ts)）。选区运输层：[`selectSegmentTransport`](../../apps/desktop/src/pages/selectSegmentTransport.ts)。旧 Selection Chrome Bus 决策见 [`selection-chrome-bus-research.md`](../execution/specs/selection-chrome-bus-research.md)（已被 [`transcript-editor-core-remediation-research.md`](../execution/specs/transcript-editor-core-remediation-research.md) 取代）。
 
-| ID | 含义 | 真源 |
+**真源分层（P9b2）**
+
+| 层 | 含义 | 真源 |
 |----|------|------|
-| **SC1** | 逻辑 primary `selectedIdx` + 多选集合 | React `useProjectEditorState` + `useSegmentSelectionController` |
-| **SC2** | 列表 + 波形 **视觉 chrome** | [`selectionChromeStore`](../../apps/desktop/src/services/selection/selectionChromeStore.ts) + [`applySelectionChromeImperative`](../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts) |
-| **SC4** | 虚拟列表 scroll 投影 | [`useEditorSegmentListScroll`](../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) |
+| **CM6** | 会话内选区 + 正文 + filter 可见行 | CM6 `EditorState`（`selectionCommands` / `filterLineVisibility`） |
+| **投影** | 波形 band/overlay 高亮 / Transport Authority / ctx 镜像 | `transcriptProjection`（只读） |
 
-**硬规则**：SC2 **不得**驱动 persist/undo；波形/列表点击 **先 SC2 publish（store + 波形 imperative；列表行 `useSegmentRowSelection`）→ reveal/seek → SC1 `startTransition`**。结构突变（merge/delete/undo/clearMulti）经 [`selectionChromePublishBridge`](../../apps/desktop/src/services/selection/selectionChromePublishBridge.ts) 显式 publish。Spec：[`selection-chrome-bus-plan.md`](../execution/specs/selection-chrome-bus-plan.md)。
+**硬规则**：CM6 **不得**被 React reconcile 反向覆盖选区；波形/列表点击经 `dispatchTranscriptEditorSelection` / CM6 用户手势写入；`revealSegmentInView` 负责列表滚入视口。结构突变经 CM6 `structureCommands` + persist 桥。Spec：[`transcript-editor-core-remediation-plan.md`](../execution/specs/transcript-editor-core-remediation-plan.md)。
 
 **Waveform selection repair（2026-06）**：调研见 [`waveform-selection-chain-repair-research.md`](../execution/specs/waveform-selection-chain-repair-research.md)。波形语段链路采用三层边界：
 
 | 层 | 责任 | 禁止 |
 |----|------|------|
-| Input state machine | 只处理 pointer session 生命周期（pending tap / edit drag / lasso / cancel / commit）与 session id | 不直接写 SC1/SC2，不 seek/reveal |
+| Input state machine | 只处理 pointer session 生命周期（pending tap / edit drag / lasso / cancel / commit）与 session id | 不直接写选区 store，不 seek/reveal |
 | Selection command | 将产品矩阵解析为 `selectAndSeekStart` / `seekWithinSegment` / `selectOnly` / `blankSeek` / `lassoSelect` / `commitBounds` | 不操作 DOM，不推导 canvas/overlay skip |
-| Render projection | 统一决定 canvas band、DOM overlay、imperative chrome、fallback 的绘制归属 | 各渲染层不得重复自建 selected/skip/fallback 策略 |
+| Render projection | 统一决定 canvas band、DOM overlay、fallback 的绘制归属 | 各渲染层不得重复自建 selected/skip/fallback 策略 |
 
 命令矩阵：
 
-| 命令 | 触发 | SC1 | SC2 | seek | reveal | 备注 |
-|------|------|-----|-----|------|--------|------|
-| `selectAndSeekStart` | 波形首点未选中语段 | ✓ | ✓（pointerdown preview） | 语段头 | ✓ | pointerup 用同一 session 消费 preview，禁止 TTL double consume；**播放中** pointerdown 可 defer seek，但 pointerup 仍须 seek（不得因 SC2 已匹配而 skip） |
-| `seekWithinSegment` | 已选中语段内再点 | — | — | 点击点钳在语段内 | — | 只移动 playhead，不重选 |
-| `selectOnly` | shift/meta、右键菜单或非 waveform 源 | ✓ | ✓ | — | 按来源策略 | 不触发 waveform preview seek |
-| `blankSeek` | 空白短点 | — | — | anchor 时间 | — | suppress 播放跟随 |
-| `lassoSelect` | 空白拖拽命中语段集合 | 多选 | ✓ | — | — | 不 reveal/seek |
-| `commitBounds` | move/resize 拖拽结束且 bounds 变化 | — | 随 React commit | — | — | `update` 与 `update-end` 语义分离 |
+| 命令 | 触发 | CM6 | seek | reveal | 备注 |
+|------|------|-----|------|--------|------|
+| `selectAndSeekStart` | 波形首点未选中语段 | ✓ | 语段头 | ✓ | pointerup 用同一 session 消费 preview；**播放中** pointerdown 可 defer seek，但 pointerup 仍须 seek |
+| `seekWithinSegment` | 已选中语段内再点 | — | 点击点钳在语段内 | — | 只移动 playhead，不重选 |
+| `selectOnly` | shift/meta、右键菜单或非 waveform 源 | ✓ | — | 按来源策略 | 不触发 waveform preview seek |
+| `blankSeek` | 空白短点 | — | anchor 时间 | — | suppress 播放跟随 |
+| `lassoSelect` | 空白拖拽命中语段集合 | 多选 | — | — | 不 reveal/seek |
+| `commitBounds` | move/resize 拖拽结束且 bounds 变化 | — | — | — | `update` 与 `update-end` 语义分离 |
 
-唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ SC2 chrome + `publishSelectionChrome` → SC1（`startTransition`）→ `flushTierScrollFrame`（band/overlay 同帧，仅 waveform 源）→ suppress + seek（仅 waveform 源）→ focus（仅 waveform 源）**。策略真源：[`selectionRevealSeekPolicy.ts`](../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) + [`editorFocusGate.ts`](../../apps/desktop/src/utils/editorFocusGate.ts)。
+选中编排入口：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts) → [`selectSegmentTransport`](../../apps/desktop/src/pages/selectSegmentTransport.ts)——顺序为 **CM6 dispatch + `revealSegmentInView` → 波形 reveal/seek（按源）→ focus**。策略真源：[`selectionRevealSeekPolicy.ts`](../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) + [`editorFocusGate.ts`](../../apps/desktop/src/utils/editorFocusGate.ts)。
 
 | 入口 | 选中 | reveal/居中 | seek | suppress 跟随 | 焦点 | 走 `selectSegmentAt`? |
 |------|------|------------|------|---------------|------|----------------------|
-| 文本行点击（未选中）L1 | ✓ | ✓ immediate | ✗ | — | textarea | ✓（`list`） |
-| 文本行再点击（已选中）T2 | — | ✗ | ✗ | — | textarea caret | 否（仅 focus） |
+| CM6 行点击（未选中） | ✓ | ✓ CM6 scrollIntoView | ✗ | — | CM6 | ✓（`list`） |
+| CM6 行再点击（已选中） | — | ✗ | ✗ | — | CM6 caret | 否（仅 focus） |
 | 波形语段首点 | ✓ | ✓ immediate | 语段头 | ✓ | waveform shell | ✓（`waveform`） |
 | 波形语段再点（已选中） | — | — | 钳在语段内点击点 | ✓ | waveform shell | 否（`seek-within`） |
-| 键盘 ↑↓ / Tab advance K1 | ✓ | F3 gate（textarea/shell focused） | ✗ | — | textarea | ✓（`listKeyboard`） |
-| Tab confirmAdvance | ✓ | F3 gate | ✗（loop 偏好另走 wf） | — | textarea | ✓（`listKeyboard`） |
+| 键盘 ↑↓ / Tab advance K1 | ✓ | F3 gate（CM6/shell focused） | ✗ | — | CM6 | ✓（`listKeyboard`） |
+| Tab confirmAdvance | ✓ | F3 gate | ✗（loop 偏好另走 wf） | — | CM6 | ✓（`listKeyboard`） |
 | 右键菜单（列表/波形/文本） | ✓（lifecycle setState；多选命中保留） | **不 reveal** | **不 seek** | — | — | 否（band/overlay 经 React 同 commit 同帧） |
 | 框选 lasso 多选 | ✓（多选） | **不 reveal** | — | — | shell | 否（`selectSegmentIndices`） |
 | 空白点击（无拖动）B1 | — | — | anchor 时间 | ✓（seek-blank） | shell | 否 |
@@ -139,7 +141,7 @@
 - **minimap 是 scrub 控件**：经 `minimapScrubScroll` 直接跳转居中；seek 前 `suppressPlaybackFollowForSelectionSeek`，避免播放中被自动跟随回拽。
 - **时间尺 click（R2）只滚动不 seek**：经 `centerTierAtClientX` 将点击时间居中到 tier 视口。
 - **`listKeyboard` 源**：↑↓ / Tab confirmAdvance 使用；reveal 受 F3 editor focus gate 约束；**不 seek**。
-- **focus=selected（S2′）**：快捷键锚点 `selectedIdx`；focus 非选中 textarea 时先 `selectSegmentAt(i)`。
+- **focus=selected（S2′）**：快捷键锚点读 CM6 primary（过渡期仍桥 `selectedIdx`）；焦点在非选中行时先 `selectSegmentAt(i)`。
 
 ## 语段语义真源：可见 / 可打包语段
 
@@ -168,7 +170,7 @@
 |----|------|
 | **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 位于 timeline 内容层，绘制带缓冲的可见窗 packable 色带；浏览器原生 scroll 会物理移动旧 canvas，JS 只负责滚出缓冲窗后的重绘，避免主线程卡顿时 sticky viewport canvas 延迟跟随。绘制仍由 [`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数完成 |
 | **DOM overlay** | [`WaveformSegmentOverlay`](../../apps/desktop/src/components/WaveformSegmentOverlay.tsx) 仅 [`selectOverlayInteractiveSegmentIndices`](../../apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts)（选中 + drag draft） |
-| **语段列表** | [`EditorSegmentList`](../../apps/desktop/src/components/editor/EditorSegmentList.tsx) + [`segmentListVirtualWindow`](../../apps/desktop/src/utils/segmentListVirtualWindow.ts) |
+| **语段列表** | [`EditorSegmentList`](../../apps/desktop/src/components/editor/EditorSegmentList.tsx) → [`TranscriptEditorCore`](../../apps/desktop/src/components/editor/core/TranscriptEditorCore.tsx)（CM6；filter 隐藏非匹配行） |
 
 交互 hit-test（tap seek、框选新建、context menu）仍经 packable selector + 投影坐标，与 band 绘制共用真源。
 

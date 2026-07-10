@@ -1,6 +1,8 @@
 # 调研：Selection Chrome Bus（列表 + 波形选中视觉与 React 解耦）
 
-> **状态**：已采纳（2026-06-21）  
+> **已被取代（2026-07-10）**：核心决策「保留 `selectedIdx` React state + SC2 chrome 双写 + reconcile」已被 [`transcript-editor-core-remediation-research.md`](./transcript-editor-core-remediation-research.md) 取代。P9a 已删除 textarea 虚拟列表与行 reconcile；P9b 将删除 SC1/SC2 过渡桥。下文仅作历史调研存档，**不得**再作为编码真源。
+
+> **状态**：已采纳（2026-06-21）· **归档**（2026-07-10）  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) — 编辑器交互 perf 横切  
 > **关联 spec**：[`selection-chrome-bus-plan.md`](./selection-chrome-bus-plan.md) · [`selection-chrome-bus-acceptance.md`](./selection-chrome-bus-acceptance.md)  
 > **前置证据**：193 段素材 `__rushiSelectionProfile` — `firstPaint≈20ms`（波形 imperative OK）· `listCommit≈400ms`（列表 React commit）  

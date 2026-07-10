@@ -49,12 +49,11 @@
 | **Memo 去 selectedIdx** | `EditorSegmentList.tsx` · `EditorSegmentWorkbench.tsx` | `are*PropsEqual` 不再比较 `selectedIdx` / `selectedIndicesArray`；行级已 `useSegmentRowSelection`。 |
 | **LKB-2 CI 闸门** | `listKeyboardNavigationBurst.perf.ts` | 断言 burst 内 0 次 `setSelectedIdxUi`；keyup commit `listCommit ≤ 120ms`。 |
 
-### 机器闸门（2026-06-22）
+### 机器闸门（2026-07-10）
 
 - [x] `npm run typecheck` ✅
-- [x] `npm run test` — **372 files / 1858 tests passed** ✅
-- [x] `useSegmentKeyboard` + `useEditorSegmentListScroll` + `useTranscriptionLayerSelection` + LKB perf 79 tests ✅
-- [x] `node scripts/check-architecture-guard.mjs` — **0 errors / 20 warnings**（无新增错误；新增 `useTranscriptionLayerSelection` 482 行 + 14 hooks 警告） ⚠️
+- [x] 定向 test：profile / scroll / LKB perf / chrome ✅
+- [x] `node scripts/check-architecture-guard.mjs` — **0 errors**；LKB 相关行数热点已清 ✅
 
 ### 代码侧已关闭
 
@@ -68,9 +67,9 @@
 
 - [x] **U11**：`virtualWindow` useMemo 仅依赖 `scrollEpoch` / `selectSourceEpoch`；`selectedDisplayIndex` 走 ref（SEL-1c 确认）
 - [x] **U12**：`EditorSegmentListViewport` 已去掉 `useSelectionChromePrimaryIdx`；scroll 用 SC1；槽 overflow 用 CSS `:has`（SEL-1c）
-- [ ] **U18**：burst 内每 step 仍 `selectionProfileBegin` 一行，profile 噪声未收敛。
-- [ ] **Architecture guard**：`useTranscriptionLayerSelection.ts` 482 行 / 14 hooks，超过阈值；`useEditorSegmentListScroll.ts` 316 行。
-- [ ] **Phase 5 文档/补丁取舍**：working tree 补丁清单未系统整理；`selectionLatencyProfile.ts` 中 listKeyboard debounce 代码与 keyup cancel 的实际效果存在冗余。
+- [x] **U18**：burst 中步不 `selectionProfileBegin`；keyup 一行 `listKeyboard commit`（含 `listCommit`）
+- [x] **Architecture guard**：`runSelectSegmentAt` / `useEditorSegmentListSelectionScrollLayout` / perf fixtures 拆分；LKB 热点已清
+- [x] **Phase 5 补丁取舍**：180ms debounce **保留**（LKB-H5）；其余见 plan §5.2
 
 ---
 
@@ -127,11 +126,12 @@
 
 ---
 
-## Phase 5 — LKB-2 CI + 清理（**部分完成**）
+## Phase 5 — LKB-2 CI + 清理（**已完成 · 2026-07-10**）
 
 - [x] LKB-2：burst 无 mid-commit / 末步 `listCommit` 闸门
-- [ ] working tree 补丁取舍：debounce 冗余代码、projection 去留、文档同步
-- [ ] architecture guard 热点：`useTranscriptionLayerSelection.ts` / `useEditorSegmentListScroll.ts` 拆分
+- [x] U18：burst 中步 0 profile 行；keyup 1 条 commit（单测 + LKB-2）
+- [x] working tree 补丁取舍：180ms debounce 保留给 H5；其余见 plan §5.2
+- [x] architecture guard 热点：`runSelectSegmentAt` / scroll layout / perf fixtures
 
 ### 手测 Blocker
 
@@ -152,10 +152,9 @@ __rushiSelectionProfile.print()
 
 | 检查项 | Pass |
 |--------|------|
-| burst 期间 `firstPaint`/`listChrome` ≤50ms（有记录的行） | ☐ |
-| burst 期间 **无** 连续多行 `total≥200ms` | ☐ |
+| burst 期间 **无** `listKeyboard idx=` 中步行（仅 coalesce 感知路径，无 profile 行） | ☐ |
+| 松手后 **恰好 1 行** `listKeyboard commit` 含 `listCommit` | ☐ |
 | 松手后 **≤200ms** 无新 profile 行 | ☐ |
-| keyup 后 **≤1 行** 含 `listCommit` | ☐ |
 | `syncPathTotal≤80ms` ** alone 不算 Pass** | — |
 
 ---
@@ -166,8 +165,9 @@ __rushiSelectionProfile.print()
 |------|------|-------|
 | scroll hook | `useEditorSegmentListScroll.test.ts` | 1 |
 | LKB-1 | `listKeyboardNavigationBurst.perf.ts` | 1 |
-| LKB-2 burst SC1 | `listKeyboardNavigationBurst.perf.ts` | 3/5 |
+| LKB-2 burst SC1 + U18 | `listKeyboardNavigationBurst.perf.ts` | 3/5 |
 | selection reveal | `useTranscriptionLayerSelection.*.test.ts` | 2 |
+| U18 profile | `useTranscriptionLayerSelection.profile.test.ts` | 5 |
 | keyboard burst | `useSegmentKeyboard.test.ts` | 3 |
 | scroll plan | `planEditorSegmentListSelectionScroll.test.ts` | 1 |
 | burst coordinator | `listKeyboardBurstCoordinator.test.ts` | 3 |
@@ -180,8 +180,8 @@ __rushiSelectionProfile.print()
 - [x] Phase 1 完成（2026-06-21）
 - [x] Phase 2 完成（2026-06-22）
 - [x] Phase 3 完成（2026-06-22）— burst SC1 defer + LKB-2 CI
-- [x] Phase 4 部分完成（U13 done；U11/U12 仍开放）
-- [x] Phase 5 部分完成（LKB-2 done；guard hotspot / 补丁取舍仍开放）
+- [x] Phase 4 完成（SEL-1c · U11–U13）
+- [x] Phase 5 完成（2026-07-10）— U18 + guard 拆分 + 补丁取舍
 - [x] v2 手感修复代码侧完成（2026-06-22）
 - [ ] [`v0.1.8.1-release-hand-test-checklist.md`](./v0.1.8.1-release-hand-test-checklist.md) §1 LKB Blocker **PASS**
 - [ ] 证据写入 [`waveform-list-interaction-hand-test-evidence.md`](./waveform-list-interaction-hand-test-evidence.md) §11
@@ -194,3 +194,4 @@ __rushiSelectionProfile.print()
 | 2026-06-21 | **v2**：Phase 1 降级；Phase 2–5 验收；LKB-2 profile 模板；Blocker 绑定 ROOT-1/2 |
 | 2026-06-21 | 能力矩阵链 plan §0.1 U1–U20；Phase 2–5 验收项按 U 编号 |
 | 2026-06-22 | **v2 代码侧收口**：修正 Phase 2–5 状态；`finalizeListKeyboardViewport` 改读 chrome primary；非 burst listKeyboard 恢复 reveal；LKB-2 `listCommit` 断言去 fallback |
+| 2026-07-10 | Phase 5：U18 + `runSelectSegmentAt` / scroll layout / perf fixtures；Phase 4–5 代码侧签收 |
