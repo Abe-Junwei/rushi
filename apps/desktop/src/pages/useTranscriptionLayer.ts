@@ -283,6 +283,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     currentTime: wf.currentTime,
     pxPerSec: timeline.pxPerSec,
+    drawPxPerSec: zoom.drawPxPerSec,
     layoutIntent: timeline.layoutIntent,
     resetZoom: zoom.resetZoom,
     resetZoomForMedia: zoom.resetZoomForMedia,

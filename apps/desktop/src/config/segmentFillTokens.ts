@@ -11,6 +11,8 @@ export const SEGMENT_FILL_CSS_VAR = {
   idle: "--segment-fill-idle",
   lowConfidence: "--segment-fill-low-confidence",
   border: "--segment-fill-border",
+  selectedBorder: "--segment-fill-selected-border",
+  inSelectionBorder: "--segment-fill-in-selection-border",
 } as const;
 
 export function segmentFillCssVar(name: keyof typeof SEGMENT_FILL_CSS_VAR): string {

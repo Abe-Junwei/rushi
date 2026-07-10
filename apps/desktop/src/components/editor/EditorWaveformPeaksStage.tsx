@@ -2,6 +2,7 @@ import { memo, useCallback, useState } from "react";
 import { CspLayout } from "../CspLayout";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
+import { WaveformViewportPeaksCanvas } from "../WaveformViewportPeaksCanvas";
 import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../../services/waveform/drawWaveformTimeRuler";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
@@ -49,7 +50,8 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
   stripDisabled,
   tierScrollProps,
 }: Props) {
-  const { view: selectionView, filterExcludesPrimary } = useWaveformSelectionChromeViewContext();
+  const { view: selectionView, filterExcludesPrimary, listVisibleIndexSet } =
+    useWaveformSelectionChromeViewContext();
   const selectedSegment = c.segments[selectionView.selectedIdx] ?? null;
   const mediaDurationSec = tx.mediaDurationSec;
   const rulerHeightPx = WAVEFORM_EMBEDDED_RULER_HEIGHT_PX;
@@ -107,10 +109,16 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
               }}
             >
               <CspLayout
-                className={`absolute left-0 top-0 overflow-hidden ${waveSurferPreviewLayerClass}`}
+                className={`absolute left-0 top-0 overflow-hidden ${tx.isReady ? "pointer-events-none opacity-0" : ""} ${waveSurferPreviewLayerClass}`}
                 layout={{
-                  width: "100%",
-                  height: waveformHeightPreviewActive ? peaksPaintedHeightPx : peaksPaneHeightPx,
+                  // WS-2b: keep media ticking (no display:none) but collapse the
+                  // compositor surface so WS internal canvases are not painted.
+                  width: tx.isReady ? 1 : "100%",
+                  height: tx.isReady
+                    ? 1
+                    : waveformHeightPreviewActive
+                      ? peaksPaintedHeightPx
+                      : peaksPaneHeightPx,
                   transform: waveformVerticalTransform,
                   transformOrigin: "top left",
                 }}
@@ -129,6 +137,19 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
               className="waveform-timeline-overlay-layer absolute left-0 top-0 z-[3] h-full"
               layout={{ width: tx.timelineWidthPx }}
             >
+              <WaveformViewportPeaksCanvas
+                durationSec={mediaDurationSec}
+                timelineWidthPx={tx.timelineWidthPx}
+                layoutHeightPx={peaksPaintedHeightPx}
+                drawPxPerSec={tx.drawPxPerSec}
+                peakCache={tx.peakCache}
+                peakCacheGeneration={tx.peakCacheGeneration}
+                getPlayheadSec={tx.getDisplayPlayheadTimeSec}
+                subscribePlayheadFrame={tx.subscribePlayheadFrame}
+                tierScrollRef={tx.tierScrollRef}
+                tierScrollLive={tx.tierScrollLive}
+                tierScrollLayout={tx.tierScrollLayout}
+              />
               <WaveformSegmentBandCanvas
                 fileId={c.currentFileId}
                 segments={c.segments}
@@ -144,6 +165,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                 dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
                 draftIdx={overlayDraftIdx}
                 filterExcludesPrimary={filterExcludesPrimary}
+                listVisibleIndexSet={listVisibleIndexSet}
                 getPlayheadSec={tx.getDisplayPlayheadTimeSec}
                 subscribePlayheadFrame={tx.subscribePlayheadFrame}
                 tierScrollRef={tx.tierScrollRef}

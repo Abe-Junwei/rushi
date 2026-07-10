@@ -116,7 +116,7 @@
 - 仅 **左右 border**，`border-radius: 0`。
 - **Handle（Stitch 必画）：** 选中或 hover 时，左右各 3px 宽竖向 grip（`saffron/50`），`ew-resize` 光标区 8px。
 - **Lane（探索）：** 重叠语段可用 70–85% 高度 band + lane 间距，避免全高叠影（若信息过密可只做选中语段全高）。
-- **点击（已实现）：** 首次点未选中语段 → 选中 + playhead 到语段头；已在该语段内再点 → playhead 到点击位置（`resolveSegmentOverlayTap`）；语段内联播放 / `playSegmentAtIndex` 若 playhead 在语段内则从 playhead 起播。
+- **点击（已实现）：** 首次点未选中语段 → 选中 + playhead 到语段头；已在该语段内再点 → playhead 到点击位置（`resolveSegmentOverlayTap`）；语段播放：段内从 playhead；**已过段尾从 playhead 续播**；段前仍跳段头。
 
 ### 4.5 语段内联播放控件（`WaveformSegmentPlaybackControls`）
 

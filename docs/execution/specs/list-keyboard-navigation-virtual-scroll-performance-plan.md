@@ -60,8 +60,8 @@ keyup → finalizeListKeyboardBurst → commitListKeyboardBurst(idx)
 | U8 | **imperative list scroll** | scrollTop + 虚拟窗 | **✓ 仅出视口** | 慢路径可补 | **3** | `applyListKeyboardBurstListScroll` · `listKeyboardBurstCoordinator` | ✅ |
 | U9 | **layout effect listScroll** | 同 U8（现绑 SC1 prop） | **× 改 imperative** | **✓** | **3** | `useEditorSegmentListScroll.ts` | ✅（burst 跳过） |
 | U10 | **`bumpScrollEpoch({ sync, force })` on skip** | 虚拟窗无 scroll 仍重算 | **×** | — | **3** | `useEditorSegmentListScroll.ts` | ⚠️ skip 仍 sync bump（必要回退） |
-| U11 | **`virtualWindow` pin 随 SC1** | ~40 行 mount | **× 仅 scroll 变** | **✓** | **4** | `computeEditorSegmentListVirtualWindow` | ⚠️ `selectedDisplayIndex` 仍在 deps |
-| U12 | **`useSelectionChromePrimaryIdx` 在 list 内** | `EditorSegmentList` 父级 | **部分**→imperative scroll | — | **4** | `EditorSegmentList.tsx` | ⚠️ 仍在父级 |
+| U11 | **`virtualWindow` pin 随 SC1** | ~40 行 mount | **× 仅 scroll 变** | **✓** | **4** | `computeEditorSegmentListVirtualWindow` | ✅ useMemo 不依赖 selectedDisplayIndex |
+| U12 | **`useSelectionChromePrimaryIdx` 在 list 内** | `EditorSegmentList` 父级 | **部分**→imperative scroll | — | **4** | `EditorSegmentListViewport.tsx` | ✅ SEL-1c 已移除 |
 | U13 | **memo 比较 `selectedIdx`** | Workbench + List 整棵 | **×** | — | **4** | `EditorSegmentWorkbench.tsx` · `EditorSegmentList.tsx` | ✅ |
 | U14 | **tier reveal debounce** | tier `scrollLeft` | **✓ debounce** | **✓ 一次**（chrome idx） | **2** | `useTranscriptionLayerSelection.ts` | ✅（debounce 配置，keyup cancel） |
 | U15 | **`syncListKeyboardSegmentFocus`** | focus 重试链 | **×** | **✓ 一次** | **3** | `useSegmentKeyboard.ts` | ✅ |
@@ -231,14 +231,13 @@ keyup 一次:
 - `areEditorSegment*PropsEqual`：**移除** `selectedIdx` / `selectedIndicesArray` 比较（行级已 `useSegmentRowSelection`）。
 - 保留 `segments` / `filter` / `busy` / highlight 面板状态。
 
-### Step 4.2 — virtualWindow 与 SC1 解耦（**U11–U12**） ⚠️
+### Step 4.2 — virtualWindow 与 SC1 解耦（**U11–U12**） ✅
 
-**文件**：[`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) · [`EditorSegmentList.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentList.tsx)
+**文件**：[`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) · [`EditorSegmentListViewport.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentListViewport.tsx)
 
 - ✅ `virtualWindow` pin **已显式化** via `listKeyboardBurstCoordinator`。
-- ⚠️ `virtualWindow` useMemo **仍依赖** `selectedDisplayIndex`；未彻底解耦。
-- ⚠️ `useSelectionChromePrimaryIdx` 仍在 `EditorSegmentList` 父级，chrome 变更触发父级 re-render。
-- 建议：将 chrome primary 读取下放到 `useEditorSegmentListScroll` 内部或专用 scroll coordinator。
+- ✅ `virtualWindow` useMemo **仅**依赖 `scrollEpoch` / `selectSourceEpoch`；`selectedDisplayIndex` 经 ref。
+- ✅ `useSelectionChromePrimaryIdx` 已从 Viewport 移除（SEL-1c）；行级 `useSegmentRowSelection`；槽 overflow 用 CSS `:has(.seg-row-selected)`。
 
 ### Step 4.3 — keyup SC1 用 startTransition ✅
 

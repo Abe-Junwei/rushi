@@ -36,6 +36,16 @@ describe("resolveSegmentPlayFrom", () => {
     ).toEqual({ kind: "resumeSkipSeek" });
   });
 
+  it("resumes without seek when display lags raw slightly inside segment", () => {
+    expect(
+      resolveSegmentPlayFrom({
+        segment: seg,
+        displaySec: 14.7,
+        rawMediaSec: 15.0,
+      }),
+    ).toEqual({ kind: "resumeSkipSeek" });
+  });
+
   it("seeks to display when raw is stale inside segment", () => {
     expect(
       resolveSegmentPlayFrom({
@@ -55,22 +65,32 @@ describe("resolveSegmentPlayFrom", () => {
     ).toEqual({ kind: "seek", timeSec: 15 });
   });
 
-  it("seeks to segment start when display and raw are outside", () => {
-    expect(
-      resolveSegmentPlayFrom({
-        segment: seg,
-        displaySec: 2,
-        rawMediaSec: 2,
-      }),
-    ).toEqual({ kind: "seek", timeSec: 10 });
-  });
-
-  it("seeks to segment start when display is past segment end", () => {
+  it("resumes without seek when display and raw are past segment end", () => {
     expect(
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 25,
         rawMediaSec: 25,
+      }),
+    ).toEqual({ kind: "resumeSkipSeek" });
+  });
+
+  it("seeks to display when past segment end and raw is stale", () => {
+    expect(
+      resolveSegmentPlayFrom({
+        segment: seg,
+        displaySec: 25,
+        rawMediaSec: 2,
+      }),
+    ).toEqual({ kind: "seek", timeSec: 25 });
+  });
+
+  it("seeks to segment start when display is before the segment", () => {
+    expect(
+      resolveSegmentPlayFrom({
+        segment: seg,
+        displaySec: 2,
+        rawMediaSec: 2,
       }),
     ).toEqual({ kind: "seek", timeSec: 10 });
   });

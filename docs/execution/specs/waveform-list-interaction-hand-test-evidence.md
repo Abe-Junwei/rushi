@@ -152,7 +152,7 @@ Pass 标准：`syncPathTotal ≤ 80ms`（CI）；手测 `firstPaint` / `listChro
 | SC-H3 | ↑↓ 20 次 textarea | reveal+高亮；**无空白闪** | ☐ | WL-1 |
 | SC-H4 | Shift 拖 30+ 行 | 多选 chrome 连续；auto-scroll | ☐ | WL-9 |
 | SC-H5 | 波形 lasso 5+ 段 | in-selection + primary；**列表跟随** | ☐ | WL-4/6 |
-| SC-H6 | filter 排除选中 | banner；无 ghost 高亮 | ☐ | `resolveWaveformSelectionChromeView.test.ts` |
+| SC-H6 | filter 排除选中 | banner；波形保留选中态 | ☐ | `resolveWaveformSelectionChromeView.test.ts` |
 | SC-H7 | 清除过滤并定位 | SC1/SC2 对齐 | ☐ | |
 | SC-H8 | merge 下一句 | 高亮跟新 idx | ☐ | publish bridge tests |
 | SC-H9 | undo merge | chrome 恢复 | ☐ | |

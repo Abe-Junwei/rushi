@@ -247,15 +247,21 @@ export function selectionProfileFlush(): void {
 }
 
 /** Waveform：等列表 layout commit 后再 flush，使 total/listCommit 反映 transition 成本。 */
-export function selectionProfileMarkListCommit(): void {
+export function selectionProfileMarkListCommit(options?: { flush?: boolean }): void {
   if (!activeProfile || !isSelectionLatencyProfileEnabled()) return;
-  if (activeProfile.spans.listCommit != null) return;
+  if (activeProfile.spans.listCommit != null) {
+    if (options?.flush !== false) selectionProfileFlush();
+    return;
+  }
   selectionProfileAdd("listCommit", performance.now() - activeProfile.startedAt);
-  selectionProfileFlush();
+  if (options?.flush !== false) {
+    selectionProfileFlush();
+  }
 }
 
 /**
- * SC1-committing select sources whose list layout effect owns `listCommit`.
+ * SC1-committing select sources: prefer committer `markListCommit` inside
+ * startTransition; list layout effect remains a backup if committer did not flush.
  * Burst-only steps (listKeyboard+burst without SC1) still use scheduleFlush.
  */
 export function shouldMarkSelectionProfileListCommit(

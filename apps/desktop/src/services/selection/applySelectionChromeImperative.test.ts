@@ -128,9 +128,43 @@ describe("applySelectionChromeImperative", () => {
 
     const primaryBg = readCspLayoutRulesForElement(primaryOverlay) ?? "";
     const secondaryBg = readCspLayoutRulesForElement(secondaryOverlay) ?? "";
-    expect(primaryBg).toContain("background:");
-    expect(secondaryBg).toContain("background:");
+    expect(primaryBg).toContain(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
+    expect(secondaryBg).toContain(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
     expect(primaryBg.split("{")[1]).toBe(secondaryBg.split("{")[1]);
     expect(primaryBg).not.toContain(`var(${SEGMENT_FILL_CSS_VAR.selected})`);
+  });
+
+  it("writes CSS var fill so accent theme remaps without reselect", () => {
+    const overlayRoot = document.createElement("div");
+    const overlay = document.createElement("div");
+    overlay.setAttribute("data-segment-idx", "1");
+    overlayRoot.append(overlay);
+
+    const segments = [
+      { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "" },
+      { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "" },
+    ];
+
+    applySelectionChromeImperative({
+      overlayRoot,
+      listRoot: null,
+      segments,
+      prevSnapshot: {
+        primaryIdx: -1,
+        selectedSet: new Set<number>(),
+        version: 0,
+        fileId: "f1",
+      },
+      nextSnapshot: {
+        primaryIdx: 1,
+        selectedSet: new Set([1]),
+        version: 1,
+        fileId: "f1",
+      },
+    });
+
+    const rules = readCspLayoutRulesForElement(overlay) ?? "";
+    expect(rules).toContain(`var(${SEGMENT_FILL_CSS_VAR.selected})`);
+    expect(rules).not.toMatch(/rgba?\(/);
   });
 });

@@ -120,6 +120,7 @@ describe("drawWaveformSegmentBands", () => {
 
   it("dirtyIndices still clearRect skipped overlay-owned bands", () => {
     const cleared: Array<[number, number, number, number]> = [];
+    const strokes: number[] = [];
     let fillRectCalls = 0;
     const ctx = {
       clearRect: (x: number, y: number, w: number, h: number) => {
@@ -131,7 +132,9 @@ describe("drawWaveformSegmentBands", () => {
       stroke: () => {},
       beginPath: () => {},
       moveTo: () => {},
-      lineTo: () => {},
+      lineTo: (x: number) => {
+        strokes.push(x);
+      },
       fillStyle: "",
       strokeStyle: "",
       lineWidth: 1,
@@ -158,6 +161,41 @@ describe("drawWaveformSegmentBands", () => {
     expect(cleared.some((rect) => rect[0] === 30 && rect[2] === 50)).toBe(true);
     // Neighbors paint; overlay-owned selected band is cleared but not filled.
     expect(fillRectCalls).toBe(2);
+    // Selected DOM overlay owns the adjacent boundaries; canvas must not double-stroke.
+    expect(strokes).not.toContain(29.5);
+    expect(strokes).not.toContain(99.5);
+  });
+
+  it("draws separators between adjacent canvas-owned segments", () => {
+    const strokes: number[] = [];
+    const ctx = {
+      clearRect: () => {},
+      fillRect: () => {},
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: (x: number) => {
+        strokes.push(x);
+      },
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 3, text: "a" },
+        { idx: 1, uid: "b", start_sec: 3, end_sec: 8, text: "b" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 100,
+      timelineWidthPx: 100,
+      durationSec: 10,
+      layoutHeightPx: 96,
+    });
+
+    expect(strokes).toContain(29.5);
   });
 
   it("respects skipIndexSet the same as skipIndices (S10 external Set)", () => {
@@ -188,6 +226,147 @@ describe("drawWaveformSegmentBands", () => {
     });
 
     expect(fillRectCalls).toBe(0);
+  });
+
+  it("does not fill indices outside listVisibleIndexSet", () => {
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: () => {},
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 5, text: "a" },
+        { idx: 1, uid: "b", start_sec: 5, end_sec: 10, text: "b" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 800,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+      listVisibleIndexSet: new Set([0]),
+    });
+
+    expect(fillRectCalls).toBe(1);
+  });
+
+  it("dirtyIndices clear filtered-out bands without filling them", () => {
+    const cleared: Array<[number, number, number, number]> = [];
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: (x: number, y: number, w: number, h: number) => {
+        cleared.push([x, y, w, h]);
+      },
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [{ idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" }],
+      scrollLeftPx: 0,
+      viewportWidthPx: 800,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+      dirtyIndices: [0],
+      listVisibleIndexSet: new Set(),
+    });
+
+    expect(cleared.length).toBe(1);
+    expect(fillRectCalls).toBe(0);
+  });
+
+  it("full clearRect runs when dirtyIndices is omitted (gap ghost guard)", () => {
+    const cleared: Array<[number, number, number, number]> = [];
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: (x: number, y: number, w: number, h: number) => {
+        cleared.push([x, y, w, h]);
+      },
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    // Two segments with a true gap (5–10s). Full paint must clear the whole
+    // window so any prior idle pixels in the gap cannot survive.
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 5, text: "a" },
+        { idx: 1, uid: "b", start_sec: 10, end_sec: 15, text: "b" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 400,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+    });
+
+    expect(cleared.some((r) => r[0] === 0 && r[1] === 0 && r[2] === 400 && r[3] === 96)).toBe(
+      true,
+    );
+    expect(fillRectCalls).toBe(2);
+  });
+
+  it("dirtyIndices-only path does not clear the full window (documents gap risk)", () => {
+    const cleared: Array<[number, number, number, number]> = [];
+    const ctx = {
+      clearRect: (x: number, y: number, w: number, h: number) => {
+        cleared.push([x, y, w, h]);
+      },
+      fillRect: () => {},
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 5, text: "a" },
+        { idx: 1, uid: "b", start_sec: 10, end_sec: 15, text: "b" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 400,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+      dirtyIndices: [0],
+    });
+
+    expect(cleared.some((r) => r[0] === 0 && r[1] === 0 && r[2] === 400)).toBe(false);
   });
 
   it("finds visible index window on sorted segments", () => {

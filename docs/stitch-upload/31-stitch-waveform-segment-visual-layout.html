@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rushi Waveform Segment Visual — Final Design</title>
+    <style>
+      :root {
+        --notion-bg: #ffffff;
+        --notion-sidebar: #f7f7f5;
+        --notion-border: #e3e2e0;
+        --notion-text: #37352f;
+        --notion-text-muted: #6b6b6b;
+        --notion-text-light: #9ca3af;
+        --accent-action: #c58a43;
+        --accent-action-strong: #85530f;
+        --zen-wf-surface: #ffffff;
+        --zen-wf-wave: #c4c4c8;
+        --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, #8e8e93);
+        --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
+        --segment-fill-selected: color-mix(in srgb, var(--accent-action) 14%, transparent);
+        --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 8%, transparent);
+        --segment-fill-idle: color-mix(in srgb, var(--notion-text) 5%, transparent);
+        --segment-fill-low-confidence: color-mix(in srgb, var(--notion-text-light) 10%, transparent);
+        --segment-fill-border: color-mix(in srgb, var(--notion-text) 24%, transparent);
+        --segment-fill-selected-border: color-mix(in srgb, var(--accent-action-strong) 48%, transparent);
+        --segment-fill-in-selection-border: color-mix(in srgb, var(--accent-action) 34%, transparent);
+      }
+
+      [data-accent="indigo"] {
+        --accent-action: #3d4f5d;
+        --accent-action-strong: #263544;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+        font-size: 12px;
+        color: var(--notion-text);
+        background: #eceae4;
+      }
+
+      .page {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 28px 18px 56px;
+      }
+
+      h1 {
+        margin: 0 0 6px;
+        font-size: 24px;
+        font-weight: 650;
+        letter-spacing: -0.02em;
+      }
+
+      .intro {
+        max-width: 72ch;
+        margin: 0 0 18px;
+        color: var(--notion-text-muted);
+        line-height: 1.55;
+      }
+
+      .rules {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+
+      .rule {
+        padding: 10px 12px;
+        border: 1px solid var(--notion-border);
+        border-radius: 8px;
+        background: var(--notion-bg);
+      }
+
+      .rule strong {
+        display: block;
+        margin-bottom: 4px;
+        font-size: 12px;
+      }
+
+      .rule span {
+        color: var(--notion-text-muted);
+        line-height: 1.45;
+      }
+
+      .token-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+
+      .token {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border: 1px solid var(--notion-border);
+        border-radius: 6px;
+        background: var(--notion-bg);
+        color: var(--notion-text-muted);
+        font-size: 11px;
+      }
+
+      .token i {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        border: 1px solid color-mix(in srgb, var(--notion-text) 12%, transparent);
+      }
+
+      .frame {
+        margin-bottom: 22px;
+        border: 1px solid var(--notion-border);
+        border-radius: 10px;
+        overflow: hidden;
+        background: var(--notion-bg);
+      }
+
+      .frame-hd {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        align-items: baseline;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+        color: var(--notion-text-muted);
+      }
+
+      .frame-hd strong { color: var(--notion-text); font-size: 13px; }
+
+      .wave-stage {
+        position: relative;
+        height: 196px;
+        background: var(--zen-wf-surface);
+        overflow: hidden;
+      }
+
+      .peaks {
+        position: absolute;
+        inset: 0 0 26px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding-inline: 10px;
+        z-index: 1;
+      }
+
+      .bar {
+        width: 3px;
+        border-radius: 1px;
+        background: var(--zen-wf-wave);
+        flex: 0 0 auto;
+      }
+
+      .bar.played { background: var(--zen-wf-progress-played); }
+
+      .seg {
+        position: absolute;
+        top: 0;
+        bottom: 26px;
+        border-left: 1px solid var(--segment-fill-border);
+        border-right: 1px solid var(--segment-fill-border);
+        background: var(--segment-fill-idle);
+        z-index: 2;
+        pointer-events: none;
+      }
+
+      .seg.touch-right { border-right-color: color-mix(in srgb, var(--notion-text) 36%, transparent); }
+      .seg.touch-left { border-left: 0; }
+
+      .seg.selected {
+        background: var(--segment-fill-selected);
+        border-left-color: var(--segment-fill-selected-border);
+        border-right-color: var(--segment-fill-selected-border);
+        z-index: 3;
+      }
+
+      .seg.in-selection {
+        background: var(--segment-fill-in-selection-waveform);
+        border-left-color: var(--segment-fill-in-selection-border);
+        border-right-color: var(--segment-fill-in-selection-border);
+      }
+
+      .seg.low {
+        background: var(--segment-fill-low-confidence);
+        border-left-style: dashed;
+        border-right-style: dashed;
+      }
+
+      .handle {
+        position: absolute;
+        top: 18%;
+        bottom: 18%;
+        width: 3px;
+        border-radius: 2px;
+        background: var(--segment-fill-selected-border);
+      }
+
+      .handle.left { left: -1px; }
+      .handle.right { right: -1px; }
+
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--waveform-playhead);
+        z-index: 5;
+      }
+
+      .now {
+        position: absolute;
+        top: 8px;
+        left: 6px;
+        transform: translateX(-50%);
+        padding: 1px 6px;
+        border-radius: 999px;
+        background: var(--accent-action);
+        color: #fff;
+        font-size: 9px;
+        font-weight: 650;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+
+      .callout {
+        position: absolute;
+        z-index: 6;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--notion-bg) 92%, transparent);
+        border: 1px solid var(--notion-border);
+        color: var(--notion-text-muted);
+        font-size: 10px;
+        white-space: nowrap;
+        pointer-events: none;
+      }
+
+      .ruler {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 26px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        padding: 0 10px 4px;
+        color: color-mix(in srgb, var(--notion-text) 62%, transparent);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        z-index: 4;
+        background: linear-gradient(to top, color-mix(in srgb, var(--notion-bg) 88%, transparent), transparent);
+      }
+
+      .ruler span::before {
+        content: "";
+        display: block;
+        width: 1px;
+        height: 7px;
+        margin: 0 auto 2px;
+        background: currentColor;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px 14px;
+        border-top: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+        color: var(--notion-text-muted);
+        font-size: 11px;
+      }
+
+      .legend b {
+        display: inline-block;
+        width: 22px;
+        height: 10px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        border-left: 1px solid var(--segment-fill-border);
+        border-right: 1px solid var(--segment-fill-border);
+      }
+
+      .art {
+        display: block;
+        width: 100%;
+        height: auto;
+        border-top: 1px solid var(--notion-border);
+        background: #f0efeb;
+      }
+
+      .art-cap {
+        padding: 8px 14px 12px;
+        color: var(--notion-text-muted);
+        line-height: 1.5;
+        border-top: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+      }
+
+      @media (max-width: 860px) {
+        .rules { grid-template-columns: 1fr; }
+        .legend { grid-template-columns: 1fr 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>Rushi Waveform Segment Visual — Final</h1>
+      <p class="intro">
+        定稿视觉语言（非草稿需求）。Peaks 为主；band 极轻；边界与 handles 承担编辑语义；
+        gap 全透明；已播放只靠 peaks tint，不做斜纹底。颜色全部来自现有 token。
+      </p>
+
+      <div class="rules">
+        <div class="rule"><strong>Peaks first</strong><span>Idle fill ≤ 5% text；selected ≤ 14% accent。波形节奏始终可读。</span></div>
+        <div class="rule"><strong>Boundary constant</strong><span>相邻无空隙时靠 hairline 分割；selected 用更强 border + handles。</span></div>
+        <div class="rule"><strong>Gap = nothing</strong><span>无语段时间窗零填充。点击 = seek，无 segment affordance。</span></div>
+      </div>
+
+      <div class="token-row">
+        <span class="token"><i style="background: var(--segment-fill-idle)"></i>idle</span>
+        <span class="token"><i style="background: var(--segment-fill-selected)"></i>selected</span>
+        <span class="token"><i style="background: var(--segment-fill-in-selection-waveform)"></i>in-selection</span>
+        <span class="token"><i style="background: var(--segment-fill-low-confidence); border-style: dashed"></i>low-conf</span>
+        <span class="token"><i style="background: var(--segment-fill-selected-border)"></i>selected border</span>
+        <span class="token"><i style="background: var(--waveform-playhead)"></i>playhead</span>
+      </div>
+
+      <!-- F1 -->
+      <section class="frame">
+        <div class="frame-hd">
+          <strong>F1 · Default + Gap</strong>
+          <span>普通语段 + selected + 透明 gap + 低置信 dashed</span>
+        </div>
+        <div class="wave-stage" id="f1"></div>
+        <div class="legend">
+          <span><b style="background: var(--segment-fill-idle)"></b>idle</span>
+          <span><b style="background: var(--segment-fill-selected); border-color: var(--segment-fill-selected-border)"></b>selected</span>
+          <span><b style="background: transparent"></b>gap 透明</span>
+          <span><b style="background: var(--segment-fill-low-confidence); border-style: dashed"></b>低置信</span>
+          <span><b style="background: var(--zen-wf-progress-played); border: 0"></b>played = peaks tint</span>
+        </div>
+        <img class="art" src="32-waveform-f1-default-gap.png" alt="F1 final art: default timeline with transparent gap" />
+        <p class="art-cap">定稿画面：gap 无灰块；played 仅 peaks 染色；selected 淡 saffron + handles。</p>
+      </section>
+
+      <!-- F2 -->
+      <section class="frame">
+        <div class="frame-hd">
+          <strong>F2 · Adjacent Boundaries</strong>
+          <span>两段紧贴零空隙，hairline 必须一眼可辨</span>
+        </div>
+        <div class="wave-stage" id="f2"></div>
+        <img class="art" src="33-waveform-f2-adjacent-boundaries.png" alt="F2 final art: adjacent idle segments with hairline" />
+        <p class="art-cap">定稿画面：Idle A / Idle B 同色紧贴，共享竖线分割；右侧 selected 带 handles。</p>
+      </section>
+
+      <!-- F3 -->
+      <section class="frame">
+        <div class="frame-hd">
+          <strong>F3 · Multi-selection Hierarchy</strong>
+          <span>primary selected（强 + handles）&gt; secondary in-selection（弱、无 handle）</span>
+        </div>
+        <div class="wave-stage" id="f3"></div>
+        <img class="art" src="34-waveform-f3-multi-select.png" alt="F3 final art: multi-select hierarchy" />
+        <p class="art-cap">定稿画面：多选层级清晰；低置信 dashed 不抢 selected；无斜纹 played 底。</p>
+      </section>
+
+      <!-- F4 -->
+      <section class="frame" data-accent="indigo">
+        <div class="frame-hd">
+          <strong>F4 · Accent Theme (Indigo)</strong>
+          <span>同一结构换 --accent-action；禁止组件内写死 saffron hex</span>
+        </div>
+        <div class="wave-stage" id="f4"></div>
+        <img class="art" src="35-waveform-f4-accent-indigo.png" alt="F4 final art: indigo accent theme" />
+        <p class="art-cap">定稿画面：selected / in-selection / playhead 全部跟 indigo token 走。</p>
+      </section>
+    </main>
+
+    <script>
+      function peaksHtml(count, playedUntil, seed) {
+        let html = '<div class="peaks" aria-hidden="true">';
+        for (let i = 0; i < count; i++) {
+          const h = 10 + Math.abs(Math.sin((i + seed) * 0.41) * Math.cos((i + seed) * 0.17)) * 98;
+          const played = i < playedUntil ? " played" : "";
+          html += `<i class="bar${played}" style="height:${h.toFixed(1)}px"></i>`;
+        }
+        return html + "</div>";
+      }
+
+      function playhead(left) {
+        return `<i class="playhead" style="left:${left}"><span class="now">NOW</span></i>`;
+      }
+
+      function ruler(times) {
+        return `<div class="ruler">${times.map((t) => `<span>${t}</span>`).join("")}</div>`;
+      }
+
+      document.getElementById("f1").innerHTML = [
+        peaksHtml(170, 58, 1),
+        `<div class="seg" style="left:6%;width:16%"></div>`,
+        `<div class="seg selected" style="left:28%;width:22%"><i class="handle left"></i><i class="handle right"></i></div>`,
+        `<div class="callout" style="left:51%;top:12px">Gap — transparent</div>`,
+        `<div class="seg" style="left:62%;width:9%"></div>`,
+        `<div class="seg low" style="left:73%;width:14%"></div>`,
+        playhead("42%"),
+        ruler(["9:00", "9:20", "9:40", "10:00", "10:20"]),
+      ].join("");
+
+      document.getElementById("f2").innerHTML = [
+        peaksHtml(170, 0, 7),
+        `<div class="seg touch-right" style="left:18%;width:22%"></div>`,
+        `<div class="seg touch-left" style="left:40%;width:22%"></div>`,
+        `<div class="seg selected" style="left:62%;width:20%"><i class="handle left"></i><i class="handle right"></i></div>`,
+        `<div class="callout" style="left:28%;top:14px">Idle A</div>`,
+        `<div class="callout" style="left:48%;top:14px">Idle B · touching</div>`,
+        `<div class="callout" style="left:70%;top:14px">Selected</div>`,
+        playhead("69%"),
+        ruler(["12:00", "12:10", "12:20", "12:30", "12:40"]),
+      ].join("");
+
+      document.getElementById("f3").innerHTML = [
+        peaksHtml(170, 72, 3),
+        `<div class="seg low" style="left:4%;width:10%"></div>`,
+        `<div class="seg in-selection" style="left:16%;width:16%"></div>`,
+        `<div class="seg selected" style="left:32%;width:24%"><i class="handle left"></i><i class="handle right"></i></div>`,
+        `<div class="seg in-selection" style="left:56%;width:17%"></div>`,
+        `<div class="callout" style="left:20%;top:12px">in-selection</div>`,
+        `<div class="callout" style="left:40%;top:12px">primary + handles</div>`,
+        playhead("46%"),
+        ruler(["2:00", "2:20", "2:40", "3:00", "3:20"]),
+      ].join("");
+
+      document.getElementById("f4").innerHTML = [
+        peaksHtml(170, 80, 5),
+        `<div class="seg in-selection" style="left:15%;width:16%"></div>`,
+        `<div class="seg selected" style="left:31%;width:26%"><i class="handle left"></i><i class="handle right"></i></div>`,
+        `<div class="seg in-selection" style="left:57%;width:17%"></div>`,
+        playhead("46%"),
+        ruler(["2:00", "2:20", "2:40", "3:00", "3:20"]),
+      ].join("");
+    </script>
+  </body>
+</html>

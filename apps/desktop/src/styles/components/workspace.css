@@ -192,6 +192,16 @@
   transition: none;
 }
 
+/* U12: selected virtual slot overflow via :has — avoid parent chrome primary subscription */
+.workspace .segment-list-virtual-row-slot {
+  overflow: hidden;
+}
+
+.workspace .segment-list-virtual-row-slot:has(.seg-row-selected) {
+  overflow: visible;
+  z-index: 1;
+}
+
 .workspace [data-seg-row].seg-row-selected .segment-row-text-body {
   overflow: visible;
 }

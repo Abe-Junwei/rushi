@@ -10,6 +10,8 @@ import {
 } from "../services/waveform/waveformSurferProgressCoverage";
 
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
+import { collapseWaveSurferToMediaOnly } from "../services/waveform/collapseWaveSurferToMediaOnly";
+import { silenceWaveSurferRendererClock } from "../services/waveform/silenceWaveSurferRendererClock";
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
   disposed: () => boolean;
@@ -76,6 +78,9 @@ export function bindProjectWaveformWaveSurferEvents(
         );
       }
       logWaveSurferGeomDeferred(ws, "ready", "");
+      collapseWaveSurferToMediaOnly(ws);
+      silenceWaveSurferRendererClock(ws);
+      logDesktopUi("INFO", "[ws2b] WaveSurfer media-only (collapsed + silenced clock)");
       void probeWaveformAssetFetchParity("ws_ready", mediaDiskPath, mediaUrl);
       queueMicrotask(() => syncTierScrollAfterRenderRef.current());
     }),
@@ -152,6 +157,9 @@ export function bindProjectWaveformWaveSurferEvents(
     }),
     subscribeWaveSurferAfterRender(ws, () => {
       if (disposed()) return;
+      // Height/theme setOptions can reRender; keep scrollW collapsed + clock silenced.
+      collapseWaveSurferToMediaOnly(ws);
+      silenceWaveSurferRendererClock(ws);
       syncTierScrollAfterRenderRef.current();
       const appliedHeight = pendingAppliedWaveformHeightRef.current;
       if (appliedHeight == null) return;

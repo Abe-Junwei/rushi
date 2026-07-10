@@ -13,15 +13,16 @@ export function segmentStartSec(seg: { start_sec: number; end_sec: number }): nu
   return Math.min(seg.start_sec, seg.end_sec);
 }
 
-/** 语段内播放起点：playhead 在语段内则从 playhead 起播，否则从语段头起播。 */
+/** 语段播放起点：段内从 playhead；已过段尾从 playhead；段前仍回段头。 */
 export function resolveSegmentPlaybackStartSec(
   playheadSec: number,
   seg: { start_sec: number; end_sec: number },
 ): number {
   const start = segmentStartSec(seg);
   const end = Math.max(seg.start_sec, seg.end_sec);
-  if (playheadSec >= end) return start;
+  if (!Number.isFinite(playheadSec)) return start;
   if (playheadSec >= start && playheadSec < end) return playheadSec;
+  if (playheadSec >= end) return playheadSec;
   return start;
 }
 

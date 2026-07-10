@@ -66,8 +66,8 @@
 
 ### 仍开放的后续优化
 
-- [ ] **U11**：`virtualWindow` useMemo 仍依赖 `selectedDisplayIndex`；pin 已显式化但未彻底解耦。
-- [ ] **U12**：`useSelectionChromePrimaryIdx` 仍在 `EditorSegmentList` 父级，chrome 变更触发父级 re-render。
+- [x] **U11**：`virtualWindow` useMemo 仅依赖 `scrollEpoch` / `selectSourceEpoch`；`selectedDisplayIndex` 走 ref（SEL-1c 确认）
+- [x] **U12**：`EditorSegmentListViewport` 已去掉 `useSelectionChromePrimaryIdx`；scroll 用 SC1；槽 overflow 用 CSS `:has`（SEL-1c）
 - [ ] **U18**：burst 内每 step 仍 `selectionProfileBegin` 一行，profile 噪声未收敛。
 - [ ] **Architecture guard**：`useTranscriptionLayerSelection.ts` 482 行 / 14 hooks，超过阈值；`useEditorSegmentListScroll.ts` 316 行。
 - [ ] **Phase 5 文档/补丁取舍**：working tree 补丁清单未系统整理；`selectionLatencyProfile.ts` 中 listKeyboard debounce 代码与 keyup cancel 的实际效果存在冗余。
@@ -114,11 +114,11 @@
 
 ---
 
-## Phase 4 — SCB 2–3 收束（**部分完成**）
+## Phase 4 — SCB 2–3 收束（**已完成 · SEL-1c**）
 
 - [x] **U13**：memo 去 `selectedIdx` / `selectedIndicesArray`（Workbench + List）
-- [ ] **U11**：virtualWindow 按需 pin；`selectedDisplayIndex` 仍在 deps
-- [ ] **U12**：`useSelectionChromePrimaryIdx` 仍在 `EditorSegmentList` 父级
+- [x] **U11**：virtualWindow 按需 pin；`selectedDisplayIndex` 仅经 ref 读，不在 useMemo deps
+- [x] **U12**：`useSelectionChromePrimaryIdx` 已迁出 Viewport 父级（SEL-1c）
 - [x] keyup SC1 用 `startTransition`
 
 | ID | 通过标准 | 结果 |

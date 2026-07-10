@@ -103,12 +103,11 @@ function resolveRootFillToken(
   return resolveCssColorExpression(expression, fallbackRgb);
 }
 
-/** WaveSurfer peaks 配色 — 对齐 tokens.css `--zen-wf-*`。 */
+/** WaveSurfer peaks 配色 — 对齐 tokens.css `--zen-wf-*`（已播放为中性淡化，不锁 accent）。 */
 export function readWaveformSurferPalette(): WaveformSurferPalette {
   const waveColor = readCssColorVar("--zen-wf-wave", COLORS.waveformWave);
-  const progressColor = resolveRootFillToken(
+  const progressColor = readCssColorVar(
     "--zen-wf-progress-played",
-    "color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress))",
     COLORS.waveformProgressPlayed,
   );
   const cursorColor = readCssColorVar("--zen-wf-cursor", COLORS.waveformCursor);
@@ -122,6 +121,8 @@ export type WaveformSegmentBandPalette = {
   visited: string;
   idle: string;
   border: string;
+  selectedBorder: string;
+  inSelectionBorder: string;
 };
 
 /** 语段 band canvas 配色 — 与 segmentChrome / tokens.css `--segment-fill-*` 同源。 */
@@ -136,33 +137,43 @@ export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
   cachedSegmentBandPalette = {
     selected: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.selected,
-      "color-mix(in srgb, var(--accent-action) 18%, transparent)",
-      accentMixFallback(18, 0.18),
+      "color-mix(in srgb, var(--accent-action) 14%, transparent)",
+      accentMixFallback(14, 0.14),
     ),
     inSelection: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.inSelectionWaveform,
-      "color-mix(in srgb, var(--accent-action) 12%, transparent)",
-      accentMixFallback(12, 0.12),
+      "color-mix(in srgb, var(--accent-action) 8%, transparent)",
+      accentMixFallback(8, 0.08),
     ),
     lowConfidence: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.lowConfidence,
-      "color-mix(in srgb, var(--notion-text-light) 24%, transparent)",
-      "rgba(156, 163, 175, 0.24)",
+      "color-mix(in srgb, var(--notion-text-light) 10%, transparent)",
+      "rgba(156, 163, 175, 0.10)",
     ),
     visited: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.visited,
-      "color-mix(in srgb, var(--accent-action-strong) 14%, transparent)",
-      accentStrongMixFallback(14, 0.14),
+      "color-mix(in srgb, var(--notion-text) 10%, transparent)",
+      "rgba(55, 53, 47, 0.10)",
     ),
     idle: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.idle,
-      "color-mix(in srgb, var(--zen-ink) 11%, transparent)",
-      "rgba(44, 44, 44, 0.11)",
+      "color-mix(in srgb, var(--notion-text) 5%, transparent)",
+      "rgba(55, 53, 47, 0.05)",
     ),
     border: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.border,
-      "color-mix(in srgb, var(--notion-text) 14%, transparent)",
-      "rgba(55, 53, 47, 0.14)",
+      "color-mix(in srgb, var(--notion-text) 24%, transparent)",
+      "rgba(55, 53, 47, 0.24)",
+    ),
+    selectedBorder: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.selectedBorder,
+      "color-mix(in srgb, var(--accent-action-strong) 48%, transparent)",
+      accentStrongMixFallback(48, 0.48),
+    ),
+    inSelectionBorder: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.inSelectionBorder,
+      "color-mix(in srgb, var(--accent-action) 34%, transparent)",
+      accentMixFallback(34, 0.34),
     ),
   };
   return cachedSegmentBandPalette;

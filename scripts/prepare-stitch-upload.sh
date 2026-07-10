@@ -25,13 +25,19 @@ copy_file "apps/desktop/docs/stitch-welcome-page-spec.md" "03-stitch-welcome-pag
 copy_file "apps/desktop/docs/stitch-work-page-spec.md" "04-stitch-work-page-spec.md"
 copy_file "apps/desktop/docs/stitch-waveform-polish-spec.md" "19-stitch-waveform-polish-spec.md"
 copy_file "apps/desktop/stitch-waveform-polish-layout.html" "20-stitch-waveform-polish-layout.html"
+copy_file "apps/desktop/docs/stitch-waveform-segment-visual-spec.md" "30-stitch-waveform-segment-visual-spec.md"
+copy_file "apps/desktop/stitch-waveform-segment-visual-layout.html" "31-stitch-waveform-segment-visual-layout.html"
 copy_file "apps/desktop/docs/stitch-environment-llm-panel-spec.md" "21-stitch-environment-llm-panel-spec.md"
 copy_file "apps/desktop/stitch-environment-llm-layout.html" "22-stitch-environment-llm-layout.html"
 copy_file "apps/desktop/docs/stitch-welcome-hub-unified-spec.md" "23-stitch-welcome-hub-unified-spec.md"
 copy_file "apps/desktop/stitch-welcome-hub-layout.html" "24-stitch-welcome-hub-layout.html"
 copy_file "apps/desktop/docs/stitch-glossary-page-spec.md" "25-stitch-glossary-page-spec.md"
 copy_file "apps/desktop/stitch-glossary-page-layout.html" "26-stitch-glossary-page-layout.html"
-copy_file "apps/desktop/stitch-welcome-page-full.png" "05-stitch-welcome-page-full.png"
+if [[ -f "$ROOT_DIR/apps/desktop/stitch-welcome-page-full.png" ]]; then
+  cp "$ROOT_DIR/apps/desktop/stitch-welcome-page-full.png" "$TARGET_DIR/05-stitch-welcome-page-full.png"
+else
+  echo "[prepare-stitch-upload] skip optional: apps/desktop/stitch-welcome-page-full.png"
+fi
 copy_file "apps/desktop/docs/stitch-brand-logo-spec.md" "27-stitch-brand-logo-spec.md"
 copy_file "apps/desktop/stitch-brand-logo-layout.html" "28-stitch-brand-logo-layout.html"
 

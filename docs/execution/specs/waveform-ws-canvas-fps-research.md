@@ -1,6 +1,6 @@
 # 调研：WaveSurfer 超宽 canvas / progress 饿死播放帧率（WS-FPS）
 
-> **状态**：WS-2a 编码中（WS-1 未过闸；viewport host + tier→ws.setScroll）
+> **状态**：WS-2a 已编码 · S4 fps **FAIL**（合成瓶颈）· 后备见 [`waveform-ws2b-viewport-render-research.md`](./waveform-ws2b-viewport-render-research.md)
 > **关联 spec**：[`waveform-ws-canvas-fps-plan.md`](./waveform-ws-canvas-fps-plan.md) / [`waveform-ws-canvas-fps-acceptance.md`](./waveform-ws-canvas-fps-acceptance.md)
 > **前序**：
 > - [`waveform-visual-raf-playhead-research.md`](./waveform-visual-raf-playhead-research.md)（VRP：独立 rAF 轮询 media）
@@ -94,7 +94,7 @@
 | ID | 触发 | 内容 |
 |----|------|------|
 | **WS-2a** | WS-1 后 fps 仍 <45 | 去巨宽 host + lazy 尾部验收 |
-| **WS-2b** | WS-2a 失败 | 视口窗口绘制（Peaks）独立 research |
+| **WS-2b** | WS-2a 失败 / 合成瓶颈 | 视口窗口绘制 — [`waveform-ws2b-viewport-render-research.md`](./waveform-ws2b-viewport-render-research.md) ✅ |
 | **WR-2/4** | 并行 | zoom 去抖 / resample worker（不挡 WS-1） |
 
 ---
@@ -110,3 +110,4 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-07-10 | 初版：证伪「本仓 canvas 仍是 fps 瓶颈」；采纳先冻 progress 再动巨宽 host |
+| 2026-07-10 | WS-2a 后 S4 FAIL + 合成瓶颈 → 链接 WS-2b research |

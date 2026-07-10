@@ -3,7 +3,7 @@
 > **调研**（编码前必读）：[`waveform-selection-click-latency-research.md`](./waveform-selection-click-latency-research.md)
 > **acceptance**：[`waveform-selection-click-latency-acceptance.md`](./waveform-selection-click-latency-acceptance.md)
 > **架构**：[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md) §选中时钟（SC1/SC2）
-> **状态**：待编码（用户已确认方案）
+> **状态**：SEL-1a/1b/1c 编码完成 · 待手测复验
 
 ---
 

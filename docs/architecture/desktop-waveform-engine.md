@@ -1,4 +1,4 @@
-# 桌面端波形引擎（WaveSurfer-only，2026-05）
+# 桌面端波形引擎（WaveSurfer media + Rushi viewport canvas，2026-07 WS-2b）
 
 ## 数据流
 
@@ -8,13 +8,16 @@
 
 编辑器 (React)
   useWaveformPeaks → PeakCache.fromLevelUrls
-  useProjectWaveform + WaveSurfer v7     ← 唯一主波形渲染器（可见波形 + 内置 progress）
-  useWaveformZoomSync                    ← decode 首帧 + peaks 热切换 + zoom
+  useProjectWaveform + WaveSurfer v7     ← 媒体宿主（play/seek/currentTime）；可见波形不再依赖 WS 全长 canvas
+  WaveformViewportPeaksCanvas            ← 可见主波形（PeakCache @ drawPxPerSec，视口 + overscan）
+  useWaveformZoomSync                    ← layout/draw px/s 驱动 Rushi canvas；WS 不再 load 全长 peaks（WS-2b）
   WaveformSegmentBandCanvas              ← packable 语段色带（timeline-native virtual Canvas window）
   WaveformSegmentOverlay                 ← 语段 DOM（仅选中 + drag draft；非 WS Regions）
   WaveformLiveTimeRuler                  ← 时间尺 + playhead
   EditorSegmentList                      ← 语段列表（虚拟窗口，长转写列表）
 ```
+
+> **WS-2b（spike v4 PASS · Plan 定稿）**：可见主波形 = PeakCache 驱动的视口窗口 canvas（Peaks **模型**，非迁移 Peaks.js）；WS = media transport（stub peaks、silence 内部 timer/progress、host 1×1）。生产化见 [`waveform-ws2b-viewport-render-plan.md`](../execution/specs/waveform-ws2b-viewport-render-plan.md)。调研：[`waveform-ws2b-viewport-render-research.md`](../execution/specs/waveform-ws2b-viewport-render-research.md)。
 
 **已移除（2026-05）**：`WaveformPeaksTileLayer`、`WaveformProgressOverlay`、全局 overview 条（`WaveformOverviewStrip` / `WaveformGlobalStripShell`）、canvas draw 路径（`drawWaveformPeaksTile` / `tileGeometry` / `useWaveformTileLifecycle`）。
 
@@ -76,8 +79,8 @@
 
 - 语段 overlay、框选、播放控件、点击寻位一律经 `timeToTimelinePx`（`waveformSegmentBounds` / `waveformSegmentOverlayGeometry`）。
 - **语段 tap（两段式 seek）：** [`resolveSegmentOverlayTap`](../../apps/desktop/src/utils/waveformSegmentOverlayActions.ts) — 未选中语段 → `selectSegmentAt`（viewport fit + seek 语段头）；已选中语段内再点 → `seekToTime`（钳在语段边界）。pointerup 为主路径（`applyOverlayPointerUpIntent`），click 为兜底。
-- **语段播放起点：** [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — playhead 在语段内则从 playhead 起播，否则从语段头。
-- **Space / 工具栏播放钮：** [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts) — 当前选中语段 scoped 播放（非全局 `togglePlay` 续播）。
+- **语段播放起点：** [`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts) / [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — 段内从 playhead；**已过段尾从 playhead 续播**（不回段头）；段前仍跳到段头。
+- **Space / 工具栏播放钮：** [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts) — 当前选中语段 scoped 播放（非全局 `togglePlay` 续播）。语段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
 - **WS-2a sticky 层：** `waveform-timeline-wave-layer` 与 playhead sticky 壳用 **`h-0` + 子层 absolute 铺满**，避免 in-flow `h-full` 把后续 sticky 壳挤出 `peaksPaneHeightPx` 后被 tier `overflow-y-hidden` 裁掉（播放头不可见回归）。
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
@@ -173,7 +176,7 @@
 
 | 层 | 配色真源 | 说明 |
 |----|----------|------|
-| **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层 tint 且主 canvas 不 clip；播放中 live tint 对齐 visual playhead，`progressWrapper.width` 走 `setDirectLayoutStyle` + 百分比去重（静态 clip/overflow 仍 nonce CSP 一次写入） |
+| **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` / `--zen-wf-played-wash` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；视口已播放区由 [`WaveformViewportPeaksCanvas`](../../apps/desktop/src/components/WaveformViewportPeaksCanvas.tsx) 的 `.waveform-viewport-played-tint`（wash 淡化）跟随 visual playhead；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层且主 canvas 不 clip，`progressWrapper.width` 走 `setDirectLayoutStyle` + 百分比去重 |
 | **Band canvas** | `--segment-fill-*` → resolve rgb | [`segmentBandFillStyle`](../../apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts)；选中 / 滚动 / seek chrome 经 [`requestWaveformSegmentBandPaint`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 重绘（**不**按 playhead 画 visited 色） |
 | **DOM overlay** | `var(--segment-fill-*)` | [`waveformRegionFillColor`](../../apps/desktop/src/utils/segmentChrome.ts)；多选时 `multiSelectActive` 统一 12% waveform in-selection |
 | **Playhead / minimap** | `--waveform-playhead` / `--waveform-minimap-*` | `accent-action` 链；WS 内置 cursor 隐藏 |

@@ -1,12 +1,14 @@
 import { createContext, useContext, useMemo, type ReactNode } from "react";
 import { isSegmentListFilterHidingPrimary } from "../utils/segmentListFilterNav";
 import type { WaveformSelectionChromeReactInput } from "../services/selection/resolveWaveformSelectionChromeView";
-import { resolveWaveformSelectionChromeView } from "../services/selection/resolveWaveformSelectionChromeView";
 import { useWaveformSelectionChromeView } from "./useWaveformSelectionChromeView";
 
 export type WaveformSelectionChromeViewContextValue = {
   view: ReturnType<typeof useWaveformSelectionChromeView>;
   filterExcludesPrimary: boolean;
+  filterActive: boolean;
+  /** When filter is active, indices visible in the list; null means paint all bands. */
+  listVisibleIndexSet: ReadonlySet<number> | null;
 };
 
 const WaveformSelectionChromeViewContext =
@@ -23,19 +25,26 @@ export function WaveformSelectionChromeViewProvider({
   filteredIndices: readonly number[];
   children: ReactNode;
 }) {
-  const preFilterView = useWaveformSelectionChromeView(input);
+  const view = useWaveformSelectionChromeView(input);
   const filterExcludesPrimary = isSegmentListFilterHidingPrimary({
     filterActive,
     filteredIndices,
-    primaryIdx: preFilterView.selectedIdx,
+    primaryIdx: view.selectedIdx,
     segmentCount: input.segmentCount ?? 0,
   });
-  const value = useMemo((): WaveformSelectionChromeViewContextValue => {
-    const view = filterExcludesPrimary
-      ? resolveWaveformSelectionChromeView({ ...input, filterExcludesPrimary: true })
-      : preFilterView;
-    return { view, filterExcludesPrimary };
-  }, [filterExcludesPrimary, input, preFilterView]);
+  const listVisibleIndexSet = useMemo((): ReadonlySet<number> | null => {
+    if (!filterActive) return null;
+    return new Set(filteredIndices);
+  }, [filterActive, filteredIndices]);
+  const value = useMemo(
+    (): WaveformSelectionChromeViewContextValue => ({
+      view,
+      filterExcludesPrimary,
+      filterActive,
+      listVisibleIndexSet,
+    }),
+    [view, filterExcludesPrimary, filterActive, listVisibleIndexSet],
+  );
   return (
     <WaveformSelectionChromeViewContext.Provider value={value}>
       {children}
@@ -50,4 +59,3 @@ export function useWaveformSelectionChromeViewContext(): WaveformSelectionChrome
   }
   return ctx;
 }
-

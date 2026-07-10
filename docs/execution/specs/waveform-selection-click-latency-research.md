@@ -1,6 +1,6 @@
 # 调研：语段点选延迟（SEL-1）— React SC1 commit 与 profile 缺口
 
-> **状态**：已采纳（编码中 · SEL-1b 已落地）
+> **状态**：SEL-1a/1b/1c 编码完成 · 待手测复验（SEL-1c 后）
 > **关联 spec**：[`waveform-selection-click-latency-plan.md`](./waveform-selection-click-latency-plan.md) / [`waveform-selection-click-latency-acceptance.md`](./waveform-selection-click-latency-acceptance.md)
 > **前序**：
 > - [`list-keyboard-navigation-virtual-scroll-performance-research.md`](./list-keyboard-navigation-virtual-scroll-performance-research.md)（LKB：burst 内 0 SC1；keyup `startTransition`）

@@ -720,6 +720,20 @@
   will-change: transform;
 }
 
+/**
+ * 已播放区：表面 wash 淡化（无斜纹）。
+ * 宽度由 WaveformViewportPeaksCanvas 热路径只写 width；颜色走 token，禁止 JS 写 accent hex。
+ */
+.waveform-viewport-played-tint {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0;
+  background-color: var(--zen-wf-played-wash);
+}
+
 .icon-btn {
   box-sizing: border-box;
   display: inline-flex;
@@ -817,19 +831,26 @@
   position: absolute;
   box-sizing: border-box;
   border: none;
-  border-left: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);
+  border-left: 1px solid var(--segment-fill-border);
+  border-right: 1px solid var(--segment-fill-border);
   border-radius: 0;
   cursor: grab;
   touch-action: none;
 }
 
+.waveform-segment-region-low-confidence {
+  border-left-style: dashed;
+  border-right-style: dashed;
+}
+
 .waveform-segment-region-selected {
-  border: none;
+  border-left-color: var(--segment-fill-selected-border);
+  border-right-color: var(--segment-fill-selected-border);
 }
 
 .waveform-segment-region-in-selection {
-  border: none;
+  border-left-color: var(--segment-fill-in-selection-border);
+  border-right-color: var(--segment-fill-in-selection-border);
 }
 
 .waveform-segment-handle {

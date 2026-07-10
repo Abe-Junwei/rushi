@@ -94,6 +94,11 @@ export function useWaveformVisualPlayheadClock(input: {
       }
       pausedImperativeSeekUntilRef.current = 0;
     }
+    // While playing, React currentTime often stays at the last seek. After pause it
+    // can briefly (or until commit) lag the frozen visual — never pull playhead back.
+    if (a.currentTimeSec < visualTimeSecRef.current - 0.02) {
+      return;
+    }
     syncPausedTime(a.currentTimeSec);
   }, [input.currentTimeSec, input.isPlaying, input.isReady, syncPausedTime]);
 

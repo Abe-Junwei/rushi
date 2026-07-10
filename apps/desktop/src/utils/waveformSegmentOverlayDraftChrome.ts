@@ -1,7 +1,7 @@
 import type { RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { clearCspLayoutRules, setCspLayoutRules } from "./cspElementLayout";
-import { resolveWaveformRegionFillColor } from "./segmentChrome";
+import { waveformRegionFillColor } from "./segmentChrome";
 import { segmentOverlayGeometry } from "./waveformSegmentBounds";
 import type { SegmentOverlayDraft } from "./waveformSegmentOverlayGeometry";
 
@@ -105,7 +105,7 @@ export function applySegmentDraftPreviewFallback(
     top: geom.topPx,
     height: geom.heightPx,
     bottom: null,
-    background: resolveWaveformRegionFillColor(seg, true),
+    background: waveformRegionFillColor(seg, true),
     border: "none",
     borderLeft: "none",
     borderRight: "none",

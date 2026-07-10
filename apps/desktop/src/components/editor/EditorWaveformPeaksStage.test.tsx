@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
@@ -146,6 +148,18 @@ describe("EditorWaveformPeaksStage", () => {
     expect((waveLayer as HTMLElement).className).toContain("h-0");
     expect(readCspLayoutRulesForElement(waveLayer as HTMLElement)).toContain("width: 800px");
     expect(readCspLayoutRulesForElement(overlayLayer as HTMLElement)).toContain("width: 2400px");
+    expect(container.querySelector("[data-ws2b-viewport-peaks-canvas]")).toBeInstanceOf(
+      HTMLElement,
+    );
+    expect(container.querySelector("[data-ws2b-played-tint]")).toBeInstanceOf(HTMLElement);
+    expect(container.querySelector("[data-ws2b-played-tint]")?.className).toContain(
+      "waveform-viewport-played-tint",
+    );
+    const waveSurferPreview = container.querySelector('[role="img"]')?.parentElement?.parentElement;
+    expect(waveSurferPreview).toBeInstanceOf(HTMLElement);
+    expect((waveSurferPreview as HTMLElement).className).toContain("opacity-0");
+    expect(readCspLayoutRulesForElement(waveSurferPreview as HTMLElement)).toContain("width: 1px");
+    expect(readCspLayoutRulesForElement(waveSurferPreview as HTMLElement)).toContain("height: 1px");
 
     const stickyShell = container.querySelector(".waveform-viewport-playhead")?.parentElement?.parentElement;
     expect(stickyShell).toBeInstanceOf(HTMLElement);

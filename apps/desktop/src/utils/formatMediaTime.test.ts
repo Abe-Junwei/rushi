@@ -25,9 +25,9 @@ describe("resolveSegmentPlaybackStartSec", () => {
     expect(resolveSegmentPlaybackStartSec(7, segment)).toBe(7);
   });
 
-  it("plays from segment start when playhead is outside", () => {
+  it("plays from playhead when past segment end; snaps to start when before", () => {
     expect(resolveSegmentPlaybackStartSec(2, segment)).toBe(4);
-    expect(resolveSegmentPlaybackStartSec(10, segment)).toBe(4);
+    expect(resolveSegmentPlaybackStartSec(10, segment)).toBe(10);
   });
 });
 

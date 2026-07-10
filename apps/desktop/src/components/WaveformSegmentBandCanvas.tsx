@@ -2,7 +2,6 @@ import { memo, useLayoutEffect, useMemo, useRef, useSyncExternalStore, type RefO
 import type { SegmentDto } from "../tauri/projectApi";
 import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
-import { collectSegmentBandSelectionDirtyIndices } from "../services/waveform/segmentBandDirtyPaint";
 import { resolveWaveformSelectionChromeView } from "../services/selection/resolveWaveformSelectionChromeView";
 import {
   getSelectionChromeSnapshot,
@@ -41,6 +40,9 @@ import {
   invalidateWaveformSegmentBandPaletteCache,
   readWaveformSegmentBandPalette,
 } from "../utils/waveformThemeColors";
+import { waveformBoundsSignature } from "../utils/boundsSignature";
+import { resolveVisitedSegmentIndexAtPlayhead } from "../utils/segmentChrome";
+import { registerSegmentProbeSource } from "../services/waveform/segmentProbeDevTools";
 
 export type WaveformSegmentBandCanvasProps = {
   fileId: string | null;
@@ -57,6 +59,8 @@ export type WaveformSegmentBandCanvasProps = {
   dominantSpanIndices?: readonly number[];
   draftIdx: number | null;
   filterExcludesPrimary?: boolean;
+  /** When filter active: only these indices get idle band fill; null = all. */
+  listVisibleIndexSet?: ReadonlySet<number> | null;
   getPlayheadSec?: () => number;
   subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -79,6 +83,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   dominantSpanIndices,
   draftIdx,
   filterExcludesPrimary = false,
+  listVisibleIndexSet = null,
   getPlayheadSec,
   subscribePlayheadFrame,
   tierScrollRef,
@@ -96,6 +101,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     () => new Set(dominantSpanIndices ?? []),
     [dominantSpanIndices],
   );
+  const boundsSignature = useMemo(() => waveformBoundsSignature(segments), [segments]);
 
   const inputRef = useRef({
     fileId,
@@ -112,6 +118,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     dominantSpanSet,
     draftIdx,
     filterExcludesPrimary,
+    listVisibleIndexSet,
+    boundsSignature,
   });
   inputRef.current = {
     fileId,
@@ -128,6 +136,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     dominantSpanSet,
     draftIdx,
     filterExcludesPrimary,
+    listVisibleIndexSet,
+    boundsSignature,
   };
 
   const tierMetricsRef = useRef({ tierScrollRef, tierScrollLive, tierScrollLayout });
@@ -149,6 +159,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     hi?: number;
     count?: number;
   }>({});
+  const lastPaintedBoundsSignatureRef = useRef("");
+  const lastPaintedVisitedFrontierRef = useRef(-2);
   const playheadSecRef = useRef<number | undefined>(undefined);
   const overlayRootRef = useRef<HTMLElement | null>(null);
 
@@ -157,8 +169,15 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     lastCssLeftRef.current = null;
     lastPaintedPrimaryIdxRef.current = -2;
     lastPaintedSelectionRef.current = {};
+    lastPaintedBoundsSignatureRef.current = "";
+    lastPaintedVisitedFrontierRef.current = -2;
     overlayRootRef.current = null;
   };
+
+  useLayoutEffect(() => {
+    registerSegmentProbeSource(() => inputRef.current.segments);
+    return () => registerSegmentProbeSource(null);
+  }, []);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -212,10 +231,17 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const chromeVersionNow = getSelectionChromeSnapshot().version;
       const selectionChromeChanged = chromeVersionNow !== paintedChromeVersion;
       const selectionPrimaryChanged = selectionView.selectedIdx !== lastPaintedPrimaryIdxRef.current;
+      const boundsSignatureChanged =
+        input.boundsSignature !== lastPaintedBoundsSignatureRef.current;
       const playheadSec =
         playheadSecRef.current ??
         readPlaybackTimeDuringViewportFrame() ??
         getPlayheadSec?.();
+      const visitedFrontier = resolveVisitedSegmentIndexAtPlayhead(
+        input.segments,
+        playheadSec ?? Number.NaN,
+      );
+      const visitedFrontierChanged = visitedFrontier !== lastPaintedVisitedFrontierRef.current;
 
       const windowNeedsRepaint = segmentBandCanvasNeedsRepaint({
         scrollLeftPx,
@@ -227,29 +253,20 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         layoutHeightPx: heightPx,
         bufferPx: painted.bufferPx || bufferPx,
       });
-      if (!selectionChromeChanged && !selectionPrimaryChanged && !windowNeedsRepaint) {
+      if (
+        !selectionChromeChanged &&
+        !selectionPrimaryChanged &&
+        !windowNeedsRepaint &&
+        !boundsSignatureChanged &&
+        !visitedFrontierChanged
+      ) {
         waveformScrollProfileBandSkipped();
         return;
       }
 
-      const selectionOnly =
-        !windowNeedsRepaint &&
-        painted.leftPx >= 0 &&
-        (selectionChromeChanged || selectionPrimaryChanged);
-      const dirtyIndices = selectionOnly
-        ? collectSegmentBandSelectionDirtyIndices({
-            previousPrimaryIdx: lastPaintedPrimaryIdxRef.current,
-            nextPrimaryIdx: selectionView.selectedIdx,
-            previousLo: lastPaintedSelectionRef.current.lo,
-            previousHi: lastPaintedSelectionRef.current.hi,
-            previousCount: lastPaintedSelectionRef.current.count,
-            nextLo: selectionView.selectionLo,
-            nextHi: selectionView.selectionHi,
-            nextCount: selectionView.selectionCount,
-            segmentCount: input.segments.length,
-          })
-        : null;
-
+      // Never use dirtyIndices here: selection-only dirty clears only current
+      // segment rects, so idle pixels left in true timeline gaps (no segment)
+      // survive forever and look like ghost bands that seek-but-don't-select.
       const paintStartedAt =
         isWaveformScrollProfileEnabled() || selectionProfileIsActive() ? performance.now() : 0;
       const dpr = window.devicePixelRatio || 1;
@@ -294,8 +311,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           selectionHi: selectionView.selectionHi,
           selectionCount: selectionView.selectionCount,
           skipIndexSet,
+          listVisibleIndexSet: input.listVisibleIndexSet,
           playheadSec,
-          dirtyIndices: dirtyIndices ?? undefined,
           palette: readWaveformSegmentBandPalette(),
         });
       };
@@ -315,6 +332,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         hi: selectionView.selectionHi,
         count: selectionView.selectionCount,
       };
+      lastPaintedBoundsSignatureRef.current = input.boundsSignature;
+      lastPaintedVisitedFrontierRef.current = visitedFrontier;
     };
 
     const schedulePaint = () => {
@@ -327,6 +346,10 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     const unsubFrame = subscribeTierScrollFrame(paint);
     const unsubPlayhead = subscribePlayheadFrame?.((timeSec) => {
       playheadSecRef.current = timeSec;
+      const frontier = resolveVisitedSegmentIndexAtPlayhead(inputRef.current.segments, timeSec);
+      if (frontier !== lastPaintedVisitedFrontierRef.current) {
+        schedulePaint();
+      }
     });
     const onResize = () => {
       invalidatePaintWindow();
@@ -353,11 +376,12 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     requestWaveformSegmentBandPaint({ force: true });
   }, [
     layoutHeightPx,
-    segments,
+    boundsSignature,
     durationSec,
     timelineWidthPx,
     dominantSpanIndices,
     filterExcludesPrimary,
+    listVisibleIndexSet,
   ]);
 
   useLayoutEffect(() => {

@@ -311,6 +311,32 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
   });
 
+  it("does not pull visual backward to stale React currentTime after pause", () => {
+    // While playing, React currentTime stays at the play-start seek; visual tracks media.
+    // After pause, a stale currentTime commit must not rewind the visual clock.
+    const { result, rerender } = renderHook(
+      (props: { isPlaying: boolean; currentTimeSec: number }) =>
+        useWaveformVisualPlayheadClock({
+          isPlaying: props.isPlaying,
+          isReady: true,
+          durationSec: 30,
+          currentTimeSec: props.currentTimeSec,
+          playbackRate: 1,
+          getRawMediaPlayheadTimeSec: () => 15,
+          getRawMediaIsPlaying: () => props.isPlaying,
+        }),
+      { initialProps: { isPlaying: true, currentTimeSec: 10 } },
+    );
+
+    act(() => {
+      result.current.visualTimeSecRef.current = 15;
+      result.current.syncDisplayPlayheadAfterSeek(15);
+      rerender({ isPlaying: false, currentTimeSec: 10 });
+    });
+
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(15);
+  });
+
   it("syncDisplayPlayheadAfterSeek snaps to seek target while playing", () => {
     const raf = stubQueuedRaf();
     let mediaSec = 12;

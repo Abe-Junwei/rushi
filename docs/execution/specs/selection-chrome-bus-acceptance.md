@@ -85,7 +85,7 @@ CI 命令：`npm run test:perf -w @rushi/desktop`（含 193 段基准）。
 | **SC-H3** | ↑↓ 键盘 20 次（textarea focus） | reveal + 高亮；无空白闪（P0） |
 | **SC-H4** | Shift 拖选跨 30+ 行 | 多选 chrome 连续；auto-scroll 仍可用（S8） |
 | **SC-H5** | 波形 lasso 框选 5+ 语段 | 多语段 in-selection；primary 正确 |
-| **SC-H6** | 开 filter 排除当前选中 | banner 见；无 ghost 高亮 |
+| **SC-H6** | 开 filter 排除当前选中 | banner 见；波形保留选中态（粉块），不因 filter 清空 chrome |
 | **SC-H7** | 「清除过滤并定位」 | SC1/SC2 对齐选中句 |
 | **SC-H8** | merge 选中语段与下一句 | 高亮跟新 idx；无双亮 |
 | **SC-H9** | undo merge | chrome 恢复 |

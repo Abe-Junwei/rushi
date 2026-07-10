@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rushi — 品牌 Mark「如」Stitch 对照</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Serif+SC:wght@500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #2c2c2c;
+      --saffron: #c58a43;
+      --paper: #f2efe8;
+      --white: #ffffff;
+      --notion-text: #37352f;
+      --notion-text-muted: #6b6b6b;
+      --notion-divider: #e3e2e0;
+      --notion-sidebar: #f7f7f5;
+      --font-sans: Inter, system-ui, sans-serif;
+      --font-serif: "Noto Serif SC", serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      color: var(--notion-text);
+      background: #ececea;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .page-title {
+      padding: 24px 32px 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--notion-text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .compare-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+      padding: 16px 32px 48px;
+    }
+
+    .frame {
+      background: var(--white);
+      border: 1px solid var(--notion-divider);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .frame-label {
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--notion-text-muted);
+      background: var(--notion-sidebar);
+      border-bottom: 1px solid var(--notion-divider);
+    }
+
+    .frame-body {
+      padding: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 160px;
+    }
+
+    /* L2 — 32px saffron mark */
+    .mark-v2 {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
+      background: var(--saffron);
+      color: var(--white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1;
+    }
+
+    /* L3 — sidebar lockup */
+    .lockup {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      max-width: 280px;
+    }
+
+    .lockup-text h1 {
+      margin: 0;
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 500;
+      line-height: 1.4;
+      color: var(--notion-text);
+    }
+
+    .lockup-text p {
+      margin: 2px 0 0;
+      font-size: 11px;
+      font-weight: 500;
+      line-height: 1.35;
+      color: var(--notion-text-muted);
+    }
+
+    /* L4 — size test */
+    .size-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 24px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .size-cell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .size-cell span {
+      font-size: 10px;
+      color: var(--notion-text-muted);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+
+    .mark-size {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-serif);
+      font-weight: 500;
+      color: var(--ink);
+      background: var(--white);
+      border: 1px dashed var(--notion-divider);
+    }
+
+    .mark-size.s16 { width: 16px; height: 16px; font-size: 11px; border-radius: 2px; }
+    .mark-size.s32 { width: 32px; height: 32px; font-size: 20px; border-radius: 4px; }
+    .mark-size.s128 { width: 128px; height: 128px; font-size: 80px; border-radius: 8px; }
+
+    .size-row.saffron-bg {
+      background: var(--saffron);
+      padding: 16px 24px;
+      border-radius: 6px;
+      margin-top: 16px;
+    }
+
+    .size-row.saffron-bg .mark-size {
+      background: transparent;
+      border-color: rgba(255, 255, 255, 0.35);
+      color: var(--white);
+    }
+
+    .size-row.saffron-bg .size-cell span {
+      color: rgba(255, 255, 255, 0.85);
+    }
+
+    /* L1 preview */
+    .mark-1024-preview {
+      width: 160px;
+      height: 160px;
+      border: 1px solid var(--notion-divider);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-serif);
+      font-size: 100px;
+      font-weight: 500;
+      color: var(--ink);
+      background: var(--white);
+    }
+
+    .safe-margin-hint {
+      font-size: 10px;
+      color: var(--notion-text-muted);
+      text-align: center;
+      margin-top: 12px;
+      max-width: 200px;
+      line-height: 1.4;
+    }
+
+    /* L5 dock mock */
+    .dock-icon {
+      width: 128px;
+      height: 128px;
+      border-radius: 28px;
+      background: var(--saffron);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-serif);
+      font-size: 72px;
+      font-weight: 500;
+      color: var(--white);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .note {
+      padding: 0 32px 32px;
+      font-size: 12px;
+      color: var(--notion-text-muted);
+      line-height: 1.5;
+      max-width: 720px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-title">Rushi Brand Mark「如」— Stitch Frame 对照（占位字为 Noto Serif，定稿替换为书法截图）</div>
+
+  <div class="compare-grid">
+    <div class="frame">
+      <div class="frame-label">L1 · Mark-1024（缩略预览）</div>
+      <div class="frame-body" style="flex-direction: column;">
+        <div class="mark-1024-preview" aria-hidden>如</div>
+        <p class="safe-margin-hint">15% 安全边距 · 字占 60–70% · 1024×1024 导出</p>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label">L2 · Mark-V2-saffron · 32×32</div>
+      <div class="frame-body">
+        <div class="mark-v2" aria-hidden>如</div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label">L3 · Lockup-sidebar</div>
+      <div class="frame-body">
+        <div class="lockup">
+          <div class="mark-v2" aria-hidden>如</div>
+          <div class="lockup-text">
+            <h1>如是我闻</h1>
+            <p>本地课录音转写与校对</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label">L4 · Size-test</div>
+      <div class="frame-body" style="flex-direction: column;">
+        <div class="size-row">
+          <div class="size-cell"><div class="mark-size s16">如</div><span>16px</span></div>
+          <div class="size-cell"><div class="mark-size s32">如</div><span>32px</span></div>
+          <div class="size-cell"><div class="mark-size s128">如</div><span>128px</span></div>
+        </div>
+        <div class="size-row saffron-bg">
+          <div class="size-cell"><div class="mark-size s16">如</div><span>16px</span></div>
+          <div class="size-cell"><div class="mark-size s32">如</div><span>32px</span></div>
+          <div class="size-cell"><div class="mark-size s128">如</div><span>128px</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="frame">
+      <div class="frame-label">L5 · Dock-mock</div>
+      <div class="frame-body">
+        <div class="dock-icon" aria-hidden>如</div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note">
+    本页仅标注 Frame 结构与间距（侧栏 gap 12px、mark 32×32、圆角 4px）。Stitch 出图时以
+    <code>stitch-brand-logo-reference.png</code> 中的书法「如」替换占位字，并遵守
+    <code>stitch-brand-logo-spec.md</code> 色板与验收表。
+  </p>
+</body>
+</html>

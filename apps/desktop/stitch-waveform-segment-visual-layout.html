@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rushi Waveform Segment Visual — Stitch Reference</title>
+    <style>
+      :root {
+        --notion-bg: #ffffff;
+        --notion-sidebar: #f7f7f5;
+        --notion-border: #e3e2e0;
+        --notion-text: #37352f;
+        --notion-text-muted: #6b6b6b;
+        --notion-text-light: #9ca3af;
+        --accent-action: #c58a43;
+        --accent-action-strong: #85530f;
+        --zen-wf-surface: #ffffff;
+        --zen-wf-wave: #c4c4c8;
+        --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, #8e8e93);
+        --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
+        --segment-fill-selected: color-mix(in srgb, var(--accent-action) 14%, transparent);
+        --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 8%, transparent);
+        --segment-fill-idle: color-mix(in srgb, var(--notion-text) 5%, transparent);
+        --segment-fill-low-confidence: color-mix(in srgb, var(--notion-text-light) 10%, transparent);
+        --segment-fill-border: color-mix(in srgb, var(--notion-text) 24%, transparent);
+        --segment-fill-selected-border: color-mix(in srgb, var(--accent-action-strong) 48%, transparent);
+        --segment-fill-in-selection-border: color-mix(in srgb, var(--accent-action) 34%, transparent);
+      }
+
+      [data-accent="indigo"] {
+        --accent-action: #3d4f5d;
+        --accent-action-strong: #263544;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 12px;
+        color: var(--notion-text);
+        background: #f3f2ee;
+      }
+
+      .page {
+        max-width: 1180px;
+        margin: 0 auto;
+        padding: 28px 18px 48px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        font-weight: 650;
+      }
+
+      .intro {
+        max-width: 78ch;
+        margin: 0 0 20px;
+        color: var(--notion-text-muted);
+        line-height: 1.55;
+      }
+
+      .token-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 22px;
+      }
+
+      .token {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border: 1px solid var(--notion-border);
+        border-radius: 6px;
+        background: var(--notion-bg);
+        color: var(--notion-text-muted);
+        font-size: 11px;
+      }
+
+      .token i {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        border: 1px solid color-mix(in srgb, var(--notion-text) 12%, transparent);
+      }
+
+      .frame {
+        margin-bottom: 24px;
+        border: 1px solid var(--notion-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--notion-bg);
+      }
+
+      .frame-hd {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+        color: var(--notion-text-muted);
+      }
+
+      .frame-hd strong { color: var(--notion-text); }
+
+      .wave-stage {
+        position: relative;
+        height: 180px;
+        background: var(--zen-wf-surface);
+        overflow: hidden;
+      }
+
+      .wave-stage::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 22px;
+        background: linear-gradient(to top, color-mix(in srgb, var(--notion-bg) 78%, transparent), transparent);
+        pointer-events: none;
+      }
+
+      .peaks {
+        position: absolute;
+        inset: 0 0 22px;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        padding-inline: 8px;
+      }
+
+      .bar {
+        width: 3px;
+        border-radius: 2px;
+        background: var(--zen-wf-wave);
+      }
+
+      .bar.played { background: var(--zen-wf-progress-played); }
+
+      .seg {
+        position: absolute;
+        top: 0;
+        bottom: 22px;
+        border-left: 1px solid var(--segment-fill-border);
+        border-right: 1px solid var(--segment-fill-border);
+        background: var(--segment-fill-idle);
+        pointer-events: none;
+      }
+
+      .seg.selected {
+        background: var(--segment-fill-selected);
+        border-left-color: var(--segment-fill-selected-border);
+        border-right-color: var(--segment-fill-selected-border);
+      }
+
+      .seg.in-selection {
+        background: var(--segment-fill-in-selection-waveform);
+        border-left-color: var(--segment-fill-in-selection-border);
+        border-right-color: var(--segment-fill-in-selection-border);
+      }
+
+      .seg.low {
+        background: var(--segment-fill-low-confidence);
+        border-left-style: dashed;
+        border-right-style: dashed;
+      }
+
+      .seg.gap-label {
+        background: transparent;
+        border: 0;
+      }
+
+      .handle {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: var(--segment-fill-selected-border);
+      }
+
+      .handle.left { left: 0; }
+      .handle.right { right: 0; }
+
+      .boundary-tick {
+        position: absolute;
+        bottom: 22px;
+        width: 1px;
+        height: 12px;
+        background: var(--segment-fill-border);
+      }
+
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: var(--waveform-playhead);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--notion-bg) 70%, transparent);
+      }
+
+      .ruler {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 22px;
+        display: flex;
+        justify-content: space-between;
+        padding-inline: 8px;
+        color: color-mix(in srgb, var(--notion-text) 68%, transparent);
+        font-size: 10px;
+        font-variant-numeric: tabular-nums;
+        z-index: 2;
+      }
+
+      .ruler span::before {
+        content: "";
+        display: block;
+        width: 1px;
+        height: 7px;
+        margin: 0 auto 2px;
+        background: currentColor;
+      }
+
+      .legend {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 8px;
+        padding: 10px 12px;
+        border-top: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+        color: var(--notion-text-muted);
+        font-size: 11px;
+      }
+
+      .legend b {
+        display: inline-block;
+        width: 24px;
+        height: 10px;
+        margin-right: 6px;
+        vertical-align: -1px;
+        border-left: 1px solid var(--segment-fill-border);
+        border-right: 1px solid var(--segment-fill-border);
+      }
+
+      .note {
+        padding: 10px 12px;
+        color: var(--notion-text-muted);
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <h1>Rushi Waveform Segment Visual</h1>
+      <p class="intro">
+        Stitch reference for token-driven waveform segment styling. The main rule:
+        waveform peaks remain primary; segment fills are subtle; boundaries carry edit affordance.
+      </p>
+
+      <div class="token-row">
+        <span class="token"><i style="background: var(--segment-fill-idle)"></i>idle fill</span>
+        <span class="token"><i style="background: var(--segment-fill-selected)"></i>selected fill</span>
+        <span class="token"><i style="background: var(--segment-fill-border)"></i>boundary</span>
+        <span class="token"><i style="background: var(--segment-fill-selected-border)"></i>selected border</span>
+        <span class="token"><i style="background: var(--waveform-playhead)"></i>playhead</span>
+      </div>
+
+      <section class="frame">
+        <div class="frame-hd">
+          <strong>F1 Default + Gap</strong>
+          <span>Gap stays transparent; no grey rectangle in non-segment area.</span>
+        </div>
+        <div class="wave-stage">
+          <div class="peaks" aria-hidden="true">
+            <script>
+              document.currentScript.insertAdjacentHTML(
+                "beforebegin",
+                Array.from({ length: 165 }, (_, i) => {
+                  const h = 8 + Math.abs(Math.sin(i * 0.47) * Math.cos(i * 0.13)) * 96;
+                  const played = i < 55 ? " played" : "";
+                  return `<i class="bar${played}" style="height:${h}px"></i>`;
+                }).join(""),
+              );
+            </script>
+          </div>
+          <div class="seg" style="left: 7%; width: 17%"></div>
+          <div class="seg selected" style="left: 28%; width: 23%"><i class="handle left"></i><i class="handle right"></i></div>
+          <div class="seg" style="left: 62%; width: 9%"></div>
+          <div class="seg low" style="left: 73%; width: 13%"></div>
+          <i class="boundary-tick" style="left: 24%"></i>
+          <i class="boundary-tick" style="left: 62%"></i>
+          <i class="playhead" style="left: 42%"></i>
+          <div class="ruler"><span>9:00</span><span>9:20</span><span>9:40</span><span>10:00</span><span>10:20</span></div>
+        </div>
+        <div class="legend">
+          <span><b style="background: var(--segment-fill-idle)"></b>普通语段</span>
+          <span><b style="background: var(--segment-fill-selected); border-color: var(--segment-fill-selected-border)"></b>选中</span>
+          <span><b style="background: transparent"></b>空白 gap</span>
+          <span><b style="background: var(--segment-fill-low-confidence); border-style: dashed"></b>低置信</span>
+          <span><b style="background: var(--segment-fill-in-selection-waveform); border-color: var(--segment-fill-in-selection-border)"></b>多选</span>
+        </div>
+      </section>
+
+      <section class="frame">
+        <div class="frame-hd">
+          <strong>F2 Adjacent Segments</strong>
+          <span>Two touching segments must still read as two editable units.</span>
+        </div>
+        <div class="wave-stage">
+          <div class="peaks" aria-hidden="true">
+            <script>
+              document.currentScript.insertAdjacentHTML(
+                "beforebegin",
+                Array.from({ length: 165 }, (_, i) => {
+                  const h = 10 + Math.abs(Math.sin(i * 0.31)) * 82;
+                  return `<i class="bar" style="height:${h}px"></i>`;
+                }).join(""),
+              );
+            </script>
+          </div>
+          <div class="seg" style="left: 18%; width: 22%"></div>
+          <div class="seg" style="left: 40%; width: 22%"></div>
+          <div class="seg selected" style="left: 62%; width: 20%"><i class="handle left"></i><i class="handle right"></i></div>
+          <i class="boundary-tick" style="left: 40%"></i>
+          <i class="boundary-tick" style="left: 62%"></i>
+          <i class="playhead" style="left: 69%"></i>
+          <div class="ruler"><span>12:00</span><span>12:10</span><span>12:20</span><span>12:30</span><span>12:40</span></div>
+        </div>
+        <p class="note">Boundary hairlines/ticks do the work. The segment fill is deliberately quiet.</p>
+      </section>
+
+      <section class="frame" data-accent="indigo">
+        <div class="frame-hd">
+          <strong>F3 Accent Theme Preview</strong>
+          <span>Same design with a different shell accent. No component-specific hex.</span>
+        </div>
+        <div class="wave-stage">
+          <div class="peaks" aria-hidden="true">
+            <script>
+              document.currentScript.insertAdjacentHTML(
+                "beforebegin",
+                Array.from({ length: 165 }, (_, i) => {
+                  const h = 7 + Math.abs(Math.cos(i * 0.42)) * 92;
+                  const played = i < 80 ? " played" : "";
+                  return `<i class="bar${played}" style="height:${h}px"></i>`;
+                }).join(""),
+              );
+            </script>
+          </div>
+          <div class="seg in-selection" style="left: 15%; width: 16%"></div>
+          <div class="seg selected" style="left: 31%; width: 26%"><i class="handle left"></i><i class="handle right"></i></div>
+          <div class="seg in-selection" style="left: 57%; width: 17%"></div>
+          <i class="playhead" style="left: 46%"></i>
+          <div class="ruler"><span>2:00</span><span>2:20</span><span>2:40</span><span>3:00</span><span>3:20</span></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

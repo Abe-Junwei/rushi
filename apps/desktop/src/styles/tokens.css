@@ -75,14 +75,16 @@
   --accent-edit: var(--accent-action);
 
   /** 语段 fill — accent-action / accent-action-strong；列表 vs 波形 inSelection 分层见 CONTEXT */
-  --segment-fill-selected: color-mix(in srgb, var(--accent-action) 18%, transparent);
+  --segment-fill-selected: color-mix(in srgb, var(--accent-action) 14%, transparent);
   --segment-fill-selected-list: color-mix(in srgb, var(--accent-action) 12%, transparent);
   --segment-fill-in-selection-list: color-mix(in srgb, var(--accent-action) 3%, transparent);
-  --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 12%, transparent);
-  --segment-fill-visited: color-mix(in srgb, var(--accent-action-strong) 14%, transparent);
-  --segment-fill-idle: color-mix(in srgb, var(--zen-ink) 11%, transparent);
-  --segment-fill-low-confidence: color-mix(in srgb, var(--notion-text-light) 24%, transparent);
-  --segment-fill-border: color-mix(in srgb, var(--notion-text) 14%, transparent);
+  --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 8%, transparent);
+  --segment-fill-visited: color-mix(in srgb, var(--notion-text) 10%, transparent);
+  --segment-fill-idle: color-mix(in srgb, var(--notion-text) 5%, transparent);
+  --segment-fill-low-confidence: color-mix(in srgb, var(--notion-text-light) 10%, transparent);
+  --segment-fill-border: color-mix(in srgb, var(--notion-text) 24%, transparent);
+  --segment-fill-selected-border: color-mix(in srgb, var(--accent-action-strong) 48%, transparent);
+  --segment-fill-in-selection-border: color-mix(in srgb, var(--accent-action) 34%, transparent);
 
   /** Progress chrome — accent-action 族（播放头 / minimap / 已播放 peaks tint 基链） */
   --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
@@ -97,11 +99,14 @@
   /** 模态遮罩：压暗底层内容；浮层壳仍 flat（无 shadow） */
   --overlay-scrim-bg: color-mix(in srgb, var(--zen-ink) 26%, transparent);
 
-  /* 波形 / WaveSurfer（DESIGN.md waveform-*；与 tailwind zen-wf-* 同源） */
+  /* 波形 / WaveSurfer（DESIGN.md waveform-*；与 tailwind zen-wf-* 同源）
+   * 未播放：偏深中性灰 peaks（往黑靠、壳层不另盖）；已播放：wash 淡化。
+   * 语段选中高亮仍走 --accent-action* / --segment-fill-*。 */
   --zen-wf-surface: #ffffff;
-  --zen-wf-wave: #c4c4c8;
+  --zen-wf-wave: #5a5a5f;
   --zen-wf-progress: #8e8e93;
-  --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress));
+  --zen-wf-progress-played: #a8a8ad;
+  --zen-wf-played-wash: color-mix(in srgb, var(--zen-wf-surface) 52%, transparent);
   --zen-wf-cursor: #6a6a6f;
   /** Release CSP fallback when nonce layout scopes are not yet applied */
   --waveform-stage-height-fallback: 220px;
@@ -194,10 +199,11 @@
   --overlay-scrim-bg: color-mix(in srgb, var(--zen-ink) 44%, transparent);
 
   --zen-wf-surface: #1f1f1f;
-  --zen-wf-wave: #5a5a5f;
+  --zen-wf-wave: #c8c8cc;
   --zen-wf-progress: #8e8e93;
-  --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress));
-  --zen-wf-cursor: #b0b0b5;
+  --zen-wf-progress-played: #7a7a80;
+  --zen-wf-played-wash: color-mix(in srgb, var(--zen-wf-surface) 48%, transparent);
+  --zen-wf-cursor: #d4d4d8;
 }
 
 /** 壳层主题 — 设置 → 外观（浅色） */
@@ -227,10 +233,10 @@
   --main-shell-border: var(--notion-divider);
   --main-shell-minimap-bg: var(--notion-sidebar);
   --zen-wf-surface: #ffffff;
-  --zen-wf-wave: #c8c6c4;
 }
 
-/** 壳层主题 — 深色（需同时 `[data-theme="dark"]`） */
+/** 壳层主题 — 深色（需同时 `[data-theme="dark"]`）
+ * 只覆盖 surface / cursor；`--zen-wf-wave` 继承 `[data-theme="dark"]`，与默认浓度一致。 */
 [data-theme="dark"][data-shell-theme="dark-gray"] {
   --notion-bg: #292929;
   --notion-sidebar: #333333;
@@ -243,7 +249,6 @@
   --main-shell-sidebar-bg: var(--notion-sidebar);
   --main-shell-minimap-bg: var(--notion-sidebar);
   --zen-wf-surface: #292929;
-  --zen-wf-wave: #6e6e73;
   --zen-wf-cursor: #a0a0a5;
 }
 
@@ -259,6 +264,5 @@
   --main-shell-sidebar-bg: var(--notion-sidebar);
   --main-shell-minimap-bg: var(--notion-sidebar);
   --zen-wf-surface: #1b1a19;
-  --zen-wf-wave: #5a5958;
   --zen-wf-cursor: #969594;
 }

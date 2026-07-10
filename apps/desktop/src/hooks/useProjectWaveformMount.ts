@@ -4,9 +4,7 @@ import WaveSurfer from "wavesurfer.js";
 import { readWaveformSurferPalette } from "../utils/waveformThemeColors";
 import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
 import {
-  quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
-  MAX_WAVESURFER_PEAK_COLUMNS,
 } from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import {
@@ -18,8 +16,6 @@ import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSy
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
 import {
   applyWaveSurferProgressWithoutClip,
-  installWaveSurferTierScrollSync,
-  installWaveSurferPlayedRegionDisplayFix,
 } from "../services/waveform/waveformSurferProgressCoverage";
 import {
   logWaveformRenderPath,
@@ -38,6 +34,7 @@ import {
   waitForWaveformContainer,
   type ProjectWaveformMountRefs,
 } from "./projectWaveformMountSupport";
+import { buildWaveSurferMediaOnlyStubPeaks } from "../services/waveform/collapseWaveSurferToMediaOnly";
 
 installWaveSurferProgressAbortWarnFilter();
 
@@ -112,26 +109,16 @@ export function useProjectWaveformMount(
 
       let peaks: Array<Float32Array | number[]> | undefined;
       let duration: number | undefined;
-      if (cache && layoutDur > 0) {
-        try {
-          const loadPx = quantizePxPerSecForPeaksLoad(initialMps);
-          const bundle = await cache.getWaveSurferPeaksAsync(loadPx, layoutDur);
-          peaks = bundle.peaks;
-          duration = bundle.duration;
-          markAppliedPeaks(appliedZoom, true, loadPx, duration ?? layoutDur);
-          logWaveformRenderPath(
-            "peaks",
-            "mount_peaks_bootstrap",
-            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=${MAX_WAVESURFER_PEAK_COLUMNS}`,
-          );
-        } catch (err) {
-          logDesktopUi(
-            "ERROR",
-            `waveform mount peaks bootstrap: ${err instanceof Error ? err.message : String(err)}`,
-          );
-          resetAppliedPeaks(appliedZoom);
-          logWaveformRenderPath("decode", "mount_decode_no_cache", "peaks_bootstrap_failed");
-        }
+      // WS-2b: Rushi viewport canvas owns display — never bootstrap full peaks into WS.
+      if (layoutDur > 0) {
+        peaks = buildWaveSurferMediaOnlyStubPeaks();
+        duration = layoutDur;
+        markAppliedPeaks(appliedZoom, true, 0, layoutDur);
+        logWaveformRenderPath(
+          "peaks",
+          "mount_media_only",
+          `stub_peaks dur=${layoutDur.toFixed(1)}`,
+        );
       } else {
         resetAppliedPeaks(appliedZoom);
         logWaveformRenderPath(
@@ -166,23 +153,19 @@ export function useProjectWaveformMount(
           cursorColor: wfPalette.cursorColor,
           cursorWidth: 0,
           ...WAVEFORM_SURFER_BAR_DISPLAY,
-          minPxPerSec: initialMps,
+          minPxPerSec: 0,
           dragToSeek: !wantDragCreate,
           interact: !optsRef.current.disabled,
           autoScroll: false,
           autoCenter: false,
           hideScrollbar: true,
-          fillParent: false,
+          fillParent: true,
         }),
       );
       applyWaveSurferShadowCspNonce(mountEl);
 
       wsRef.current = ws;
-
-      wsUnsubsRef.current.push(
-        installWaveSurferTierScrollSync(ws, () => getTierScrollLeftPxRef.current()),
-        installWaveSurferPlayedRegionDisplayFix(ws),
-      );
+      // WS-2b: skip tier-scroll / played-region patches — Rushi owns viewport + playhead.
       if (mediaUrl && !mediaDiskPath) {
         logRuntimeParity("waveform", "mount_parity_probe_skipped no_mediaDiskPath", "WARN");
       }

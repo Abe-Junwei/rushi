@@ -158,6 +158,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
           isPlaying: () => ws?.isPlaying() ?? false,
         },
         applySeek: (timeSec, seekOpts) => {
+          segmentPlayback.clearPausedResumeAnchor();
           if (seekOpts?.suppressFollow) suppressPlaybackFollow();
           if (segmentPlayback.isSelectedSegmentPlaying) {
             segmentPlayback.clearSegmentPlaybackBound();
@@ -281,7 +282,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isPlaying,
     hotSwitchWhilePlayingRef,
     hotSwitchWhilePlaying,
-    disabled,
+    // WS-2b: do not re-inflate WS scrollW via ws.zoom / ws.load(peaks).
+    disabled: true,
     layoutPxPerSec,
     drawPxPerSec,
     appliedZoom,

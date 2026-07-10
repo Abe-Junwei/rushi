@@ -2,7 +2,7 @@
 
 本文描述 **无已打开项目**（`current == null`）时用户看到的界面，对应代码中的 `**workspacePhase === "A"`**（冷启动）与 `**workspacePhase === "B"**`（已选音频、待确认创建）。顶栏、环境 → 本机 ASR 折叠区、左轨在两阶段**共用**；主舞台在 A / B 之间切换。
 
-实现参考：`[src/components/ProjectPanel.tsx](../src/components/ProjectPanel.tsx)`（`workspacePhase`、`showAsrBanner`、主区 A/B 分支）。
+实现参考：`[src/components/ProjectPanel.tsx](../../apps/desktop/src/components/ProjectPanel.tsx)`（`workspacePhase`、`showAsrBanner`、主区 A/B 分支）。
 
 ---
 

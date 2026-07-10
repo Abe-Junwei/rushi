@@ -1,7 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { segmentFillCssVar } from "../config/segmentFillTokens";
-import { segmentBandFillStyle } from "./waveformSegmentBandCanvasColors";
-import { readWaveformSegmentBandPalette } from "./waveformThemeColors";
 
 /** 播放头已进入语段（含部分播放）；小 epsilon 避免边界闪烁。 */
 const PLAYHEAD_EPS_SEC = 0.04;
@@ -86,26 +84,14 @@ export function waveformRegionFillColor(
   playheadSec?: number,
   options?: { multiSelectActive?: boolean },
 ): string {
-  void playheadSec;
   if (options?.multiSelectActive && (selected || inSelection)) {
     return segmentFillCssVar("inSelectionWaveform");
   }
   if (selected) return segmentFillCssVar("selected");
   if (inSelection) return segmentFillCssVar("inSelectionWaveform");
   if (seg.low_confidence) return segmentFillCssVar("lowConfidence");
+  if (segmentPlaybackVisits(seg, playheadSec) === "visited") {
+    return segmentFillCssVar("visited");
+  }
   return segmentFillCssVar("idle");
-}
-
-/** Resolved rgba for CSP layout / imperative overlay — matches band canvas palette. */
-export function resolveWaveformRegionFillColor(
-  seg: SegmentDto,
-  selected: boolean,
-  inSelection = false,
-  playheadSec?: number,
-  options?: { multiSelectActive?: boolean },
-): string {
-  return segmentBandFillStyle(seg, selected, playheadSec, readWaveformSegmentBandPalette(), {
-    inSelection,
-    multiSelectActive: options?.multiSelectActive,
-  });
 }

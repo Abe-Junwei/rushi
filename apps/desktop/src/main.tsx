@@ -8,6 +8,7 @@ import { logRuntimeParityBootstrap } from "./services/runtimeParityBootstrap";
 import { bootstrapShellCapabilities } from "./services/shellCapabilities";
 import { installWaveformZoomProfileDevTools } from "./services/waveform/waveformZoomProfile";
 import { installWaveformScrollProfileDevTools } from "./services/waveform/waveformScrollProfileDevTools";
+import { installSegmentProbeDevTools } from "./services/waveform/segmentProbeDevTools";
 import { installSelectionLatencyProfileDevTools } from "./services/ui/selectionLatencyProfile";
 import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
 import { bootstrapCspStyleNonce } from "./utils/cspNonceStyleRegistry";
@@ -19,6 +20,7 @@ initOfficeShellTheme();
 ensureAppWindowCloseGuardRegistered();
 installWaveformZoomProfileDevTools();
 installWaveformScrollProfileDevTools();
+installSegmentProbeDevTools();
 installSelectionLatencyProfileDevTools();
 
 const rootEl = document.getElementById("root");

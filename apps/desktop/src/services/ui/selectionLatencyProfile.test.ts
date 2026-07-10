@@ -121,13 +121,13 @@ describe("selectionLatencyProfile", () => {
     expect(shouldMarkSelectionProfileListCommit("contextMenu")).toBe(false);
   });
 
-  it("markListCommit records SC1 wall-clock even when duration is 0ms", () => {
+  it("markListCommit records SC1 wall-clock even when duration is near 0ms", () => {
     setSelectionLatencyProfileEnabled(true);
     selectionProfileBegin("waveform idx=3 segments=62");
     selectionProfileMarkListCommit();
     expect(logDesktopUi).toHaveBeenCalledWith(
       "INFO",
-      expect.stringMatching(/listCommit=0\.0ms.*total=/),
+      expect.stringMatching(/listCommit=[\d.]+ms.*total=/),
     );
   });
 

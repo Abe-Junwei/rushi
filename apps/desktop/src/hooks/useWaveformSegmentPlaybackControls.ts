@@ -63,6 +63,11 @@ export function useWaveformSegmentPlaybackControls(args: {
   const isSelectedSegmentPlayingRef = useRef(isSelectedSegmentPlaying);
   isSelectedSegmentPlayingRef.current = isSelectedSegmentPlaying;
   const preserveLoopOnNextSelectRef = useRef(false);
+  const pausedResumeAnchorRef = useRef<{ idx: number; timeSec: number } | null>(null);
+
+  const clearPausedResumeAnchor = useCallback(() => {
+    pausedResumeAnchorRef.current = null;
+  }, []);
 
   /** Visual chrome (SC2) may lead React SC1 after select — Space must play the painted segment. */
   const resolveEffectiveSelectedIdx = useCallback(() => {
@@ -83,15 +88,19 @@ export function useWaveformSegmentPlaybackControls(args: {
   const segmentPlaybackBoundRef = useRef<ActiveSegmentPlaybackBound | null>(null);
   const segmentBoundStopInFlightRef = useRef(false);
   const playStartInFlightGenerationRef = useRef<number | null>(null);
+  /** Play started past selected end (no end-bound); keep Stop chrome until pause. */
+  const unboundedSelectedPlayGenRef = useRef<number | null>(null);
 
   const clearSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
+    unboundedSelectedPlayGenRef.current = null;
     setIsSelectedSegmentPlaying(false);
   }, []);
 
   /** Drop bound and invalidate queued end-stop microtasks (user pause / stop). */
   const cancelSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
+    unboundedSelectedPlayGenRef.current = null;
     playGenerationRef.current += 1;
     setIsSelectedSegmentPlaying(false);
   }, []);
@@ -150,7 +159,9 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (playArgs.loop) {
         setSegmentLoopPlayback(true);
       }
+      let startAtSec = resolvePlayheadSec();
       if (playArgs.playFrom.kind === "seek") {
+        startAtSec = playArgs.playFrom.timeSec;
         atomicMediaSeek(playArgs.playFrom.timeSec);
       }
       try {
@@ -175,24 +186,46 @@ export function useWaveformSegmentPlaybackControls(args: {
       }
       if (!ws.isPlaying()) return;
 
-      segmentPlaybackBoundRef.current = {
-        startSec: range.start,
-        endSec: range.end,
-        generation: gen,
-        armed: false,
-      };
+      // Only scope-stop at segment end when starting inside the selected segment.
+      // Past end (gap after): free play from playhead — keep Stop chrome via unbounded gen.
+      const insideAtStart = startAtSec >= range.start && startAtSec < range.end;
+      if (insideAtStart) {
+        unboundedSelectedPlayGenRef.current = null;
+        segmentPlaybackBoundRef.current = {
+          startSec: range.start,
+          endSec: range.end,
+          generation: gen,
+          armed: false,
+        };
+      } else {
+        segmentPlaybackBoundRef.current = null;
+        unboundedSelectedPlayGenRef.current = gen;
+      }
       setIsSelectedSegmentPlaying(true);
     },
-    [applyGlobalPlaybackRate, atomicMediaSeek, clearSegmentPlaybackBound, isReady, wsRef],
+    [
+      applyGlobalPlaybackRate,
+      atomicMediaSeek,
+      clearSegmentPlaybackBound,
+      isReady,
+      resolvePlayheadSec,
+      wsRef,
+    ],
   );
 
   const playSegmentAtIndex = useCallback(
     async (idx: number, options?: PlaySegmentAtIndexOptions) => {
       const seg = latestSegmentsRef.current[idx];
       if (!seg) return;
+      const pausedAnchor = pausedResumeAnchorRef.current;
+      const resumeFromSec =
+        options?.fromSec == null && pausedAnchor?.idx === idx
+          ? pausedAnchor.timeSec
+          : options?.fromSec;
+      pausedResumeAnchorRef.current = null;
       const playFrom = resolveSegmentPlayFrom({
         segment: seg,
-        fromSec: options?.fromSec,
+        fromSec: resumeFromSec,
         displaySec: resolvePlayheadSec(),
         rawMediaSec: getRawMediaPlayheadTimeSec?.(),
       });
@@ -226,13 +259,16 @@ export function useWaveformSegmentPlaybackControls(args: {
     // Pause decision must follow live media only. A stale `isSelectedSegmentPlaying`
     // (React lag / select-while-playing sync) must not block starting playback.
     if (ws.isPlaying()) {
-      cancelSegmentPlaybackBound();
-      ws.pause();
+      const idx = resolveEffectiveSelectedIdx();
       const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
       const freezeSec =
         typeof rawFreezeSec === "number" && Number.isFinite(rawFreezeSec)
           ? rawFreezeSec
           : resolvePlayheadSec();
+      pausedResumeAnchorRef.current =
+        idx >= 0 ? { idx, timeSec: freezeSec } : null;
+      cancelSegmentPlaybackBound();
+      ws.pause();
       syncDisplayPlayheadAfterSeekRef?.current?.(freezeSec);
       return;
     }
@@ -242,6 +278,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     getRawMediaPlayheadTimeSec,
     isReady,
     playSelectedSegment,
+    resolveEffectiveSelectedIdx,
     resolvePlayheadSec,
     syncDisplayPlayheadAfterSeekRef,
     wsRef,
@@ -265,9 +302,65 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, [cancelSegmentPlaybackBound, isReady, playSelectedSegment, resolveSelectedPlaybackRange, wsRef]);
 
   /**
+   * Stop at segment end. Must run on Rushi playback frames (WS-2b silences WS
+   * timer → audioprocess is sparse). Call before syncSelectedSegmentPlayingUi.
+   */
+  const enforceSegmentPlaybackBound = useCallback(
+    (playheadTimeSec?: number) => {
+      if (segmentBoundStopInFlightRef.current) return;
+      const ws = wsRef.current;
+      if (!ws || !isReady) return;
+      const bound = segmentPlaybackBoundRef.current;
+      if (!isActiveSegmentPlaybackBound(bound, playGenerationRef.current)) return;
+      if (!ws.isPlaying()) return;
+      const currentSec =
+        typeof playheadTimeSec === "number" && Number.isFinite(playheadTimeSec)
+          ? playheadTimeSec
+          : resolvePlayheadSec();
+      if (bound.armed && currentSec < bound.endSec - 0.1) return;
+      if (!armSegmentPlaybackSession(bound, currentSec)) return;
+      if (!segmentPlaybackReachedEnd(currentSec, bound.endSec)) return;
+
+      segmentBoundStopInFlightRef.current = true;
+      const endSec = bound.endSec;
+      const loop = segmentLoopPlaybackRef.current;
+      const stopGen = ++playGenerationRef.current;
+
+      queueMicrotask(() => {
+        segmentBoundStopInFlightRef.current = false;
+        const live = wsRef.current;
+        if (!live || live !== ws) return;
+        // User pause / new play bumped generation — do not move the playhead.
+        if (stopGen !== playGenerationRef.current) return;
+
+        live.pause();
+        if (loop) {
+          const clampedEnd = Math.min(endSec, live.getDuration());
+          if (Number.isFinite(clampedEnd)) {
+            atomicMediaSeek(clampedEnd);
+          }
+        } else {
+          segmentPlaybackBoundRef.current = null;
+          setIsSelectedSegmentPlaying(false);
+          // Freeze at segment end — never seek back to start on auto-stop.
+          // Next Space uses resolveSegmentPlayFrom → playhead (may be at end / past).
+          const clampedEnd = Math.max(0, Math.min(endSec, live.getDuration()));
+          if (Number.isFinite(clampedEnd)) {
+            atomicMediaSeek(clampedEnd);
+          }
+        }
+      });
+    },
+    [atomicMediaSeek, isReady, resolvePlayheadSec, wsRef],
+  );
+
+  /**
    * Keep overlay/toolbar play icon + segment end-bound in sync with live media
    * and the selected segment. Selecting while playing used to clear the bound and
    * leave the control stuck on "play".
+   *
+   * Do not clear an active bound that has already passed end — that race let
+   * media continue as unbounded global play after WS-2b sparse audioprocess.
    */
   const syncSelectedSegmentPlayingUi = useCallback((playheadTimeSec?: number) => {
     const ws = wsRef.current;
@@ -280,6 +373,9 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
       return;
     }
+    // enforceSegmentPlaybackBound already scheduled end-stop on this tick — do not
+    // re-arm a new bound (that bumps generation and cancels the pending pause).
+    if (segmentBoundStopInFlightRef.current) return;
     const range = resolveSelectedPlaybackRange();
     if (!range) {
       if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
@@ -311,7 +407,23 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (!isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(true);
       return;
     }
+    const bound = segmentPlaybackBoundRef.current;
+    if (
+      isActiveSegmentPlaybackBound(bound, playGenerationRef.current) &&
+      t >= bound.endSec
+    ) {
+      // Past scoped end — leave bound for enforceSegmentPlaybackBound.
+      return;
+    }
     if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+    if (
+      unboundedSelectedPlayGenRef.current === playGenerationRef.current &&
+      ws.isPlaying()
+    ) {
+      if (!isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(true);
+      return;
+    }
+    unboundedSelectedPlayGenRef.current = null;
     if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
   }, [isReady, resolvePlayheadSec, resolveSelectedPlaybackRange, wsRef]);
 
@@ -326,65 +438,30 @@ export function useWaveformSegmentPlaybackControls(args: {
 
   useEffect(() => {
     return subscribePlaybackFrame((timeSec) => {
+      enforceSegmentPlaybackBound(timeSec);
       syncSelectedSegmentPlayingUi(timeSec);
     });
-  }, [syncSelectedSegmentPlayingUi]);
+  }, [enforceSegmentPlaybackBound, syncSelectedSegmentPlayingUi]);
 
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !isReady) return;
-
-    const enforceSegmentPlaybackBound = () => {
-      if (segmentBoundStopInFlightRef.current) return;
-      const bound = segmentPlaybackBoundRef.current;
-      if (!isActiveSegmentPlaybackBound(bound, playGenerationRef.current)) return;
-      if (!ws.isPlaying()) return;
-      const currentSec = resolvePlayheadSec();
-      if (bound.armed && currentSec < bound.endSec - 0.1) return;
-      if (!armSegmentPlaybackSession(bound, currentSec)) return;
-      if (!segmentPlaybackReachedEnd(currentSec, bound.endSec)) return;
-
-      segmentBoundStopInFlightRef.current = true;
-      const endSec = bound.endSec;
-      const loop = segmentLoopPlaybackRef.current;
-      const stopGen = ++playGenerationRef.current;
-
-      queueMicrotask(() => {
-        segmentBoundStopInFlightRef.current = false;
-        if (!wsRef.current || wsRef.current !== ws) return;
-        // User pause / new play bumped generation — do not move the playhead.
-        if (stopGen !== playGenerationRef.current) return;
-
-        ws.pause();
-        if (loop) {
-          const clampedEnd = Math.min(endSec, ws.getDuration());
-          if (Number.isFinite(clampedEnd)) {
-            atomicMediaSeek(clampedEnd);
-          }
-        } else {
-          segmentPlaybackBoundRef.current = null;
-          setIsSelectedSegmentPlaying(false);
-          // Freeze at segment end — never seek back to start on auto-stop.
-          // Next Space uses resolveSegmentPlayFrom → segment start when display >= end.
-          const clampedEnd = Math.max(0, Math.min(endSec, ws.getDuration()));
-          if (Number.isFinite(clampedEnd)) {
-            atomicMediaSeek(clampedEnd);
-          }
-        }
-      });
-    };
-
+    // Sparse backup while WS timer is silenced (WS-2b); primary path is playback frame.
     const onAudio = () => {
-      syncSelectedSegmentPlayingUi();
       enforceSegmentPlaybackBound();
+      syncSelectedSegmentPlayingUi();
     };
     const unsubAudio = ws.on("audioprocess", onAudio);
     return () => {
       unsubAudio();
     };
-  }, [atomicMediaSeek, isReady, resolvePlayheadSec, syncSelectedSegmentPlayingUi, wsRef]);
+  }, [enforceSegmentPlaybackBound, isReady, syncSelectedSegmentPlayingUi, wsRef]);
 
   useEffect(() => {
+    const anchor = pausedResumeAnchorRef.current;
+    if (anchor && anchor.idx !== resolveEffectiveSelectedIdx()) {
+      pausedResumeAnchorRef.current = null;
+    }
     if (preserveLoopOnNextSelectRef.current) {
       preserveLoopOnNextSelectRef.current = false;
       return;
@@ -393,7 +470,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     // Do not blindly clear playing UI while media is still playing — sync against
     // the new selection (re-arms bound when playhead is already inside / after seek).
     syncSelectedSegmentPlayingUi();
-  }, [selectedIdx, syncSelectedSegmentPlayingUi]);
+  }, [resolveEffectiveSelectedIdx, selectedIdx, syncSelectedSegmentPlayingUi]);
 
   useEffect(() => {
     const ws = wsRef.current;
@@ -453,6 +530,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     runPlaySegmentResolved,
     toggleSelectedWaveformPlayImpl,
     clearSegmentPlaybackBound,
+    clearPausedResumeAnchor,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay,
   };

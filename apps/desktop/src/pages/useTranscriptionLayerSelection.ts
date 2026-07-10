@@ -13,6 +13,8 @@ import {
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import {
   selectionProfileBegin,
+  selectionProfileFlush,
+  selectionProfileMarkFirstPaint,
   selectionProfileScheduleFlush,
   selectionProfileTime,
   isSelectionLatencyProfileEnabled,
@@ -180,6 +182,8 @@ export function useTranscriptionLayerSelection(opts: {
       // match must not skip the seek half of selectSegmentTransport.
       if (previewViewportAlreadySynced) {
         selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
+        // Chrome already painted on pointerdown — attribute firstPaint to that work.
+        selectionProfileMarkFirstPaint();
         lastSegmentSelectSourceRef.current = source;
         if (selectedIdxRef) selectedIdxRef.current = idx;
         const willCommitSc1 = c.selectedIdx !== idx;
@@ -187,12 +191,14 @@ export function useTranscriptionLayerSelection(opts: {
           commitSelectedIdxUi(idx, source, opts);
         }
         if (isSelectionLatencyProfileEnabled()) {
-          // List layout effect owns listCommit when SC1 changes and list root exists.
+          // Committer records listCommit (no flush); flush here so profile does not wait on layout.
           const listOwnsFlush =
             willCommitSc1 &&
             segmentListRef.current != null &&
             shouldMarkSelectionProfileListCommit(source);
-          if (!listOwnsFlush) {
+          if (listOwnsFlush) {
+            selectionProfileFlush();
+          } else {
             selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
           }
         }
@@ -258,7 +264,6 @@ export function useTranscriptionLayerSelection(opts: {
         }
         if (selectedIdxRef) selectedIdxRef.current = idx;
         if (isWaveformKeyboard) waveformKeyboardCommit.queue(idx, opts);
-        else commitSelectedIdxUi(idx, source, opts);
         if (shouldReveal && isWaveformLike) {
           burst.cancelPendingSelectionReveal();
           selectionProfileTime("viewport", () => {
@@ -272,6 +277,10 @@ export function useTranscriptionLayerSelection(opts: {
         if (source === "waveform") {
           flushTierScrollFrame({ force: true });
         }
+        // SC1 after sync chrome/seek/reveal so listCommit flush keeps those spans.
+        if (!isWaveformKeyboard) {
+          commitSelectedIdxUi(idx, source, opts);
+        }
       });
       if (shouldReveal && !isListKeyboardBurstStep(source, opts) && !isWaveformLike) {
         burst.scheduleRevealSelectedSegment(source);
@@ -280,11 +289,14 @@ export function useTranscriptionLayerSelection(opts: {
         const willCommitSc1 =
           !isWaveformKeyboard &&
           (c.selectedIdx !== idx || Boolean(opts?.shiftKey) || Boolean(opts?.toggle));
+        // Committer records listCommit; flush here (layout effect is backup only).
         const listOwnsFlush =
           willCommitSc1 &&
           segmentListRef.current != null &&
           shouldMarkSelectionProfileListCommit(source);
-        if (!listOwnsFlush) {
+        if (listOwnsFlush) {
+          selectionProfileFlush();
+        } else {
           selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
         }
       }

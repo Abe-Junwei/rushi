@@ -49,7 +49,7 @@ describe("resolveWaveformSelectionChromeView", () => {
     expect(view.selectedIdx).toBe(2);
   });
 
-  it("suppresses store chrome when filter hides the primary segment (SC-H6)", () => {
+  it("keeps store chrome when filter hides the primary segment (SC-H6 + list banner)", () => {
     commitSelectionChrome({
       fileId: "f1",
       primaryIdx: 5,
@@ -66,8 +66,8 @@ describe("resolveWaveformSelectionChromeView", () => {
       filterExcludesPrimary: true,
     });
 
-    expect(view.selectedIdx).toBe(-1);
-    expect(view.selectionCount).toBe(0);
+    expect(view.selectedIdx).toBe(5);
+    expect(view.selectionCount).toBe(1);
   });
 
   it("falls back to React when store primary is out of range after delete", () => {

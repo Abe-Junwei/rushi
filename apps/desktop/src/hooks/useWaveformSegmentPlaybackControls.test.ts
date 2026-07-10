@@ -1,16 +1,22 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlaybackControls";
 import type WaveSurfer from "wavesurfer.js";
+import {
+  flushTierScrollFrameForTests,
+  resetTierScrollFrameCoordinatorForTests,
+  schedulePlaybackViewportFrame,
+} from "../utils/tierScrollFrameCoordinator";
 
 function makeWs(overrides: Partial<{
   getCurrentTime: () => number;
   isPlaying: () => boolean;
   play: (start?: number) => Promise<void>;
+  pause: () => void;
   setTime: (t: number) => void;
-  on: (event: string, cb: () => void) => () => void;
+  on: (event: string, cb: (...args: unknown[]) => void) => () => void;
 }> = {}) {
   return {
     getCurrentTime: () => 2,
@@ -25,8 +31,35 @@ function makeWs(overrides: Partial<{
   } as unknown as WaveSurfer;
 }
 
+/** Multi-listener ws.on mock (WaveSurfer allows many; Map-per-event drops earlier subs). */
+function makeWsEventBag() {
+  const handlers = new Map<string, Array<(...args: unknown[]) => void>>();
+  const on = vi.fn((event: string, cb: (...args: unknown[]) => void) => {
+    const list = handlers.get(event) ?? [];
+    list.push(cb);
+    handlers.set(event, list);
+    return () => {
+      const next = (handlers.get(event) ?? []).filter((fn) => fn !== cb);
+      if (next.length === 0) handlers.delete(event);
+      else handlers.set(event, next);
+    };
+  });
+  const emit = (event: string, ...args: unknown[]) => {
+    for (const cb of handlers.get(event) ?? []) cb(...args);
+  };
+  return { on, emit };
+}
+
 describe("useWaveformSegmentPlaybackControls", () => {
   const segments = [{ idx: 0, start_sec: 10, end_sec: 20, text: "a" }];
+
+  beforeEach(() => {
+    resetTierScrollFrameCoordinatorForTests();
+  });
+
+  afterEach(() => {
+    resetTierScrollFrameCoordinatorForTests();
+  });
 
   it("uses authoritative playhead instead of stale ws.getCurrentTime", async () => {
     const ws = makeWs({ getCurrentTime: () => 2 });
@@ -106,6 +139,30 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalledWith();
   });
 
+  it("resumes without seeking when display lags raw beyond epsilon but within lag cap", async () => {
+    const ws = makeWs({ getCurrentTime: () => 15.0 });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => 14.7,
+        getRawMediaPlayheadTimeSec: () => 15.0,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0);
+    });
+
+    expect(ws.setTime).not.toHaveBeenCalled();
+    expect(ws.play).toHaveBeenCalledWith();
+  });
+
   it("seeks to display playhead when raw media is stale inside the selected segment", async () => {
     // Segment selection seek has moved display to the segment start, but the media
     // element can still report an older paused in-segment position for a short window.
@@ -133,7 +190,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalledWith();
   });
 
-  it("seeks to segment start when raw media is outside the segment", async () => {
+  it("seeks to segment start when playhead is before the segment", async () => {
     const ws = makeWs({ getCurrentTime: () => 2 });
     const wsRef = { current: ws };
 
@@ -154,6 +211,31 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.play).toHaveBeenCalledWith();
+  });
+
+  it("plays from playhead past segment end without snapping to start", async () => {
+    const ws = makeWs({ getCurrentTime: () => 25 });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => 25,
+        getRawMediaPlayheadTimeSec: () => 2,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0);
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(25);
+    expect(ws.play).toHaveBeenCalledWith();
   });
 
   it("prefers explicit fromSec over authority", async () => {
@@ -356,6 +438,93 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(sync).toHaveBeenCalledWith(31);
   });
 
+  it("resumes from the captured pause anchor when raw and display clocks fall backward", async () => {
+    let playing = true;
+    let rawMediaSec = 15.8;
+    let displaySec = 15.6;
+    const ws = makeWs({
+      getCurrentTime: () => rawMediaSec,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => displaySec,
+        getRawMediaPlayheadTimeSec: () => rawMediaSec,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+    expect(ws.pause).toHaveBeenCalled();
+
+    // Both observable clocks can lag after pause; the explicit pause anchor must win.
+    rawMediaSec = 15.1;
+    displaySec = 14.9;
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(15.8);
+    expect(ws.setTime).not.toHaveBeenCalledWith(14.9);
+    expect(ws.play).toHaveBeenCalled();
+  });
+
+  it("does not override an explicit seek made after pause", async () => {
+    let playing = true;
+    let playheadSec = 15.8;
+    const ws = makeWs({
+      getCurrentTime: () => playheadSec,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+    });
+    const wsRef = { current: ws };
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playheadSec,
+        getRawMediaPlayheadTimeSec: () => playheadSec,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    playheadSec = 12;
+    act(() => {
+      result.current.clearPausedResumeAnchor();
+    });
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).not.toHaveBeenCalledWith(15.8);
+    expect(ws.play).toHaveBeenCalled();
+  });
+
   it("keeps Stop icon when selecting another segment while media is already inside it", async () => {
     const {
       commitSelectionChrome,
@@ -464,17 +633,14 @@ describe("useWaveformSegmentPlaybackControls", () => {
   it("auto-stops at segment end without seeking back to segment start", async () => {
     let playhead = 10;
     let playing = false;
-    const handlers = new Map<string, () => void>();
+    const { on, emit } = makeWsEventBag();
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
       play: vi.fn(async () => {
         playing = true;
       }),
-      on: vi.fn((event: string, cb: () => void) => {
-        handlers.set(event, cb);
-        return () => handlers.delete(event);
-      }),
+      on,
     });
     const wsRef = { current: ws };
 
@@ -499,11 +665,11 @@ describe("useWaveformSegmentPlaybackControls", () => {
     // Arm the bound while still inside the segment, then cross the end.
     playhead = 15;
     await act(async () => {
-      handlers.get("audioprocess")?.();
+      emit("audioprocess");
     });
     playhead = 19.99;
     await act(async () => {
-      handlers.get("audioprocess")?.();
+      emit("audioprocess");
       await Promise.resolve();
     });
 
@@ -512,10 +678,11 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.setTime).not.toHaveBeenCalledWith(10);
   });
 
-  it("user pause cancels a pending segment-end seek so playhead does not jump", async () => {
+  it("auto-stops on Rushi playback frame when past end without audioprocess", async () => {
+    // WS-2b: audioprocess is sparse; visual clock drives playback frames. Sync must
+    // not clear the bound before enforce can pause (overshoot past endSec).
     let playhead = 10;
     let playing = false;
-    const handlers = new Map<string, () => void>();
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
@@ -525,10 +692,60 @@ describe("useWaveformSegmentPlaybackControls", () => {
       pause: vi.fn(() => {
         playing = false;
       }),
-      on: vi.fn((event: string, cb: () => void) => {
-        handlers.set(event, cb);
-        return () => handlers.delete(event);
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
       }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+    expect(playing).toBe(true);
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+
+    playhead = 15;
+    await act(async () => {
+      schedulePlaybackViewportFrame(15);
+      flushTierScrollFrameForTests();
+    });
+
+    playhead = 22;
+    await act(async () => {
+      schedulePlaybackViewportFrame(22);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(ws.pause).toHaveBeenCalled();
+    expect(playing).toBe(false);
+    expect(ws.setTime).toHaveBeenCalledWith(20);
+    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+  });
+
+  it("user pause cancels a pending segment-end seek so playhead does not jump", async () => {
+    let playhead = 10;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
     });
     const wsRef = { current: ws };
     const syncDisplay = vi.fn();
@@ -551,13 +768,13 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
     playhead = 15;
     await act(async () => {
-      handlers.get("audioprocess")?.();
+      emit("audioprocess");
     });
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
 
     // Reach end — schedules microtask stop — then user pauses before it runs.
     playhead = 19.99;
-    handlers.get("audioprocess")?.();
+    emit("audioprocess");
     playhead = 19.5;
     await act(async () => {
       await result.current.handleToggleSelectedWaveformPlay();

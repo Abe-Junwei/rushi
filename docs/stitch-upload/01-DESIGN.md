@@ -17,6 +17,8 @@ colors:
   ink: '#2C2C2C'
   paper: '#F2EFE8'
   saffron: '#C58A43'
+  primary: '#C58A43'
+  primary-foreground: '#ffffff'
   saffron-light: '#ffddba'
   saffron-mid: '#85530f'
   saffron-deep: '#452800'
@@ -124,11 +126,14 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 | 已播放 peaks | action-strong mix | `--zen-wf-progress-played` | 已播放 tint |
 | 播放头 | action | `--waveform-playhead` | 视口全高 playhead |
 | Minimap 视口 | action | `--waveform-minimap-viewport-*` | 总览视口框 |
-| 语段选中 | action | `--segment-fill-selected` | 列表 / overlay 28% |
-| 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 12% |
+| 语段选中 | action | `--segment-fill-selected` | 波形 overlay 14%；列表另用 selected-list |
+| 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 8% |
 | 语段多选（列表） | action | `--segment-fill-in-selection-list` | 列表行 8% |
-| 语段未播放 | ink | `--segment-fill-idle` | band 11% mix |
+| 语段未播放 | text | `--segment-fill-idle` | band 5% mix，弱化普通灰块 |
 | 语段已播放 | action-strong | `--segment-fill-visited` | band 14% mix |
+| 语段边界 | text | `--segment-fill-border` | 相邻语段 hairline |
+| 选中边界 | action-strong | `--segment-fill-selected-border` | selected 左右边界 |
+| 多选边界 | action | `--segment-fill-in-selection-border` | in-selection 左右边界 |
 
 落码 Tailwind：`accent-action` / `accent-action-strong`（`accent-edit` 为兼容别名；禁止组件直引 `zen-saffron*`）。
 
@@ -227,7 +232,7 @@ Hierarchy through **background tone shifts** and **fine borders**—**no drop sh
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
 - **Peaks:** 白底 + 中性灰柱（`--zen-wf-wave`）；已播放 `--zen-wf-progress-played`（`accent-action-strong` mix）。
 - **Playhead / minimap:** `--waveform-playhead`、`--waveform-minimap-*`（`accent-action` 族）；WS 内置 cursor 隐藏。
-- **语段 overlay:** `--segment-fill-*`；单选 / 列表主选 28%，多选波形 12% / 列表 8%；手动 stage chip 固定 `--zen-status-warn*`；左右 **8px handle** 拖拽边界。
+- **语段 overlay:** `--segment-fill-*`；波形 selected 14% / in-selection 8% / idle 5%；列表另用 selected-list / in-selection-list；边界走 `--segment-fill-*-border`；低置信 dashed；手动 stage chip 固定 `--zen-status-warn*`；左右 handle 拖拽边界。
 - **Minimap（可选）:** `--main-shell-minimap-bg`；`accent-action` 视口框 + playhead。
 - **工作条（波形与语段之间）:** **40px**（`h-8` 触控）；有音频时三栏 transport / 编辑 / zoom；无音频时单行居中仅编辑。视口 `<1024px` 时中间收进「编辑 ▾」、右区保留 ±。
 - **底栏（语段列表下）:** 30px 三列 grid；无状态 hint 时每 8s 轮换快捷键提示（与设置页共用真源）。

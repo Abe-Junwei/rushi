@@ -4,6 +4,9 @@ import {
   type WaveformSegmentBandPalette,
 } from "./waveformThemeColors";
 
+/** Align with segmentChrome.segmentPlaybackVisits (avoid circular import). */
+const PLAYHEAD_EPS_SEC = 0.04;
+
 export function segmentBandFillStyle(
   seg: SegmentDto,
   selected: boolean,
@@ -11,13 +14,19 @@ export function segmentBandFillStyle(
   palette: WaveformSegmentBandPalette = readWaveformSegmentBandPalette(),
   options?: { inSelection?: boolean; multiSelectActive?: boolean },
 ): string {
-  void playheadSec;
   if (options?.multiSelectActive && (selected || options.inSelection)) {
     return palette.inSelection;
   }
   if (selected) return palette.selected;
   if (options?.inSelection) return palette.inSelection;
   if (seg.low_confidence) return palette.lowConfidence;
+  if (
+    playheadSec != null &&
+    Number.isFinite(playheadSec) &&
+    playheadSec > Math.min(seg.start_sec, seg.end_sec) + PLAYHEAD_EPS_SEC
+  ) {
+    return palette.visited;
+  }
   return palette.idle;
 }
 

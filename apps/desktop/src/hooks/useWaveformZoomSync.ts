@@ -2,7 +2,12 @@ import { useCallback, useEffect, useRef, useState, type MutableRefObject, type R
 import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import type { WaveformZoomSyncInFlight } from "../services/waveform/waveformZoomSyncEngine";
-import { markAppliedPeaks, type WaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
+import {
+  isPeaksLoadedIntoWs,
+  markAppliedPeaks,
+  readLoadedPeaksPx,
+  type WaveformAppliedZoomState,
+} from "../utils/waveformAppliedZoom";
 import { useWaveformZoomSyncLayoutEffect } from "./useWaveformZoomSyncLayout";
 
 /** Sync layout px/s → WaveSurfer zoom; ws.load(peaks) when draw px/s cache ready / quantum changes. */
@@ -102,6 +107,15 @@ export function useWaveformZoomSync(args: {
       syncPeaksHotSwitchPending(false);
     }
   }, [onPeaksApplied, peakCache, syncPeaksHotSwitchPending]);
+
+  // WS-2b: zoom sync stays disabled (no ws.zoom / ws.load), but phase UI still
+  // needs peaksApplied=true once mount marked stub/media-only peaks on appliedZoom.
+  useEffect(() => {
+    if (!disabled || !isReady) return;
+    if (isPeaksLoadedIntoWs(appliedZoom)) {
+      onPeaksApplied(true, readLoadedPeaksPx(appliedZoom));
+    }
+  }, [appliedZoom, disabled, isReady, onPeaksApplied, peakCacheGeneration]);
 
   useEffect(() => {
     prevDrawPxPerSecRef.current = drawPxPerSec;

@@ -4,6 +4,7 @@ export type WaveformRenderPath = "peaks" | "decode";
 
 export type WaveformPathReason =
   | "mount_peaks_bootstrap"
+  | "mount_media_only"
   | "mount_decode_no_cache"
   | "mount_decode_defer_timeout"
   | "mount_decode_peaks_unavailable"

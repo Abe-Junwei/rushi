@@ -32,6 +32,11 @@ export type DrawWaveformSegmentBandsInput = {
   playheadSec?: number;
   skipIndices?: readonly number[];
   skipIndexSet?: ReadonlySet<number>;
+  /**
+   * When set (list filter active), indices not in this set are not filled
+   * (same as skip — clears on dirtyOnly so stale idle pixels do not linger).
+   */
+  listVisibleIndexSet?: ReadonlySet<number> | null;
   /** When set, only clear/redraw these indices (plus neighbors already expanded by caller). */
   dirtyIndices?: readonly number[];
   palette?: WaveformSegmentBandPalette;
@@ -113,6 +118,7 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
   const palette = input.palette ?? readWaveformSegmentBandPalette();
   const dominant = input.dominantSpanSet ?? new Set(input.dominantSpanIndices ?? []);
   const skip = input.skipIndexSet ?? new Set(input.skipIndices ?? []);
+  const listVisible = input.listVisibleIndexSet ?? null;
 
   const paintOne = (idx: number) => {
     const seg = segments[idx];
@@ -134,6 +140,7 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
       ctx.clearRect(leftViewportPx, 0, bandWidthPx, heightPx);
     }
     if (dominant.has(idx) || skip.has(idx)) return;
+    if (listVisible && !listVisible.has(idx)) return;
 
     const { selected, inSelection, multiSelectActive } = resolveWaveformSegmentFillState({
       idx,
@@ -149,10 +156,17 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
     });
     ctx.fillRect(leftViewportPx, insetTop, bandWidthPx, bandHeight);
 
-    // 不在 overlay 选中层相邻处画分隔线，避免选中语段开头/结尾出现黑色竖线
+    // Overlay-owned selected segments draw their own accent edges above canvas.
+    // Avoid stacking a neutral canvas stroke under that DOM border.
     if (skip.has(idx + 1) || skip.has(idx - 1)) return;
 
-    ctx.strokeStyle = palette.border;
+    // Canvas separators stay structural and solid; low-confidence styling is a
+    // DOM-overlay affordance (dashed borders) when the segment is interactive.
+    ctx.strokeStyle = selected
+      ? palette.selectedBorder
+      : inSelection
+        ? palette.inSelectionBorder
+        : palette.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(leftViewportPx + bandWidthPx - 0.5, insetTop);

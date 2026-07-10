@@ -377,8 +377,9 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
-    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
+    // SEL-1c: SC1 commit after sync seek/reveal so listCommit flush keeps those spans.
+    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
+      setSelectedIdxUi.mock.invocationCallOrder[0],
     );
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
       expect.objectContaining({ start_sec: 4, end_sec: 5.5 }),
@@ -587,6 +588,40 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.suppressPlaybackFollowForSelectionSeek).not.toHaveBeenCalled();
+  });
+
+  it("preview path marks firstPaint immediately and listCommit via committer", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const segmentListRef = { current: document.createElement("div") };
+    resetSelectionChromeStoreForTests();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
+    });
+    act(() => {
+      result.current.selectSegmentAt(3, "waveform");
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    const lines = readRecentSelectionLatencyProfileLines();
+    const profile = lines.find((line) => line.includes("waveform idx=3"));
+    expect(profile).toBeDefined();
+    expect(profile).toMatch(/firstPaint=[\d.]+ms/);
+    expect(profile).toMatch(/listCommit=[\d.]+ms/);
   });
 
   it("selectSegmentAt still seeks when chrome already matches but SC1 lags (no preview seek)", () => {

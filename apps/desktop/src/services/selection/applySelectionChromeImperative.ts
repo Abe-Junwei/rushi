@@ -1,6 +1,6 @@
 import type { SegmentDto } from "../../tauri/projectApi";
 import { setCspLayoutRules } from "../../utils/cspElementLayout";
-import { resolveWaveformRegionFillColor } from "../../utils/segmentChrome";
+import { waveformRegionFillColor } from "../../utils/segmentChrome";
 import type { SelectionChromeSnapshot } from "./selectionChromeStore";
 
 function waveformSegmentEl(root: ParentNode, idx: number): HTMLElement | null {
@@ -22,8 +22,9 @@ function applyWaveformSegmentLook(
 ): void {
   el.classList.toggle("waveform-segment-region-selected", selected);
   el.classList.toggle("waveform-segment-region-in-selection", !selected && inSelection);
+  // CSS var — theme accent remaps instantly; do not bake resolved rgba (lags until reselect).
   setCspLayoutRules(el, {
-    background: resolveWaveformRegionFillColor(seg, selected, inSelection, undefined, {
+    background: waveformRegionFillColor(seg, selected, inSelection, undefined, {
       multiSelectActive,
     }),
   });

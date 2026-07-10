@@ -77,7 +77,7 @@
   --accent-action-strong: #2f3e4a;
   --workbench-toggle-active-bg: #3d4f5d;
   --workbench-toggle-active-text: #ffffff;
-  /** 低彩度 accent：12% 多选 tint 在波形白底上几乎不可见，且弱于 visited 14% strong */
+  /** 低彩度 accent：提高多选 waveform tint，避免在白底上几乎不可见；仍须弱于 selected */
   --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 18%, transparent);
 }
 

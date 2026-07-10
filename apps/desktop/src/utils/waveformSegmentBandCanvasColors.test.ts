@@ -17,6 +17,8 @@ const palette = {
   visited: "vis",
   idle: "idle",
   border: "border",
+  selectedBorder: "selected-border",
+  inSelectionBorder: "in-selection-border",
 };
 
 describe("segmentBandFillStyle", () => {
@@ -39,7 +41,12 @@ describe("segmentBandFillStyle", () => {
     ).toBe("in-sel");
   });
 
-  it("does not tint unselected segments based on playback progress", () => {
-    expect(segmentBandFillStyle(seg, false, 1, palette)).toBe("idle");
+  it("tints unselected segments based on playback progress", () => {
+    expect(segmentBandFillStyle(seg, false, 1, palette)).toBe("vis");
+    expect(segmentBandFillStyle(seg, false, 0, palette)).toBe("idle");
+  });
+
+  it("keeps selected tint over visited", () => {
+    expect(segmentBandFillStyle(seg, true, 1, palette)).toBe("sel");
   });
 });

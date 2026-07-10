@@ -16,13 +16,11 @@ import { peekWelcomeSearchEditorHighlight } from "../../services/welcome/welcome
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 import { logSegmentRowLayoutProbe } from "../../utils/releaseFrontendProbe";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
-import { useSelectionChromePrimaryIdx } from "../../hooks/useSegmentRowSelection";
+import { useReconcileSelectionChromeFromReact } from "../../hooks/useReconcileSelectionChromeFromReact";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
-
-import { useReconcileSelectionChromeFromReact } from "../../hooks/useReconcileSelectionChromeFromReact";
 
 export type EditorSegmentListViewportProps = {
   controller: ProjectControllerApi;
@@ -37,7 +35,11 @@ export type EditorSegmentListViewportProps = {
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 };
 
-/** Chrome store subscription isolated here so EditorSegmentList shell memo can skip on SC1-only churn. */
+/**
+ * List viewport. Selection chrome is row-subscribed (useSegmentRowSelection);
+ * do not subscribe chrome primary here — that re-renders the whole list on SC2 (U12).
+ * Scroll backup uses SC1 selectedIdx; pointerdown already ran imperative scroll.
+ */
 export function EditorSegmentListViewport({
   controller: c,
   tx,
@@ -53,9 +55,7 @@ export function EditorSegmentListViewport({
   const controllerRef = useRef(c);
   controllerRef.current = c;
 
-  const chromePrimaryIdx = useSelectionChromePrimaryIdx();
-  const listScrollSegmentIdx =
-    chromePrimaryIdx >= 0 ? chromePrimaryIdx : c.selectedIdx;
+  const listScrollSegmentIdx = c.selectedIdx;
   const selectedDisplayIndex =
     listScrollSegmentIdx >= 0
       ? filterActive
@@ -253,8 +253,6 @@ export function EditorSegmentListViewport({
                   left: 0,
                   right: 0,
                   height: itemStridePx,
-                  overflow: segIdx === chromePrimaryIdx ? "visible" : "hidden",
-                  zIndex: segIdx === chromePrimaryIdx ? 1 : undefined,
                   boxSizing: "border-box",
                 }}
               >

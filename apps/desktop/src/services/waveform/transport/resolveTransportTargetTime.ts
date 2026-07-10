@@ -1,5 +1,5 @@
-import { resolveSegmentPlaybackStartSec } from "../../../utils/formatMediaTime";
 import {
+  TRANSPORT_DISPLAY_LAG_RESUME_CAP_SEC,
   TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC,
   type SegmentPlayFromResolution,
 } from "./transportTypes";
@@ -14,14 +14,18 @@ export type ResolveSegmentPlayFromInput = {
   rawMediaSec?: number;
   /** Max |raw − display| to allow resume without seek. */
   resumeEpsilonSec?: number;
+  /** Max display lag behind raw to still resume (avoid seek-backward). */
+  displayLagResumeCapSec?: number;
 };
 
 /**
  * Play-from priority (Transport Authority):
- * 1. explicit `fromSec` (clamped)
- * 2. display inside segment → seek to display
- * 3. raw≈display and raw inside segment → resume skip seek
- * 4. else `resolveSegmentPlaybackStartSec(display, seg)` (usually segment start)
+ * 1. explicit `fromSec` (clamped into segment)
+ * 2. raw≈display and raw inside segment → resume skip seek
+ * 3. display lags raw slightly (both in segment) → resume skip (never seek backward)
+ * 4. display inside segment → seek to display
+ * 5. display past segment end → play from display (gap after; do not snap to start)
+ * 6. display before segment start → seek to segment start
  */
 export function resolveSegmentPlayFrom(
   input: ResolveSegmentPlayFromInput,
@@ -29,6 +33,7 @@ export function resolveSegmentPlayFrom(
   const start = Math.min(input.segment.start_sec, input.segment.end_sec);
   const end = Math.max(input.segment.start_sec, input.segment.end_sec);
   const epsilon = input.resumeEpsilonSec ?? TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC;
+  const lagCap = input.displayLagResumeCapSec ?? TRANSPORT_DISPLAY_LAG_RESUME_CAP_SEC;
 
   if (input.fromSec != null && Number.isFinite(input.fromSec)) {
     return {
@@ -50,14 +55,36 @@ export function resolveSegmentPlayFrom(
     return { kind: "resumeSkipSeek" };
   }
 
+  // Pause-resume: visual/React display often lags media by >ε; seeking to display
+  // pulls the playhead backward. Keep media position when the lag is small.
+  // Large display≪raw gaps are intentional (select→segment start while raw stale).
+  if (
+    rawInside &&
+    displayInside &&
+    display < (raw as number) &&
+    (raw as number) - display <= lagCap
+  ) {
+    return { kind: "resumeSkipSeek" };
+  }
+
   if (displayInside) {
     return { kind: "seek", timeSec: display };
   }
 
-  return {
-    kind: "seek",
-    timeSec: resolveSegmentPlaybackStartSec(display, input.segment),
-  };
+  // Past segment end (including finished segment / gap after): continue from playhead.
+  if (display >= end) {
+    if (
+      raw != null &&
+      Number.isFinite(raw) &&
+      Math.abs((raw as number) - display) <= epsilon
+    ) {
+      return { kind: "resumeSkipSeek" };
+    }
+    return { kind: "seek", timeSec: display };
+  }
+
+  // Before segment start (e.g. selected next segment while playhead still earlier).
+  return { kind: "seek", timeSec: start };
 }
 
 export type ResolveSeekTargetInput = {
