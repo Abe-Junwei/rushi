@@ -29,9 +29,11 @@
 - [x] `node scripts/check-architecture-guard.mjs` 绿（0 错误；`setDirectLayoutStyle` 仍限 `cspElementLayout.ts`）。
 
 ### WR-2
-- [ ] zoom 决策单测：连续 N 步 zoom 只产生 1 次 `load-peaks`（其余 `finish-zoom`/拉伸）。
+- [x] zoom 决策单测：连续 slider/step 经 `scheduleDrawPxPerSec`（140ms）尾沿合并；`useWaveformZoom.test.ts` 断言 N 步只提交 1 次 `drawPxPerSec`（sync 层既有 dual-track 测：layout 变、draw 冻 → `ws.zoom` 有、`ws.load` 无）。
+- [ ] 手测 H4：连续 zoom 中间态拉伸不白屏、稳定后清晰（待用户）。
 
-### WR-4（条件性）
+### WR-4（条件性 · 默认不做）
+- [ ] 触发条件：WR-2 后仍有 >50ms resample 长任务 **且** 用户可感卡顿。
 - [ ] `peaksResampleClient` 单测（mock worker）：请求/回传/序号取消/失败回退同步路径。
 - [ ] `PeakCache.test.ts`：worker 路径与同步路径产出一致（缓存键、peaks 长度）。
 
@@ -62,6 +64,6 @@
 
 ## 5. 签收
 
-- [ ] WR-1 + WR-3 完成并验证
-- [ ] WR-2 完成并验证
-- [ ] WR-4 spike 结论记录（通过则完成，未通过则记为已知限制 + WR-2 兜底）
+- [x] WR-1 + WR-3 完成并验证
+- [x] WR-2 编码完成（手测 H4 待签）
+- [ ] WR-4 spike 结论记录（默认不做；仅当 WR-2 后仍 >50ms 且用户抱怨）

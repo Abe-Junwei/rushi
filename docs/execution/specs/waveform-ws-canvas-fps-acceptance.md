@@ -34,20 +34,25 @@
 - [x] `installWaveSurferTierScrollSync` + `syncWaveSurferScrollFromTier`
 - [x] tier scroll / after-render 推送 `ws.setScroll`
 - [x] focused tests + typecheck
+- [x] **live progress tint 补偿（1A）**：`progressWrapper.width` 经 `setDirectLayoutStyle` + 百分比去重；静态 clip/overflow/cursor 仍 nonce CSP 一次写入
+- [x] **playback-follow defer（1B）**：`WAVEFORM_PLAYBACK_FOLLOW_DEFER_LAYOUT_COMMIT`（默认 true）；播放跟随延迟 React `tierScrollLayout`，暂停 snap 立即 commit
 
 手测：
 
 ```js
 __rushiScrollProfile.enable()
-// 深 zoom 播放 8–10s；快速横滚看右侧空白
+// 深 zoom 播放 8–10s；对比 audioTicks vs playbackFrames（JS vs 合成判据）
+// 快速横滚看右侧空白；确认已播放 tint 与 playhead 同帧
 __rushiScrollProfile.disable()
 ```
 
 期望 `[wf-geom]`：`clientW≈viewport`、`scrollable=true`、`drawn≈3`（非 `drawn=needed=6`）。
 
-- [ ] S4 深 zoom `playbackFrames≥45`
+**阶段 0 判据**：`audioTicks` 明显高于 `playbackFrames` → 继续 1C rAF 统一；两者都低（≈23）→ 跳过边际优化，开 WS-2b research。
+
+- [ ] S4 深 zoom `playbackFrames≥45`（须在 live tint + direct-style 基线上采）
 - [ ] S5 快速横滚无不可接受右侧空白
-- [ ] S6 seek / 空格 / overlay 点选对齐
+- [ ] S6 seek / 空格 / overlay 点选对齐；已播放 tint 与 playhead 同步
 
 ---
 

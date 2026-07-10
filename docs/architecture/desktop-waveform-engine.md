@@ -25,9 +25,9 @@
 - WaveSurfer `autoScroll: false`；tier 承担水平滚动，WaveSurfer / overlay 位于同一 timeline 内容层，随浏览器原生 scroll 物理移动。
 - **Scroll 热路径（2026-06）**：`useTierScrollSync` 在 tier scroll / wheel-forward 时更新 live scroll refs，并调用 [`scheduleTierScrollFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 合并 band / playhead / ruler 的 viewport chrome imperative 更新为**单 rAF**；React `tierScrollLayout` 在 scroll burst 结束后 commit。
   - `useTierScrollSync` 是唯一 scroll motion owner：wheel inertia 的 rAF、selection reveal、minimap scrub、ruler/user scrub、playback follow 与 transient motion cancel 均在此集中处理。`useWaveformTierWheelForward` 只解析 wheel delta / pointer intent，不直接写 DOM。
-  - 原生 scroll、**离散程序化跳转**（reveal / pick / resize，`commitScrollLeftPx` 非 `deferLayoutCommit` 分支）与 **播放跟随**均 `flushTierScrollFrame` 同帧落 chrome；播放跟随仍 `deferLayoutCommit`，只推迟 React layout commit，不推迟 band / ruler / playhead viewport chrome。
+  - 原生 scroll、**离散程序化跳转**（reveal / pick / resize，`commitScrollLeftPx` 非 `deferLayoutCommit` 分支）与 **播放跟随**均 `flushTierScrollFrame` 同帧落 chrome；播放跟随默认 `WAVEFORM_PLAYBACK_FOLLOW_DEFER_LAYOUT_COMMIT`（[`waveformPrefs.ts`](../../apps/desktop/src/utils/waveformPrefs.ts)），只推迟 React layout commit，不推迟 band / ruler / playhead viewport chrome；暂停 snap 仍立即 commit。设为 `false` 可回滚到每帧 `refreshLayout`。
   - minimap viewport 矩形经 `subscribeTierScrollFrame` 命令式跟随 live scroll（不再只读 burst-committed `tierScrollLayout`，消拖影）。
-- 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；viewport chrome 由 frame coordinator 同步。
+- 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；播放帧走 prefs 默认 defer，暂停/模式切换 snap 传 `deferLayoutCommit: false`。
 
 ## Viewport resize 编排（P0 阶段 1）
 
@@ -60,6 +60,7 @@
 - [`waveformZoomSyncEngine.ts`](../../apps/desktop/src/services/waveform/waveformZoomSyncEngine.ts)：`planWaveformZoomApply` / `commitWaveSurferZoom` / `loadPeaksIntoWaveSurfer` 纯逻辑；[`useWaveformZoomSync`](../../apps/desktop/src/hooks/useWaveformZoomSync.ts) 仅编排 layout effect。
 - `useWaveformZoomSync` 在 `useLayoutEffect` 内**同步** `ws.zoom`（不再 rAF defer）。
 - `viewportResizeHoldRef` 为 true 时跳过 `ws.load`，transaction 结束后 `flushDeferredPeaksLoad` 换档。
+- **WR-2 双轨**：[`useWaveformZoom`](../../apps/desktop/src/hooks/useWaveformZoom.ts) 的 `layoutPxPerSec` 即时驱动 `ws.zoom` 拉伸；连续滑块/步进经 `scheduleDrawPxPerSec`（`DRAW_PX_PER_SEC_DEBOUNCE_MS=140`）尾沿更新 `drawPxPerSec` → peaks load。离散 fit/reset 仍 `flushDrawPxPerSec` 双轨同刷。
 
 ## 整段可见（fit-all）布局意图
 

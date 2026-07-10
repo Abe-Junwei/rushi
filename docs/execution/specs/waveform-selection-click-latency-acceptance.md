@@ -21,7 +21,7 @@
 ## 2. 自动化
 
 - [x] `useSelectedIdxCommitter`：waveform/list 经 `startTransition`
-- [x] selection profile：`bandPaint` parse；预览路径可 flush
+- [x] selection profile：`bandPaint` parse；预览路径可 flush；**`listCommit` 由列表 layout effect 标记**（list/listAdvance/waveform/listKeyboard）；有 list root 且 SC1 变更时跳过抢跑 `scheduleFlush`
 - [x] 既有 LKB / selection chrome perf 不回归
 - [x] `npm run typecheck` / `npm run test` / architecture guard 绿
 
@@ -35,14 +35,19 @@ __rushiSelectionProfile.enable()
 __rushiSelectionProfile.print()
 ```
 
-手测证据（2026-07-10，62 段）：
+手测证据（2026-07-10，62 段 · SEL-1b 后、listCommit 接线前）：
 
 - waveform `#14–22`：`total` 仍 **205–555ms**，`syncPathTotal` 多为 0
 - list `#23–26`：`listScroll` ~27–33ms，`total` 仍 **303–604ms**
 - `bandPaint` 仍 ≈0（H4 保持）
 
+编码后（2026-07-10 · SEL-1a listCommit 真值）：
+
+- profile 行应出现 `listCommit=…ms`（含 `0.0ms`）；用该值解释 `total`，再决定是否做 SEL-1c 全量
+- **量化退出**：若 `listCommit≤80ms` 且 `total≤150ms` → SEL-1c 只做 keyboard reveal 最小修复；否则再拆 coordinator / virtual window
+
 - [ ] H1 高亮即时（肉眼；profile total 未达 ≤150ms）
-- [ ] H2 profile 出现 `listCommit`（本轮仍缺；list 有 `listScroll`）
+- [ ] H2 profile 出现 `listCommit`（编码已接线；待手测确认行内可见）
 - [ ] H3 空格起播与视觉 playhead 对齐
 - [x] H4 `bandPaint` 仍接近 0
 
@@ -50,6 +55,6 @@ __rushiSelectionProfile.print()
 
 ## 4. 签收
 
-- [x] SEL-1a/1b 完成（编码）
-- [x] SEL-1c 完成或显式记入后续（本轮不做；列表 reconcile 收窄留 LKB/后续薄片）
-- [ ] 用户手测 H1–H4（H1/H2 未达目标；需 SEL-1c 或更深列表收窄）
+- [x] SEL-1a/1b 完成（编码；listCommit 真值已补）
+- [ ] SEL-1c：等 H2 手测数字后再决定最小修复或全量（见路线图量化退出点）
+- [ ] 用户手测 H1–H4
