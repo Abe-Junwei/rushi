@@ -4,7 +4,7 @@
 > **acceptance**：[`waveform-ws2b-viewport-render-acceptance.md`](./waveform-ws2b-viewport-render-acceptance.md)  
 > **前序**：[`waveform-ws-canvas-fps-plan.md`](./waveform-ws-canvas-fps-plan.md)（WS-1/WS-2a FAIL → 本轨）  
 > **architecture**：[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)  
-> **状态**：spike v4 **PASS** · Plan 定稿 · **生产化编码完成** · S1/S5/S6 手测 PASS · 待 S3/S4
+> **状态**：spike v4 **PASS** · Plan 定稿 · **生产化签收**（2026-07-10）· S1–S6 PASS
 
 ---
 
@@ -73,7 +73,7 @@ Spike 为过 fps **关掉了** played tint。生产需恢复语义之一：
 ### 2D — 文档（同 PR）
 
 - 修订 `desktop-waveform-engine.md`：可见主波形 = Rushi viewport canvas；WS = media
-- 关闭本 acceptance 清单；父轨 `waveform-ws-canvas-fps-*` 标注 WS-2b 生产化完成
+- 关闭本 acceptance 清单；父轨 `waveform-ws-canvas-fps-*` 标注 WS-2b 生产化完成 ✅
 
 ---
 

@@ -5,7 +5,7 @@
 > **WS-2b Plan**：[`waveform-ws2b-viewport-render-plan.md`](./waveform-ws2b-viewport-render-plan.md)
 > **acceptance**：[`waveform-ws-canvas-fps-acceptance.md`](./waveform-ws-canvas-fps-acceptance.md)
 > **前序 VRP**：[`waveform-visual-raf-playhead-plan.md`](./waveform-visual-raf-playhead-plan.md)
-> **状态**：WS-2a 编码完成 · S4 fps **FAIL**（合成瓶颈）· WS-2b research ✅ · spike v4 **PASS** · WS-2b Plan 定稿 · **生产化编码完成** · 待手测
+> **状态**：WS-2a 编码完成 · S4 fps **FAIL**（合成瓶颈）· WS-2b research ✅ · spike v4 **PASS** · WS-2b Plan 定稿 · **生产化签收** · S1–S6 PASS
 
 ---
 

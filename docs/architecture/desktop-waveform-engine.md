@@ -177,11 +177,11 @@
 | 层 | 配色真源 | 说明 |
 |----|----------|------|
 | **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` / `--zen-wf-played-wash` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；视口已播放区由 [`WaveformViewportPeaksCanvas`](../../apps/desktop/src/components/WaveformViewportPeaksCanvas.tsx) 的 `.waveform-viewport-played-tint`（wash 淡化）跟随 visual playhead；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层且主 canvas 不 clip，`progressWrapper.width` 走 `setDirectLayoutStyle` + 百分比去重 |
-| **Band canvas** | `--segment-fill-*` → resolve rgb | [`segmentBandFillStyle`](../../apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts)；选中 / 滚动 / seek chrome 经 [`requestWaveformSegmentBandPaint`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 重绘（**不**按 playhead 画 visited 色） |
-| **DOM overlay** | `var(--segment-fill-*)` | [`waveformRegionFillColor`](../../apps/desktop/src/utils/segmentChrome.ts)；多选时 `multiSelectActive` 统一 12% waveform in-selection |
+| **Band canvas** | `--segment-fill-*` → resolve rgb | [`segmentBandFillStyle`](../../apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts)；idle / **visited（中性 text 10%）** / 选中 / 多选 / 低置信；visited 边界变化时重绘（[`resolveVisitedSegmentIndexAtPlayhead`](../../apps/desktop/src/utils/segmentChrome.ts)） |
+| **DOM overlay** | `var(--segment-fill-*)` | [`waveformRegionFillColor`](../../apps/desktop/src/utils/segmentChrome.ts)；主题色切换即时跟色（禁止 bake rgba）；多选时 `multiSelectActive` 统一 in-selection |
 | **Playhead / minimap** | `--waveform-playhead` / `--waveform-minimap-*` | `accent-action` 链；WS 内置 cursor 隐藏 |
 
-组件禁止直引 `zen-saffron*`（守卫 R8）；语段选中色随 `--accent-action*`（Office 主题色）；已播放区域由 WS progress / playhead 表示，band 不再渲染 visited 填充。见 [`desktop-visual-style-governance.md`](./desktop-visual-style-governance.md) 与根 [`DESIGN.md`](../../DESIGN.md) Waveform tokens 表。
+组件禁止直引 `zen-saffron*`（守卫 R8）；语段选中色随 `--accent-action*`（Office 主题色）；**时间轴已播放**由 viewport peaks wash（`--zen-wf-played-wash`）+ playhead 表示；**语段 visited** 为中性 band 填充（弱于 selected，不锁 accent）。见 [`desktop-visual-style-governance.md`](./desktop-visual-style-governance.md) 与根 [`DESIGN.md`](../../DESIGN.md) Waveform tokens 表。
 
 ## 舞台 DOM
 
@@ -250,7 +250,7 @@
 - **单 rAF 发布/订阅**：playing rAF / seek sync 经 [`schedulePlaybackViewportFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 同帧通知：滚动跟随（`PLAYHEAD_FRAME_PRIORITY_SCROLL=0`，已有 scroll epsilon 节流）→ playhead transform（`=1`）。[`useWaveformPlaybackScrollFollow`](../../apps/desktop/src/hooks/useWaveformPlaybackScrollFollow.ts)、[`WaveformViewportPlayhead`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) 订阅同一帧时间；[`useWaveformLiveClock`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts) 读 `getDisplayPlayheadTimeSec`。embedded ruler **不**订阅 playhead 重绘（WR-1）。
 - **高频几何写入（direct style）**：playhead transform、band / ruler `left/width/height`、ruler/minimap scroll transform 一律经 [`setDirectLayoutStyle`](../../apps/desktop/src/utils/cspElementLayout.ts)（`element.style.setProperty`，**CSP 合法**，零全文档 style recalc，与 WaveSurfer v7 同构）。`lastTransformRef` / `lastCssLeftRef` 去重。调研与 CSP probe 实测见 [`waveform-csp-dynamic-style-performance-research.md`](../execution/specs/waveform-csp-dynamic-style-performance-research.md)。
   - **边界**：`setCspLayoutRules`（nonce `<style>` 注册表）仅保留给**需要选择器 / 伪类 / 媒体查询**的动态样式（这类真 `<style>` 元素会被 `style-src-elem` 拦，须 nonce）；**禁止**用于每帧路径。`element.style` 仅允许在 `cspElementLayout.ts` 单点封装（架构守卫 allowlist），组件不散落 `.style.`；`style={{}}` / `setAttribute('style')` / `cssText` 仍全仓禁（`style-src-attr` 拦截）。
-- **已播放显示边界**：已播放区域只由 WaveSurfer progress / playhead 表示；`WaveformSegmentBandCanvas` 不再按 playhead 给未选中语段渲染 visited 语段色，仅保留当前选中 / 多选 / 低置信 / idle 语段状态。
+- **已播放 / visited 显示边界**：时间轴已播放区由 [`WaveformViewportPeaksCanvas`](../../apps/desktop/src/components/WaveformViewportPeaksCanvas.tsx) wash + playhead 表示；未选中语段在 playhead 越过起点后用中性 `--segment-fill-visited`（弱于 selected）。选中 / 多选 / 低置信仍优先于 visited。
 - **已删除**：`waveformImperativePlayheadSync`（50ms）、`waveformSelectionSeekChrome`（1200ms seeking coalesce）— 双钟竞争补丁；选中后防播放跟随回拽仍用 `playbackFollowSuppressUntilRef`（与 playhead 时钟无关）。
 
 ## Transport Authority（seek / play 命令真源）
@@ -260,7 +260,7 @@
 - **问题**：display 时钟已单源，但「写什么时间 / 何时 play」曾分散在 playback、segment controls、selection、gesture、shortcut 等多处，SC2/raw/display 启发式互相覆盖 → 播放中选段不 seek、假 seek-within、raw 滞后起播。
 - **真源模块**：[`services/waveform/transport/`](../../apps/desktop/src/services/waveform/transport/) — `resolveSegmentPlayFrom` / `resolveSelectTransportSeekTime` / `applyPeaksOrderedSeek` / `dispatchTransportIntent`。
 - **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
-- **Play-from 优先级**（写死）：`fromSec` → display（段内）→ `|raw−display|≤ε` 且 raw 段内才 resume skip → 否则段头（`resolveSegmentPlaybackStartSec`）。
+- **Play-from 优先级**（写死）：`fromSec`（钳入段）→ raw≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
 - **选中 seek**：由 SC1 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用 SC2 chrome 匹配推断「已 seek」或「已选中可 seek-within」。
 - **产品入口**：Space / 工具栏 = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped）；无选中 no-op / disabled。全局 `togglePlay` 不作为 Space 路径。起播索引用 [`selectionChromeEffectivePrimaryIdx`](../../apps/desktop/src/services/selection/selectionChromeStore.ts)（SC2 可领先 SC1；H3）。
 - **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks、SC1/SC2 总线本身（Transport 只消费时间与 seekPolicy，不拥有 chrome）。
