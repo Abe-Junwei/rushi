@@ -1,15 +1,14 @@
-import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import type { SegmentListFilterNavState } from "./segmentListFilterNav";
 import { readSegmentListFilterNavIndices } from "./segmentListFilterNav";
 import {
   querySegmentListScrollRoot,
   readSegmentListFilterIndices,
 } from "./segmentListVirtualWindow";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 
-/** ↑↓ anchor: chrome primary leads React selectedIdx during keyboard navigation. */
+/** ↑↓ anchor: CM6 projection primary, else React SC1 bridge. */
 export function resolveListSelectionNavAnchor(fallbackIdx: number): number {
-  const primary = getSelectionChromeSnapshot().primaryIdx;
-  return primary >= 0 ? primary : fallbackIdx;
+  return effectiveTranscriptPrimaryIdx(fallbackIdx);
 }
 
 /** Resolve ↑↓ target within the visible segment list (respects active filter). */

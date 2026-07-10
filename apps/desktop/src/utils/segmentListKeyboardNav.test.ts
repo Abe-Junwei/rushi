@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import {
-  commitSelectionChrome,
-  resetSelectionChromeStoreForTests,
-} from "../services/selection/selectionChromeStore";
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 import {
   resolveAdjacentVisibleSegmentIdx,
   resolveListSelectionNavAnchor,
@@ -45,10 +45,21 @@ describe("resolveAdjacentVisibleSegmentIdx", () => {
 });
 
 describe("resolveListSelectionNavAnchor", () => {
-  it("prefers chrome primary over stale React selectedIdx", () => {
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({ fileId: "f1", primaryIdx: 3, selectedSet: new Set([3]) });
+  beforeEach(() => {
+    resetTranscriptProjectionForTests();
+  });
+
+  afterEach(() => {
+    resetTranscriptProjectionForTests();
+  });
+
+  it("prefers projection primary over stale React selectedIdx", () => {
+    seedTranscriptProjectionForTests({
+      primaryIdx: 3,
+      selectedSet: new Set([3]),
+      rangeAnchor: 3,
+      lineCount: 5,
+    });
     expect(resolveListSelectionNavAnchor(0)).toBe(3);
-    resetSelectionChromeStoreForTests();
   });
 });

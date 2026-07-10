@@ -70,7 +70,7 @@ function clampSegmentListScrollTop(
   return Math.round(Math.min(max, Math.max(0, scrollTop)));
 }
 
-/** 选中换行时 layout 尚未写 scrollTop；仅在选择变更首帧启用投影（见 useEditorSegmentListScroll）。 */
+/** 选中换行时 layout 尚未写 scrollTop；仅在选择变更首帧启用投影（历史虚拟列表；P9a 后列表滚入由 CM6 revealSegmentInView）。 */
 export function resolveVirtualListScrollTopForWindow(input: {
   rootScrollTop: number;
   rootScrollHeight: number;

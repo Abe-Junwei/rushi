@@ -5,6 +5,7 @@ import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
 import { isCorrectionRulesPanelOpen } from "../pages/correctionRulesPanelTypes";
 import { TRANSCRIPT_TEXTAREA_SELECTOR } from "../pages/flushSegmentTextDrafts";
+import { isTranscriptEditorCoreTarget } from "../components/editor/core/transcriptEditorDom";
 import {
   getEditorShortcutDefinition,
   matchEditorShortcut,
@@ -39,10 +40,11 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
   return true;
 }
 
-function isTranscriptTextarea(target: EventTarget | null): boolean {
+function isTranscriptTextEditTarget(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null;
   if (!el?.closest) return false;
-  return Boolean(el.closest(TRANSCRIPT_TEXTAREA_SELECTOR));
+  if (el.closest(TRANSCRIPT_TEXTAREA_SELECTOR)) return true;
+  return isTranscriptEditorCoreTarget(el);
 }
 
 function isFloatingEditorPanelOpen(): boolean {
@@ -96,7 +98,7 @@ export function useEditorShortcutDispatcher(args: {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.isComposing) return;
 
-      const inTextarea = isTranscriptTextarea(e.target);
+      const inTextarea = isTranscriptTextEditTarget(e.target);
       const shortcutId = matchEditorShortcut(e, { inTextarea });
       if (!shortcutId) return;
 

@@ -9,7 +9,6 @@ import type { SegmentSelectAtOptions, SegmentSelectSource } from "../utils/wavef
 import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
 import {
   cancelTranscriptSegmentFocusAttempts,
-  focusTranscriptSegmentTextarea,
 } from "../utils/focusTranscriptSegmentTextarea";
 import {
   querySegmentListScrollRoot,
@@ -17,7 +16,9 @@ import {
 import { resolveAdjacentVisibleSegmentIdx } from "../utils/segmentListKeyboardNav";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { readSegmentListFilterNavIndices } from "../utils/segmentListFilterNav";
-import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
+import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
+import { revealSegmentInView } from "../components/editor/core/revealSegment";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -53,7 +54,10 @@ export function useSegmentKeyboard(args: {
 
   const focusFinalSegmentTextarea = useCallback((segmentIdx: number) => {
     cancelTranscriptSegmentFocusAttempts();
-    focusTranscriptSegmentTextarea(argsRef.current.segmentListRef.current, segmentIdx);
+    const view = getTranscriptEditorView();
+    if (!view) return;
+    view.focus();
+    revealSegmentInView(view, segmentIdx);
   }, []);
 
   const resolveAdvanceTarget = useCallback((fromIdx: number, direction: -1 | 1): number | null => {
@@ -71,9 +75,7 @@ export function useSegmentKeyboard(args: {
   const resolveAdvanceAnchorIdx = useCallback((segmentIdx: number): number => {
     const pending = pendingAdvanceIdxRef.current;
     if (pending != null) return pending;
-    const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
-    if (chromePrimary >= 0) return chromePrimary;
-    return segmentIdx;
+    return effectiveTranscriptPrimaryIdx(segmentIdx);
   }, []);
 
   const advanceToSegment = useCallback((targetIdx: number, options?: { focus?: boolean }) => {
@@ -110,11 +112,10 @@ export function useSegmentKeyboard(args: {
     argsRef.current.cancelPendingSelectionRevealRef?.current?.();
 
     const c = argsRef.current.ctxRef.current;
-    const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
     const idx =
       pendingAdvanceIdxRef.current ??
       lastBurstTargetIdxRef.current ??
-      (chromePrimary >= 0 ? chromePrimary : c.selectedIdx);
+      effectiveTranscriptPrimaryIdx(c.selectedIdx);
     pendingAdvanceIdxRef.current = null;
     lastBurstTargetIdxRef.current = null;
 

@@ -4,7 +4,10 @@ import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { useSegmentKeyboard } from "./useSegmentKeyboard";
 import { createEmptySegmentListFilterNavState, type SegmentListFilterNavState } from "../utils/segmentListFilterNav";
-import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 import {
   notifyListKeyboardLayoutSettled,
   queueListKeyboardKeyupReveal,
@@ -12,12 +15,26 @@ import {
   resetListKeyboardBurstCoordinatorForTests,
 } from "../services/selection/listKeyboardBurstCoordinator";
 
-const focusTranscriptSegmentTextarea = vi.fn();
-const cancelTranscriptSegmentFocusAttempts = vi.fn();
+const {
+  cancelTranscriptSegmentFocusAttempts,
+  revealSegmentInView,
+  viewFocus,
+} = vi.hoisted(() => ({
+  cancelTranscriptSegmentFocusAttempts: vi.fn(),
+  revealSegmentInView: vi.fn(() => true),
+  viewFocus: vi.fn(),
+}));
 
 vi.mock("../utils/focusTranscriptSegmentTextarea", () => ({
-  focusTranscriptSegmentTextarea: (...args: unknown[]) => focusTranscriptSegmentTextarea(...args),
   cancelTranscriptSegmentFocusAttempts: () => cancelTranscriptSegmentFocusAttempts(),
+}));
+
+vi.mock("../components/editor/core/revealSegment", () => ({
+  revealSegmentInView,
+}));
+
+vi.mock("../components/editor/core/transcriptEditorViewHandle", () => ({
+  getTranscriptEditorView: () => ({ focus: viewFocus }),
 }));
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
@@ -129,9 +146,10 @@ function renderKeyboard(
 
 describe("useSegmentKeyboard", () => {
   beforeEach(() => {
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
     resetListKeyboardBurstCoordinatorForTests();
-    focusTranscriptSegmentTextarea.mockClear();
+    revealSegmentInView.mockClear();
+    viewFocus.mockClear();
     cancelTranscriptSegmentFocusAttempts.mockClear();
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
       queueMicrotask(() => cb(0));
@@ -433,7 +451,7 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard", { burst: true });
   });
 
-  it("defers textarea focus until Arrow keyup after coalesced advance", async () => {
+  it("defers CM6 focus until Arrow keyup after coalesced advance", async () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -450,9 +468,11 @@ describe("useSegmentKeyboard", () => {
     await flushAdvanceCoalesce();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard", { burst: true });
-    expect(focusTranscriptSegmentTextarea).not.toHaveBeenCalled();
+    expect(revealSegmentInView).not.toHaveBeenCalled();
+    expect(viewFocus).not.toHaveBeenCalled();
 
-    focusTranscriptSegmentTextarea.mockClear();
+    revealSegmentInView.mockClear();
+    viewFocus.mockClear();
     cancelTranscriptSegmentFocusAttempts.mockClear();
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowDown", bubbles: true }));
@@ -461,7 +481,8 @@ describe("useSegmentKeyboard", () => {
       await Promise.resolve();
     });
 
-    expect(focusTranscriptSegmentTextarea).toHaveBeenCalledTimes(1);
+    expect(viewFocus).toHaveBeenCalledTimes(1);
+    expect(revealSegmentInView).toHaveBeenCalledTimes(1);
     expect(cancelTranscriptSegmentFocusAttempts).toHaveBeenCalled();
   });
 
@@ -499,8 +520,13 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
   });
 
-  it("anchors ArrowDown on chrome primary when pending advance was flushed", async () => {
-    commitSelectionChrome({ fileId: "f1", primaryIdx: 1, selectedSet: new Set([1]) });
+  it("anchors ArrowDown on projection primary when pending advance was flushed", async () => {
+    seedTranscriptProjectionForTests({
+      primaryIdx: 1,
+      selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 3,
+    });
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },

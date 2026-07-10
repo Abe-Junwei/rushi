@@ -7,7 +7,10 @@ import { EditorWaveformPeaksStage } from "./EditorWaveformPeaksStage";
 import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 import { readCspLayoutRulesForElement } from "../../utils/cspElementLayout";
 import { clearAllCspScopeRulesForTests } from "../../utils/cspNonceStyleRegistry";
-import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../../services/selection/selectionChromeStore";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "./core/transcriptProjection";
 
 function createController() {
   return {
@@ -107,7 +110,7 @@ function wrapPeaksStage(ui: ReactElement, controller = createController()) {
 describe("EditorWaveformPeaksStage", () => {
   afterEach(() => {
     clearAllCspScopeRulesForTests();
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("keeps WaveSurfer host at viewport width and overlay at timeline width", () => {
@@ -168,11 +171,12 @@ describe("EditorWaveformPeaksStage", () => {
     expect(readCspLayoutRulesForElement(stickyShell as HTMLElement)).toContain("width: 800px");
   });
 
-  it("positions playback controls from SC2 chrome before React selectedIdx catches up", () => {
-    commitSelectionChrome({
-      fileId: "file-1",
+  it("positions playback controls from CM6 projection before React selectedIdx catches up", () => {
+    seedTranscriptProjectionForTests({
       primaryIdx: 1,
       selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 2,
     });
     const controller = createController();
 
