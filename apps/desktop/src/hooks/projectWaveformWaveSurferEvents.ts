@@ -10,9 +10,6 @@ import {
 } from "../services/waveform/waveformSurferProgressCoverage";
 
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
-import { shouldCoalesceSelectionSeekChrome } from "../utils/waveformSelectionSeekChrome";
-import { shouldSuppressSeekingPlayheadSync } from "../utils/waveformImperativePlayheadSync";
-
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
   disposed: () => boolean;
@@ -98,14 +95,21 @@ export function bindProjectWaveformWaveSurferEvents(
     }),
     ws.on("pause", () => {
       setIsPlaying(false);
+      const t = ws.getCurrentTime();
+      lastTimeUiCommitRef.current = t;
+      // Freeze display clock same-stack as media pause (before React isPlaying=false).
+      optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
       if (!disposed()) {
-        setCurrentTime(lastTimeUiCommitRef.current);
+        setCurrentTime(t);
       }
     }),
     ws.on("finish", () => {
       setIsPlaying(false);
+      const t = ws.getCurrentTime();
+      lastTimeUiCommitRef.current = t;
+      optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
       if (!disposed()) {
-        setCurrentTime(lastTimeUiCommitRef.current);
+        setCurrentTime(t);
       }
     }),
     ws.on("timeupdate", (t) => {
@@ -127,21 +131,15 @@ export function bindProjectWaveformWaveSurferEvents(
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
-      const nowMs = performance.now();
-      const suppressUntilMs = optsRef.current.imperativePlayheadSyncSuppressUntilRef?.current ?? 0;
-      if (!shouldSuppressSeekingPlayheadSync(nowMs, suppressUntilMs)) {
+      // Paused WS-only seeks (e.g. peaks reload) bypass imperative sync; refresh
+      // visual clock + band subscribers. Playing seeks rely on audioprocess / prior sync.
+      if (!ws.isPlaying()) {
         optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t);
       }
       setCurrentTime(t);
       const duration = ws.getDuration();
       if (duration > 0) {
         applyWaveSurferProgressWithoutClip(ws, t / duration);
-      }
-      const selectionChromeSuppressUntilMs =
-        optsRef.current.selectionSeekChromeSuppressUntilRef?.current ?? 0;
-      if (shouldCoalesceSelectionSeekChrome(performance.now(), selectionChromeSuppressUntilMs)) {
-        requestWaveformSegmentBandPaint();
-        return;
       }
       scheduleSegmentBandPaint();
       queueMicrotask(() => syncTierScrollAfterRenderRef.current());

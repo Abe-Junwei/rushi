@@ -93,14 +93,24 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
           onClick={() => tx.focusWaveformShell()}
         >
           <CspLayout ref={tx.waveformTimelineShellRef} className="relative" layout={{ height: peaksPaneHeightPx }}>
+            {/*
+              Sticky + viewport width for WS-2a virtualization, but h-0 so the layer
+              does not consume in-flow height (otherwise the playhead sticky shell is
+              pushed below the pane and clipped by tier overflow-y-hidden).
+            */}
             <CspLayout
-              className="waveform-timeline-wave-layer absolute left-0 top-0 z-[1] h-full"
-              layout={{ width: tx.timelineWidthPx }}
+              className={`waveform-timeline-wave-layer sticky left-0 top-0 z-[1] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
+              layout={{
+                [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]:
+                  viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,
+                width: viewportWidthPx > 0 ? viewportWidthPx : undefined,
+              }}
             >
               <CspLayout
-                className={waveSurferPreviewLayerClass}
+                className={`absolute left-0 top-0 overflow-hidden ${waveSurferPreviewLayerClass}`}
                 layout={{
-                  height: waveformHeightPreviewActive ? peaksPaintedHeightPx : "100%",
+                  width: "100%",
+                  height: waveformHeightPreviewActive ? peaksPaintedHeightPx : peaksPaneHeightPx,
                   transform: waveformVerticalTransform,
                   transformOrigin: "top left",
                 }}
@@ -222,15 +232,20 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
               onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
               onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
             />
+            {/*
+              Same zero-height sticky pattern as the wave layer: stay viewport-pinned
+              without stacking below in-flow siblings inside the fixed-height shell.
+            */}
             <CspLayout
               ref={tx.waveformStickyShellRef}
-              className={`pointer-events-none sticky left-0 top-0 z-[10] h-full overflow-hidden ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
+              className={`pointer-events-none sticky left-0 top-0 z-[10] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
               layout={{
-                [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]: viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,
-                height: peaksPaneHeightPx,
+                [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]:
+                  viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,
+                width: viewportWidthPx > 0 ? viewportWidthPx : undefined,
               }}
             >
-              <div className="relative h-full w-full">
+              <CspLayout className="relative overflow-hidden" layout={{ height: peaksPaneHeightPx }}>
                 <WaveformViewportPlayhead
                   durationSec={mediaDurationSec}
                   timelineWidthPx={tx.timelineWidthPx}
@@ -242,7 +257,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                   subscribePlayheadFrame={tx.subscribePlayheadFrame}
                   playbackFollowMode={tx.playbackScrollFollowMode}
                 />
-              </div>
+              </CspLayout>
             </CspLayout>
           </CspLayout>
         </div>

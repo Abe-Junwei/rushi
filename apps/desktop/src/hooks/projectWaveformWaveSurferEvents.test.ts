@@ -7,11 +7,11 @@ describe("projectWaveformWaveSurferEvents", () => {
     expect(source).toContain('ws.on("audioprocess"');
   });
 
-  it("primes visual clock on play and syncs on seeking when not suppressed", () => {
+  it("primes visual clock on audioprocess; syncs playhead on paused seeking only", () => {
     expect(source).toContain("optsRef.current.onWsAudioprocessRef?.current?.(t)");
-    expect(source).toContain('ws.on("play"');
-    expect(source).toContain("shouldSuppressSeekingPlayheadSync");
-    expect(source).toContain("syncDisplayPlayheadAfterSeekRef?.current?.(t)");
+    expect(source).toContain('ws.on("seeking"');
+    expect(source).toMatch(/if \(!ws\.isPlaying\(\)\) \{[\s\S]*syncDisplayPlayheadAfterSeekRef/);
+    expect(source).not.toContain("shouldSuppressSeekingPlayheadSync");
   });
 
   it("does not wrap requestWaveformSegmentBandPaint in requestAnimationFrame (S6)", () => {

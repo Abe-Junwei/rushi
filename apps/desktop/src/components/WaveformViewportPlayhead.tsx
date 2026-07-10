@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
@@ -87,7 +87,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     const transform = `translate3d(${leftPx.toFixed(3)}px, 0, 0)`;
     if (lastTransformRef.current === transform) return;
     lastTransformRef.current = transform;
-    setCspLayoutRules(el, { transform });
+    setDirectLayoutStyle(el, { transform });
   }, []);
 
   useEffect(() => {

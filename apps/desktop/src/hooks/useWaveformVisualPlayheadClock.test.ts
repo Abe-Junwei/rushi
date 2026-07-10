@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
@@ -9,6 +11,33 @@ import {
   PLAYHEAD_FRAME_PRIORITY_SCROLL,
   useWaveformVisualPlayheadClock,
 } from "./useWaveformVisualPlayheadClock";
+
+/** Queue-based rAF — never invoke synchronously (playing loop would recurse forever). */
+function stubQueuedRaf() {
+  const rafQueue: FrameRequestCallback[] = [];
+  const cancel = vi.fn((id: number) => {
+    void id;
+  });
+  vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+    rafQueue.push(cb);
+    return rafQueue.length;
+  });
+  vi.stubGlobal("cancelAnimationFrame", cancel);
+  return {
+    rafQueue,
+    cancel,
+    flushOne: () => {
+      const cb = rafQueue.shift();
+      if (cb) cb(performance.now());
+    },
+    flushAll: () => {
+      while (rafQueue.length > 0) {
+        const cb = rafQueue.shift();
+        if (cb) cb(performance.now());
+      }
+    },
+  };
+}
 
 describe("useWaveformVisualPlayheadClock single tick", () => {
   afterEach(() => {
@@ -40,12 +69,9 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(getRawMediaPlayheadTimeSec).toHaveBeenCalledTimes(1);
   });
 
-  it("notifies subscribers in priority order via WS audioprocess + unified viewport frame", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
-
+  it("notifies subscribers in priority order via playing rAF media poll", () => {
+    const raf = stubQueuedRaf();
+    let mediaSec = 1.25;
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
         isPlaying: true,
@@ -53,7 +79,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 0,
+        getRawMediaPlayheadTimeSec: () => mediaSec,
       }),
     );
 
@@ -68,20 +94,59 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     });
 
     act(() => {
-      result.current.onWsAudioprocess(1.25);
+      raf.flushOne();
       flushTierScrollFrameForTests();
     });
 
     expect(order).toEqual(["scroll", "playhead"]);
     expect(seen).toEqual([1.25]);
     expect(result.current.getVisualPlayheadTimeSec()).toBe(1.25);
+
+    mediaSec = 1.5;
+    act(() => {
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(seen).toEqual([1.25, 1.5]);
+  });
+
+  it("stops playing rAF when live media reports not playing (before React isPlaying=false)", () => {
+    const raf = stubQueuedRaf();
+    let mediaSec = 2;
+    let mediaPlaying = true;
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 2,
+        playbackRate: 1,
+        getRawMediaPlayheadTimeSec: () => mediaSec,
+        getRawMediaIsPlaying: () => mediaPlaying,
+      }),
+    );
+
+    act(() => {
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(2);
+
+    mediaPlaying = false;
+    mediaSec = 2.05;
+    const queuedAfterPause = raf.rafQueue.length;
+    act(() => {
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(2.05);
+    // Loop must not re-queue after live pause.
+    expect(raf.rafQueue.length).toBeLessThanOrEqual(queuedAfterPause);
   });
 
   it("onWsAudioprocess advances visual clock before React isPlaying commits", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
+    const raf = stubQueuedRaf();
+    void raf;
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -99,15 +164,11 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
       flushTierScrollFrameForTests();
     });
 
-    expect(result.current.getVisualPlayheadTimeSec()).toBeGreaterThanOrEqual(5.4);
-    expect(result.current.getVisualPlayheadTimeSec()).toBeLessThanOrEqual(5.45);
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(5.4);
   });
 
-  it("extrapolates visual playhead forward between audioprocess samples", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
+  it("holds visual playhead at polled media time without extrapolation", () => {
+    const raf = stubQueuedRaf();
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -121,25 +182,23 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     );
 
     act(() => {
-      result.current.onWsAudioprocess(1);
+      raf.flushOne();
       flushTierScrollFrameForTests();
     });
     const first = result.current.getVisualPlayheadTimeSec();
 
     act(() => {
-      result.current.onWsAudioprocess(1);
+      raf.flushOne();
       flushTierScrollFrameForTests();
     });
     const second = result.current.getVisualPlayheadTimeSec();
 
-    expect(second).toBeGreaterThanOrEqual(first);
+    expect(second).toBe(1);
+    expect(first).toBe(1);
   });
 
   it("stops notifying after unsubscribe", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
+    const raf = stubQueuedRaf();
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -148,7 +207,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 0,
+        getRawMediaPlayheadTimeSec: () => 1,
       }),
     );
 
@@ -159,20 +218,21 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     });
 
     act(() => {
-      result.current.onWsAudioprocess(1);
+      raf.flushOne();
       flushTierScrollFrameForTests();
     });
     expect(hits.length).toBe(1);
 
     act(() => {
       unsub();
-      result.current.onWsAudioprocess(2);
+      raf.flushOne();
       flushTierScrollFrameForTests();
     });
     expect(hits.length).toBe(1);
   });
 
-  it("getDisplayPlayheadTimeSec catches up to raw media while playing", () => {
+  it("getDisplayPlayheadTimeSec returns visual time regardless of media while playing", () => {
+    stubQueuedRaf();
     const { result, rerender } = renderHook(
       (props: { isPlaying: boolean }) =>
         useWaveformVisualPlayheadClock({
@@ -190,14 +250,11 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
 
     rerender({ isPlaying: true });
     result.current.visualTimeSecRef.current = 7.25;
-    expect(result.current.getDisplayPlayheadTimeSec()).toBe(8);
+    expect(result.current.getDisplayPlayheadTimeSec()).toBe(7.25);
   });
 
   it("syncDisplayPlayheadAfterSeek notifies subscribers while paused", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
+    stubQueuedRaf();
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -255,10 +312,8 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
   });
 
   it("syncDisplayPlayheadAfterSeek snaps to seek target while playing", () => {
-    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
-      cb(0);
-      return 1;
-    });
+    const raf = stubQueuedRaf();
+    let mediaSec = 12;
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -267,7 +322,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 12,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 12,
+        getRawMediaPlayheadTimeSec: () => mediaSec,
       }),
     );
 
@@ -278,17 +333,50 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
 
     act(() => {
       result.current.syncDisplayPlayheadAfterSeek(5);
+      mediaSec = 5; // mirrors ws.setTime completing in the same stack
       flushTierScrollFrameForTests();
     });
 
     expect(seen).toEqual([5]);
     expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
+
+    act(() => {
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
   });
 
-  it("does not run a separate playing rAF loop (WS audioprocess drives ticks)", async () => {
+  it("cancels playing rAF loop on pause", () => {
+    const raf = stubQueuedRaf();
+    const { rerender } = renderHook(
+      (props: { isPlaying: boolean }) =>
+        useWaveformVisualPlayheadClock({
+          isPlaying: props.isPlaying,
+          isReady: true,
+          durationSec: 30,
+          currentTimeSec: 1,
+          playbackRate: 1,
+          getRawMediaPlayheadTimeSec: () => 1,
+        }),
+      { initialProps: { isPlaying: true } },
+    );
+
+    expect(raf.rafQueue.length).toBeGreaterThanOrEqual(1);
+    const cancelsBeforePause = raf.cancel.mock.calls.length;
+
+    act(() => {
+      rerender({ isPlaying: false });
+    });
+
+    expect(raf.cancel.mock.calls.length).toBeGreaterThan(cancelsBeforePause);
+  });
+
+  it("playing rAF polls raw media without rate-based lead", async () => {
     const source = await import("./useWaveformVisualPlayheadClock.ts?raw");
-    expect(source.default).toContain("onWsAudioprocess");
-    expect(source.default).toContain("schedulePlaybackViewportFrame");
-    expect(source.default).not.toMatch(/requestAnimationFrame\(tick\)/);
+    expect(source.default).toContain("getRawMediaPlayheadTimeSec");
+    expect(source.default).toContain("requestAnimationFrame(tick)");
+    expect(source.default).not.toMatch(/playbackRate\s*\*/);
+    expect(source.default).not.toMatch(/lastMedia.*elapsed|elapsed.*playbackRate/i);
   });
 });

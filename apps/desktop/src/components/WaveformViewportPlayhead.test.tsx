@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { render, act } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
@@ -6,12 +8,11 @@ import {
   resetTierScrollFrameCoordinatorForTests,
   scheduleTierScrollFrame,
 } from "../utils/tierScrollFrameCoordinator";
-import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
 
-/** Imperative playhead transform is applied via the CSP nonce style registry, not inline style. */
+/** Imperative playhead transform is a direct CSP-legal inline style write (setDirectLayoutStyle). */
 function playheadTransform(line: HTMLElement): string {
-  return readCspLayoutRulesForElement(line) ?? "";
+  return line.style.transform ?? "";
 }
 
 function makePlayheadProps(overrides: Partial<ComponentProps<typeof WaveformViewportPlayhead>> = {}) {

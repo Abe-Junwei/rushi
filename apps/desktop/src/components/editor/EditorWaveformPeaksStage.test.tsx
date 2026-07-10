@@ -108,7 +108,7 @@ describe("EditorWaveformPeaksStage", () => {
     resetSelectionChromeStoreForTests();
   });
 
-  it("keeps timeline waveform and overlay layers at timeline width for pointer hit-testing", () => {
+  it("keeps WaveSurfer host at viewport width and overlay at timeline width", () => {
     const { container } = render(
       wrapPeaksStage(
       <EditorWaveformPeaksStage
@@ -142,8 +142,16 @@ describe("EditorWaveformPeaksStage", () => {
 
     expect(waveLayer).toBeInstanceOf(HTMLElement);
     expect(overlayLayer).toBeInstanceOf(HTMLElement);
-    expect(readCspLayoutRulesForElement(waveLayer as HTMLElement)).toContain("width: 2400px");
+    expect((waveLayer as HTMLElement).className).toContain("sticky");
+    expect((waveLayer as HTMLElement).className).toContain("h-0");
+    expect(readCspLayoutRulesForElement(waveLayer as HTMLElement)).toContain("width: 800px");
     expect(readCspLayoutRulesForElement(overlayLayer as HTMLElement)).toContain("width: 2400px");
+
+    const stickyShell = container.querySelector(".waveform-viewport-playhead")?.parentElement?.parentElement;
+    expect(stickyShell).toBeInstanceOf(HTMLElement);
+    expect((stickyShell as HTMLElement).className).toContain("h-0");
+    expect((stickyShell as HTMLElement).className).toContain("sticky");
+    expect(readCspLayoutRulesForElement(stickyShell as HTMLElement)).toContain("width: 800px");
   });
 
   it("positions playback controls from SC2 chrome before React selectedIdx catches up", () => {
