@@ -173,7 +173,7 @@
 
 | 层 | 配色真源 | 说明 |
 |----|----------|------|
-| **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层 tint 且主 canvas 不 clip |
+| **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层 tint 且主 canvas 不 clip；播放中 live tint 对齐 visual playhead，`progressWrapper.width` 走 `setDirectLayoutStyle` + 百分比去重（静态 clip/overflow 仍 nonce CSP 一次写入） |
 | **Band canvas** | `--segment-fill-*` → resolve rgb | [`segmentBandFillStyle`](../../apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts)；选中 / 滚动 / seek chrome 经 [`requestWaveformSegmentBandPaint`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 重绘（**不**按 playhead 画 visited 色） |
 | **DOM overlay** | `var(--segment-fill-*)` | [`waveformRegionFillColor`](../../apps/desktop/src/utils/segmentChrome.ts)；多选时 `multiSelectActive` 统一 12% waveform in-selection |
 | **Playhead / minimap** | `--waveform-playhead` / `--waveform-minimap-*` | `accent-action` 链；WS 内置 cursor 隐藏 |
