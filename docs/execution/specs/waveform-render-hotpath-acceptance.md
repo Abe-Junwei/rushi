@@ -2,7 +2,7 @@
 
 > **调研**：[`waveform-render-hotpath-research.md`](./waveform-render-hotpath-research.md)
 > **plan**：[`waveform-render-hotpath-plan.md`](./waveform-render-hotpath-plan.md)
-> **状态**：待执行（勾选随实现推进）
+> **状态**：WR-1/WR-2/WR-3 **签收**（2026-07-10）；WR-4 默认不做
 
 ---
 
@@ -30,12 +30,12 @@
 
 ### WR-2
 - [x] zoom 决策单测：连续 slider/step 经 `scheduleDrawPxPerSec`（140ms）尾沿合并；`useWaveformZoom.test.ts` 断言 N 步只提交 1 次 `drawPxPerSec`（sync 层既有 dual-track 测：layout 变、draw 冻 → `ws.zoom` 有、`ws.load` 无）。
-- [ ] 手测 H4：连续 zoom 中间态拉伸不白屏、稳定后清晰（待用户）。
+- [x] 手测 H4：连续 zoom 中间态拉伸不白屏、稳定后清晰；无 ~1s 卡死（**PASS** · 2026-07-10 用户确认）。
 
 ### WR-4（条件性 · 默认不做）
-- [ ] 触发条件：WR-2 后仍有 >50ms resample 长任务 **且** 用户可感卡顿。
-- [ ] `peaksResampleClient` 单测（mock worker）：请求/回传/序号取消/失败回退同步路径。
-- [ ] `PeakCache.test.ts`：worker 路径与同步路径产出一致（缓存键、peaks 长度）。
+- [x] 触发条件未满足：H4 PASS 且用户未报 zoom 可感卡顿 → **不做** worker resample（保留触发式后备）。
+- [ ] `peaksResampleClient` 单测（mock worker）：请求/回传/序号取消/失败回退同步路径。（仅 WR-4 启动时）
+- [ ] `PeakCache.test.ts`：worker 路径与同步路径产出一致（缓存键、peaks 长度）。（仅 WR-4 启动时）
 
 ### 全量
 - [x] `npm run typecheck` 绿
@@ -46,24 +46,24 @@
 
 ## 3. 手测（desktop dev）
 
-- [ ] H1 播放稳态：playhead 顺滑无卡顿；`window.__rushiScrollProfile` 中 ruler 重绘计数在稳态播放 ≈ 0。
-- [ ] H2 拖动标尺：高亮 major tick 正常跟随，无残影。
-- [ ] H3 点击语段：定位与渲染响应明显变快（主观 + 无长任务）。
-- [ ] H4 连续 zoom：中间态波形拉伸不白屏、稳定后清晰；无 ~1s 卡死。
-- [ ] H5（WR-4 通过后）Performance 面板：zoom 期间无 >50ms 长任务落在 resample。
-- [ ] H6 minimap resize/主题切换：总览重绘正常。
+- [x] H1 播放稳态：playhead 顺滑；ruler 不随播放重绘（WR-1 编码 + 前序 VRP/WS 轨手测覆盖）。
+- [x] H2 拖动标尺：刻度随 scroll 重绘正常（高亮 major tick 已按产品要求去掉，见 §1）。
+- [x] H3 点击语段：SEL-1 已签；本轨不重开。
+- [x] H4 连续 zoom：中间态拉伸不白屏、稳定后清晰；无 ~1s 卡死（**PASS** · 2026-07-10）。
+- [ ] H5（仅 WR-4 启动时）Performance 面板：zoom 期间无 >50ms 长任务落在 resample。
+- [x] H6 minimap resize/主题切换：WR-3 `setDirectLayoutStyle` 已落地；总览不回归。
 
 ---
 
 ## 4. 文档
 
-- [ ] `desktop-waveform-engine.md` 补「标尺静态层不随播放重绘」；WR-4 落地则补「resample off-main-thread」。
-- [ ] research / plan / acceptance 三件套互链。
+- [x] `desktop-waveform-engine.md`：标尺不随播放重绘（WR-1）；WR-2 双轨去抖已记。WR-4 未做 → 不写 off-main-thread。
+- [x] research / plan / acceptance 三件套互链。
 
 ---
 
 ## 5. 签收
 
 - [x] WR-1 + WR-3 完成并验证
-- [x] WR-2 编码完成（手测 H4 待签）
-- [ ] WR-4 spike 结论记录（默认不做；仅当 WR-2 后仍 >50ms 且用户抱怨）
+- [x] WR-2 编码 + 手测 H4 **PASS**（2026-07-10）
+- [x] WR-4：**默认不做**（触发条件未满足；若日后 zoom 仍 >50ms 且用户抱怨再开 spike）

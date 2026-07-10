@@ -3,7 +3,7 @@
 > **调研**（编码前必读）：[`waveform-render-hotpath-research.md`](./waveform-render-hotpath-research.md)
 > **acceptance**：[`waveform-render-hotpath-acceptance.md`](./waveform-render-hotpath-acceptance.md)
 > **架构真源**：[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)
-> **状态**：待用户确认执行顺序（WR-1 / WR-2 可先行；WR-3 需 spike 通过）
+> **状态**：WR-1/WR-2/WR-3 **完成并签收**（2026-07-10）；WR-4 默认不做
 
 ---
 
