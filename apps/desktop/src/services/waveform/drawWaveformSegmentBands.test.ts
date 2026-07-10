@@ -118,6 +118,48 @@ describe("drawWaveformSegmentBands", () => {
     expect(fillRectCalls).toBe(2);
   });
 
+  it("dirtyIndices still clearRect skipped overlay-owned bands", () => {
+    const cleared: Array<[number, number, number, number]> = [];
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: (x: number, y: number, w: number, h: number) => {
+        cleared.push([x, y, w, h]);
+      },
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    // 10s @ 10px/s → selected band is [30, 80) in timeline px.
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 3, text: "a" },
+        { idx: 1, uid: "b", start_sec: 3, end_sec: 8, text: "b" },
+        { idx: 2, uid: "c", start_sec: 8, end_sec: 10, text: "c" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 100,
+      timelineWidthPx: 100,
+      durationSec: 10,
+      layoutHeightPx: 96,
+      dirtyIndices: [0, 1, 2],
+      selectedIdx: 1,
+      skipIndexSet: new Set([1]),
+    });
+
+    expect(cleared.some((rect) => rect[0] === 30 && rect[2] === 50)).toBe(true);
+    // Neighbors paint; overlay-owned selected band is cleared but not filled.
+    expect(fillRectCalls).toBe(2);
+  });
+
   it("respects skipIndexSet the same as skipIndices (S10 external Set)", () => {
     let fillRectCalls = 0;
     const ctx = {

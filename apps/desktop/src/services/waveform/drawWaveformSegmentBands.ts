@@ -115,8 +115,6 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
   const skip = input.skipIndexSet ?? new Set(input.skipIndices ?? []);
 
   const paintOne = (idx: number) => {
-    if (dominant.has(idx)) return;
-    if (skip.has(idx)) return;
     const seg = segments[idx];
     if (!seg) return;
     const lo = Math.min(seg.start_sec, seg.end_sec);
@@ -129,9 +127,13 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
     const leftViewportPx = leftTimelinePx - scrollLeftPx;
     if (leftViewportPx + bandWidthPx < 0 || leftViewportPx > widthPx) return;
 
+    // Dirty-rect must clear even when DOM overlay owns the band (skip/dominant).
+    // Otherwise idle pixels remain under the translucent selected overlay and the
+    // same segment looks split-tone (idle+selected vs selected-only).
     if (dirtyOnly) {
       ctx.clearRect(leftViewportPx, 0, bandWidthPx, heightPx);
     }
+    if (dominant.has(idx) || skip.has(idx)) return;
 
     const { selected, inSelection, multiSelectActive } = resolveWaveformSegmentFillState({
       idx,

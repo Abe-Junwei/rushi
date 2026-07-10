@@ -1,11 +1,17 @@
 import type WaveSurfer from "wavesurfer.js";
-import { setCspLayoutRules } from "../../utils/cspElementLayout";
+import { setCspLayoutRules, setDirectLayoutStyle } from "../../utils/cspElementLayout";
 import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../../utils/waveformScrollSync";
 import { readTauriStyleCspNonce } from "../../utils/tauriStyleCspNonce";
 import { logDesktopUi } from "../desktopUiLog";
 
 /** When set during playback, progress tint follows the visual playhead clock instead of raw WS ratio. */
 let visualProgressRatioReader: (() => number | null) | null = null;
+
+/** Last progressWrapper width percent written via direct style (dedupe per-frame writes). */
+const lastProgressWidthPercent = new WeakMap<HTMLElement, number>();
+
+/** Elements that already received one-shot static clip/overflow/cursor CSP rules. */
+const staticProgressLayoutApplied = new WeakSet<HTMLElement>();
 
 export function setWaveSurferVisualProgressRatioReader(reader: (() => number | null) | null): void {
   visualProgressRatioReader = reader;
@@ -16,6 +22,12 @@ function resolveWaveSurferProgressRatio(ratio: number, isPlaying: boolean): numb
   const visual = visualProgressRatioReader();
   if (visual == null || !Number.isFinite(visual)) return ratio;
   return Math.max(0, Math.min(1, visual));
+}
+
+/** Round ratio to percent with 4 decimal places (matches prior CSP width formatting). */
+export function formatWaveSurferPlayedPercent(ratio: number): number {
+  const played = Math.max(0, Math.min(1, ratio));
+  return Math.round(played * 1e6) / 1e4;
 }
 
 export const WAVESURFER_MAX_CANVAS_CHUNK_PX = 8000;
@@ -255,8 +267,9 @@ export function restoreWaveSurferMainCanvasVisibility(
 ): void {
   setCspLayoutRules(layers.canvasWrapper, { clipPath: "none" });
   const played = Math.max(0, Math.min(1, ratio));
+  const playedPercent = Math.round(played * 1e6) / 1e4;
   setCspLayoutRules(layers.progressWrapper, {
-    width: `${played * 100}%`,
+    width: `${playedPercent}%`,
     overflow: "hidden",
   });
 }
@@ -275,19 +288,19 @@ export function applyWaveSurferProgressWithoutClip(
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   const layers = readWaveSurferWaveformLayers(ws);
   if (!layers) return;
-  // Paused: hide played/unplayed tint so semi-transparent segment bands stay uniform.
-  const displayRatio = ws.isPlaying() ? ratio : 0;
-  restoreWaveSurferMainCanvasVisibility(layers, displayRatio);
+  restoreWaveSurferMainCanvasVisibility(layers, ratio);
   hideWaveSurferPlayheadCursor(renderer);
 }
 
 /**
  * Patch renderer.renderProgress.
  *
- * WS-1: while playing, skip the WS progress hot path (original renderProgress +
- * per-frame progressWrapper width writes). Visual time is owned by the DOM
- * playhead + VRP clock; played-region tint is frozen off during playback.
- * Paused/seek still runs the original path so static geometry stays correct.
+ * Keep the full waveform on the main canvas (no clipPath) and drive the played
+ * tint via `progressWrapper` width. Prefer the visual playhead ratio while
+ * playing so tint stays aligned with the DOM playhead / VRP clock.
+ *
+ * WS-1 spike (freeze tint to 0% while playing) did not pass the fps gate and
+ * left played-region paint stuck until pause — do not restore that path.
  */
 export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => void {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
@@ -295,19 +308,9 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
   const original = renderer.renderProgress?.bind(renderer);
   if (!original) return () => {};
 
-  let playingProgressSuppressed = false;
-
   renderer.renderProgress = (ratio: number, isPlaying: boolean) => {
-    if (isPlaying) {
-      if (!playingProgressSuppressed) {
-        applyWaveSurferProgressWithoutClip(ws, 0);
-        playingProgressSuppressed = true;
-      } else {
-        hideWaveSurferPlayheadCursor(renderer);
-      }
-      return;
-    }
-    playingProgressSuppressed = false;
+    // Call original for WS-internal bookkeeping, then immediately undo clipPath
+    // and re-apply progressWrapper width through the CSP-safe layout path.
     original(ratio, isPlaying);
     applyWaveSurferProgressWithoutClip(ws, resolveWaveSurferProgressRatio(ratio, isPlaying));
   };
