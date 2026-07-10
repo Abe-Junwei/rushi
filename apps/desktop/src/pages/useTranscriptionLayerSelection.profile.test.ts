@@ -7,9 +7,11 @@ import {
   resetSelectionLatencyProfileForTests,
   setSelectionLatencyProfileEnabled,
 } from "../services/ui/selectionLatencyProfile";
-import { resetSelectionChromeStoreForTests, getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
-import { publishSelectionChromeForInput } from "../services/selection/publishSelectionChromeForInput";
 import { resetWaveformSegmentPreviewViewportSyncForTests } from "../services/waveform/waveformSegmentSelectPreviewSync";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 
 function makeSegments(count: number) {
   return Array.from({ length: count }, (_, idx) => ({
@@ -88,7 +90,6 @@ function makeTimeline(layoutIntent: "manual" | "fit-selection" | "fit-all" = "ma
 
 describe("useTranscriptionLayerSelection profile", () => {
   beforeEach(() => {
-    resetSelectionChromeStoreForTests();
     resetWaveformSegmentPreviewViewportSyncForTests();
     const data = new Map<string, string>();
     Object.defineProperty(window, "localStorage", {
@@ -102,6 +103,8 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
     resetSelectionLatencyProfileForTests();
     setSelectionLatencyProfileEnabled(true);
+    resetTranscriptProjectionForTests();
+    resetWaveformSegmentPreviewViewportSyncForTests();
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((cb: FrameRequestCallback) => {
       cb(0);
       return 1;
@@ -112,13 +115,15 @@ describe("useTranscriptionLayerSelection profile", () => {
     vi.restoreAllMocks();
     resetSelectionLatencyProfileForTests();
     setSelectionLatencyProfileEnabled(false);
+    resetTranscriptProjectionForTests();
   });
 
   it("records profile spans for list selection without runaway rerenders", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
 
     const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
@@ -128,7 +133,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -136,13 +141,10 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "list");
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
+    expect(selectedIdxRef.current).toBe(2);
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
-    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
-      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
-    );
 
     const lines = readRecentSelectionLatencyProfileLines();
     const dataLines = lines.filter((line) => line.includes("list idx=2") && line.includes("total="));
@@ -155,7 +157,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
 
     const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
@@ -165,7 +166,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
       }),
     );
 
@@ -182,7 +182,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
     document.body.innerHTML = `
       <div data-seg-row="0">
         <textarea aria-label="语段正文" class="seg-text"></textarea>
@@ -198,7 +197,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
       }),
     );
 
@@ -206,7 +204,6 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "listKeyboard", { burst: true });
     });
 
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     act(() => {
       result.current.finalizeListKeyboardViewport(2);
@@ -220,7 +217,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
@@ -232,7 +228,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
       }),
     );
 
@@ -240,7 +235,6 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "listKeyboard", { burst: true });
     });
 
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     act(() => {
       result.current.finalizeListKeyboardViewport(2);
@@ -254,7 +248,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
@@ -266,7 +259,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
       }),
     );
 
@@ -287,9 +279,10 @@ describe("useTranscriptionLayerSelection profile", () => {
 
   it("non-burst listKeyboard skips reveal when editor focus gate closed", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
@@ -301,7 +294,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -309,17 +302,19 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "listKeyboard");
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalled();
+    expect(selectedIdxRef.current).toBe(2);
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     document.body.innerHTML = "";
   });
 
-  it("listKeyboard burst defers SC1 until commitListKeyboardBurst", async () => {
-    const ctx = makeCtx(5);
+  it("U18: listKeyboard burst mid-steps emit no profile lines; keyup commit emits one", async () => {
+    setSelectionLatencyProfileEnabled(true);
+    const ctx = makeCtx(8);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -328,34 +323,47 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
     act(() => {
-      for (let i = 1; i <= 4; i += 1) {
+      for (let i = 1; i <= 5; i += 1) {
         result.current.selectSegmentAt(i, "listKeyboard", { burst: true });
       }
     });
+    await act(async () => {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+    });
 
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+    const midBurst = readRecentSelectionLatencyProfileLines().filter((line) =>
+      line.includes("[selection-profile]"),
+    );
+    expect(midBurst).toHaveLength(0);
+    expect(selectedIdxRef.current).toBe(5);
 
     act(() => {
-      result.current.commitListKeyboardBurst(4);
+      result.current.commitListKeyboardBurst(5);
     });
     await act(async () => {
       await Promise.resolve();
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(4);
+    const afterCommit = readRecentSelectionLatencyProfileLines().filter((line) =>
+      line.includes("listKeyboard commit idx=5"),
+    );
+    expect(afterCommit.length).toBe(1);
+    expect(afterCommit[0]).toMatch(/listCommit=/);
   });
 
   it("waveform selection centers without zooming even in fit-selection layout", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const waveformShell = document.createElement("div");
     waveformShell.tabIndex = -1;
     document.body.appendChild(waveformShell);
@@ -368,7 +376,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: waveformShell },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -376,29 +384,21 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(2, "waveform");
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
-    // SEL-1c: SC1 commit after sync seek/reveal so listCommit flush keeps those spans.
-    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
-      setSelectedIdxUi.mock.invocationCallOrder[0],
-    );
+    expect(selectedIdxRef.current).toBe(2);
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
       expect.objectContaining({ start_sec: 4, end_sec: 5.5 }),
     );
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
-    expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
-      setSelectedIdxUi.mock.invocationCallOrder[0],
-    );
     expect(document.activeElement).toBe(waveformShell);
   });
 
-  it("waveformKeyboard selects chrome synchronously and commits final idx on keyup", () => {
+  it("waveformKeyboard updates selectedIdxRef and seeks during burst steps", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
     ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const waveformShell = document.createElement("div");
     waveformShell.tabIndex = -1;
     document.body.appendChild(waveformShell);
@@ -411,7 +411,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: waveformShell },
         segmentListRef,
-        setSelectedIdxUi,
         selectedIdxRef,
       }),
     );
@@ -422,37 +421,20 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(selectedIdxRef.current).toBe(3);
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
-    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
-
-    act(() => {
-      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
-    });
-
-    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledTimes(1);
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
-      expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
-    );
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
   });
 
-  it("paints selection chrome before waveform seek on segment change", () => {
+  it("seeks on waveform segment change (CM6 path; SC2 paint skipped)", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: null as HTMLDivElement | null };
-    resetSelectionChromeStoreForTests();
-    let chromeVersionAtSeek = 0;
+    resetTranscriptProjectionForTests();
 
-    timeline.wfApiRef.current.seek = vi.fn(() => {
-      chromeVersionAtSeek = getSelectionChromeSnapshot().version;
-    });
+    timeline.wfApiRef.current.seek = vi.fn();
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -461,27 +443,26 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
-    const versionBefore = getSelectionChromeSnapshot().version;
     act(() => {
       result.current.selectSegmentAt(2, "waveform");
     });
 
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
-    expect(chromeVersionAtSeek).toBeGreaterThan(versionBefore);
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(2);
+    expect(selectedIdxRef.current).toBe(2);
   });
 
-  it("dispatchWaveformSelectionGesture down syncs seek+reveal with chrome on pointerdown when idx changes", async () => {
+  it("dispatchWaveformSelectionGesture down syncs seek+reveal on pointerdown when idx changes", async () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: null as HTMLDivElement | null };
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -490,7 +471,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -498,9 +479,9 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
 
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
     expect(timeline.suppressPlaybackFollowForSelectionSeek).toHaveBeenCalledOnce();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(selectedIdxRef.current).toBe(3);
 
     await act(async () => {
       await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
@@ -510,7 +491,6 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith(
       expect.objectContaining({ start_sec: 6, end_sec: 7.5 }),
     );
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({
@@ -521,17 +501,24 @@ describe("useTranscriptionLayerSelection profile", () => {
         viewportSyncedOnDown: true,
       });
     });
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    expect(selectedIdxRef.current).toBe(3);
   });
 
-  it("dispatchWaveformSelectionGesture down skips seek when only chrome resyncs same idx", () => {
+  it("dispatchWaveformSelectionGesture down skips seek when projection already matches tapped idx", () => {
     const ctx = makeCtx(5);
     ctx.selectedIdx = 3;
+    const selectedIdxRef = { current: 3 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: null as HTMLDivElement | null };
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
+      primaryIdx: 3,
+      selectedSet: new Set([3]),
+      rangeAnchor: 3,
+      lineCount: 5,
+    });
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -540,7 +527,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -548,19 +535,18 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
 
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
   });
 
   it("selectSegmentAt skips duplicate seek/reveal after pointerdown preview sync", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: null as HTMLDivElement | null };
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -569,7 +555,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -584,19 +570,20 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(3, "waveform");
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    expect(selectedIdxRef.current).toBe(3);
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.suppressPlaybackFollowForSelectionSeek).not.toHaveBeenCalled();
   });
 
-  it("preview path marks firstPaint immediately and listCommit via committer", () => {
+  it("preview path marks firstPaint immediately on pointerdown+commit", () => {
     const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const segmentListRef = { current: document.createElement("div") };
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -605,7 +592,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -616,56 +603,22 @@ describe("useTranscriptionLayerSelection profile", () => {
       result.current.selectSegmentAt(3, "waveform");
     });
 
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, undefined);
+    expect(selectedIdxRef.current).toBe(3);
     const lines = readRecentSelectionLatencyProfileLines();
     const profile = lines.find((line) => line.includes("waveform idx=3"));
     expect(profile).toBeDefined();
     expect(profile).toMatch(/firstPaint=[\d.]+ms/);
-    expect(profile).toMatch(/listCommit=[\d.]+ms/);
-  });
-
-  it("selectSegmentAt still seeks when chrome already matches but SC1 lags (no preview seek)", () => {
-    // Playing-state pointerdown paints SC2 without seeking; pointerup must still seek.
-    const ctx = makeCtx(5);
-    ctx.selectedIdx = 4;
-    const ctxRef = { current: ctx };
-    const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
-    const waveformShellRef = { current: document.createElement("div") };
-    resetSelectionChromeStoreForTests();
-    publishSelectionChromeForInput(
-      ctx,
-      { primaryIdx: 3, selectedSet: new Set([3]) },
-      { listRoot: null, overlayRoot: null },
-    );
-
-    const { result } = renderHook(() =>
-      useTranscriptionLayerSelection({
-        ctx,
-        ctxRef,
-        timeline: timeline as never,
-        waveformShellRef,
-        segmentListRef: { current: null },
-        setSelectedIdxUi,
-      }),
-    );
-
-    act(() => {
-      result.current.selectSegmentAt(3, "waveform");
-    });
-
-    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
-    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
   });
 
   it("playing pointerdown defers seek; pointerup selectAndSeekStart still seeks segment start", () => {
     const ctx = makeCtx(5);
     ctx.selectedIdx = 0;
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
     (timeline as { wf?: { isPlaying: boolean } }).wf = { isPlaying: true };
-    const setSelectedIdxUi = vi.fn();
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -674,7 +627,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: null },
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -687,7 +640,6 @@ describe("useTranscriptionLayerSelection profile", () => {
       expect(synced).toBe(false);
     });
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({
@@ -701,14 +653,13 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(3, { previewSessionId: "play-s1" });
+    expect(selectedIdxRef.current).toBe(3);
   });
 
   it("selectSegmentAt with preferSegmentTextFocus skips waveform shell focus", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline("fit-selection");
-    const setSelectedIdxUi = vi.fn();
     const waveformShell = document.createElement("div");
     const focusSpy = vi.spyOn(waveformShell, "focus");
     const waveformShellRef = { current: waveformShell };
@@ -720,7 +671,6 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef,
         segmentListRef: { current: null },
-        setSelectedIdxUi,
       }),
     );
 

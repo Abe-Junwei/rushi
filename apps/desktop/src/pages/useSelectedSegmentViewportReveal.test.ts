@@ -2,7 +2,10 @@
 
 import { renderHook, act } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 import { useSelectedSegmentViewportReveal } from "./useSelectedSegmentViewportReveal";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
@@ -56,10 +59,10 @@ function makeCtx(): TranscriptionLayerInput {
 
 describe("useSelectedSegmentViewportReveal", () => {
   beforeEach(() => {
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
-  it("reveals SC2 primary before React selectedIdx catches up", () => {
+  it("reveals projection primary before React selectedIdx catches up", () => {
     const ctx = makeCtx();
     const revealSegmentInViewport = vi.fn();
     const ctxRef = { current: ctx };
@@ -71,10 +74,11 @@ describe("useSelectedSegmentViewportReveal", () => {
       },
     };
 
-    commitSelectionChrome({
-      fileId: "f1",
+    seedTranscriptProjectionForTests({
       primaryIdx: 1,
       selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 2,
     });
 
     const args = { ctxRef, timelineRef } as unknown as Parameters<

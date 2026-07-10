@@ -21,7 +21,7 @@ import {
   dispatchTransportIntent,
   type TransportIntent,
 } from "../services/waveform/transport";
-import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -364,7 +364,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   );
 
   const handleToggleSelectedWaveformPlay = useCallback(async () => {
-    const idx = selectionChromeEffectivePrimaryIdx(selectedIdxForTransportRef.current);
+    const idx = effectiveTranscriptPrimaryIdx(selectedIdxForTransportRef.current);
     if (idx < 0 || !segmentsRef.current[idx]) return;
     await dispatchTransport({ kind: "toggleSegmentPlay" });
   }, [dispatchTransport]);

@@ -1,5 +1,5 @@
 import type { SegmentDto } from "../tauri/projectTypes";
-import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
+import { resolveLiveSegmentText } from "./segmentTextNormalize";
 import { mergeTwoSegments } from "../pages/segmentListHelpers";
 import { selectPackableSegmentIndices } from "./waveformSegmentBounds";
 

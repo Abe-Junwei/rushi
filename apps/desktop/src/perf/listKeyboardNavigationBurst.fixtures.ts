@@ -1,12 +1,8 @@
-// @vitest-environment jsdom
+import { vi } from "vitest";
+import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
+import { readRecentSelectionLatencyProfileLines } from "../services/ui/selectionLatencyProfile";
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import { renderHook, act } from "@testing-library/react";
-import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
-import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
-import { resetTranscriptProjectionForTests } from "../components/editor/core/transcriptProjection";
-
-function makeSegments(count: number) {
+export function makeSegments(count: number) {
   return Array.from({ length: count }, (_, idx) => ({
     uid: `seg-${idx}`,
     idx,
@@ -16,7 +12,7 @@ function makeSegments(count: number) {
   }));
 }
 
-function makeCtx(segmentCount: number, selectedIdx = 0): TranscriptionLayerInput {
+export function makeCtx(segmentCount: number, selectedIdx = 0): TranscriptionLayerInput {
   const segments = makeSegments(segmentCount);
   return {
     projectId: "p1",
@@ -62,10 +58,14 @@ function makeCtx(segmentCount: number, selectedIdx = 0): TranscriptionLayerInput
   };
 }
 
-function makeTimeline() {
+export function makeTimeline(segmentCount: number) {
+  const tier = document.createElement("div");
+  const overlayRoot = document.createElement("div");
+  overlayRoot.className = "waveform-timeline-overlay-layer";
+  tier.appendChild(overlayRoot);
   return {
-    timelineMetrics: { mediaDurationSec: 10 },
-    tierScrollRef: { current: null },
+    timelineMetrics: { mediaDurationSec: segmentCount * 2 + 1.5 },
+    tierScrollRef: { current: tier },
     wfApiRef: {
       current: {
         seek: vi.fn(),
@@ -78,42 +78,32 @@ function makeTimeline() {
       zoomToFitSegment: vi.fn(),
     },
     suppressPlaybackFollowForSelectionSeek: vi.fn(),
+    overlayRoot,
   };
 }
 
-describe("useTranscriptionLayerSelection chrome sync", () => {
-  beforeEach(() => {
-    resetTranscriptProjectionForTests();
+export function createScrollRoot(
+  scrollTop: number,
+  clientHeight: number,
+  scrollHeight: number,
+): HTMLDivElement {
+  const el = document.createElement("div");
+  let top = scrollTop;
+  Object.defineProperty(el, "clientHeight", { configurable: true, value: clientHeight });
+  Object.defineProperty(el, "scrollHeight", { configurable: true, value: scrollHeight });
+  Object.defineProperty(el, "scrollTop", {
+    configurable: true,
+    get: () => top,
+    set: (v: number) => {
+      top = v;
+    },
   });
+  return el;
+}
 
-  afterEach(() => {
-    document.body.innerHTML = "";
-  });
-
-  it("list click on idx 0 still updates selectedIdxRef when React selectedIdx stays 0", () => {
-    const ctx = makeCtx(5, 0);
-    const selectedIdxRef = { current: -1 };
-    ctx.selectedIdxRef = selectedIdxRef;
-    const ctxRef = { current: ctx };
-    const timeline = makeTimeline();
-    const listRoot = document.createElement("div");
-    document.body.appendChild(listRoot);
-
-    const { result } = renderHook(() =>
-      useTranscriptionLayerSelection({
-        ctx,
-        ctxRef,
-        timeline: timeline as never,
-        waveformShellRef: { current: null },
-        segmentListRef: { current: listRoot },
-        selectedIdxRef,
-      }),
-    );
-
-    act(() => {
-      result.current.selectSegmentAt(0, "list");
-    });
-
-    expect(selectedIdxRef.current).toBe(0);
-  });
-});
+export function latestProfileLine(matcher: (line: string) => boolean): string {
+  const lines = readRecentSelectionLatencyProfileLines().filter(matcher);
+  const line = lines[lines.length - 1];
+  if (!line) throw new Error("expected profile line");
+  return line;
+}

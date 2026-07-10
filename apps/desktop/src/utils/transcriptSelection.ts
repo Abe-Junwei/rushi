@@ -1,3 +1,7 @@
+import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import { readTranscriptEditorSelectionText } from "../components/editor/core/textEditCommands";
+
 const TRANSCRIPT_TEXTAREA_SELECTOR = 'textarea[aria-label="语段正文"]';
 
 type SelectionCache = { text: string; updatedAt: number };
@@ -13,6 +17,13 @@ function sliceTextareaSelection(el: HTMLTextAreaElement): string {
 
 function isTranscriptTextarea(el: unknown): el is HTMLTextAreaElement {
   return el instanceof HTMLTextAreaElement && el.getAttribute("aria-label") === "语段正文";
+}
+
+function readLiveCm6Selection(): string {
+  if (!readTranscriptEditorCoreEnabled()) return "";
+  const view = getTranscriptEditorView();
+  if (!view) return "";
+  return readTranscriptEditorSelectionText(view);
 }
 
 /** 打开自定义语段菜单前释放正文焦点，避免 WebKit/Tauri 把首击派给其它行的 textarea。 */
@@ -44,6 +55,8 @@ export function suspendTranscriptTextareasForContextMenu(): () => void {
 
 function readLiveTranscriptSelection(): string {
   if (typeof document === "undefined") return "";
+  const cm6 = readLiveCm6Selection();
+  if (cm6) return cm6;
   const active = document.activeElement;
   if (isTranscriptTextarea(active)) {
     const sel = sliceTextareaSelection(active);
@@ -77,7 +90,7 @@ export function captureTranscriptTextareaSelection(): string {
   return lastNonEmptySelection?.text ?? "";
 }
 
-/** Read selected text from the focused transcript textarea, if any. */
+/** Read selected text from the focused transcript textarea / CM6 core, if any. */
 export function readTranscriptTextareaSelection(): string {
   const live = readLiveTranscriptSelection();
   if (live) return live;

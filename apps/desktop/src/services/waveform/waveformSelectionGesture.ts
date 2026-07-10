@@ -8,10 +8,10 @@ import {
   applyWaveformSelectionCommand,
   resolveWaveformSelectionTapCommand,
 } from "../selection/waveformSelectionCommand";
-import {
-  selectionChromeEffectivePrimaryIdx,
-  selectionChromePrimaryOutOfSync,
-} from "../selection/selectionChromeStore";
+import { effectiveTranscriptPrimaryIdx } from "../../components/editor/core/projectionWaveformBridge";
+import { dispatchTranscriptEditorSelection } from "../../components/editor/core/transcriptEditorViewHandle";
+import { revealSegmentInView } from "../../components/editor/core/revealSegment";
+import { getTranscriptEditorView } from "../../components/editor/core/transcriptEditorViewHandle";
 import type { TranscriptionLayerInput } from "../../pages/transcriptionLayerTypes";
 import type { SegmentSelectAtOptions, SegmentSelectSource } from "../../utils/waveformViewMode";
 
@@ -35,6 +35,7 @@ export type WaveformSelectionGesture =
   | WaveformSelectionGestureUp;
 
 export type WaveformSelectionGestureDownDeps = {
+  /** Kept for call-site compat; P9b1 core-on path does not paint SC2. */
   paintChrome: (
     ctx: TranscriptionLayerInput,
     idx: number,
@@ -65,7 +66,7 @@ export type WaveformSelectionGestureUpDeps = {
 };
 
 /**
- * pointerdown（Tier-0）：SC2 imperative + seek + playhead + list scroll。
+ * pointerdown（Tier-0）：CM6 selection + seek + playhead + list reveal.
  */
 export function dispatchWaveformSelectionGestureDown(
   ctx: TranscriptionLayerInput,
@@ -77,28 +78,22 @@ export function dispatchWaveformSelectionGestureDown(
   const segment = ctx.segments[idx];
   if (ctx.busy || !segment) return { applied: false, viewportSyncedOnDown: false };
 
-  const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(ctx.selectedIdx);
+  const effectiveSelectedIdx = effectiveTranscriptPrimaryIdx(ctx.selectedIdx);
   const idxChanged = idx !== effectiveSelectedIdx;
-  const needsPaint = idxChanged || selectionChromePrimaryOutOfSync(idx);
-  if (!needsPaint) return { applied: false, viewportSyncedOnDown: false };
+  if (!idxChanged) return { applied: false, viewportSyncedOnDown: false };
 
-  const publishOpts = { skipBandPaint: true as const };
-
-  if (idxChanged) {
-    const planSeg = resolveSelectSegmentViewportPlan(segment).segment;
-    const mediaPlaying = deps.isMediaPlaying?.() ?? false;
-    deps.paintChrome(ctx, idx, undefined, "waveform", publishOpts);
-    if (!mediaPlaying) {
-      syncWaveformSegmentSelectPreviewViewport(timeline, planSeg, { segmentIdx: idx });
-      markWaveformSegmentPreviewViewportSynced(idx, sessionId);
-    }
-    deps.commitSelectedIdxRef(idx);
-    deps.runListScroll?.(idx);
-    return { applied: true, viewportSyncedOnDown: !mediaPlaying };
+  const planSeg = resolveSelectSegmentViewportPlan(segment).segment;
+  const mediaPlaying = deps.isMediaPlaying?.() ?? false;
+  dispatchTranscriptEditorSelection(idx);
+  if (!mediaPlaying) {
+    syncWaveformSegmentSelectPreviewViewport(timeline, planSeg, { segmentIdx: idx });
+    markWaveformSegmentPreviewViewportSynced(idx, sessionId);
   }
-
-  deps.paintChrome(ctx, idx, undefined, "waveform", publishOpts);
-  return { applied: true, viewportSyncedOnDown: false };
+  deps.commitSelectedIdxRef(idx);
+  const view = getTranscriptEditorView();
+  if (view) revealSegmentInView(view, idx);
+  else deps.runListScroll?.(idx);
+  return { applied: true, viewportSyncedOnDown: !mediaPlaying };
 }
 
 /** pointerup tap：select 提交 SC1 或 seek-within；preview consume 仅在 selectSegmentAt fast path 发生一次。 */

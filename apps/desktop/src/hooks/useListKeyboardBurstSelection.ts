@@ -1,7 +1,4 @@
 import { useCallback, useEffect, useRef, type MutableRefObject, type RefObject } from "react";
-import { startTransition } from "react";
-import { applyListKeyboardBurstListScroll } from "../components/editor/applyListKeyboardBurstListScroll";
-import { applyImperativeSegmentListSelectionScroll } from "../components/editor/applyImperativeSegmentListSelectionScroll";
 import { resolveListKeyboardScrollMeta } from "../utils/listKeyboardListScrollIndex";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "./useWaveformTimelineController";
@@ -10,7 +7,6 @@ import {
   selectionProfileMarkListCommit,
   selectionProfileTime,
 } from "../services/ui/selectionLatencyProfile";
-import { getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
 import {
   cancelListKeyboardKeyupReveal,
   markListKeyboardImperativeScrollKey,
@@ -28,9 +24,13 @@ import {
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { shouldSkipTierRevealForSegment } from "../utils/selectionTierReveal";
+import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
+import { revealSegmentInView } from "../components/editor/core/revealSegment";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 
+/** Keep debounce for hold-without-keyup (LKB-H5); keyup finalize cancels pending timer. */
 const LIST_KEYBOARD_REVEAL_DEBOUNCE_MS = 180;
 
 export type UseListKeyboardBurstSelectionArgs = {
@@ -39,7 +39,6 @@ export type UseListKeyboardBurstSelectionArgs = {
   segmentListRef: RefObject<HTMLDivElement | null>;
   segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
   waveformShellRef: RefObject<HTMLElement | null>;
-  setSelectedIdxUi: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   transcriptRowHeightPx: number;
   lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
 };
@@ -48,10 +47,8 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
   const {
     ctxRef,
     scrollFitRef,
-    segmentListRef,
     segmentListFilterNavRef,
     waveformShellRef,
-    setSelectedIdxUi,
     transcriptRowHeightPx,
     lastSegmentSelectSourceRef,
   } = args;
@@ -117,8 +114,9 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
   );
 
   const revealSegmentAtChromePrimary = useCallback(() => {
-    revealSegmentAtIndex(getSelectionChromeSnapshot().primaryIdx);
-  }, [revealSegmentAtIndex]);
+    const c = ctxRef.current;
+    revealSegmentAtIndex(effectiveTranscriptPrimaryIdx(c.selectedIdx));
+  }, [ctxRef, revealSegmentAtIndex]);
 
   const finalizeListKeyboardViewport = useCallback(
     (revealIdx?: number) => {
@@ -128,7 +126,7 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
       pendingRevealTimeoutRef.current = 0;
 
       const c = ctxRef.current;
-      let idx = revealIdx ?? getSelectionChromeSnapshot().primaryIdx;
+      let idx = revealIdx ?? effectiveTranscriptPrimaryIdx(c.selectedIdx);
       if (idx < 0 || idx >= c.segments.length) {
         if (revealIdx != null) return;
         idx = c.selectedIdx;
@@ -193,53 +191,21 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     [ctxRef, revealSegmentAtChromePrimary, scrollFitRef],
   );
 
-  const runListKeyboardBurstListScroll = useCallback(
-    (idx: number) => {
-      const root = segmentListRef.current;
-      if (!root) return;
+  const runListKeyboardBurstListScroll = useCallback((idx: number) => {
+    const view = getTranscriptEditorView();
+    if (!view) return;
+    selectionProfileTime("listScroll", () => {
+      revealSegmentInView(view, idx);
+    });
+  }, []);
 
-      const meta = resolveScrollMeta(idx);
-      if (!meta) return;
-
-      selectionProfileTime("listScroll", () => {
-        applyListKeyboardBurstListScroll({
-          root,
-          selectedDisplayIndex: meta.selectedDisplayIndex,
-          selectedIdx: idx,
-          rowMinHeightPx: meta.rowMinHeightPx,
-          itemStridePx: meta.itemStridePx,
-          useVirtualList: meta.useVirtualList,
-          scrollKey: meta.scrollKey,
-        });
-      });
-    },
-    [resolveScrollMeta, segmentListRef],
-  );
-
-  const runWaveformSelectListScroll = useCallback(
-    (idx: number) => {
-      const root = segmentListRef.current;
-      if (!root) return;
-
-      const meta = resolveScrollMeta(idx);
-      if (!meta) return;
-
-      selectionProfileTime("listScroll", () => {
-        applyImperativeSegmentListSelectionScroll({
-          root,
-          selectedDisplayIndex: meta.selectedDisplayIndex,
-          selectedIdx: idx,
-          rowMinHeightPx: meta.rowMinHeightPx,
-          itemStridePx: meta.itemStridePx,
-          useVirtualList: meta.useVirtualList,
-          scrollKey: meta.scrollKey,
-          source: "waveform",
-          pinVirtualDisplayIndex: false,
-        });
-      });
-    },
-    [resolveScrollMeta, segmentListRef],
-  );
+  const runWaveformSelectListScroll = useCallback((idx: number) => {
+    const view = getTranscriptEditorView();
+    if (!view) return;
+    selectionProfileTime("listScroll", () => {
+      revealSegmentInView(view, idx);
+    });
+  }, []);
 
   const markListKeyboardCommitScrollKey = useCallback(
     (idx: number): string | null => {
@@ -269,17 +235,10 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
         c.selectedIdxRef.current = idx;
       }
       selectionProfileBegin(`listKeyboard commit idx=${idx} segments=${c.segments.length}`);
-      startTransition(() => {
-        setSelectedIdxUi(idx);
-        selectionProfileMarkListCommit();
-      });
+      selectionProfileMarkListCommit();
+      // P9b2: CM6 already holds selection from burst mid-steps; no SC1 startTransition.
     },
-    [
-      ctxRef,
-      lastSegmentSelectSourceRef,
-      markListKeyboardCommitScrollKey,
-      setSelectedIdxUi,
-    ],
+    [ctxRef, lastSegmentSelectSourceRef, markListKeyboardCommitScrollKey],
   );
 
   return {

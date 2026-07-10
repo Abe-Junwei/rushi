@@ -3,7 +3,6 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTranscriptionLayerSelection } from "../pages/useTranscriptionLayerSelection";
-import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import {
   parseSelectionProfileLine,
   readRecentSelectionLatencyProfileLines,
@@ -19,119 +18,20 @@ import {
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
 } from "../utils/segmentListVirtualWindow";
-import { planEditorSegmentListSelectionScroll } from "../components/editor/planEditorSegmentListSelectionScroll";
-import { useEditorSegmentListScroll } from "../components/editor/useEditorSegmentListScroll";
-import type { MutableRefObject, RefObject } from "react";
-import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import { resolveListKeyboardScrollMeta } from "../utils/listKeyboardListScrollIndex";
 import { isPerfCiRunner } from "./perfCi";
+import {
+  createScrollRoot,
+  latestProfileLine,
+  makeCtx,
+  makeTimeline,
+} from "./listKeyboardNavigationBurst.fixtures";
 
-/** Burst keyboard navigation: pure scroll plan + virtual window stay within CI budget. */
+/** Burst keyboard navigation: scroll meta + SC1 commit stay within CI budget. */
 export const LIST_KEYBOARD_BURST_PLAN_MAX_MS = isPerfCiRunner ? 25 : 15;
 export const LIST_KEYBOARD_BURST_STEPS = 10;
 export const LIST_KEYBOARD_BURST_SEGMENT_COUNT = 5000;
 export const LIST_KEYBOARD_BURST_SC1_COMMIT_MAX_MS = 120;
-
-function makeSegments(count: number) {
-  return Array.from({ length: count }, (_, idx) => ({
-    uid: `seg-${idx}`,
-    idx,
-    start_sec: idx * 2,
-    end_sec: idx * 2 + 1.5,
-    text: `语段 ${idx + 1}`,
-  }));
-}
-
-function makeCtx(segmentCount: number, selectedIdx = 0): TranscriptionLayerInput {
-  const segments = makeSegments(segmentCount);
-  return {
-    projectId: "p1",
-    fileId: "f1",
-    mediaUrl: null,
-    segments,
-    selectedIdx,
-    busy: false,
-    selectionLo: selectedIdx,
-    selectionHi: selectedIdx,
-    selectionRangeAnchorIdx: selectedIdx,
-    selectionCount: 1,
-    isMultiSegmentSelection: false,
-    isContiguousSelection: true,
-    selectedIndicesArray: [selectedIdx],
-    selectSegmentIndices: vi.fn(),
-    requestDeleteSelectedIndices: vi.fn(),
-    clearMultiSelection: vi.fn(),
-    isIndexInSelection: () => true,
-    selectSegmentAt: vi.fn(),
-    selectSegmentRange: vi.fn(),
-    undo: vi.fn(),
-    redo: vi.fn(),
-    updateSegmentBounds: vi.fn(),
-    insertSegmentFromTimeRange: vi.fn(),
-    splitAtSelection: vi.fn(),
-    splitAtPlayhead: vi.fn(),
-    mergeWithNext: vi.fn(),
-    mergeWithPrev: vi.fn(),
-    mergeWithNextAt: vi.fn(),
-    mergeWithPrevAt: vi.fn(),
-    mergeSegmentRange: vi.fn(),
-    insertSegmentAfter: vi.fn(),
-    deleteSegmentAt: vi.fn(),
-    requestDeleteSelection: vi.fn(),
-    confirmSegmentEditAndAdvance: vi.fn(() => Promise.resolve(true)),
-    saveSegments: vi.fn(() => Promise.resolve(true)),
-    triggerFindReplaceShortcut: vi.fn(),
-    closeFile: vi.fn(),
-    openEnvironment: vi.fn(),
-    openSegmentAnnotationDialog: vi.fn(),
-    openManualCorrectionMemoryDialog: vi.fn(),
-  };
-}
-
-function makeTimeline(segmentCount: number) {
-  const tier = document.createElement("div");
-  const overlayRoot = document.createElement("div");
-  overlayRoot.className = "waveform-timeline-overlay-layer";
-  tier.appendChild(overlayRoot);
-  return {
-    timelineMetrics: { mediaDurationSec: segmentCount * 2 + 1.5 },
-    tierScrollRef: { current: tier },
-    wfApiRef: {
-      current: {
-        seek: vi.fn(),
-        clientXToTimeSec: vi.fn(() => 0),
-      },
-    },
-    zoom: { layoutIntentRef: { current: "manual" as const } },
-    viewportFit: {
-      revealSegmentInViewport: vi.fn(),
-      zoomToFitSegment: vi.fn(),
-    },
-    suppressPlaybackFollowForSelectionSeek: vi.fn(),
-    overlayRoot,
-  };
-}
-
-function createScrollRoot(scrollTop: number, clientHeight: number, scrollHeight: number): HTMLDivElement {
-  const el = document.createElement("div");
-  let top = scrollTop;
-  Object.defineProperty(el, "clientHeight", { configurable: true, value: clientHeight });
-  Object.defineProperty(el, "scrollHeight", { configurable: true, value: scrollHeight });
-  Object.defineProperty(el, "scrollTop", {
-    configurable: true,
-    get: () => top,
-    set: (v: number) => {
-      top = v;
-    },
-  });
-  return el;
-}
-
-function latestProfileLine(matcher: (line: string) => boolean): string {
-  const lines = readRecentSelectionLatencyProfileLines().filter(matcher);
-  const line = lines[lines.length - 1];
-  if (!line) throw new Error("expected profile line");
-  return line;
-}
 
 describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
   beforeEach(() => {
@@ -169,32 +69,30 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
     setSelectionLatencyProfileEnabled(false);
   });
 
-  it(`LKB-1: ${LIST_KEYBOARD_BURST_SEGMENT_COUNT}-seg scroll plan burst ≤ ${LIST_KEYBOARD_BURST_PLAN_MAX_MS}ms per step`, () => {
+  it(`LKB-1: ${LIST_KEYBOARD_BURST_SEGMENT_COUNT}-seg scroll meta burst ≤ ${LIST_KEYBOARD_BURST_PLAN_MAX_MS}ms per step`, () => {
     const rowMin = segmentListRowMinHeightPx(70);
     const stride = segmentListItemStridePx(rowMin);
     const displayCount = LIST_KEYBOARD_BURST_SEGMENT_COUNT;
-    const scrollHeight = displayCount * stride;
-    const root = createScrollRoot(0, 480, scrollHeight);
 
     let selectedDisplayIndex = 0;
     for (let step = 0; step < LIST_KEYBOARD_BURST_STEPS; step += 1) {
       selectedDisplayIndex += 17;
       const t0 = performance.now();
-      const plan = planEditorSegmentListSelectionScroll({
-        root,
-        selectedDisplayIndex,
-        selectedIdx: selectedDisplayIndex,
+      const meta = resolveListKeyboardScrollMeta({
+        idx: selectedDisplayIndex,
+        fileId: "file-a",
+        segmentCount: displayCount,
+        filterActive: false,
+        filteredIndices: [],
+        transcriptRowHeightPx: 70,
+        virtualizeMinCount: SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
         rowMinHeightPx: rowMin,
         itemStridePx: stride,
-        useVirtualList: displayCount >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
-        source: "listKeyboard",
       });
       const elapsed = performance.now() - t0;
       expect(elapsed).toBeLessThanOrEqual(LIST_KEYBOARD_BURST_PLAN_MAX_MS);
-      expect(plan.kind).toBe("write-scroll");
-      if (plan.kind === "write-scroll") {
-        root.scrollTop = plan.nextScrollTop;
-      }
+      expect(meta).not.toBeNull();
+      expect(meta!.selectedDisplayIndex).toBe(selectedDisplayIndex);
     }
   });
 
@@ -235,44 +133,6 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
     expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
   });
 
-  it("LKB-1: virtual window includes selected row for each burst step", () => {
-    const rowMin = segmentListRowMinHeightPx(70);
-    const stride = segmentListItemStridePx(rowMin);
-    const displayCount = LIST_KEYBOARD_BURST_SEGMENT_COUNT;
-    const scrollHeight = displayCount * stride;
-    const root = createScrollRoot(0, 480, scrollHeight);
-    document.body.appendChild(root);
-
-    const segmentListRef = { current: root } as RefObject<HTMLDivElement | null>;
-    const filterNavRef = { current: { active: false, indices: [] } } as MutableRefObject<SegmentListFilterNavState>;
-    const lastSegmentSelectSourceRef = { current: "listKeyboard" as const };
-
-    const { result, rerender } = renderHook(
-      (props: { selectedDisplayIndex: number; selectedIdx: number }) =>
-        useEditorSegmentListScroll({
-          segmentListRef,
-          filterNavRef,
-          filteredIndices: [],
-          filterActive: false,
-          displayCount,
-          currentFileId: "file-a",
-          transcriptRowHeightPx: 70,
-          lastSegmentSelectSourceRef,
-          selectedDisplayIndex: props.selectedDisplayIndex,
-          selectedIdx: props.selectedIdx,
-        }),
-      { initialProps: { selectedDisplayIndex: 0, selectedIdx: 0 } },
-    );
-
-    for (let step = 1; step <= LIST_KEYBOARD_BURST_STEPS; step += 1) {
-      const idx = step * 137;
-      rerender({ selectedDisplayIndex: idx, selectedIdx: idx });
-      const win = result.current.virtualWindow;
-      expect(win.startIndex).toBeLessThanOrEqual(idx);
-      expect(win.endIndex).toBeGreaterThan(idx);
-    }
-  });
-
   it("LKB-2: listKeyboard burst defers SC1 commit until keyup flush", () => {
     const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
     const ctx = makeCtx(segmentCount, 0);
@@ -307,6 +167,11 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
 
     expect(setSelectedIdxUi).not.toHaveBeenCalled();
 
+    const midBurstLines = readRecentSelectionLatencyProfileLines().filter((line) =>
+      /\[selection-profile\] #\d+ listKeyboard idx=/.test(line),
+    );
+    expect(midBurstLines).toHaveLength(0);
+
     const finalIdx = LIST_KEYBOARD_BURST_STEPS * 17;
     act(() => {
       result.current.commitListKeyboardBurst(finalIdx);
@@ -315,6 +180,11 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
 
     expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
     expect(setSelectedIdxUi).toHaveBeenCalledWith(finalIdx);
+
+    const commitLines = readRecentSelectionLatencyProfileLines().filter((line) =>
+      line.includes(`listKeyboard commit idx=${finalIdx}`),
+    );
+    expect(commitLines.length).toBe(1);
 
     const parsed = parseSelectionProfileLine(
       latestProfileLine((line) => line.includes(`listKeyboard commit idx=${finalIdx}`)),

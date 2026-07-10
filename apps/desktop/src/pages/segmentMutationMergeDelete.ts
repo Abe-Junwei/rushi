@@ -3,11 +3,21 @@ import { mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
 import { mergeSegmentRangeFold, resolveSelectedIdxAfterIndexRemoval } from "../utils/segmentSelection";
 import { resolveLiveSegmentText } from "./flushSegmentTextDrafts";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import {
+  dispatchTranscriptDeleteAt,
+  dispatchTranscriptDeleteIndices,
+  dispatchTranscriptDeleteRange,
+  dispatchTranscriptMergeRange,
+  dispatchTranscriptMergeWithNext,
+  dispatchTranscriptMergeWithPrev,
+} from "../components/editor/core/transcriptEditorViewHandle";
+import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
 
 export type SegmentMergeDeleteDeps = {
   segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   setError: (msg: string) => void;
   pushUndo: () => void;
   onSelectionCollapsed?: (idx: number) => void;
@@ -18,6 +28,20 @@ function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB:
     { ...a, text: resolveLiveSegmentText(a, idxA) },
     { ...b, text: resolveLiveSegmentText(b, idxB) },
   );
+}
+
+function persistCoreStructure(
+  baseline: readonly SegmentDto[],
+  deps: Pick<SegmentMergeDeleteDeps, "pushUndo" | "segmentPublish" | "setSelectedIdx" | "onSelectionCollapsed">,
+): boolean {
+  return persistTranscriptStructureFromView(baseline, {
+    pushUndo: deps.pushUndo,
+    publishStructure: (next) => deps.segmentPublish.publishStructure(next),
+    onPrimaryIdx: (idx) => {
+      deps.setSelectedIdx(idx);
+      deps.onSelectionCollapsed?.(idx);
+    },
+  });
 }
 
 export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
@@ -32,6 +56,12 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
 
   function mergeWithPrevAt(idx: number) {
     if (idx <= 0) return;
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      if (dispatchTranscriptMergeWithPrev(base, idx) && persistCoreStructure(base, deps)) {
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
     const base = segmentPublish.getCurrentSegmentsSnapshot();
@@ -42,12 +72,18 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const merged = mergePairWithLiveText(a, b, idx - 1, idx);
     const out = [...base];
     out.splice(idx - 1, 2, merged);
-    segmentPublish.publishStructure( reindexSegments(out));
+    segmentPublish.publishStructure(reindexSegments(out));
     setSelectedIdx(idx - 1);
     onSelectionCollapsed?.(idx - 1);
   }
 
   function mergeWithNextAt(idx: number) {
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      if (dispatchTranscriptMergeWithNext(base, idx) && persistCoreStructure(base, deps)) {
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
     const base = segmentPublish.getCurrentSegmentsSnapshot();
@@ -58,7 +94,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const merged = mergePairWithLiveText(a, b, idx, idx + 1);
     const out = [...base];
     out.splice(idx, 2, merged);
-    segmentPublish.publishStructure( reindexSegments(out));
+    segmentPublish.publishStructure(reindexSegments(out));
     setSelectedIdx(idx);
     onSelectionCollapsed?.(idx);
   }
@@ -72,13 +108,19 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function mergeSegmentRange(lo: number, hi: number) {
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      if (dispatchTranscriptMergeRange(base, lo, hi) && persistCoreStructure(base, deps)) {
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
     const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= base.length || lo >= hi) return;
     const merged = mergeSegmentRangeFold(base, lo, hi);
     const out = [...base.slice(0, lo), merged, ...base.slice(hi + 1)];
-    segmentPublish.publishStructure( reindexSegments(out));
+    segmentPublish.publishStructure(reindexSegments(out));
     setSelectedIdx(lo);
     onSelectionCollapsed?.(lo);
   }
@@ -103,11 +145,23 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentAt(idx: number) {
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      if (dispatchTranscriptDeleteAt(base, idx) && persistCoreStructure(base, deps)) {
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     deleteSegmentAtAfterCommit(idx);
   }
 
   function deleteSegmentRange(lo: number, hi: number) {
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      if (dispatchTranscriptDeleteRange(base, lo, hi) && persistCoreStructure(base, deps)) {
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     const segs = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= segs.length || lo > hi) return;
@@ -126,6 +180,17 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentIndices(rawIndices: number[]) {
+    if (readTranscriptEditorCoreEnabled()) {
+      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const prevSelected = selectedIdxRef.current;
+      if (
+        dispatchTranscriptDeleteIndices(base, rawIndices, prevSelected) &&
+        persistCoreStructure(base, deps)
+      ) {
+        setError("");
+        return;
+      }
+    }
     segmentPublish.commitTextDraftsForStructureMutation();
     const segs = segmentPublish.getCurrentSegmentsSnapshot();
     const indices = [...new Set(rawIndices)]
@@ -134,7 +199,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     if (indices.length === 0) return;
     if (indices.length === 1) {
       const idx = indices[0];
-      if (idx !== undefined) deleteSegmentAtAfterCommit(idx);
+      if (idx !== undefined) deleteSegmentAt(idx);
       return;
     }
     setError("");

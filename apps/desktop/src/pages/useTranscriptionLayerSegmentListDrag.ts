@@ -48,8 +48,6 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
 
       const verticalIntentOnly = segmentListRangeDragRequiresVerticalIntent(e.target as HTMLElement);
 
-      lastSegmentSelectSourceRef.current = "multiSelect";
-
       segmentListRangeDragRef.current = {
         anchorIdx: idx,
         pointerId: e.pointerId,
@@ -60,9 +58,11 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       };
       if (e.shiftKey) {
         suppressSegmentListRowClickRef.current = true;
+        lastSegmentSelectSourceRef.current = "multiSelect";
         selectSegmentAtRef.current(idx, "list", { shiftKey: true });
       } else if (e.metaKey || e.ctrlKey) {
         suppressSegmentListRowClickRef.current = true;
+        lastSegmentSelectSourceRef.current = "multiSelect";
         selectSegmentAtRef.current(idx, "list", { toggle: true });
       }
 
@@ -128,6 +128,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         }
         if (!drag.moved) {
           drag.moved = true;
+          lastSegmentSelectSourceRef.current = "multiSelect";
           blurActiveTranscriptTextarea();
           stopAutoScroll();
           autoScrollRafRef.current = window.requestAnimationFrame(tickAutoScroll);

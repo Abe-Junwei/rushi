@@ -5,7 +5,10 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
-import { subscribeSelectionChrome, getSelectionChromeSnapshot } from "../services/selection/selectionChromeStore";
+import {
+  getTranscriptProjectionSnapshot,
+  subscribeTranscriptProjection,
+} from "../components/editor/core/transcriptProjection";
 import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -81,9 +84,9 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
 
   const resolveLayoutSegment = (): SegmentDto | null => {
     const a = layoutArgsRef.current;
-    const snap = getSelectionChromeSnapshot();
-    if (a.fileId != null && snap.fileId === a.fileId && snap.primaryIdx >= 0) {
-      return a.segments[snap.primaryIdx] ?? null;
+    const primary = getTranscriptProjectionSnapshot().primaryIdx;
+    if (primary >= 0) {
+      return a.segments[primary] ?? null;
     }
     return a.selectedSegment;
   };
@@ -169,10 +172,10 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     lastOverlayLayoutRef.current = null;
     applyOverlayLayout();
     const unsubScroll = subscribeTierScrollFrame(applyOverlayLayout);
-    const unsubChrome = subscribeSelectionChrome(applyOverlayLayout);
+    const unsubProj = subscribeTranscriptProjection(applyOverlayLayout);
     return () => {
       unsubScroll();
-      unsubChrome();
+      unsubProj();
       const container = containerRef.current;
       if (container) clearCspLayoutRules(container);
       const loopBtn = loopBtnRef.current;

@@ -5,17 +5,22 @@ import {
   type WaveformSelectionChromeView,
 } from "../services/selection/resolveWaveformSelectionChromeView";
 import {
-  getSelectionChromeSnapshot,
-  subscribeSelectionChrome,
-} from "../services/selection/selectionChromeStore";
+  getTranscriptProjectionSnapshot,
+  subscribeTranscriptProjection,
+} from "../components/editor/core/transcriptProjection";
+
+function projectionVersion(): string {
+  const proj = getTranscriptProjectionSnapshot();
+  return `${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
+}
 
 export function useWaveformSelectionChromeView(
   input: WaveformSelectionChromeReactInput,
 ): WaveformSelectionChromeView {
   const version = useSyncExternalStore(
-    subscribeSelectionChrome,
-    () => getSelectionChromeSnapshot().version,
-    () => 0,
+    subscribeTranscriptProjection,
+    projectionVersion,
+    () => "0",
   );
   void version;
   return resolveWaveformSelectionChromeView(input);

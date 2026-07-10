@@ -261,23 +261,24 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalledWith();
   });
 
-  it("H3: Space plays SC2 chrome segment when React SC1 still lags on previous", async () => {
+  it("H3: Space plays CM6 projection segment when React SC1 still lags on previous", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({
-      fileId: "f1",
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
       primaryIdx: 1,
       selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 2,
     });
 
     const segs = [
       { idx: 0, start_sec: 10, end_sec: 20, text: "a" },
       { idx: 1, start_sec: 30, end_sec: 40, text: "b" },
     ];
-    // Paused mid-A: display/raw still in A; SC1 still 0; SC2 already B.
+    // Paused mid-A: display/raw still in A; SC1 still 0; CM6 projection already B.
     const ws = makeWs({ getCurrentTime: () => 15 });
     const wsRef = { current: ws };
 
@@ -299,19 +300,20 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.setTime).toHaveBeenCalledWith(30);
     expect(ws.play).toHaveBeenCalled();
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("Space starts playback when media is paused even if segment-playing UI flag is stale true", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({
-      fileId: "f1",
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
       primaryIdx: 0,
       selectedSet: new Set([0]),
+      rangeAnchor: 0,
+      lineCount: 1,
     });
 
     let playing = false;
@@ -350,19 +352,20 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.play).toHaveBeenCalled();
     expect(ws.pause).not.toHaveBeenCalled();
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("does not abort playback when WaveSurfer emits play before play() resolves", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({
-      fileId: "f1",
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
       primaryIdx: 0,
       selectedSet: new Set([0]),
+      rangeAnchor: 0,
+      lineCount: 1,
     });
 
     let playing = false;
@@ -400,7 +403,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalled();
     expect(ws.pause).not.toHaveBeenCalled();
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("Space pauses when media is playing even if segment-playing flag was cleared by select", async () => {
@@ -527,10 +530,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
   it("keeps Stop icon when selecting another segment while media is already inside it", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
 
     let playhead = 15;
     let playing = true;
@@ -567,29 +570,31 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
 
     playhead = 30;
-    commitSelectionChrome({
-      fileId: "f1",
+    seedTranscriptProjectionForTests({
       primaryIdx: 1,
       selectedSet: new Set([1]),
+      rangeAnchor: 1,
+      lineCount: 2,
     });
     await act(async () => {
       rerender({ selectedIdx: 1 });
     });
 
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
-  it("updates Stop icon from SC2 chrome before React selectedIdx catches up", async () => {
+  it("updates Stop icon from CM6 projection before React selectedIdx catches up", async () => {
     const {
-      commitSelectionChrome,
-      resetSelectionChromeStoreForTests,
-    } = await import("../services/selection/selectionChromeStore");
-    resetSelectionChromeStoreForTests();
-    commitSelectionChrome({
-      fileId: "f1",
+      resetTranscriptProjectionForTests,
+      seedTranscriptProjectionForTests,
+    } = await import("../components/editor/core/transcriptProjection");
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
       primaryIdx: 0,
       selectedSet: new Set([0]),
+      rangeAnchor: 0,
+      lineCount: 2,
     });
 
     let playhead = 30;
@@ -618,16 +623,17 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(result.current.isSelectedSegmentPlaying).toBe(false);
 
     await act(async () => {
-      commitSelectionChrome({
-        fileId: "f1",
+      seedTranscriptProjectionForTests({
         primaryIdx: 1,
         selectedSet: new Set([1]),
+        rangeAnchor: 1,
+        lineCount: 2,
       });
       await Promise.resolve();
     });
 
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("auto-stops at segment end without seeking back to segment start", async () => {

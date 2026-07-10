@@ -17,6 +17,9 @@ import {
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import { dispatchTranscriptInsertAt } from "../components/editor/core/transcriptEditorViewHandle";
+import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -25,17 +28,44 @@ function roundSec3(x: number): number {
 export type SegmentInsertDeps = {
   busy: boolean;
   segmentPublish: SegmentPublishApi;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   setError: (msg: string) => void;
   pushUndo: () => void;
   onSelectionCollapsed?: (idx: number) => void;
 };
 
+function persistCoreStructure(
+  baseline: readonly SegmentDto[],
+  deps: Pick<SegmentInsertDeps, "pushUndo" | "segmentPublish" | "setSelectedIdx" | "onSelectionCollapsed">,
+): boolean {
+  return persistTranscriptStructureFromView(baseline, {
+    pushUndo: deps.pushUndo,
+    publishStructure: (next) => deps.segmentPublish.publishStructure(next),
+    onPrimaryIdx: (idx) => {
+      deps.setSelectedIdx(idx);
+      deps.onSelectionCollapsed?.(idx);
+    },
+  });
+}
+
+function buildEmptyUserSegment(startSec: number, endSec: number): SegmentDto {
+  return newUserCreatedSegment({
+    uid: createSegmentUid(),
+    idx: 0,
+    start_sec: startSec,
+    end_sec: endSec,
+    text: "",
+    confidence: null,
+    low_confidence: false,
+    detail: null,
+    kind: "speech",
+  });
+}
+
 export function createSegmentInsertActions(deps: SegmentInsertDeps) {
   const { busy, segmentPublish, setSelectedIdx, setError, pushUndo, onSelectionCollapsed } = deps;
 
   function insertSegmentAfter(idx: number, mediaDurationSec = 0) {
-    segmentPublish.commitTextDraftsForStructureMutation();
     const segs = segmentPublish.getCurrentSegmentsSnapshot();
     if (idx < 0 || idx >= segs.length) return;
     const a = segs[idx];
@@ -55,24 +85,23 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       return;
     }
     const { startSec, endSec } = span;
+    const newSeg = buildEmptyUserSegment(startSec, endSec);
+    const insertAt = idx + 1;
+    if (readTranscriptEditorCoreEnabled()) {
+      if (dispatchTranscriptInsertAt(segs, insertAt, newSeg) && persistCoreStructure(segs, deps)) {
+        setError("");
+        return;
+      }
+    }
+    segmentPublish.commitTextDraftsForStructureMutation();
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
+    if (idx < 0 || idx >= base.length) return;
     setError("");
     pushUndo();
-    const newSeg: SegmentDto = newUserCreatedSegment({
-      uid: createSegmentUid(),
-      idx: 0,
-      start_sec: startSec,
-      end_sec: endSec,
-      text: "",
-      confidence: null,
-      low_confidence: false,
-      detail: null,
-      kind: "speech",
-    });
-    const out = [...segs.slice(0, idx + 1), newSeg, ...segs.slice(idx + 1)];
+    const out = [...base.slice(0, insertAt), newSeg, ...base.slice(insertAt)];
     segmentPublish.publishStructure(reindexSegments(out));
-    const nextIdx = idx + 1;
-    setSelectedIdx(nextIdx);
-    onSelectionCollapsed?.(nextIdx);
+    setSelectedIdx(insertAt);
+    onSelectionCollapsed?.(insertAt);
   }
 
   function insertSegmentFromTimeRange(
@@ -82,7 +111,6 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     policy: SegmentOverlapPolicy = "trim",
   ): number | null {
     if (busy) return null;
-    segmentPublish.commitTextDraftsForStructureMutation();
     let lo = roundSec3(Math.min(startSec, endSec));
     let hi = roundSec3(Math.max(startSec, endSec));
     if (mediaDurationSec > 0) {
@@ -107,25 +135,24 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
         return null;
       }
     }
+    const insertAt = findSegmentInsertIndexByStart(segs, fitLo);
+    const newSeg = buildEmptyUserSegment(fitLo, fitHi);
+    if (readTranscriptEditorCoreEnabled()) {
+      if (dispatchTranscriptInsertAt(segs, insertAt, newSeg) && persistCoreStructure(segs, deps)) {
+        setError("");
+        return insertAt;
+      }
+    }
+    segmentPublish.commitTextDraftsForStructureMutation();
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
+    const insertAtLive = findSegmentInsertIndexByStart(base, fitLo);
     setError("");
     pushUndo();
-    const insertAt = findSegmentInsertIndexByStart(segs, fitLo);
-    const newSeg: SegmentDto = newUserCreatedSegment({
-      uid: createSegmentUid(),
-      idx: 0,
-      start_sec: fitLo,
-      end_sec: fitHi,
-      text: "",
-      confidence: null,
-      low_confidence: false,
-      detail: null,
-      kind: "speech",
-    });
-    const out = [...segs.slice(0, insertAt), newSeg, ...segs.slice(insertAt)];
+    const out = [...base.slice(0, insertAtLive), newSeg, ...base.slice(insertAtLive)];
     segmentPublish.publishStructure(reindexSegments(out));
-    setSelectedIdx(insertAt);
-    onSelectionCollapsed?.(insertAt);
-    return insertAt;
+    setSelectedIdx(insertAtLive);
+    onSelectionCollapsed?.(insertAtLive);
+    return insertAtLive;
   }
 
   return { insertSegmentAfter, insertSegmentFromTimeRange };

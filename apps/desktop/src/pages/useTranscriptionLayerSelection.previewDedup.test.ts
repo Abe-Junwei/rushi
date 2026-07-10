@@ -1,21 +1,26 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
-const { applyListScroll } = vi.hoisted(() => ({
-  applyListScroll: vi.fn(() => true),
+const { revealSegmentInView } = vi.hoisted(() => ({
+  revealSegmentInView: vi.fn(() => true),
 }));
-vi.mock("../components/editor/applyImperativeSegmentListSelectionScroll", () => ({
-  applyImperativeSegmentListSelectionScroll: applyListScroll,
+vi.mock("../components/editor/core/revealSegment", () => ({
+  revealSegmentInView,
 }));
+vi.mock("../components/editor/core/transcriptEditorViewHandle", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../components/editor/core/transcriptEditorViewHandle")>();
+  return {
+    ...actual,
+    getTranscriptEditorView: () => ({ focus: vi.fn() } as never),
+    dispatchTranscriptEditorSelection: vi.fn(),
+  };
+});
 
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
-import {
-  getSelectionChromeSnapshot,
-  resetSelectionChromeStoreForTests,
-} from "../services/selection/selectionChromeStore";
+import { resetTranscriptProjectionForTests } from "../components/editor/core/transcriptProjection";
 import { resetWaveformSegmentPreviewViewportSyncForTests } from "../services/waveform/waveformSegmentSelectPreviewSync";
 
 function makeCtx(): TranscriptionLayerInput {
@@ -83,12 +88,16 @@ function makeTimeline() {
 
 describe("useTranscriptionLayerSelection preview dedup", () => {
   beforeEach(() => {
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
     resetWaveformSegmentPreviewViewportSyncForTests();
-    applyListScroll.mockClear();
+    revealSegmentInView.mockClear();
   });
 
-  it("runs list scroll once across pointerdown preview and pointerup commit", async () => {
+  afterEach(() => {
+    document.body.innerHTML = "";
+  });
+
+  it("runs CM6 list reveal once across pointerdown preview and pointerup commit", async () => {
     const ctx = makeCtx();
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -105,20 +114,18 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi: vi.fn(),
       }),
     );
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({ phase: "down", idx: 3 });
     });
-    expect(applyListScroll).toHaveBeenCalledTimes(1);
-    expect(getSelectionChromeSnapshot().primaryIdx).toBe(3);
+    expect(revealSegmentInView).toHaveBeenCalledTimes(1);
 
     act(() => {
       result.current.selectSegmentAt(3, "waveform");
     });
-    expect(applyListScroll).toHaveBeenCalledTimes(1);
+    expect(revealSegmentInView).toHaveBeenCalledTimes(1);
   });
 
   it("skips duplicate seek/reveal on pointerdown then pointerup gesture", async () => {
@@ -138,7 +145,6 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi: vi.fn(),
       }),
     );
 
@@ -148,11 +154,11 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
 
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledTimes(1);
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
-    expect(applyListScroll).toHaveBeenCalledTimes(1);
+    expect(revealSegmentInView).toHaveBeenCalledTimes(1);
 
     timeline.wfApiRef.current.seek.mockClear();
     timeline.viewportFit.revealSegmentInViewport.mockClear();
-    applyListScroll.mockClear();
+    revealSegmentInView.mockClear();
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({
@@ -166,6 +172,6 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
 
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
-    expect(applyListScroll).not.toHaveBeenCalled();
+    expect(revealSegmentInView).not.toHaveBeenCalled();
   });
 });

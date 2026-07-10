@@ -1,20 +1,25 @@
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { resolveWaveformSelectionChromeView } from "./resolveWaveformSelectionChromeView";
 import {
-  commitSelectionChrome,
-  resetSelectionChromeStoreForTests,
-} from "./selectionChromeStore";
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../../components/editor/core/transcriptProjection";
 
 describe("resolveWaveformSelectionChromeView", () => {
   beforeEach(() => {
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
-  it("prefers chrome store over stale React selectedIdx", () => {
-    commitSelectionChrome({
-      fileId: "f1",
+  afterEach(() => {
+    resetTranscriptProjectionForTests();
+  });
+
+  it("prefers transcriptProjection over stale React selectedIdx", () => {
+    seedTranscriptProjectionForTests({
       primaryIdx: 5,
       selectedSet: new Set([5]),
+      rangeAnchor: 5,
+      lineCount: 10,
     });
 
     const view = resolveWaveformSelectionChromeView({
@@ -24,19 +29,14 @@ describe("resolveWaveformSelectionChromeView", () => {
       selectionHi: 2,
       selectionCount: 1,
       isContiguousSelection: true,
+      segmentCount: 10,
     });
 
     expect(view.selectedIdx).toBe(5);
     expect(view.selectedIndices?.has(5)).toBe(true);
   });
 
-  it("falls back to React when store has no primary", () => {
-    commitSelectionChrome({
-      fileId: "f1",
-      primaryIdx: -1,
-      selectedSet: new Set(),
-    });
-
+  it("falls back to React when projection has no primary", () => {
     const view = resolveWaveformSelectionChromeView({
       fileId: "f1",
       selectedIdx: 2,
@@ -49,11 +49,12 @@ describe("resolveWaveformSelectionChromeView", () => {
     expect(view.selectedIdx).toBe(2);
   });
 
-  it("keeps store chrome when filter hides the primary segment (SC-H6 + list banner)", () => {
-    commitSelectionChrome({
-      fileId: "f1",
+  it("keeps projection primary when filter hides the primary segment (SC-H6 + list banner)", () => {
+    seedTranscriptProjectionForTests({
       primaryIdx: 5,
       selectedSet: new Set([5]),
+      rangeAnchor: 5,
+      lineCount: 10,
     });
 
     const view = resolveWaveformSelectionChromeView({
@@ -64,17 +65,19 @@ describe("resolveWaveformSelectionChromeView", () => {
       selectionCount: 1,
       isContiguousSelection: true,
       filterExcludesPrimary: true,
+      segmentCount: 10,
     });
 
     expect(view.selectedIdx).toBe(5);
     expect(view.selectionCount).toBe(1);
   });
 
-  it("falls back to React when store primary is out of range after delete", () => {
-    commitSelectionChrome({
-      fileId: "f1",
+  it("falls back to React when projection primary is out of range after delete", () => {
+    seedTranscriptProjectionForTests({
       primaryIdx: 5,
       selectedSet: new Set([5]),
+      rangeAnchor: 5,
+      lineCount: 10,
     });
 
     const view = resolveWaveformSelectionChromeView({

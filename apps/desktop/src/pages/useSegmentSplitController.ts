@@ -1,7 +1,13 @@
 import { useCallback } from "react";
-import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
+import { resolveLiveSegmentText } from "../utils/segmentTextNormalize";
 import { buildSplitPair, reindexSegments } from "./segmentListHelpers";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
+import {
+  dispatchTranscriptSplitAtMidpoint,
+  dispatchTranscriptSplitAtTime,
+} from "../components/editor/core/transcriptEditorViewHandle";
+import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -14,7 +20,7 @@ export interface SegmentSplitApi {
 
 export interface SegmentSplitDeps {
   segmentPublish: SegmentPublishApi;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   setError: (msg: string) => void;
   pushUndo: () => void;
   onSelectionCollapsed?: (idx: number) => void;
@@ -23,8 +29,31 @@ export interface SegmentSplitDeps {
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
   const { segmentPublish, setSelectedIdx, setError, pushUndo, onSelectionCollapsed } = deps;
 
+  const persistCore = useCallback(
+    (baseline: Parameters<typeof persistTranscriptStructureFromView>[0]) =>
+      persistTranscriptStructureFromView(baseline, {
+        pushUndo,
+        publishStructure: (next) => segmentPublish.publishStructure(next),
+        onPrimaryIdx: (idx) => {
+          setSelectedIdx(idx);
+          onSelectionCollapsed?.(idx);
+        },
+      }),
+    [onSelectionCollapsed, pushUndo, segmentPublish, setSelectedIdx],
+  );
+
   const splitAtSelection = useCallback(
     (selectedIdx: number) => {
+      if (readTranscriptEditorCoreEnabled()) {
+        const segs = segmentPublish.getCurrentSegmentsSnapshot();
+        if (segs.length === 0) return;
+        const i = Math.min(selectedIdx, segs.length - 1);
+        if (dispatchTranscriptSplitAtMidpoint(segs, i) && persistCore(segs)) {
+          setError("");
+          return;
+        }
+        // Fall through if CM6 rejected (e.g. too short) so setError still runs.
+      }
       segmentPublish.commitTextDraftsForStructureMutation();
       const segs = segmentPublish.getCurrentSegmentsSnapshot();
       if (segs.length === 0) return;
@@ -49,11 +78,18 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       setSelectedIdx(nextIdx);
       onSelectionCollapsed?.(nextIdx);
     },
-    [onSelectionCollapsed, pushUndo, segmentPublish, setError, setSelectedIdx],
+    [onSelectionCollapsed, persistCore, pushUndo, segmentPublish, setError, setSelectedIdx],
   );
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
+      if (readTranscriptEditorCoreEnabled()) {
+        const segs = segmentPublish.getCurrentSegmentsSnapshot();
+        if (dispatchTranscriptSplitAtTime(segs, timeSec) && persistCore(segs)) {
+          setError("");
+          return;
+        }
+      }
       segmentPublish.commitTextDraftsForStructureMutation();
       const t = roundSec3(timeSec);
       const segs = segmentPublish.getCurrentSegmentsSnapshot();
@@ -78,7 +114,7 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       setSelectedIdx(nextIdx);
       onSelectionCollapsed?.(nextIdx);
     },
-    [onSelectionCollapsed, pushUndo, segmentPublish, setError, setSelectedIdx],
+    [onSelectionCollapsed, persistCore, pushUndo, segmentPublish, setError, setSelectedIdx],
   );
 
   return { splitAtSelection, splitAtPlayhead };

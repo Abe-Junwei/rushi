@@ -1,9 +1,6 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { hitSegmentEdgeFromTimelinePointer, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
-import {
-  getSelectionChromeSnapshot,
-  selectionChromeEffectivePrimaryIdx,
-} from "../services/selection/selectionChromeStore";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { isSegmentSnapEnabled, readSegmentOverlayModifiers } from "../utils/segmentOverlayModifiers";
 import type { CreateRangePreview, OverlayDragState, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 import type { SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
@@ -157,7 +154,7 @@ export function useWaveformSegmentDrag(
         anchorClientX: ev.clientX,
         initialStartSec: seg.start_sec,
         initialEndSec: seg.end_sec,
-        selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
+        selectedIdxAtPointerDown: effectiveTranscriptPrimaryIdx(a.selectedIdx),
       });
       interactionStateRef.current = interaction.state;
       dragRef.current = interaction.state.drag;
@@ -183,7 +180,7 @@ export function useWaveformSegmentDrag(
       if (a.disabled || ev.button !== 0) return;
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
-      const chromePrimary = getSelectionChromeSnapshot().primaryIdx;
+      const effectivePrimary = effectiveTranscriptPrimaryIdx(a.selectedIdx);
       const hitIdx = resolveSegmentIndexAtWaveformPointer({
         segments: a.segments,
         timeSec,
@@ -192,7 +189,7 @@ export function useWaveformSegmentDrag(
         layoutHeightPx: a.layoutHeightPx,
         laneByIndex: a.laneByIndex,
         laneCount: a.laneCount,
-        selectedIdx: chromePrimary >= 0 ? chromePrimary : a.selectedIdx,
+        selectedIdx: effectivePrimary >= 0 ? effectivePrimary : a.selectedIdx,
         durationSec: a.durationSec,
       });
       if (hitIdx >= 0) {
@@ -214,7 +211,7 @@ export function useWaveformSegmentDrag(
           pointerId: ev.pointerId,
           anchorTimeSec: timeSec,
           anchorClientX: ev.clientX,
-          selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
+          selectedIdxAtPointerDown: effectiveTranscriptPrimaryIdx(a.selectedIdx),
           baseIndices,
         });
         interactionStateRef.current = interaction;

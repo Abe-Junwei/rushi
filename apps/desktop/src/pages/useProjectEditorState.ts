@@ -1,10 +1,10 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
-import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
+import { dispatchTranscriptEditorSelection } from "../components/editor/core/transcriptEditorViewHandle";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -13,8 +13,9 @@ export interface ProjectEditorApi {
   setCurrentFileId: React.Dispatch<React.SetStateAction<string | null>>;
   segments: SegmentDto[];
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  /** @deprecated Prefer projection primary; kept as ref mirror for sync reads. */
   selectedIdx: number;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   audioSrc: string | null;
   /** Raw on-disk audio path (Tauri invoke → blob URL for WaveSurfer). */
   audioStoragePath: string | null;
@@ -31,24 +32,25 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const [current, setCurrent] = useState<ProjectDetail | null>(null);
   const [currentFileId, setCurrentFileId] = useState<string | null>(null);
   const [segments, setSegments] = useState<SegmentDto[]>([]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
 
-  const selectedIdxRef = useRef(selectedIdx);
-  useEffect(() => {
-    selectedIdxRef.current = selectedIdx;
-  }, [selectedIdx]);
+  const selectedIdxRef = useRef(0);
+
+  const setSelectedIdx = useCallback((idx: number) => {
+    selectedIdxRef.current = idx;
+    dispatchTranscriptEditorSelection(idx);
+  }, []);
 
   const openFile = useCallback(async (fileId: string): Promise<SegmentDto[] | null> => {
-    segmentDraftStore.resetAll();
     setError("");
     try {
       const detail = await fileApi.loadFile(fileId);
       const segs = normalizeSegmentList(detail.segments);
       setCurrentFileId(fileId);
       setSegments(segs);
-      setSelectedIdx(0);
+      selectedIdxRef.current = 0;
+      dispatchTranscriptEditorSelection(0);
       try {
         setAudioStoragePath(detail.audio_path ?? null);
         setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
@@ -64,10 +66,9 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   }, [setError]);
 
   const closeFile = useCallback(() => {
-    segmentDraftStore.resetAll();
     setCurrentFileId(null);
     setSegments([]);
-    setSelectedIdx(0);
+    selectedIdxRef.current = 0;
     setAudioSrc(null);
     setAudioStoragePath(null);
   }, []);
@@ -89,7 +90,8 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
         const segs = normalizeSegmentList(fd.segments);
         setSegments(segs);
         const ni = findSegmentIndexByUid(segs, prevUid);
-        setSelectedIdx(ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)));
+        const nextIdx = ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1));
+        setSelectedIdx(nextIdx);
         try {
           setAudioStoragePath(fd.audio_path ?? null);
           setAudioSrc(fd.audio_path ? convertFileSrc(fd.audio_path) : null);
@@ -101,7 +103,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, currentFileId, segments, selectedIdxRef, setError]);
+  }, [current, currentFileId, segments, setError, setSelectedIdx]);
 
   const applyDetailBase = useCallback((d: ProjectDetail) => {
     setCurrent(d);
@@ -114,7 +116,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     setCurrentFileId,
     segments,
     setSegments,
-    selectedIdx,
+    selectedIdx: selectedIdxRef.current,
     setSelectedIdx,
     audioSrc,
     setAudioSrc,

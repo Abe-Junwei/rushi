@@ -7,13 +7,13 @@ import { useSegmentAnnotationController } from "./useSegmentAnnotationController
 import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { useSegmentMutationController } from "./useSegmentMutationController";
-import { useSegmentSelectionController } from "./useSegmentSelectionController";
+import { useTranscriptSelectionFromProjection } from "./useTranscriptSelectionFromProjection";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import type { BusyReason } from "./useProjectCrudController";
 import { createSegmentPublishApi } from "./segmentPublishApi";
 import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
-import { publishSelectionChromeForControllerState } from "../services/selection/selectionChromePublishBridge";
 import { clampSegmentIndex } from "../utils/segmentSelection";
+import { dispatchTranscriptEditorSelection } from "../components/editor/core/transcriptEditorViewHandle";
 
 type UseProjectLifecycleEditorStackArgs = {
   busy: boolean;
@@ -23,8 +23,7 @@ type UseProjectLifecycleEditorStackArgs = {
   current: ProjectDetail | null;
   currentFileId: string | null;
   segments: SegmentDto[];
-  selectedIdx: number;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedIdx: (idx: number) => void;
   selectedIdxRef: React.MutableRefObject<number>;
   setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
@@ -40,7 +39,6 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     current,
     currentFileId,
     segments,
-    selectedIdx,
     setSelectedIdx,
     selectedIdxRef,
     setCurrent,
@@ -48,11 +46,9 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     pendingAiRevisedUidsRef,
   } = args;
 
-  const segmentSelection = useSegmentSelectionController({
-    selectedIdx,
-    setSelectedIdx,
+  const segmentSelection = useTranscriptSelectionFromProjection({
     segmentCount: segments.length,
-    resetKey: currentFileId,
+    selectedIdxRef,
     disabled: busy,
   });
 
@@ -66,49 +62,25 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
-  const publishStructureSelectionChrome = useCallback(
-    (primaryIdx: number, selectedIndices: Iterable<number> = [primaryIdx]) => {
-      publishSelectionChromeForControllerState({
-        fileId: currentFileId,
-        segments: getCurrentSegmentsSnapshot(),
-        primaryIdx,
-        selectedIndices,
-      });
-    },
-    [currentFileId, getCurrentSegmentsSnapshot],
-  );
-
   const onSelectionCollapsed = useCallback(
     (idx: number) => {
       segmentSelection.collapseTo(idx);
-      publishStructureSelectionChrome(idx, [idx]);
     },
-    [publishStructureSelectionChrome, segmentSelection],
+    [segmentSelection],
   );
 
   const onSegmentsStructureRestored = useCallback(() => {
     const segs = getCurrentSegmentsSnapshot();
     const idx = clampSegmentIndex(selectedIdxRef.current, segs.length);
     segmentSelection.collapseTo(idx);
-    publishStructureSelectionChrome(idx, [idx]);
-  }, [
-    getCurrentSegmentsSnapshot,
-    publishStructureSelectionChrome,
-    segmentSelection,
-    selectedIdxRef,
-  ]);
+  }, [getCurrentSegmentsSnapshot, segmentSelection, selectedIdxRef]);
 
   const clearMultiSelectionWithChrome = useCallback(() => {
     if (segmentSelection.selectionCount <= 1) return;
     const primary = clampSegmentIndex(selectedIdxRef.current, segments.length);
     segmentSelection.clearMultiSelection();
-    publishStructureSelectionChrome(primary, [primary]);
-  }, [
-    publishStructureSelectionChrome,
-    segmentSelection,
-    segments.length,
-    selectedIdxRef,
-  ]);
+    dispatchTranscriptEditorSelection(primary);
+  }, [segmentSelection, segments.length, selectedIdxRef]);
 
   const mutations = useSegmentMutationController({
     segmentPublish,
@@ -132,7 +104,6 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
   const dirty = useSegmentDirtyState({
     currentFileId,
     getCurrentSegmentsSnapshot,
-    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
   });
 
   const glossaryLearn = useGlossaryLearnPromptController({ setError });

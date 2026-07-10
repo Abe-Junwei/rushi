@@ -663,21 +663,7 @@ function checkSegmentListRapidSelectGuard() {
       `${rel}: 未筛选长稿的 selectedDisplayIndex 必须由 selectedIdx O(1) 直达，只能在 filterActive 分支使用 filteredIndices.indexOf(...)`,
     );
   }
-  const scrollRel = 'apps/desktop/src/components/editor/useEditorSegmentListScroll.ts';
-  const scrollPath = path.join(ROOT, scrollRel);
-  if (fs.existsSync(scrollPath)) {
-    const scrollSource = fs.readFileSync(scrollPath, 'utf-8');
-    if (/selectedScrollTimerRef|segmentListScrollCoalesceMs|setTimeout\(flushSelectedScroll/.test(scrollSource)) {
-      errors.push(
-        `${scrollRel}: 选中语段后的列表滚动须与打包版本一致走同步 layout effect，禁止 timer/coalesce 延迟`,
-      );
-    }
-    if (!/scrollGenerationRef/.test(scrollSource)) {
-      errors.push(
-        `${scrollRel}: 列表 rAF correction 须用 scrollGeneration 跳过用户手动滚动后的误校正`,
-      );
-    }
-  }
+  // P9a: textarea virtual-list scroll hook deleted; CM6 revealSegmentInView owns list scroll.
 
   const keyboardRel = 'apps/desktop/src/hooks/useSegmentKeyboard.ts';
   const keyboardPath = path.join(ROOT, keyboardRel);
@@ -733,31 +719,37 @@ function checkSegmentListRapidSelectGuard() {
 
   const selectionRel = 'apps/desktop/src/pages/useTranscriptionLayerSelection.ts';
   const selectionPath = path.join(ROOT, selectionRel);
+  const selectSegmentTransportRel = 'apps/desktop/src/pages/selectSegmentTransport.ts';
+  const selectSegmentTransportPath = path.join(ROOT, selectSegmentTransportRel);
   if (fs.existsSync(selectionPath)) {
     const selectionSource = fs.readFileSync(selectionPath, 'utf-8');
-    const selectionChromePainterRel = 'apps/desktop/src/pages/useWaveformSelectionChromePainter.ts';
-    const selectionChromePainterPath = path.join(ROOT, selectionChromePainterRel);
-    const selectionChromePainterSource = fs.existsSync(selectionChromePainterPath)
-      ? fs.readFileSync(selectionChromePainterPath, 'utf-8')
+    const selectSegmentTransportSource = fs.existsSync(selectSegmentTransportPath)
+      ? fs.readFileSync(selectSegmentTransportPath, 'utf-8')
       : '';
-    if (!/publishSelectionChrome(?:ForInput)?\s*\(/.test(`${selectionSource}\n${selectionChromePainterSource}`)) {
+    const selectionBundle = `${selectionSource}\n${selectSegmentTransportSource}`;
+    if (!/dispatchTranscriptEditorSelection\s*\(/.test(selectionBundle)) {
       errors.push(
-        `${selectionRel}: 语段切换须先 publishSelectionChrome（SC2），再 startTransition 提交 SC1`,
+        `${selectSegmentTransportRel}: 语段切换须经 dispatchTranscriptEditorSelection（CM6 单真源）`,
       );
     }
-    if (/flushSync\s*\(\s*\(\)\s*=>\s*\{[\s\S]{0,180}setSelectedIdxUi\(/.test(selectionSource)) {
+    if (/publishSelectionChrome(?:ForInput)?\s*\(/.test(selectionBundle)) {
+      errors.push(
+        `${selectionRel}: P9b2 后禁止 publishSelectionChrome（SC2 已删）`,
+      );
+    }
+    if (/flushSync\s*\(\s*\(\)\s*=>\s*\{[\s\S]{0,180}setSelectedIdxUi\(/.test(selectionBundle)) {
       errors.push(
         `${selectionRel}: 禁止 flushSync 提交 selectedIdx（Selection Chrome Bus 已替代）`,
       );
     }
-    if (/createListAdvanceCoalescedScheduler|queueListAdvanceReveal/.test(selectionSource)) {
+    if (/createListAdvanceCoalescedScheduler|queueListAdvanceReveal/.test(selectionBundle)) {
       errors.push(
         `${selectionRel}: 语段切换后的波形 reveal 必须即时；listAdvance 只表示不重复 zoom，禁止 150ms coalesce`,
       );
     }
-    if (!/shouldSeekOnSegmentSelect/.test(selectionSource)) {
+    if (!/shouldSeekOnSegmentSelect/.test(selectionBundle)) {
       errors.push(
-        `${selectionRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（list/listKeyboard 禁止 seek）`,
+        `${selectSegmentAtCoreRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（list/listKeyboard 禁止 seek）`,
       );
     }
   }
@@ -1066,6 +1058,34 @@ checkSegmentListRapidSelectGuard();
 checkControlBtnGhostDuplicates();
 checkProductSemanticLucideImports();
 checkPerfGateEnvGuard();
+checkTranscriptEditorCoreSelectionWriteGuard();
+
+function checkTranscriptEditorCoreSelectionWriteGuard() {
+  // Acceptance: only core selection/structure paths may dispatch multi-select effects.
+  const allow = new Set([
+    "apps/desktop/src/components/editor/core/selectionCommands.ts",
+    "apps/desktop/src/components/editor/core/selectionField.ts",
+    "apps/desktop/src/components/editor/core/structureCommands.ts",
+    "apps/desktop/src/components/editor/core/buildTranscriptEditorState.ts",
+    "apps/desktop/src/components/editor/core/TranscriptEditorCore.tsx",
+    "apps/desktop/src/components/editor/core/index.ts",
+  ]);
+  const root = path.join(ROOT, "apps/desktop/src");
+  if (!fs.existsSync(root)) return;
+  walk(root, (fullPath) => {
+    if (!fullPath.endsWith(".ts") && !fullPath.endsWith(".tsx")) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, "/");
+    if (rel.endsWith(".test.ts") || rel.endsWith(".test.tsx")) return;
+    if (rel.includes("/__spike__/")) return;
+    if (allow.has(rel)) return;
+    const source = fs.readFileSync(fullPath, "utf-8");
+    if (/setTranscriptMultiSelectionEffect\s*\.of\s*\(/.test(source)) {
+      errors.push(
+        `${rel}: 禁止在 core 选区命令/结构事务之外写 setTranscriptMultiSelectionEffect（CM6 选区单向真源）`,
+      );
+    }
+  });
+}
 
 function checkPerfGateEnvGuard() {
   const perfRoot = path.join(ROOT, 'apps/desktop/src/perf');

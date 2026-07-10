@@ -1,12 +1,15 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import {
   WaveformSelectionChromeViewProvider,
   useWaveformSelectionChromeViewContext,
 } from "./WaveformSelectionChromeViewContext";
-import { commitSelectionChrome, resetSelectionChromeStoreForTests } from "../services/selection/selectionChromeStore";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
 
 function ReadView() {
   const { view, filterExcludesPrimary, listVisibleIndexSet } = useWaveformSelectionChromeViewContext();
@@ -20,16 +23,21 @@ function ReadView() {
 }
 
 describe("WaveformSelectionChromeViewProvider", () => {
+  beforeEach(() => {
+    resetTranscriptProjectionForTests();
+  });
+
   afterEach(() => {
     cleanup();
-    resetSelectionChromeStoreForTests();
+    resetTranscriptProjectionForTests();
   });
 
   it("shares one resolved view with consumers", () => {
-    commitSelectionChrome({
-      fileId: "f1",
+    seedTranscriptProjectionForTests({
       primaryIdx: 2,
       selectedSet: new Set([2]),
+      rangeAnchor: 2,
+      lineCount: 5,
     });
     render(
       <WaveformSelectionChromeViewProvider
@@ -49,10 +57,11 @@ describe("WaveformSelectionChromeViewProvider", () => {
   });
 
   it("keeps primary chrome when filter excludes it and exposes listVisibleIndexSet", () => {
-    commitSelectionChrome({
-      fileId: "f1",
+    seedTranscriptProjectionForTests({
       primaryIdx: 4,
       selectedSet: new Set([4]),
+      rangeAnchor: 4,
+      lineCount: 5,
     });
     render(
       <WaveformSelectionChromeViewProvider

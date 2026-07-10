@@ -4,9 +4,9 @@ import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
 import { resolveWaveformSelectionChromeView } from "../services/selection/resolveWaveformSelectionChromeView";
 import {
-  getSelectionChromeSnapshot,
-  subscribeSelectionChrome,
-} from "../services/selection/selectionChromeStore";
+  getTranscriptProjectionSnapshot,
+  subscribeTranscriptProjection,
+} from "./editor/core/transcriptProjection";
 import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
@@ -92,9 +92,12 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
 }: WaveformSegmentBandCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chromeVersion = useSyncExternalStore(
-    subscribeSelectionChrome,
-    () => getSelectionChromeSnapshot().version,
-    () => 0,
+    subscribeTranscriptProjection,
+    () => {
+      const proj = getTranscriptProjectionSnapshot();
+      return `p:${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
+    },
+    () => "0",
   );
 
   const dominantSpanSet = useMemo(
@@ -152,7 +155,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     bufferPx: 0,
   });
   const lastCssLeftRef = useRef<number | null>(null);
-  const lastPaintedChromeVersionRef = useRef(-1);
+  const lastPaintedChromeVersionRef = useRef<string | number>(-1);
   const lastPaintedPrimaryIdxRef = useRef(-2);
   const lastPaintedSelectionRef = useRef<{
     lo?: number;
@@ -228,7 +231,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const heightPx = Math.max(1, Math.floor(input.layoutHeightPx));
       const painted = lastPaintWindowRef.current;
       const paintedChromeVersion = lastPaintedChromeVersionRef.current;
-      const chromeVersionNow = getSelectionChromeSnapshot().version;
+      const proj = getTranscriptProjectionSnapshot();
+      const chromeVersionNow = `p:${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
       const selectionChromeChanged = chromeVersionNow !== paintedChromeVersion;
       const selectionPrimaryChanged = selectionView.selectedIdx !== lastPaintedPrimaryIdxRef.current;
       const boundsSignatureChanged =

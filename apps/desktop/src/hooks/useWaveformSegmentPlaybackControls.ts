@@ -13,10 +13,8 @@ import {
   resolveSegmentPlayFrom,
   type SegmentPlayFromResolution,
 } from "../services/waveform/transport";
-import {
-  selectionChromeEffectivePrimaryIdx,
-  subscribeSelectionChrome,
-} from "../services/selection/selectionChromeStore";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import { subscribeTranscriptProjection } from "../components/editor/core/transcriptProjection";
 import { subscribePlaybackFrame } from "../utils/tierScrollFrameCoordinator";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 
@@ -69,9 +67,9 @@ export function useWaveformSegmentPlaybackControls(args: {
     pausedResumeAnchorRef.current = null;
   }, []);
 
-  /** Visual chrome (SC2) may lead React SC1 after select — Space must play the painted segment. */
+  /** Flag-on: CM6 projection primary (SC1 bridge fallback). */
   const resolveEffectiveSelectedIdx = useCallback(() => {
-    return selectionChromeEffectivePrimaryIdx(selectedIdxRef.current);
+    return effectiveTranscriptPrimaryIdx(selectedIdxRef.current);
   }, []);
 
   const resolveSelectedPlaybackRange = useCallback(() => {
@@ -428,12 +426,15 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, [isReady, resolvePlayheadSec, resolveSelectedPlaybackRange, wsRef]);
 
   useEffect(() => {
-    const syncAfterChromeCommit = () => {
+    const syncAfterSelectionCommit = () => {
       queueMicrotask(() => {
         syncSelectedSegmentPlayingUi();
       });
     };
-    return subscribeSelectionChrome(syncAfterChromeCommit);
+    const unsubProjection = subscribeTranscriptProjection(syncAfterSelectionCommit);
+    return () => {
+      unsubProjection();
+    };
   }, [syncSelectedSegmentPlayingUi]);
 
   useEffect(() => {

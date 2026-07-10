@@ -101,6 +101,42 @@ describe("useTranscriptionLayerSegmentListDrag", () => {
     scrollRoot.remove();
   });
 
+  it("does not mark multiSelect on pointerdown before the drag moves", () => {
+    const ctx = makeCtx();
+    const ctxRef = { current: ctx };
+    const segmentListRef = { current: document.createElement("div") };
+    const selectSegmentAtRef = { current: vi.fn() };
+    const selectSegmentRangeRef = { current: vi.fn() };
+    const lastSegmentSelectSourceRef = { current: "waveform" as const };
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSegmentListDrag({
+        ctxRef,
+        segmentListRef,
+        selectSegmentAtRef,
+        selectSegmentRangeRef,
+        lastSegmentSelectSourceRef,
+      }),
+    );
+
+    act(() => {
+      result.current.onSegmentListRangePointerDown(2, {
+        button: 0,
+        pointerId: 3,
+        clientX: 10,
+        clientY: 200,
+        shiftKey: false,
+        metaKey: false,
+        ctrlKey: false,
+        stopPropagation: vi.fn(),
+        target: segmentListRef.current,
+      } as unknown as React.PointerEvent<HTMLElement>);
+    });
+
+    expect(lastSegmentSelectSourceRef.current).toBe("waveform");
+    expect(selectSegmentRangeRef.current).not.toHaveBeenCalled();
+  });
+
   it("does not treat horizontal-only timestamp drag as range multi-select", () => {
     const ctx = makeCtx();
     const ctxRef = { current: ctx };

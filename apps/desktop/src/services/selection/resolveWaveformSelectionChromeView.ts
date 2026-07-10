@@ -2,7 +2,8 @@ import {
   isContiguousIndexSelection,
   selectionEnvelope,
 } from "../../utils/segmentSelection";
-import { getSelectionChromeSnapshot } from "./selectionChromeStore";
+import { getTranscriptProjectionSnapshot } from "../../components/editor/core/transcriptProjection";
+import { waveformSelectionViewFromProjection } from "../../components/editor/core/projectionWaveformBridge";
 
 export type WaveformSelectionChromeReactInput = {
   fileId: string | null;
@@ -12,7 +13,7 @@ export type WaveformSelectionChromeReactInput = {
   selectionHi?: number;
   selectionCount?: number;
   isContiguousSelection?: boolean;
-  /** When set, ignore store primary that is out of range (post merge/delete). */
+  /** When set, ignore projection primary that is out of range (post merge/delete). */
   segmentCount?: number;
   /**
    * @deprecated Kept for call-site compatibility. SC-H6 no longer clears chrome:
@@ -44,35 +45,37 @@ function fromReact(input: WaveformSelectionChromeReactInput): WaveformSelectionC
   };
 }
 
-/** SC2 visual selection for waveform band + overlay — store leads React SC1 until transition catches up. */
+/**
+ * Waveform band/overlay selection view.
+ * P9b2: CM6 transcriptProjection only (React input is fallback when projection empty/OOR).
+ */
 export function resolveWaveformSelectionChromeView(
   input: WaveformSelectionChromeReactInput,
 ): WaveformSelectionChromeView {
-  // filterExcludesPrimary intentionally ignored: keep pink primary + list banner (SC-H6).
   void input.filterExcludesPrimary;
 
-  const snap = getSelectionChromeSnapshot();
-  const segmentCount = input.segmentCount;
-  if (
-    input.fileId == null ||
-    snap.fileId !== input.fileId ||
-    snap.primaryIdx < 0 ||
-    (segmentCount != null && snap.primaryIdx >= segmentCount)
-  ) {
-    return fromReact(input);
-  }
+  const fromProj = waveformSelectionViewFromProjection(
+    getTranscriptProjectionSnapshot(),
+    input.segmentCount,
+  );
+  if (fromProj) return fromProj;
+  return fromReact(input);
+}
 
-  const env = selectionEnvelope(snap.selectedSet);
-  if (!env) {
-    return fromReact(input);
-  }
-
+/** @deprecated Prefer resolveWaveformSelectionChromeView; kept for envelope helpers in tests. */
+export function waveformSelectionViewFromIndices(
+  primaryIdx: number,
+  selectedSet: ReadonlySet<number>,
+): WaveformSelectionChromeView | null {
+  if (primaryIdx < 0) return null;
+  const env = selectionEnvelope(selectedSet);
+  if (!env) return null;
   return {
-    selectedIdx: snap.primaryIdx,
-    selectedIndices: snap.selectedSet,
+    selectedIdx: primaryIdx,
+    selectedIndices: selectedSet,
     selectionLo: env.lo,
     selectionHi: env.hi,
     selectionCount: env.count,
-    isContiguousSelection: isContiguousIndexSelection(snap.selectedSet),
+    isContiguousSelection: isContiguousIndexSelection(selectedSet),
   };
 }

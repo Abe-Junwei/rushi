@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
+import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { applySegmentOverlayTap, type SegmentOverlayTapGesture } from "../utils/waveformSegmentOverlayActions";
 import type { WaveformSelectionGesture } from "../services/waveform/waveformSelectionGesture";
@@ -202,7 +202,7 @@ export function useWaveformSegmentOverlay(
           pointerTimeSec,
           selectedIdxAtPointerDown:
             tapGesture?.selectedIdxAtPointerDown ??
-            selectionChromeEffectivePrimaryIdx(a.selectedIdx),
+            effectiveTranscriptPrimaryIdx(a.selectedIdx),
           viewportSyncedOnDown: tapGesture?.viewportSyncedOnDown,
           sessionId: tapGesture?.sessionId,
         });
@@ -253,7 +253,7 @@ export function useWaveformSegmentOverlay(
         idx,
         a.clientXToTimeSec(ev.clientX),
         consumeLastSegmentTapGesture(idx) ?? {
-          selectedIdxAtPointerDown: selectionChromeEffectivePrimaryIdx(a.selectedIdx),
+          selectedIdxAtPointerDown: effectiveTranscriptPrimaryIdx(a.selectedIdx),
         },
       );
     },
@@ -267,7 +267,7 @@ export function useWaveformSegmentOverlay(
       ev.stopPropagation();
       if (!a.segments[idx]) return;
       suppressClickAfterPointer();
-      const effectiveSelectedIdx = selectionChromeEffectivePrimaryIdx(a.selectedIdx);
+      const effectiveSelectedIdx = effectiveTranscriptPrimaryIdx(a.selectedIdx);
       if (effectiveSelectedIdx !== idx) {
         a.onSelectSegmentAt(idx);
       } else {

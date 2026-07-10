@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { act, renderHook } from "@testing-library/react";
-import { useState } from "react";
+import { useRef } from "react";
 import type { SegmentDto } from "../tauri/projectTypes";
 import {
   computeSegmentLassoOutcome,
@@ -8,9 +8,14 @@ import {
   mergeSegmentRangeFold,
   rangeIndices,
   resolveSelectedIdxAfterIndexRemoval,
+  selectionEnvelope,
   toggleSegmentIndex,
 } from "./segmentSelection";
-import { useSegmentSelectionController } from "../pages/useSegmentSelectionController";
+import {
+  resetTranscriptProjectionForTests,
+  seedTranscriptProjectionForTests,
+} from "../components/editor/core/transcriptProjection";
+import { useTranscriptSelectionFromProjection } from "../pages/useTranscriptSelectionFromProjection";
 
 function seg(start: number, end: number, text = "x"): SegmentDto {
   return {
@@ -25,51 +30,35 @@ function seg(start: number, end: number, text = "x"): SegmentDto {
   };
 }
 
-function useSelectionHarness(initialIdx = 0, count = 5) {
-  const [selectedIdx, setSelectedIdx] = useState(initialIdx);
-  const api = useSegmentSelectionController({
-    selectedIdx,
-    setSelectedIdx,
-    segmentCount: count,
-    resetKey: "file",
-  });
-  return { selectedIdx, setSelectedIdx, ...api };
-}
-
 describe("selection → batch op chain simulation", () => {
   it("shift range then merge uses contiguous lo..hi only", () => {
     const segments = [seg(0, 1, "a"), seg(1, 2, "b"), seg(2, 3, "c")];
-    const { result } = renderHook(() => useSelectionHarness(0, 3));
+    // Pure selection math (no CM6 view): shift from 0 → 2 yields contiguous 0..2.
+    const selected = rangeIndices(0, 2);
+    const envelope = selectionEnvelope(selected);
+    expect(isContiguousIndexSelection(selected)).toBe(true);
+    expect(envelope?.lo).toBe(0);
+    expect(envelope?.hi).toBe(2);
 
-    act(() => {
-      result.current.selectSegmentAt(2, { shiftKey: true });
-    });
-
-    expect(result.current.isContiguousSelection).toBe(true);
-    expect(result.current.selectionLo).toBe(0);
-    expect(result.current.selectionHi).toBe(2);
-
-    const merged = mergeSegmentRangeFold(segments, result.current.selectionLo, result.current.selectionHi);
+    const merged = mergeSegmentRangeFold(segments, envelope!.lo, envelope!.hi);
     expect(merged.text).toBe("a\nb\nc");
   });
 
   it("toggle non-contiguous blocks merge but allows sparse delete indices", () => {
-    const { result } = renderHook(() => useSelectionHarness(0, 5));
+    let state = { indices: new Set([0]), primaryIdx: 0 };
+    const t1 = toggleSegmentIndex(state.indices, state.primaryIdx, 2);
+    expect(t1).not.toBeNull();
+    state = t1!;
+    const t2 = toggleSegmentIndex(state.indices, state.primaryIdx, 4);
+    expect(t2).not.toBeNull();
+    state = t2!;
 
-    act(() => {
-      result.current.selectSegmentAt(0);
-    });
-    act(() => {
-      result.current.selectSegmentAt(2, { toggle: true });
-    });
-    act(() => {
-      result.current.selectSegmentAt(4, { toggle: true });
-    });
-
-    expect(result.current.selectedIndicesArray).toEqual([0, 2, 4]);
-    expect(result.current.isContiguousSelection).toBe(false);
-    expect(result.current.selectionLo).toBe(0);
-    expect(result.current.selectionHi).toBe(4);
+    const selectedIndicesArray = [...state.indices].sort((a, b) => a - b);
+    expect(selectedIndicesArray).toEqual([0, 2, 4]);
+    expect(isContiguousIndexSelection(state.indices)).toBe(false);
+    const envelope = selectionEnvelope(state.indices);
+    expect(envelope?.lo).toBe(0);
+    expect(envelope?.hi).toBe(4);
     // envelope 0..4 would wrongly merge index 1,3 if mergeSegmentRange(0,4) were called
     expect(isContiguousIndexSelection(rangeIndices(0, 4))).toBe(true);
     expect(isContiguousIndexSelection(new Set([0, 2, 4]))).toBe(false);
@@ -85,17 +74,39 @@ describe("selection → batch op chain simulation", () => {
     expect([...extended.indices].sort()).toEqual([0, 1, 2, 3]);
   });
 
-  it("toggle off last item falls back to single index 0", () => {
-    const { result } = renderHook(() => useSelectionHarness(1, 3));
+  it("toggle off last item falls back to null (caller collapses to single index)", () => {
+    const result = toggleSegmentIndex(new Set([1]), 1, 1);
+    expect(result).toBeNull();
+  });
+});
 
-    act(() => {
-      result.current.selectSegmentAt(1);
-      result.current.selectSegmentAt(1, { toggle: true });
+describe("useTranscriptSelectionFromProjection reads", () => {
+  it("mirrors seeded projection primary and set", () => {
+    resetTranscriptProjectionForTests();
+    seedTranscriptProjectionForTests({
+      primaryIdx: 2,
+      selectedSet: new Set([0, 2]),
+      rangeAnchor: 0,
+      lineCount: 5,
     });
 
-    expect(result.current.selectedIndicesArray).toEqual([0]);
-    expect(result.current.selectedIdx).toBe(0);
-    expect(result.current.isIndexInSelection(0)).toBe(true);
+    const { result } = renderHook(() => {
+      const selectedIdxRef = useRef(0);
+      return useTranscriptSelectionFromProjection({
+        segmentCount: 5,
+        selectedIdxRef,
+      });
+    });
+
+    expect(result.current.selectedIdx).toBe(2);
+    expect(result.current.selectedIndicesArray).toEqual([0, 2]);
+    expect(result.current.isContiguousSelection).toBe(false);
+    expect(result.current.selectionLo).toBe(0);
+    expect(result.current.selectionHi).toBe(2);
+
+    act(() => {
+      resetTranscriptProjectionForTests();
+    });
   });
 });
 

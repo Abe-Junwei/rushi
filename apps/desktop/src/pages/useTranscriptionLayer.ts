@@ -6,17 +6,8 @@ import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForwar
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
-import type { SegmentSelectAtOptions } from "../utils/waveformViewMode";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
-import { normalizeSegmentIndexRange, rangeIndices } from "../utils/segmentSelection";
-import { publishSelectionChromeForIndices } from "../services/selection/publishSelectionChromeForInput";
-import {
-  registerSelectionChromePublishRoots,
-  publishSelectionChromeForControllerState,
-  resetSelectionChromeForFile,
-} from "../services/selection/selectionChromePublishBridge";
 import { clearWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
-import { clampSegmentIndex } from "../utils/segmentSelection";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -34,10 +25,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   ctxRef.current = ctx;
 
   const timeline = useWaveformTimelineController(ctx);
-
-  const setSelectedIdxUi = useCallback((idx: number, opts?: SegmentSelectAtOptions) => {
-    ctxRef.current.selectSegmentAt(idx, opts);
-  }, []);
 
   const [editorHint, setEditorHint] = useState("");
   const editorHintTimerRef = useRef(0);
@@ -57,7 +44,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     timeline,
     waveformShellRef,
     segmentListRef,
-    setSelectedIdxUi,
     selectedIdxRef: ctx.selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
@@ -136,26 +122,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   }, [wf.seek]);
 
   useLayoutEffect(() => {
-    registerSelectionChromePublishRoots({
-      getListRoot: () => segmentListRef.current,
-      getOverlayRoot: () =>
-        timeline.tierScrollRef.current?.querySelector(".waveform-timeline-overlay-layer") ?? null,
-    });
-    return () => registerSelectionChromePublishRoots(null);
-  }, [segmentListRef, timeline.tierScrollRef]);
-
-  useLayoutEffect(() => {
-    resetSelectionChromeForFile(ctx.fileId);
     clearWaveformSegmentPreviewViewportSync();
-    const c = ctxRef.current;
-    if (!c.fileId || c.segments.length === 0) return;
-    const primary = clampSegmentIndex(c.selectedIdx, c.segments.length);
-    publishSelectionChromeForControllerState({
-      fileId: c.fileId,
-      segments: c.segments,
-      primaryIdx: primary,
-      selectedIndices: c.selectedIndicesArray.length > 0 ? c.selectedIndicesArray : [primary],
-    });
   }, [ctx.fileId, ctx.segments.length]);
 
   /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
@@ -170,44 +137,20 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
-  const resolveSelectionChromeRoots = useCallback(() => {
-    const tier = timeline.tierScrollRef.current;
-    return {
-      listRoot: segmentListRef.current,
-      overlayRoot: tier?.querySelector(".waveform-timeline-overlay-layer") ?? null,
-    };
-  }, [segmentListRef, timeline.tierScrollRef]);
-
   const selectSegmentIndicesWithChrome = useCallback(
     (indices: number[], primaryIdx: number) => {
       selection.lastSegmentSelectSourceRef.current = "multiSelect";
-      publishSelectionChromeForIndices(
-        ctxRef.current,
-        indices,
-        primaryIdx,
-        resolveSelectionChromeRoots(),
-      );
       ctxRef.current.selectSegmentIndices(indices, primaryIdx);
     },
-    [resolveSelectionChromeRoots, selection.lastSegmentSelectSourceRef],
+    [selection.lastSegmentSelectSourceRef],
   );
 
   const selectSegmentRangeWithChrome = useCallback(
     (lo: number, hi: number) => {
       selection.lastSegmentSelectSourceRef.current = "multiSelect";
-      const c = ctxRef.current;
-      const normalized = normalizeSegmentIndexRange(lo, hi, c.segments.length);
-      if (normalized) {
-        publishSelectionChromeForIndices(
-          c,
-          [...rangeIndices(normalized.lo, normalized.hi)],
-          normalized.hi,
-          resolveSelectionChromeRoots(),
-        );
-      }
-      c.selectSegmentRange(lo, hi);
+      ctxRef.current.selectSegmentRange(lo, hi);
     },
-    [resolveSelectionChromeRoots, selection.lastSegmentSelectSourceRef],
+    [selection.lastSegmentSelectSourceRef],
   );
 
   selectSegmentRangeRef.current = selectSegmentRangeWithChrome;
