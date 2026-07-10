@@ -260,23 +260,42 @@ function readWaveSurferWaveformLayers(ws: WaveSurfer): WaveSurferWaveformLayerNo
  * are often missing while the clip remains — playhead-left looks blank.
  * Keep the full waveform on the main canvas (no clip) and drive played tint via
  * `progressWrapper` width + `progressColor` instead.
+ *
+ * Static rules (clipPath / overflow / cursor hide) go through nonce CSP once;
+ * per-frame width uses {@link setDirectLayoutStyle} with percent dedupe so live
+ * tint does not rewrite a document `<style>` every audio tick.
  */
 export function restoreWaveSurferMainCanvasVisibility(
   layers: WaveSurferWaveformLayerNodes,
   ratio: number,
 ): void {
-  setCspLayoutRules(layers.canvasWrapper, { clipPath: "none" });
-  const played = Math.max(0, Math.min(1, ratio));
-  const playedPercent = Math.round(played * 1e6) / 1e4;
-  setCspLayoutRules(layers.progressWrapper, {
-    width: `${playedPercent}%`,
-    overflow: "hidden",
-  });
+  ensureStaticProgressLayout(layers);
+  applyProgressWrapperWidth(layers.progressWrapper, ratio);
+}
+
+function ensureStaticProgressLayout(layers: WaveSurferWaveformLayerNodes): void {
+  if (!staticProgressLayoutApplied.has(layers.canvasWrapper)) {
+    setCspLayoutRules(layers.canvasWrapper, { clipPath: "none" });
+    staticProgressLayoutApplied.add(layers.canvasWrapper);
+  }
+  if (!staticProgressLayoutApplied.has(layers.progressWrapper)) {
+    setCspLayoutRules(layers.progressWrapper, { overflow: "hidden" });
+    staticProgressLayoutApplied.add(layers.progressWrapper);
+  }
+}
+
+function applyProgressWrapperWidth(progressWrapper: HTMLElement, ratio: number): void {
+  const playedPercent = formatWaveSurferPlayedPercent(ratio);
+  if (lastProgressWidthPercent.get(progressWrapper) === playedPercent) return;
+  lastProgressWidthPercent.set(progressWrapper, playedPercent);
+  setDirectLayoutStyle(progressWrapper, { width: `${playedPercent}%` });
 }
 
 function hideWaveSurferPlayheadCursor(renderer: WaveSurferRendererInternals): void {
   if (!renderer.cursor) return;
+  if (staticProgressLayoutApplied.has(renderer.cursor)) return;
   setCspLayoutRules(renderer.cursor, { display: "none", visibility: "hidden" });
+  staticProgressLayoutApplied.add(renderer.cursor);
 }
 
 /** Progress update without main-canvas clip — played tint via progressWrapper overlay. */
