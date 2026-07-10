@@ -14,7 +14,7 @@ import {
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
-import { selectionProfileMarkListCommit, selectionProfileTime } from "../../services/ui/selectionLatencyProfile";
+import { selectionProfileMarkListCommit, selectionProfileTime, shouldMarkSelectionProfileListCommit } from "../../services/ui/selectionLatencyProfile";
 import {
   clearListKeyboardImperativeScrollKey,
   clearListKeyboardVirtualDisplayPin,
@@ -191,7 +191,7 @@ export function useEditorSegmentListScroll({
     };
 
     if (lastSelectedScrollKeyRef.current === scrollKey) {
-      if (fromWaveform) {
+      if (shouldMarkSelectionProfileListCommit(source)) {
         selectionProfileMarkListCommit();
       }
       maybeNotifyListKeyboardLayoutSettled();
@@ -215,10 +215,7 @@ export function useEditorSegmentListScroll({
     lastSelectedScrollKeyRef.current = scrollKey;
     cancelPendingListScrollCorrection();
 
-    if (fromWaveform) {
-      selectionProfileMarkListCommit();
-    }
-    if (fromListKeyboard) {
+    if (shouldMarkSelectionProfileListCommit(source)) {
       selectionProfileMarkListCommit();
     }
 

@@ -16,6 +16,7 @@ import {
   selectionProfileScheduleFlush,
   selectionProfileTime,
   isSelectionLatencyProfileEnabled,
+  shouldMarkSelectionProfileListCommit,
 } from "../services/ui/selectionLatencyProfile";
 import {
   getSelectionChromeSnapshot,
@@ -181,11 +182,19 @@ export function useTranscriptionLayerSelection(opts: {
         selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
         lastSegmentSelectSourceRef.current = source;
         if (selectedIdxRef) selectedIdxRef.current = idx;
-        if (c.selectedIdx !== idx) {
+        const willCommitSc1 = c.selectedIdx !== idx;
+        if (willCommitSc1) {
           commitSelectedIdxUi(idx, source, opts);
         }
         if (isSelectionLatencyProfileEnabled()) {
-          selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
+          // List layout effect owns listCommit when SC1 changes and list root exists.
+          const listOwnsFlush =
+            willCommitSc1 &&
+            segmentListRef.current != null &&
+            shouldMarkSelectionProfileListCommit(source);
+          if (!listOwnsFlush) {
+            selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
+          }
         }
         if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
           selectionProfileTime("focus", focusWaveformShell);
@@ -221,6 +230,7 @@ export function useTranscriptionLayerSelection(opts: {
         ) {
           burst.scheduleRevealSelectedSegment("listKeyboard");
         }
+        // Burst steps do not commit SC1; scheduleFlush is the owner (no listCommit wait).
         if (isSelectionLatencyProfileEnabled()) selectionProfileScheduleFlush("list");
         if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
           selectionProfileTime("focus", focusWaveformShell);
@@ -267,7 +277,16 @@ export function useTranscriptionLayerSelection(opts: {
         burst.scheduleRevealSelectedSegment(source);
       }
       if (isSelectionLatencyProfileEnabled()) {
-        selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
+        const willCommitSc1 =
+          !isWaveformKeyboard &&
+          (c.selectedIdx !== idx || Boolean(opts?.shiftKey) || Boolean(opts?.toggle));
+        const listOwnsFlush =
+          willCommitSc1 &&
+          segmentListRef.current != null &&
+          shouldMarkSelectionProfileListCommit(source);
+        if (!listOwnsFlush) {
+          selectionProfileScheduleFlush(source === "waveform" ? "waveform" : "list");
+        }
       }
       if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
         selectionProfileTime("focus", focusWaveformShell);
@@ -279,6 +298,7 @@ export function useTranscriptionLayerSelection(opts: {
       ctxRef,
       focusWaveformShell,
       paintSelectionChrome,
+      segmentListRef,
       selectedIdxRef,
       waveformKeyboardCommit,
       waveformShellRef,

@@ -9,9 +9,12 @@ import {
   SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS,
   selectionProfileBegin,
   selectionProfileFlush,
+  selectionProfileMarkListCommit,
   selectionProfileMeetsCiGate,
+  selectionProfileScheduleFlush,
   selectionProfileTime,
   setSelectionLatencyProfileEnabled,
+  shouldMarkSelectionProfileListCommit,
 } from "./selectionLatencyProfile";
 
 vi.mock("../desktopUiLog", () => ({
@@ -106,6 +109,38 @@ describe("selectionLatencyProfile", () => {
     });
     expect(sync).toBe(5);
     expect(sync).toBeLessThanOrEqual(SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS);
+  });
+
+  it("shouldMarkSelectionProfileListCommit covers SC1-committing sources", () => {
+    expect(shouldMarkSelectionProfileListCommit("list")).toBe(true);
+    expect(shouldMarkSelectionProfileListCommit("listAdvance")).toBe(true);
+    expect(shouldMarkSelectionProfileListCommit("listKeyboard")).toBe(true);
+    expect(shouldMarkSelectionProfileListCommit("waveform")).toBe(true);
+    expect(shouldMarkSelectionProfileListCommit("waveformKeyboard")).toBe(true);
+    expect(shouldMarkSelectionProfileListCommit("multiSelect")).toBe(false);
+    expect(shouldMarkSelectionProfileListCommit("contextMenu")).toBe(false);
+  });
+
+  it("markListCommit records SC1 wall-clock even when duration is 0ms", () => {
+    setSelectionLatencyProfileEnabled(true);
+    selectionProfileBegin("waveform idx=3 segments=62");
+    selectionProfileMarkListCommit();
+    expect(logDesktopUi).toHaveBeenCalledWith(
+      "INFO",
+      expect.stringMatching(/listCommit=0\.0ms.*total=/),
+    );
+  });
+
+  it("scheduleFlush after markListCommit is a no-op (profile already flushed)", async () => {
+    setSelectionLatencyProfileEnabled(true);
+    selectionProfileBegin("waveform idx=3 segments=62");
+    selectionProfileMarkListCommit();
+    vi.mocked(logDesktopUi).mockClear();
+    selectionProfileScheduleFlush("waveform");
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+    });
+    expect(logDesktopUi).not.toHaveBeenCalled();
   });
 
   it("does nothing when disabled", () => {

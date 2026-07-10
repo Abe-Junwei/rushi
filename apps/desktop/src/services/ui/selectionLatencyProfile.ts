@@ -204,7 +204,12 @@ function formatSpanParts(spans: ActiveSelectionProfile["spans"]): string {
     "focus",
   ];
   return order
-    .filter((key) => (spans[key] ?? 0) > 0)
+    .filter((key) => {
+      if (spans[key] == null) return false;
+      // Always emit listCommit when recorded (even 0ms) so SC1 wall-clock is visible.
+      if (key === "listCommit") return true;
+      return (spans[key] ?? 0) > 0;
+    })
     .map((key) => `${key}=${spans[key]!.toFixed(1)}ms`)
     .join(" ");
 }
@@ -249,7 +254,27 @@ export function selectionProfileMarkListCommit(): void {
   selectionProfileFlush();
 }
 
-/** rAF flush; waveform also marks listCommit when scroll effect settles. */
+/**
+ * SC1-committing select sources whose list layout effect owns `listCommit`.
+ * Burst-only steps (listKeyboard+burst without SC1) still use scheduleFlush.
+ */
+export function shouldMarkSelectionProfileListCommit(
+  source: string | undefined,
+): boolean {
+  return (
+    source === "list" ||
+    source === "listAdvance" ||
+    source === "listKeyboard" ||
+    source === "waveform" ||
+    source === "waveformKeyboard"
+  );
+}
+
+/**
+ * rAF flush fallback when the list layout effect does not own `listCommit`
+ * (no list root, no SC1 change, or burst-only steps). Prefer skipping this
+ * when {@link shouldMarkSelectionProfileListCommit} + list root will mark.
+ */
 export function selectionProfileScheduleFlush(source: "list" | "waveform"): void {
   if (!isSelectionLatencyProfileEnabled()) return;
   window.clearTimeout(waveformProfileFlushTimer);
