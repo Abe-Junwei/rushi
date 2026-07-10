@@ -7,7 +7,7 @@ import {
   resolveDefaultEditingPxPerSec,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
-import { useWaveformZoom } from "./useWaveformZoom";
+import { useWaveformZoom, DRAW_PX_PER_SEC_DEBOUNCE_MS } from "./useWaveformZoom";
 
 function renderZoomHook() {
   return renderHook(() => useWaveformZoom());
@@ -138,15 +138,50 @@ describe("useWaveformZoom", () => {
     expect(result.current.layoutIntent).toBe("manual");
   });
 
-  it("setPxPerSecFromSlider syncs layout and draw immediately for discrete step zoom", () => {
+  it("setPxPerSecFromSlider updates layout immediately and defers draw until debounce", () => {
+    vi.useFakeTimers();
     const { result } = renderZoomHook();
+    const initialDraw = result.current.drawPxPerSec;
 
     act(() => {
       result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2);
     });
 
     expect(result.current.layoutPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+    expect(result.current.drawPxPerSec).toBe(initialDraw);
+
+    act(() => {
+      vi.advanceTimersByTime(DRAW_PX_PER_SEC_DEBOUNCE_MS);
+    });
+
     expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+    vi.useRealTimers();
+  });
+
+  it("continuous slider steps coalesce to one draw commit after trailing debounce", () => {
+    vi.useFakeTimers();
+    const { result } = renderZoomHook();
+    const initialDraw = result.current.drawPxPerSec;
+
+    act(() => {
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 1.5);
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2);
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2.5);
+    });
+
+    expect(result.current.layoutPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2.5);
+    expect(result.current.drawPxPerSec).toBe(initialDraw);
+
+    act(() => {
+      vi.advanceTimersByTime(DRAW_PX_PER_SEC_DEBOUNCE_MS - 1);
+    });
+    expect(result.current.drawPxPerSec).toBe(initialDraw);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2.5);
+    vi.useRealTimers();
   });
 
   it("setFitPxPerSec syncs layout and draw immediately", () => {

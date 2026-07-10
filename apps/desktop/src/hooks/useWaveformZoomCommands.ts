@@ -12,10 +12,12 @@ import { isPxPerSecNearFitAll, isNearEditingDefaultForMedia } from "../utils/wav
 type WaveformZoomCommandDeps = {
   setLayoutIntentState: (intent: WaveformZoomLayoutIntent) => void;
   applyLayoutAndDraw: (next: number) => void;
+  /** Continuous slider/step: layout immediate, draw trailing debounce. */
+  applyLayoutAndScheduleDraw: (next: number) => void;
 };
 
 export function useWaveformZoomCommands(deps: WaveformZoomCommandDeps) {
-  const { setLayoutIntentState, applyLayoutAndDraw } = deps;
+  const { setLayoutIntentState, applyLayoutAndDraw, applyLayoutAndScheduleDraw } = deps;
 
   const applyFitAllRefitPxPerSec = useCallback(
     (next: number) => {
@@ -46,9 +48,9 @@ export function useWaveformZoomCommands(deps: WaveformZoomCommandDeps) {
     (next: number) => {
       if (!Number.isFinite(next)) return;
       setLayoutIntentState("manual");
-      applyLayoutAndDraw(next);
+      applyLayoutAndScheduleDraw(next);
     },
-    [applyLayoutAndDraw, setLayoutIntentState],
+    [applyLayoutAndScheduleDraw, setLayoutIntentState],
   );
 
   const resetZoom = useCallback(() => {

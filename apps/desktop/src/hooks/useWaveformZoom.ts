@@ -16,9 +16,9 @@ function clampStoredPxPerSec(value: number | null | undefined): number {
 }
 
 /**
- * Single zoom track for layout (timeline width, overlay, scroll).
- * `drawPxPerSec` follows layout immediately for discrete ± / fit commands;
- * `scheduleDrawPxPerSec` remains for a future continuous slider.
+ * Dual zoom track: layout (timeline width, overlay, scroll, `ws.zoom` stretch)
+ * updates immediately; draw (`drawPxPerSec` → peaks load) trails on continuous
+ * slider/step via {@link scheduleDrawPxPerSec}. Discrete fit/reset flush both.
  */
 export function useWaveformZoom() {
   const [layoutPxPerSec, setLayoutPxPerSecState] = useState(() =>
@@ -31,7 +31,7 @@ export function useWaveformZoom() {
   const layoutIntentRef = useRef<WaveformZoomLayoutIntent>("manual");
   layoutIntentRef.current = layoutIntent;
 
-  const { flushDrawPxPerSec } = useWaveformZoomDrawDebounce(setDrawPxPerSecState);
+  const { flushDrawPxPerSec, scheduleDrawPxPerSec } = useWaveformZoomDrawDebounce(setDrawPxPerSecState);
 
   const setLayoutIntentState = useCallback((intent: WaveformZoomLayoutIntent) => {
     layoutIntentRef.current = intent;
@@ -44,6 +44,14 @@ export function useWaveformZoom() {
       flushDrawPxPerSec(next);
     },
     [flushDrawPxPerSec],
+  );
+
+  const applyLayoutAndScheduleDraw = useCallback(
+    (next: number) => {
+      setLayoutPxPerSecState(next);
+      scheduleDrawPxPerSec(next);
+    },
+    [scheduleDrawPxPerSec],
   );
 
   const skipPersistRef = useRef(true);
@@ -61,6 +69,7 @@ export function useWaveformZoom() {
   const commands = useWaveformZoomCommands({
     setLayoutIntentState,
     applyLayoutAndDraw,
+    applyLayoutAndScheduleDraw,
   });
 
   return {
