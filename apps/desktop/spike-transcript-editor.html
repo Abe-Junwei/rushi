@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>P0 Spike — Transcript Editor Core</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        background: #f7f6f3;
+        color: #1f1f1f;
+      }
+      #toolbar {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid #e5e2dc;
+        background: #fff;
+      }
+      #host {
+        height: calc(100% - 52px);
+      }
+      #status {
+        font-size: 0.85rem;
+        color: #555;
+        white-space: pre-wrap;
+      }
+      button {
+        padding: 0.35rem 0.75rem;
+        border: 1px solid #d0cbc3;
+        border-radius: 6px;
+        background: #fff;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="toolbar">
+      <strong>CM6 P0 Spike</strong>
+      <button type="button" id="btn-bench">Run scroll + gutter bench</button>
+      <span id="status">loading…</span>
+    </div>
+    <div id="host"></div>
+    <script type="module" src="/src/spike-pages/transcriptEditorCoreSpikeMain.ts"></script>
+  </body>
+</html>
