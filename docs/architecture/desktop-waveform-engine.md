@@ -76,6 +76,8 @@
 - 语段 overlay、框选、播放控件、点击寻位一律经 `timeToTimelinePx`（`waveformSegmentBounds` / `waveformSegmentOverlayGeometry`）。
 - **语段 tap（两段式 seek）：** [`resolveSegmentOverlayTap`](../../apps/desktop/src/utils/waveformSegmentOverlayActions.ts) — 未选中语段 → `selectSegmentAt`（viewport fit + seek 语段头）；已选中语段内再点 → `seekToTime`（钳在语段边界）。pointerup 为主路径（`applyOverlayPointerUpIntent`），click 为兜底。
 - **语段播放起点：** [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — playhead 在语段内则从 playhead 起播，否则从语段头。
+- **Space / 工具栏播放钮：** [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts) — 当前选中语段 scoped 播放（非全局 `togglePlay` 续播）。
+- **WS-2a sticky 层：** `waveform-timeline-wave-layer` 与 playhead sticky 壳用 **`h-0` + 子层 absolute 铺满**，避免 in-flow `h-full` 把后续 sticky 壳挤出 `peaksPaneHeightPx` 后被 tier `overflow-y-hidden` 裁掉（播放头不可见回归）。
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
 
@@ -103,7 +105,7 @@
 
 | 命令 | 触发 | SC1 | SC2 | seek | reveal | 备注 |
 |------|------|-----|-----|------|--------|------|
-| `selectAndSeekStart` | 波形首点未选中语段 | ✓ | ✓（pointerdown preview） | 语段头 | ✓ | pointerup 用同一 session 消费 preview，禁止 TTL double consume |
+| `selectAndSeekStart` | 波形首点未选中语段 | ✓ | ✓（pointerdown preview） | 语段头 | ✓ | pointerup 用同一 session 消费 preview，禁止 TTL double consume；**播放中** pointerdown 可 defer seek，但 pointerup 仍须 seek（不得因 SC2 已匹配而 skip） |
 | `seekWithinSegment` | 已选中语段内再点 | — | — | 点击点钳在语段内 | — | 只移动 playhead，不重选 |
 | `selectOnly` | shift/meta、右键菜单或非 waveform 源 | ✓ | ✓ | — | 按来源策略 | 不触发 waveform preview seek |
 | `blankSeek` | 空白短点 | — | — | anchor 时间 | — | suppress 播放跟随 |
@@ -234,14 +236,31 @@
 
 ## 播放时钟与单 tick（playhead / 滚动跟随同源）
 
-调研：[`waveform-playhead-clock-unification-research.md`](../execution/specs/waveform-playhead-clock-unification-research.md)。
+调研：[`waveform-visual-raf-playhead-research.md`](../execution/specs/waveform-visual-raf-playhead-research.md)（播放驱动）、[`waveform-playhead-single-clock-research.md`](../execution/specs/waveform-playhead-single-clock-research.md)（无外推）、[`waveform-playhead-clock-unification-research.md`](../execution/specs/waveform-playhead-clock-unification-research.md)（rAF 分发，历史）。
 
-- **单一平滑算法真源**：[`visualPlayheadClock.ts`](../../apps/desktop/src/utils/visualPlayheadClock.ts)（纯函数 `createVisualPlayheadClockState` / `readVisualPlayheadTimeSec`）。算法为**有界领先 + 单调**：从上一次发出值按 `playbackRate` 外推填补量化间隙，但**领先 raw 不超过 0.05s**（杜绝起播时媒体启动延迟下的无界过预测），且正向播放期间**绝不回退**；仅在 raw 真实回跳（>0.2s）或大幅前跳（>0.35s）时硬跳到 raw。WS `getCurrentTime()` 被 HTMLMediaElement `timeupdate` 量化（4–250ms），故播放头**线**不直接用原始时间；[`useWaveformLiveClock`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts)（ruler / 播放时间标签）**消费同一纯函数**，不再自带重复平滑。
-- **单 rAF tick（发布/订阅）**：[`useWaveformVisualPlayheadClock`](../../apps/desktop/src/hooks/useWaveformVisualPlayheadClock.ts) 在播放期持有 **唯一** 时钟 rAF；每帧先推进 `visualTimeSecRef`，再 **同帧** 按优先级广播给订阅者：滚动跟随（`PLAYHEAD_FRAME_PRIORITY_SCROLL=0`）→ playhead transform（`=1`）。消除了「时钟 rAF 更新 ref、playhead 再排一帧读它」的双 rAF 延迟，保证 playhead 与滚动跟随用 **同一帧的时间**。
-  - [`useWaveformPlaybackScrollFollow`](../../apps/desktop/src/hooks/useWaveformPlaybackScrollFollow.ts) 与 [`WaveformViewportPlayhead`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) **不再各开 rAF**，改 `subscribePlayheadFrame`；embedded 时间尺 [`WaveformTimeRulerCanvas`](../../apps/desktop/src/components/WaveformTimeRulerCanvas.tsx) 亦订阅 playhead frame 以刷新 major tick 高亮。
-  - 暂停 / seek 时 tick 停；playhead 由 `currentTimeSec` effect、ruler Canvas 由 paused 分支 + scroll frame 落位。
-- **playhead transform 写入**：经 [`setCspLayoutRules`](../../apps/desktop/src/utils/cspElementLayout.ts)（nonce `<style>` 注册表，CSP-HARDEN 禁 `el.style.*`）；`lastTransformRef` 去重，center 模式仅写一次。
+- **单时间源（无外推）**：真源 = `media.currentTime`（`getRawMediaPlayheadTimeSec`）。**不做** `playbackRate * dt` 外推。显示、决策、滚动跟随、ruler/label 一律经 `getDisplayPlayheadTimeSec()`（ready 时 = `visualTimeSecRef`）。
+- **播放视觉驱动（VRP）**：playing 时 [`useWaveformVisualPlayheadClock`](../../apps/desktop/src/hooks/useWaveformVisualPlayheadClock.ts) **本仓 rAF** 每帧轮询 raw media → 写 `visualTimeSecRef` → `schedulePlaybackViewportFrame`。不依赖 WS `audioprocess` 帧率（Tauri/WKWebView 实测常仅 13–17Hz）。`audioprocess` 仅在暂停态（或 `isPlaying` 尚未 commit）schedule；playing 时只锚 ref。
+- **Seek（Peaks 序）**：`syncDisplayPlayheadAfterSeek(t)` → `ws.setTime(t)` → `commitSeekUi`。用户路径同栈已刷 UI。入口：[`applyPeaksOrderedSeek`](../../apps/desktop/src/services/waveform/transport/dispatchTransportIntent.ts) / [`useWaveformPlayback.seek`](../../apps/desktop/src/hooks/useWaveformPlayback.ts)。
+- **WS `seeking` 事件**：播放态 **不**重同步 playhead（下一帧 rAF / media 轮询覆盖）；暂停态 **仍** `syncDisplayPlayheadAfterSeek` — 覆盖 peaks 热重载等 **WS-only `setTime`**（不经 Peaks 序），避免 band `playheadSecRef` 滞后。
+- **Pause / Chromium 回退**：停播取消 rAF；`lastTimeUiCommitRef` → `setCurrentTime` → `syncPausedTime`；`pausedImperativeSeekUntil`（~400ms）防止 stale React `currentTime` 覆盖 imperative seek。
+- **单 rAF 发布/订阅**：playing rAF / seek sync 经 [`schedulePlaybackViewportFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 同帧通知：滚动跟随（`PLAYHEAD_FRAME_PRIORITY_SCROLL=0`，已有 scroll epsilon 节流）→ playhead transform（`=1`）。[`useWaveformPlaybackScrollFollow`](../../apps/desktop/src/hooks/useWaveformPlaybackScrollFollow.ts)、[`WaveformViewportPlayhead`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) 订阅同一帧时间；[`useWaveformLiveClock`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts) 读 `getDisplayPlayheadTimeSec`。embedded ruler **不**订阅 playhead 重绘（WR-1）。
+- **高频几何写入（direct style）**：playhead transform、band / ruler `left/width/height`、ruler/minimap scroll transform 一律经 [`setDirectLayoutStyle`](../../apps/desktop/src/utils/cspElementLayout.ts)（`element.style.setProperty`，**CSP 合法**，零全文档 style recalc，与 WaveSurfer v7 同构）。`lastTransformRef` / `lastCssLeftRef` 去重。调研与 CSP probe 实测见 [`waveform-csp-dynamic-style-performance-research.md`](../execution/specs/waveform-csp-dynamic-style-performance-research.md)。
+  - **边界**：`setCspLayoutRules`（nonce `<style>` 注册表）仅保留给**需要选择器 / 伪类 / 媒体查询**的动态样式（这类真 `<style>` 元素会被 `style-src-elem` 拦，须 nonce）；**禁止**用于每帧路径。`element.style` 仅允许在 `cspElementLayout.ts` 单点封装（架构守卫 allowlist），组件不散落 `.style.`；`style={{}}` / `setAttribute('style')` / `cssText` 仍全仓禁（`style-src-attr` 拦截）。
 - **已播放显示边界**：已播放区域只由 WaveSurfer progress / playhead 表示；`WaveformSegmentBandCanvas` 不再按 playhead 给未选中语段渲染 visited 语段色，仅保留当前选中 / 多选 / 低置信 / idle 语段状态。
+- **已删除**：`waveformImperativePlayheadSync`（50ms）、`waveformSelectionSeekChrome`（1200ms seeking coalesce）— 双钟竞争补丁；选中后防播放跟随回拽仍用 `playbackFollowSuppressUntilRef`（与 playhead 时钟无关）。
+
+## Transport Authority（seek / play 命令真源）
+
+调研：[`waveform-transport-authority-research.md`](../execution/specs/waveform-transport-authority-research.md)（承接 seek-industry + single-clock）。
+
+- **问题**：display 时钟已单源，但「写什么时间 / 何时 play」曾分散在 playback、segment controls、selection、gesture、shortcut 等多处，SC2/raw/display 启发式互相覆盖 → 播放中选段不 seek、假 seek-within、raw 滞后起播。
+- **真源模块**：[`services/waveform/transport/`](../../apps/desktop/src/services/waveform/transport/) — `resolveSegmentPlayFrom` / `resolveSelectTransportSeekTime` / `applyPeaksOrderedSeek` / `dispatchTransportIntent`。
+- **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
+- **Play-from 优先级**（写死）：`fromSec` → display（段内）→ `|raw−display|≤ε` 且 raw 段内才 resume skip → 否则段头（`resolveSegmentPlaybackStartSec`）。
+- **选中 seek**：由 SC1 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用 SC2 chrome 匹配推断「已 seek」或「已选中可 seek-within」。
+- **产品入口**：Space / 工具栏 = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped）；无选中 no-op / disabled。全局 `togglePlay` 不作为 Space 路径。起播索引用 [`selectionChromeEffectivePrimaryIdx`](../../apps/desktop/src/services/selection/selectionChromeStore.ts)（SC2 可领先 SC1；H3）。
+- **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks、SC1/SC2 总线本身（Transport 只消费时间与 seekPolicy，不拥有 chrome）。
+- **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 
 ## 偏好（localStorage）
 

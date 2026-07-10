@@ -21,9 +21,11 @@
 | 指令 | 管什么 | v1.1 后生产态 |
 |------|--------|---------------|
 | `style-src` | `<style>`、`<link rel=stylesheet>`、Tauri 注入 nonce | `'self'` + fonts + **runtime nonce** ✅ |
-| `style-src-attr` | `style="…"`、React `style={{}}`、**`element.style.x = …`** | **`'unsafe-inline'`** ← v1.2 目标去掉 |
+| `style-src-attr` | `style="…"` 属性、React `style={{}}`、`setAttribute('style')`、`el.style.cssText` | **`'unsafe-inline'`** ← v1.2 目标去掉 |
 
-> **关键**：去掉 `style-src-attr` 的 `unsafe-inline` 后，**JS 写 CSS 变量**（`root.style.setProperty('--x', v)`）同样被拦——不能只迁 React JSX，须一并迁 **imperative DOM**（`officeAccentTheme.ts`、`waveformViewportStretch.ts` 等）。
+> **关键**：去掉 `style-src-attr` 的 `unsafe-inline` 后，**HTML 内联样式属性**（`style="…"`、React `style={{}}`、`setAttribute('style')`、`cssText`）被拦——须迁 React JSX 内联样式。
+>
+> **⚠ 更正（2026-07-09，见 [`waveform-csp-dynamic-style-performance-research.md`](./waveform-csp-dynamic-style-performance-research.md) §2 CSP probe 实测）**：本行早前称「`root.style.setProperty('--x', v)` / `element.style.x = …` 同样被拦」为**错误**。**逐属性 DOM 写入**（`element.style.transform = …`、`element.style.setProperty('--x', v)`）**不经 HTML parser，永不被 `style-src`/`style-src-attr` 拦**（probe 实证：`style-src 'self'` 下无 violation）。因此 `officeAccentTheme.ts`、`waveformViewportStretch.ts` 等的 `setProperty` **并非因 CSP 必须迁移**；高频几何路径反而应回归 `element.style`（见 single-clock 性能调研）。被 CSP 拦的只有：内联 `style` 属性、`setAttribute('style')`、`cssText`、以及 **nonce-less 动态 `<style>` 元素**（`style-src-elem`）。
 
 ---
 

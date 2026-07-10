@@ -111,14 +111,16 @@
 
 ## 4. 差距分析（Rushi vs 业内）
 
-| 维度 | 业内共识（A–D） | Rushi 现状 | 风险 |
-|------|-----------------|------------|------|
-| **时钟真源** | 单出口：WS rAF timer / Peaks player time / ViewInfo / `CurrentVideoPositionSeconds` | **三轨**：`ws.getCurrentTime()`、`visualTimeSecRef`、`lastTimeUiCommitRef`；播放时 React `currentTime` **不跟** timeupdate | 播放头看起来在语段 N，媒体仍在 N−1 |
-| **Seek 原子性** | `setTime` 或 `updatePlayheadTime`+`seek` **同栈、同秒** | `wf.seek` + `syncDisplayPlayheadAfterSeek` 分属 WS 与 visual clock；`viewportSyncedOnDown` 路径 **只 select 不 seek-within** | 点击已选语段只改选中不改时间 |
-| **语段播放起点** | WS/Peaks：**显式 `start`**（region.start / segment.startTime） | `playSegmentAtIndex` 用 **`ws.getCurrentTime()`** 解析，且先 `pause()` | pause 后 `getCurrentTime()` 可能仍落后 visual；**从前语段起播** |
-| **播放中点击** | Audacity：`SeekStream`；Peaks：仍 `updatePlayheadTime`+`seek` | 近期补丁：播放中 pointerdown **跳过** `syncWaveformSegmentSelectPreviewViewport` | 减少跳段头，但 **与 pointerup seek-within 组合** 时序更复杂 |
-| **语段 click 语义** | WS region click **不播放**；Peaks 只 emit 事件 | 未选中→语段头；已选中→seek-within（[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)） | 契约合理，但 **play 路径未消费 pointerTime** |
-| **段内 playhead 起播** | Peaks **从不**从 playhead 中间起播段；WS region play **从 region.start** | Rushi `resolveSegmentPlaybackStartSec` 允许段内起播（DAW 式） | 产品差异化 OK，但 **输入时间必须对** |
+> **G2 时钟真源（2026-07-09）**：**已对齐** — 见 [`waveform-playhead-single-clock-research.md`](./waveform-playhead-single-clock-research.md)。已移除外推；display + decision 同读 `visualTimeSecRef`（`getDisplayPlayheadTimeSec`）；Peaks 序 seek 保留。下表「Rushi 现状」列保留调研时点描述；实施后状态以 G2 标注与 single-clock 三件套为准。
+
+| 维度 | 业内共识（A–D） | Rushi 现状（调研时点） | 风险 | 2026-07 后 |
+|------|-----------------|------------------------|------|------------|
+| **时钟真源（G2）** | 单出口：WS rAF timer / Peaks player time / ViewInfo / `CurrentVideoPositionSeconds` | **三轨** + visual **外推**；决策读 `ws.getCurrentTime()` | 播放头在语段 N，媒体/决策在 N−1 | **已对齐**：无外推；决策=display=`visualTimeSecRef` |
+| **Seek 原子性** | `setTime` 或 `updatePlayheadTime`+`seek` **同栈、同秒** | `wf.seek` + `syncDisplayPlayheadAfterSeek`；`viewportSyncedOnDown` pointerup 只 select | 点击已选语段只改选中不改时间 | Peaks 序保留；viewportSynced 产品契约保留 |
+| **语段播放起点** | WS/Peaks：**显式 `start`** | `playSegmentAtIndex` 用裸 `ws.getCurrentTime()` | 从前语段起播 | **已修**：`getPlayheadTime`→display；支持 `fromSec` |
+| **播放中点击** | Audacity：`SeekStream`；Peaks：仍 `updatePlayheadTime`+`seek` | pointerdown 跳过部分 preview sync | 时序复杂 | 仍走 Peaks 序 seek；播放态 seeking 不重同步 playhead |
+| **语段 click 语义** | WS region click **不播放**；Peaks 只 emit | 未选中→语段头；已选中→seek-within | play 未消费 pointerTime | 双击/显式播传 `fromSec`；空格用 display |
+| **段内 playhead 起播** | Peaks/WS region 从段头 | `resolveSegmentPlaybackStartSec` 允许段内起播 | 输入时间必须对 | **产品保留**；输入已同源 |
 
 ### 4.1 根因假设（按优先级，待 Plan 手测验证）
 
@@ -133,25 +135,26 @@
 
 | 问题 | 结论 |
 |------|------|
-| **选定方案（修复方向）** | **（1）权威播放时间单真源**：对外暴露 `getAuthoritativePlayheadSec()` = 优先 `getVisualPlayheadTimeSec()`，seek 后/暂停后与 `ws.getCurrentTime()` 取 max 一致性校验；**（2）Seek 契约**（Peaks 顺序）：任意 seek/play 前 **`syncDisplayPlayheadAfterSeek(t)` 与 `ws.setTime(t)` 同事务**（已有 `commitSeekUi` 扩展点）；**（3）语段播放**：`playSegmentAtIndex(idx, { fromSec?: number })` — 有 `fromSec`（点击/double-click）用之；否则 `resolveSegmentPlaybackStartSec(authoritative, seg)`；**禁止**裸 `ws.getCurrentTime()`；**（4）可选对齐 WS**：评估是否恢复播放期对 WS `timeupdate` 的 `lastTimeUiCommitRef` 同步（或 visual clock 每帧读 `ws.getCurrentTime()` 重锚），缩小双钟漂移。 |
-| **不做什么** | ❌ 不引入第二套 VAD/语段 hit-test；❌ 不 fork Peaks/WS 为并行引擎；❌ 不把全局 `/health` 当播放状态；❌ 不在未手测前改语段 tap 产品矩阵（已选 seek-within 保留）。 |
-| **与既有 research 关系** | 本文补 **seek/play 语义与权威时间**；[`waveform-playhead-clock-unification-research.md`](./waveform-playhead-clock-unification-research.md) 补 **rAF 分发** — 实施时 **合并为一条 Plan**，避免两次改同一 hook。 |
-| **与 architecture** | 对齐 [`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md) §语段 tap、§播放时钟；能力—UI 矩阵：播放/seek 状态以 **权威 playhead + 选中 idx** 为准，非稀疏 timeupdate。 |
-| **风险 / spike** | SPIKE-01：`pause()` 后 `ws.getCurrentTime()` vs `media.currentTime` 延迟（Chromium/Tauri）；SPIKE-02：播放中 seek-within 是否需 Audacity 式「先 seek 流再继续播」。 |
+| **选定方案（修复方向）** | 初版曾提 `getAuthoritativePlayheadSec` + max(visual, ws)。**终态以 single-clock 为准**：删外推；`getDisplayPlayheadTimeSec()` = `visualTimeSecRef`；Peaks 序 `syncDisplayPlayheadAfterSeek`→`ws.setTime`；`playSegmentAtIndex` 读 display / `fromSec`；**禁止**裸 `ws.getCurrentTime()` 作决策。暂停态 WS `seeking` 仍 sync（peaks 热重载等 WS-only seek）。 |
+| **不做什么** | ❌ 不引入第二套 VAD/语段 hit-test；❌ 不 fork Peaks/WS 为并行引擎；❌ 不把全局 `/health` 当播放状态；❌ 不改语段 tap 产品矩阵（已选 seek-within 保留）；❌ 不恢复 extrapolation / max(visual, raw)。 |
+| **与既有 research 关系** | 本文补 **seek/play 语义**；[`waveform-playhead-clock-unification-research.md`](./waveform-playhead-clock-unification-research.md) 补 **rAF 分发**；**G2 收口**见 [`waveform-playhead-single-clock-research.md`](./waveform-playhead-single-clock-research.md) + intent/plan/acceptance。 |
+| **与 architecture** | 对齐 [`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md) §语段 tap、§播放时钟（单时间源、无外推）。 |
+| **风险 / spike** | SPIKE-01：`pause()` 后 Chromium `media.currentTime` 回退 — 由 `lastTimeUiCommitRef` + `pausedImperativeSeekUntil` 覆盖；SPIKE-02：播放中 seek-within 是否需 Audacity 式「先 seek 流再继续播」（未做，当前 Peaks 序足够）。 |
 
 ---
 
 ## 6. 落位预告（非最终实现）
 
-| 层 | 文件 / 模块 | 变更类型 |
-|----|-------------|----------|
-| 播放控制 | `useWaveformSegmentPlaybackControls.ts` | `playSegmentAtIndex` 接受 `fromSec`；读权威 playhead |
-| 波形 seek | `useProjectWaveform.ts` / `useTranscriptionLayer.ts` | `commitSeekUi` 统一 visual+ws；导出 `getAuthoritativePlayheadSec` |
-| 事件 | `projectWaveformWaveSurferEvents.ts` | 评估 playing 期 anchor 策略（重锚 vs 跳过 setState） |
-| 语段手势 | `waveformSelectionGesture.ts` / `waveformSegmentOverlayActions.ts` | double-click / play 传入 `pointerTimeSec`；审查 `viewportSyncedOnDown` |
-| 时钟 | `useWaveformVisualPlayheadClock.ts` | seek 后强制 snap；与 WS setTime 对齐测试 |
-| 测试 | `formatMediaTime.test.ts`、`useWaveformSegmentPlaybackControls` 新测、`waveformSelectionGesture.test.ts` | 权威时间 + 段内点击播放 |
-| 文档 | `waveform-playhead-seek-plan.md`（待写） | 链接本文 + clock-unification |
+> **实施已收口到** [`waveform-playhead-single-clock-plan.md`](./waveform-playhead-single-clock-plan.md)。下表为调研时点预告，保留备查。
+
+| 层 | 文件 / 模块 | 变更类型 | 终态 |
+|----|-------------|----------|------|
+| 播放控制 | `useWaveformSegmentPlaybackControls.ts` | `fromSec`；读权威 playhead | ✅ display / `fromSec` |
+| 波形 seek | `useProjectWaveform.ts` | Peaks 序；导出权威时间 | ✅ `getDisplayPlayheadTimeSec`（非 `getAuthoritative*`） |
+| 事件 | `projectWaveformWaveSurferEvents.ts` | playing 期 anchor | ✅ 播放 seeking 不 sync；暂停 seeking sync |
+| 语段手势 | `waveformSegmentOverlayActions.ts` | `viewportSyncedOnDown` | ✅ pointerup 只 select |
+| 时钟 | `useWaveformVisualPlayheadClock.ts` | 去外推；seek snap | ✅ |
+| 文档 | single-clock 三件套 + engine §播放时钟 | — | ✅ |
 
 ---
 
@@ -171,8 +174,8 @@
 ## 8. 签收
 
 - [x] 调研 brief 完成（源码级 ≥4 路线）
-- [ ] `waveform-playhead-seek-plan.md` / acceptance 已链接本文
-- [ ] 用户或路线图确认可进入编码
+- [x] G2 收口文档已链接：[`waveform-playhead-single-clock-research.md`](./waveform-playhead-single-clock-research.md) / intent / plan / acceptance
+- [ ] 手测 H1–H6（见 single-clock acceptance §3）
 
 **变更记录**
 
@@ -182,3 +185,4 @@
 | 2026-07-07 | P0 落地：`waveformAtomicSeek`、权威 playhead 注入 `playSegmentAtIndex`、`fromSec` 双击播、Peaks 序 seek |
 | 2026-07-07 | P1 落地：audioprocess 统一帧、合并 playback+scroll rAF |
 | 2026-07-08 | 更正：band visited 边界重绘已废弃（产品用 WS progress / playhead，不在 band 着色）；另落地 seek 去重 + display/authority 统一 catch-up |
+| 2026-07-09 | **G2 已对齐**：外推删除、单 `visualTimeSecRef`；§4/§5 标注终态并链 single-clock 三件套 |
