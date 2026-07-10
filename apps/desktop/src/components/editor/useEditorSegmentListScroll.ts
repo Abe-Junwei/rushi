@@ -189,11 +189,16 @@ export function useEditorSegmentListScroll({
         notifyListKeyboardLayoutSettled(scrollKey);
       }
     };
-
-    if (lastSelectedScrollKeyRef.current === scrollKey) {
+    // Imperative scroll may have marked this scrollKey so layout skips a duplicate
+    // write — still own listCommit flush when selection profile skipped scheduleFlush.
+    const markListCommitIfNeeded = () => {
       if (shouldMarkSelectionProfileListCommit(source)) {
         selectionProfileMarkListCommit();
       }
+    };
+
+    if (lastSelectedScrollKeyRef.current === scrollKey) {
+      markListCommitIfNeeded();
       maybeNotifyListKeyboardLayoutSettled();
       return;
     }
@@ -202,12 +207,14 @@ export function useEditorSegmentListScroll({
       lastSelectedScrollKeyRef.current = scrollKey;
       clearListKeyboardImperativeScrollKey();
       clearListKeyboardVirtualDisplayPin();
+      markListCommitIfNeeded();
       maybeNotifyListKeyboardLayoutSettled();
       return;
     }
 
     if (shouldSkipLayoutScrollForListKeyboard(scrollKey)) {
       lastSelectedScrollKeyRef.current = scrollKey;
+      markListCommitIfNeeded();
       maybeNotifyListKeyboardLayoutSettled();
       return;
     }
@@ -215,9 +222,7 @@ export function useEditorSegmentListScroll({
     lastSelectedScrollKeyRef.current = scrollKey;
     cancelPendingListScrollCorrection();
 
-    if (shouldMarkSelectionProfileListCommit(source)) {
-      selectionProfileMarkListCommit();
-    }
+    markListCommitIfNeeded();
 
     const plan = selectionProfileTime("listScroll", () =>
       planEditorSegmentListSelectionScroll({

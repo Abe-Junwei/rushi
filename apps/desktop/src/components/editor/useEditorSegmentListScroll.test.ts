@@ -3,10 +3,24 @@ import type { MutableRefObject, RefObject } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetSelectionChromeStoreForTests } from "../../services/selection/selectionChromeStore";
 import {
+  markListKeyboardImperativeScrollKey,
+  resetListKeyboardBurstCoordinatorForTests,
+} from "../../services/selection/listKeyboardBurstCoordinator";
+import {
+  readRecentSelectionLatencyProfileLines,
+  resetSelectionLatencyProfileForTests,
+  selectionProfileBegin,
+  setSelectionLatencyProfileEnabled,
+} from "../../services/ui/selectionLatencyProfile";
+import {
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
 } from "../../utils/segmentListVirtualWindow";
+import {
+  buildFilteredIndicesScrollKey,
+  buildListKeyboardScrollKey,
+} from "../../utils/listKeyboardListScrollIndex";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 
@@ -27,6 +41,23 @@ function createScrollRoot(scrollTop: number, clientHeight: number, scrollHeight:
 
 describe("useEditorSegmentListScroll", () => {
   beforeEach(() => {
+    const data = new Map<string, string>();
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      value: {
+        getItem: (key: string) => data.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          data.set(key, String(value));
+        },
+        removeItem: (key: string) => {
+          data.delete(key);
+        },
+        clear: () => {
+          data.clear();
+        },
+      },
+    });
+    resetSelectionLatencyProfileForTests();
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -40,6 +71,9 @@ describe("useEditorSegmentListScroll", () => {
   afterEach(() => {
     document.body.innerHTML = "";
     resetSelectionChromeStoreForTests();
+    resetListKeyboardBurstCoordinatorForTests();
+    resetSelectionLatencyProfileForTests();
+    setSelectionLatencyProfileEnabled(false);
     vi.unstubAllGlobals();
   });
 
@@ -206,6 +240,55 @@ describe("useEditorSegmentListScroll", () => {
     expect(win.startIndex).toBeLessThanOrEqual(55);
     expect(win.endIndex).toBeGreaterThan(55);
     expect(root.scrollTop).toBeGreaterThan(0);
+  });
+
+  it("marks listCommit when waveform imperative scroll causes layout skip", () => {
+    const rowMin = segmentListRowMinHeightPx(70);
+    const stride = segmentListItemStridePx(rowMin);
+    const displayCount = SEGMENT_LIST_VIRTUALIZE_MIN_COUNT + 20;
+    const scrollHeight = displayCount * stride;
+    const root = createScrollRoot(0, 400, scrollHeight);
+    document.body.appendChild(root);
+
+    const segmentListRef = { current: root } as RefObject<HTMLDivElement | null>;
+    const filterNavRef = { current: { active: false, indices: [] } } as MutableRefObject<SegmentListFilterNavState>;
+    const lastSegmentSelectSourceRef = { current: "waveform" as const };
+
+    const filteredIndicesScrollKey = buildFilteredIndicesScrollKey({
+      filterActive: false,
+      displayCount,
+      filteredIndices: [],
+    });
+    const scrollKey = buildListKeyboardScrollKey({
+      fileId: "file-a",
+      selectedIdx: 40,
+      selectedDisplayIndex: 40,
+      filteredIndicesScrollKey,
+    });
+    markListKeyboardImperativeScrollKey(scrollKey);
+
+    setSelectionLatencyProfileEnabled(true);
+    selectionProfileBegin("waveform idx=40 segments=62");
+
+    renderHook(
+      (props: { selectedDisplayIndex: number; selectedIdx: number }) =>
+        useEditorSegmentListScroll({
+          segmentListRef,
+          filterNavRef,
+          filteredIndices: [],
+          filterActive: false,
+          displayCount,
+          currentFileId: "file-a",
+          transcriptRowHeightPx: 70,
+          lastSegmentSelectSourceRef,
+          selectedDisplayIndex: props.selectedDisplayIndex,
+          selectedIdx: props.selectedIdx,
+        }),
+      { initialProps: { selectedDisplayIndex: 40, selectedIdx: 40 } },
+    );
+
+    const lines = readRecentSelectionLatencyProfileLines();
+    expect(lines.some((line) => line.includes("listCommit="))).toBe(true);
   });
 
   it("skips stale rAF list correction after user scroll generation changes (S5/H11)", async () => {
