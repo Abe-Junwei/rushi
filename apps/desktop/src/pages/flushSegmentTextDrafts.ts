@@ -113,22 +113,3 @@ export function publishTranscribeSegmentRestore(
 ): SegmentDto[] {
   return publishSegmentTextBulkMutation(getCurrentSegmentsSnapshot, setSegments, next);
 }
-
-/** @deprecated P9b2b: structure prep is CM6 persist; no draft materialization. */
-export function commitSegmentTextDraftsForStructureMutation(
-  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
-  _setSegments: SegmentListSetter,
-): SegmentDto[] {
-  return getCurrentSegmentsSnapshot();
-}
-
-/** @deprecated P9b2b: no draft store; returns snapshot as-is. Prefer mutations.flushTranscriptTextProjection. */
-export function flushSegmentTextDrafts(
-  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
-  _setSegments?: SegmentListSetter,
-  _options?: unknown,
-): SegmentDto[] {
-  void _setSegments;
-  void _options;
-  return getCurrentSegmentsSnapshot();
-}

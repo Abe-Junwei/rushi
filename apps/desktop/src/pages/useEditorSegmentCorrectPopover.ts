@@ -5,6 +5,8 @@ import { applySpanCorrection } from "../services/editor/applySpanCorrection";
 import { normalizeSegmentDraftText } from "../utils/segmentTextNormalize";
 import { applySegmentTextChange } from "./segmentTextLearnMeta";
 import type { SegmentDto } from "../tauri/projectApi";
+import { getTranscriptEditorView, dispatchTranscriptReplaceLineText } from "../components/editor/core/transcriptEditorViewHandle";
+import { serializeTranscriptEditorState } from "../components/editor/core/serializeTranscriptEditorState";
 export type SegmentCorrectPopoverState = {
   segmentIdx: number;
   span: CorrectableSpan;
@@ -50,9 +52,13 @@ export function useEditorSegmentCorrectPopover({
       const idx = popover.segmentIdx;
       const seg = getCurrentSegmentsSnapshot()[idx];
       if (!seg) return;
-      const liveBase = normalizeSegmentDraftText(seg.text ?? "");
+      const view = getTranscriptEditorView();
+      const liveFromCm6 =
+        view != null ? serializeTranscriptEditorState(view.state)[idx]?.text : undefined;
+      const liveBase = normalizeSegmentDraftText(liveFromCm6 ?? seg.text ?? "");
       const replacement = item.kind === "rule" ? item.right : item.term;
       const next = applySpanCorrection(liveBase, popover.span, replacement);
+      dispatchTranscriptReplaceLineText(idx, next);
       applySegmentTextChange(seg, idx, next, updateSegmentText);
       setPopover(null);
     },

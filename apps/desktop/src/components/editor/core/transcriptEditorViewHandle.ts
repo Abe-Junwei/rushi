@@ -4,6 +4,7 @@ import { selectSegmentCommand, selectSegmentIndicesCommand, selectSegmentRangeCo
 import { primarySegmentIdx } from "./selectionField";
 import { readTranscriptEditorCoreEnabled } from "./transcriptEditorCoreFlag";
 import {
+  applyTranscriptSegmentsStructure,
   deleteSegmentAtCommand,
   deleteSegmentIndicesCommand,
   deleteSegmentRangeCommand,
@@ -11,9 +12,11 @@ import {
   mergeSegmentRangeCommand,
   mergeWithNextCommand,
   mergeWithPrevCommand,
+  segmentDtoToMeta,
   splitSegmentAtMidpointCommand,
   splitSegmentAtTimeCommand,
 } from "./structureCommands";
+import { setSegmentMetaEffect } from "./segmentMetaField";
 import {
   applySegmentTextsBulkCommand,
   focusFindMatchCommand,
@@ -183,6 +186,27 @@ export function dispatchTranscriptApplyTextsBulk(
   updates: ReadonlyArray<{ segmentIdx: number; text: string }>,
 ): boolean {
   return withView((view) => applySegmentTextsBulkCommand(view, updates));
+}
+
+/** Replace full CM6 doc+meta from a SegmentDto[] snapshot (undo/redo, bulk restore). */
+export function dispatchTranscriptApplySegments(
+  nextSegments: readonly SegmentDto[],
+  primaryIdx = 0,
+): boolean {
+  return withView((view) => applyTranscriptSegmentsStructure(view, nextSegments, primaryIdx));
+}
+
+/** Sync CM6 meta field from SegmentDto[] without rewriting doc text (bounds/stage). */
+export function dispatchTranscriptSyncMetaFromSegments(
+  segments: readonly SegmentDto[],
+): boolean {
+  return withView((view) => {
+    if (view.state.doc.lines !== segments.length) return false;
+    view.dispatch({
+      effects: setSegmentMetaEffect.of(segments.map((s, i) => segmentDtoToMeta(s, i))),
+    });
+    return true;
+  });
 }
 
 export function dispatchTranscriptFocusFindMatch(

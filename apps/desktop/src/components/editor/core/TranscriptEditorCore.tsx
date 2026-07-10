@@ -25,6 +25,8 @@ import {
 } from "./transcriptEditorViewHandle";
 import type { TranscriptPanelHighlight } from "./panelHighlightField";
 import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
+import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
+import { segmentDtoToMeta } from "./structureCommands";
 
 export type TranscriptEditorCoreProps = {
   segments: readonly SegmentDto[];
@@ -149,13 +151,33 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     const current = serializeTranscriptEditorState(view.state);
     const lengthDrift = current.length !== segments.length;
     let textDrift = false;
+    let metaDrift = false;
     if (!lengthDrift) {
+      const cmMeta = view.state.field(segmentMetaField);
       for (let i = 0; i < segments.length; i++) {
-        if ((segments[i]?.text ?? "") !== (current[i]?.text ?? "")) {
+        const seg = segments[i];
+        if ((seg?.text ?? "") !== (current[i]?.text ?? "")) {
           textDrift = true;
-          break;
+        }
+        const m = cmMeta[i];
+        if (
+          !m ||
+          !seg ||
+          Math.abs(m.startSec - seg.start_sec) > 0.0005 ||
+          Math.abs(m.endSec - seg.end_sec) > 0.0005 ||
+          (m.stage ?? null) !== (seg.text_stage ?? null) ||
+          (m.finalizeVia ?? null) !== (seg.finalize_via ?? null) ||
+          m.uid !== (seg.uid ?? `idx-${i}`)
+        ) {
+          metaDrift = true;
         }
       }
+    }
+    if (!lengthDrift && !textDrift && metaDrift) {
+      view.dispatch({
+        effects: setSegmentMetaEffect.of(segments.map((s, i) => segmentDtoToMeta(s, i))),
+      });
+      return;
     }
     if (!lengthDrift && !textDrift) return;
     if (view.hasFocus && !lengthDrift) return;

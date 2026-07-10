@@ -14,7 +14,8 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 
 - [x] 全绿；guard 无新 hotspot（P9 前允许旧栈并存）。
 - [x] 新增守卫：除 core 选区/结构允许列表外禁止写 `setTranscriptMultiSelectionEffect`（单向数据流）。
-- [ ] 新增守卫：feature flag on 路径除 persistence bridge 外不得直接 mutate segment text/structure（P9 收紧；P8 仍经 mutation 控制器 + CM6 dispatch）。
+- [x] 新增守卫：禁止复活 `selectionChromeStore` / `publishSelectionChrome` / `useSegmentDraftStore`；`setSegmentMetaEffect` 仅 core allowlist（bounds 经 `dispatchTranscriptSyncMetaFromSegments`）。
+- [ ] 新增守卫：除 persistence / 已 CM6-dispatch 的 controller 外禁止裸 `publishTextBulk`（持续收紧；本轮已修 Stage B / correction / undo / bounds 旁路）。
 
 ---
 
@@ -135,3 +136,4 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 | 2026-07-11 | P9b1：overlay/手势改读 projection；删 leadingSc1 与 SC2 死路径；P9b2 留 selectedIdx/store |
 | 2026-07-11 | P9b2：删 SC1/SC2 可写桥；`selectSegmentTransport` + projection 镜像；draft 留 P9b2b |
 | 2026-07-11 | P9b2b：删 draft store；`flushCm6TextProjection`；dirty/autosave 仅 snapshot |
+| 2026-07-11 | 审查修复：Stage B/undo/correction CM6-first；bounds→meta sync；retired-SoT + meta 写守卫；CONTEXT/waveform-engine 去 SC 双真源 |

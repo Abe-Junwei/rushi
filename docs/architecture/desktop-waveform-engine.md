@@ -263,9 +263,9 @@
 - **真源模块**：[`services/waveform/transport/`](../../apps/desktop/src/services/waveform/transport/) — `resolveSegmentPlayFrom` / `resolveSelectTransportSeekTime` / `applyPeaksOrderedSeek` / `dispatchTransportIntent`。
 - **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
 - **Play-from 优先级**（写死）：`fromSec`（钳入段）→ raw≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
-- **选中 seek**：由 SC1 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用 SC2 chrome 匹配推断「已 seek」或「已选中可 seek-within」。
-- **产品入口**：Space / 工具栏 = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped）；无选中 no-op / disabled。全局 `togglePlay` 不作为 Space 路径。起播索引用 [`selectionChromeEffectivePrimaryIdx`](../../apps/desktop/src/services/selection/selectionChromeStore.ts)（SC2 可领先 SC1；H3）。
-- **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks、SC1/SC2 总线本身（Transport 只消费时间与 seekPolicy，不拥有 chrome）。
+- **选中 seek**：由 CM6 projection primary 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用已删除的 SC2 chrome 匹配推断「已 seek」。
+- **产品入口**：Space / 工具栏 = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped）；无选中 no-op / disabled。全局 `togglePlay` 不作为 Space 路径。起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)（CM6 projection；H3）。
+- **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks。Transport 只消费时间与 seekPolicy，不拥有选区 chrome。
 - **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 
 ## 偏好（localStorage）

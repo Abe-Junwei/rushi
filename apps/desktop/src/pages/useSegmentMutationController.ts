@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { flushCm6TextProjection } from "../components/editor/core/onDocChanged";
+import { dispatchTranscriptSyncMetaFromSegments } from "../components/editor/core/transcriptEditorViewHandle";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   clampSegmentBoundsToNeighbors,
@@ -175,9 +176,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const cur = prev[idx];
       if (!cur || cur[field] === value) return;
       pushUndo();
-      segmentPublish.publishStructure((base) =>
-        base.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
-      );
+      const next = prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s));
+      segmentPublish.publishStructure(() => next);
+      dispatchTranscriptSyncMetaFromSegments(next);
     },
     [getCurrentSegmentsSnapshot, pushUndo, segmentPublish],
   );
@@ -212,18 +213,18 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
           segmentBoundsLiveGestureRef.current = true;
           pushUndo();
         }
-        segmentPublish.publishStructureLive((p) =>
-          p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
-        );
+        const next = prev.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x));
+        segmentPublish.publishStructureLive(() => next);
+        dispatchTranscriptSyncMetaFromSegments(next);
         return;
       }
 
       const hadLiveGesture = segmentBoundsLiveGestureRef.current;
       segmentBoundsLiveGestureRef.current = false;
       if (!hadLiveGesture) pushUndo();
-      segmentPublish.publishStructure((base) =>
-        base.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
-      );
+      const next = prev.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x));
+      segmentPublish.publishStructure(() => next);
+      dispatchTranscriptSyncMetaFromSegments(next);
     },
     [getCurrentSegmentsSnapshot, segmentPublish, pushUndo],
   );

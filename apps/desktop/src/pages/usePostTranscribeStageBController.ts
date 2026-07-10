@@ -21,6 +21,7 @@ import { countStageBProofreadBatches } from "../services/postprocess/postTranscr
 import type { PostTranscribeStageBDialogState } from "./postTranscribeStageBTypes";
 import { STAGE_B_CONSENT_KEY } from "./postTranscribeStageBTypes";
 import { usePostTranscribeStageBPreviewRun } from "./usePostTranscribeStageBPreviewRun";
+import { dispatchTranscriptApplySegments } from "../components/editor/core/transcriptEditorViewHandle";
 
 export type { PostTranscribeStageBDialogState } from "./postTranscribeStageBTypes";
 
@@ -226,6 +227,7 @@ export function usePostTranscribeStageBController(args: Args) {
       return;
     }
     const staged = applyAiRevisedStageToUids(next, changedUids);
+    dispatchTranscriptApplySegments(staged, dialog.selectedSegmentIdxs[0] ?? 0);
     segmentPublish.publishTextBulk(staged);
     setDialog({ phase: "closed" });
     setPreviewFocusSegmentIdx(null);

@@ -91,6 +91,8 @@ export {
   dispatchTranscriptReplaceCharRange,
   dispatchTranscriptReplaceLineText,
   dispatchTranscriptApplyTextsBulk,
+  dispatchTranscriptApplySegments,
+  dispatchTranscriptSyncMetaFromSegments,
   dispatchTranscriptFocusFindMatch,
   dispatchTranscriptPanelHighlight,
 } from "./transcriptEditorViewHandle";

@@ -1,9 +1,17 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentListNext } from "./flushSegmentTextDrafts";
+import { getTranscriptProjectionSnapshot } from "../components/editor/core/transcriptProjection";
+import { dispatchTranscriptApplySegments } from "../components/editor/core/transcriptEditorViewHandle";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
+}
+
+function primaryIdxForRestore(segmentCount: number): number {
+  const primary = getTranscriptProjectionSnapshot().primaryIdx;
+  if (primary >= 0 && (segmentCount <= 0 || primary < segmentCount)) return primary;
+  return segmentCount > 0 ? 0 : 0;
 }
 
 export interface SegmentUndoRedoApi {
@@ -45,19 +53,27 @@ export function useSegmentUndoRedo(
     [pushUndo],
   );
 
+  const restoreSnapshot = useCallback(
+    (next: SegmentDto[]) => {
+      dispatchTranscriptApplySegments(next, primaryIdxForRestore(next.length));
+      publishTextBulk(next);
+    },
+    [publishTextBulk],
+  );
+
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
     redoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    publishTextBulk(prev);
-  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
+    restoreSnapshot(prev);
+  }, [getCurrentSegmentsSnapshot, restoreSnapshot]);
 
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
     undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    publishTextBulk(next);
-  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
+    restoreSnapshot(next);
+  }, [getCurrentSegmentsSnapshot, restoreSnapshot]);
 
   return { pushUndo, pushUndoForTextEdit, undo, redo, reset };
 }

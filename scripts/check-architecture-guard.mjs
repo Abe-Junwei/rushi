@@ -1059,6 +1059,8 @@ checkControlBtnGhostDuplicates();
 checkProductSemanticLucideImports();
 checkPerfGateEnvGuard();
 checkTranscriptEditorCoreSelectionWriteGuard();
+checkTranscriptEditorCoreRetiredSoTGuard();
+checkTranscriptEditorCoreMetaWriteGuard();
 
 function checkTranscriptEditorCoreSelectionWriteGuard() {
   // Acceptance: only core selection/structure paths may dispatch multi-select effects.
@@ -1082,6 +1084,57 @@ function checkTranscriptEditorCoreSelectionWriteGuard() {
     if (/setTranscriptMultiSelectionEffect\s*\.of\s*\(/.test(source)) {
       errors.push(
         `${rel}: 禁止在 core 选区命令/结构事务之外写 setTranscriptMultiSelectionEffect（CM6 选区单向真源）`,
+      );
+    }
+  });
+}
+
+/** P9b2/P9b2b: ban resurrecting deleted dual-SoT modules. */
+function checkTranscriptEditorCoreRetiredSoTGuard() {
+  const root = path.join(ROOT, "apps/desktop/src");
+  if (!fs.existsSync(root)) return;
+  const bannedImportOrCall = [
+    [/from\s+["'][^"']*selectionChromeStore["']/, "selectionChromeStore 已删（P9b2）；改读 transcriptProjection"],
+    [/from\s+["'][^"']*useSegmentDraftStore["']/, "useSegmentDraftStore 已删（P9b2b）；改 CM6 flush"],
+    [/\bpublishSelectionChrome(?:ForInput)?\s*\(/, "publishSelectionChrome 已删（P9b2）"],
+    [/from\s+["'][^"']*runSelectSegmentAt["']/, "runSelectSegmentAt 已删；改 selectSegmentTransport"],
+  ];
+  walk(root, (fullPath) => {
+    if (!fullPath.endsWith(".ts") && !fullPath.endsWith(".tsx")) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, "/");
+    if (rel.endsWith(".test.ts") || rel.endsWith(".test.tsx")) return;
+    if (rel.includes("/__spike__/")) return;
+    const source = fs.readFileSync(fullPath, "utf-8");
+    for (const [re, msg] of bannedImportOrCall) {
+      if (re.test(source)) {
+        errors.push(`${rel}: ${msg}`);
+      }
+    }
+  });
+}
+
+/** Meta field writes must stay in core allowlist (bounds sync via dispatchTranscriptSyncMetaFromSegments). */
+function checkTranscriptEditorCoreMetaWriteGuard() {
+  const allow = new Set([
+    "apps/desktop/src/components/editor/core/segmentMetaField.ts",
+    "apps/desktop/src/components/editor/core/structureCommands.ts",
+    "apps/desktop/src/components/editor/core/buildTranscriptEditorState.ts",
+    "apps/desktop/src/components/editor/core/TranscriptEditorCore.tsx",
+    "apps/desktop/src/components/editor/core/transcriptEditorViewHandle.ts",
+    "apps/desktop/src/components/editor/core/index.ts",
+  ]);
+  const root = path.join(ROOT, "apps/desktop/src");
+  if (!fs.existsSync(root)) return;
+  walk(root, (fullPath) => {
+    if (!fullPath.endsWith(".ts") && !fullPath.endsWith(".tsx")) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, "/");
+    if (rel.endsWith(".test.ts") || rel.endsWith(".test.tsx")) return;
+    if (rel.includes("/__spike__/")) return;
+    if (allow.has(rel)) return;
+    const source = fs.readFileSync(fullPath, "utf-8");
+    if (/setSegmentMetaEffect\s*\.of\s*\(/.test(source)) {
+      errors.push(
+        `${rel}: 禁止在 core 之外写 setSegmentMetaEffect；bounds/stage 经 dispatchTranscriptSyncMetaFromSegments`,
       );
     }
   });

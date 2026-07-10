@@ -166,25 +166,29 @@ _Avoid_: 选中即 seek, 时间尺 seek（v0.1.8+ 产品矩阵）
 Canvas 语段色带（display）与 DOM 交互层（选中、拖拽）；非 WaveSurfer Regions。
 _Avoid_: region, marker（WS 语境）
 
-**SC1**（逻辑选中）:
-Editor 内 **selectedIdx** + 多选集合等业务真源；驱动 footer/toolbar、filter banner、Close Gate 锚点、**Focus–selection lock**；经 `startTransition` 写入 React 可慢于视觉。
-_Avoid_: highlight, 选中态（未区分 SC1/SC2 时）, chrome 真源
+**SC1**（逻辑选中 · **历史术语**）:
+曾指 React `selectedIdx` 业务真源。**P9b2 后**：会话内选区真源为 **CM6**（`selection` + multi-select field）；ctx 上的 `selectedIdx` 仅为 [`transcriptProjection`](apps/desktop/src/components/editor/core/transcriptProjection.ts) **镜像**。
+_Avoid_: 把 React selectedIdx 当可写真源, selectionChromeStore
 
-**SC2**（选中 chrome / 视觉层）:
-列表行与波形条带的 **即时** 高亮（`.seg-row-selected`、overlay/band 色）；真源 **`selectionChromeStore`** + 波形 imperative；**不得**驱动 persist/undo 或替代 SC1。
-_Avoid_: selectedIdx（指视觉时）, decoration（未特指 SC2 时）
+**SC2**（选中 chrome · **历史术语**）:
+曾指 `selectionChromeStore` 视觉层。**P9b2 后已删除**；波形 band/overlay 只读 `transcriptProjection`。
+_Avoid_: selectionChromeStore, publishSelectionChrome, reconcile
 
 **SC3**（多选集合）:
-非 primary 的 **in-selection** 集合（Shift range、lasso）；与 SC1 primary、SC2 样式联动；`.seg-row-in-selection`。
+非 primary 的 **in-selection** 集合（Shift range、lasso）；现由 CM6 multi-select field → projection `selectedSet` 派生。
 _Avoid_: 多选 highlight（未特指 SC3 时）
 
-**SC4**（列表 scroll 投影）:
-语段列表 **虚拟窗** 与 tier scroll 解耦维度；选中变更 **不得** 无故 bump 虚拟窗 epoch / pin 全列表。
-_Avoid_: 虚拟滚动（泛指实现时）
+**SC4**（列表 scroll 投影 · **历史**）:
+曾指 textarea 虚拟窗。**P9a 后**列表滚动/reveal 由 CM6 `scrollIntoView` / `revealSegmentInView` 承担。
+_Avoid_: 虚拟滚动 epoch / pin 全列表
 
-**Selection chrome publish**（选中 chrome 发布）:
-点选 / 结构突变时 **显式** 写 `selectionChromeStore` + 波形 imperative；列表行经 **useSegmentRowSelection** 订阅 store；结构路径（merge/delete/undo/filter/clearMulti）须各自 publish。
+**Selection chrome publish**（选中 chrome 发布 · **已废止**）:
+旧 SC2 publish 路径已删。选区写入只经 `dispatchTranscriptEditorSelection*` / structure commands。
 _Avoid_: reconcile, 双写后对齐, flushSync 换 perf
+
+**Transcript Editor Core**（转写编辑器内核）:
+CodeMirror 6 `EditorState` = 会话内文本 + 语段 meta + 选区真源；`SegmentDto[]` 为序列化投影（save/export）；打字经 `onDocChanged`，save 前 `flushCm6TextProjection`。
+_Avoid_: 每行 textarea, useSegmentDraftStore, 第二套选区 store
 
 **Vertical slice**（纵向薄片）:
 一次交付一个可验收端到端路径；spec 与 TDD 均按此粒度拆分。
@@ -302,5 +306,5 @@ _Avoid_: design doc（泛指）
 - 「导入转录文本 / 导入字幕」— Editor 默认 **Attach import**（挂当前 File）；Hub 默认 **Sidecar stem match**；均 **Replace import**，非新建副本。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。
 - 「面板 / 对话框」— 浮动工具框（查找替换等）称 **Floating dialog** 并按 **Auto-fit / Fill / Static-fit** 分类；Editor 侧栏/Inspector 不叫 Floating dialog。
-- 「选中 / highlight」— 须区分 **SC1**（逻辑 `selectedIdx`）与 **SC2**（视觉 chrome）；多选 in-selection 为 **SC3**；禁止用 SC2 表示 toolbar/footer 业务真源。
+- 「选中 / highlight」— 须区分 **CM6 选区真源**（projection primary / selectedSet）与装饰高亮；禁止再引入 SC2 store 或把 React `selectedIdx` 当可写真源。
 - 「自动更新 / 签名」— **In-app update** = Tauri Ed25519 manifest；**Unsigned mac release** = 无 Apple codesign/公证；二者可并存，勿混为一谈。
