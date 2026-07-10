@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { startTransition, useCallback, useEffect, useRef } from "react";
 import { selectionProfileFlush } from "../services/ui/selectionLatencyProfile";
 import type { SegmentSelectAtOptions } from "../utils/waveformViewMode";
 
@@ -20,7 +20,9 @@ export function useWaveformKeyboardSelectionCommit(
     pendingRef.current = null;
     if (!pending) return;
     selectionProfileFlush();
-    setSelectedIdxUi(pending.idx, pending.opts);
+    startTransition(() => {
+      setSelectedIdxUi(pending.idx, pending.opts);
+    });
     onFlushRef.current?.(pending.idx);
   }, [setSelectedIdxUi]);
 

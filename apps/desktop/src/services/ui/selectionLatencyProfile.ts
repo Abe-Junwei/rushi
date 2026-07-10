@@ -54,14 +54,14 @@ export function parseSelectionProfileLine(line: string): ParsedSelectionProfileL
   if (!totalMatch) return null;
 
   const spanStart = rest.search(
-    /\b(flushSelectedIdx|firstPaint|listChrome|resolvePlan|listScroll|listScrollCorrect|listCommit|viewport|seek|focus|syncPathTotal)=/,
+    /\b(flushSelectedIdx|firstPaint|listChrome|resolvePlan|listScroll|listScrollCorrect|listCommit|viewport|seek|focus|bandPaint|syncPathTotal)=/,
   );
   const label =
     spanStart > 0 ? rest.slice(0, spanStart).trim() : rest.replace(/\s*total=[\d.]+ms.*$/, "").trim();
 
   const spans: Partial<Record<SelectionLatencyProfileSpan, number>> = {};
   for (const match of rest.matchAll(
-    /\b(flushSelectedIdx|firstPaint|listChrome|resolvePlan|listScroll|listScrollCorrect|listCommit|viewport|seek|focus)=([\d.]+)ms/g,
+    /\b(flushSelectedIdx|firstPaint|listChrome|resolvePlan|listScroll|listScrollCorrect|listCommit|viewport|seek|focus|bandPaint)=([\d.]+)ms/g,
   )) {
     spans[match[1] as SelectionLatencyProfileSpan] = Number(match[2]);
   }
@@ -105,7 +105,8 @@ export type SelectionLatencyProfileSpan =
   | "listScrollCorrect"
   | "listCommit"
   | "listChrome"
-  | "seek";
+  | "seek"
+  | "bandPaint";
 
 type ActiveSelectionProfile = {
   label: string;
@@ -197,6 +198,7 @@ function formatSpanParts(spans: ActiveSelectionProfile["spans"]): string {
     "listScroll",
     "listScrollCorrect",
     "listCommit",
+    "bandPaint",
     "viewport",
     "seek",
     "focus",

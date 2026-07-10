@@ -183,6 +183,7 @@ export function useEditorSegmentListScroll({
     });
     const source = lastSegmentSelectSourceRef?.current;
     const fromListKeyboard = isListKeyboardSelectSource(source);
+    const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
     const maybeNotifyListKeyboardLayoutSettled = () => {
       if (fromListKeyboard) {
         notifyListKeyboardLayoutSettled(scrollKey);
@@ -190,11 +191,12 @@ export function useEditorSegmentListScroll({
     };
 
     if (lastSelectedScrollKeyRef.current === scrollKey) {
+      if (fromWaveform) {
+        selectionProfileMarkListCommit();
+      }
       maybeNotifyListKeyboardLayoutSettled();
       return;
     }
-
-    const fromWaveform = shouldSkipListScrollWhenInViewport(source ?? "waveform");
 
     if (fromListKeyboard && shouldSkipLayoutScrollForListKeyboard(scrollKey)) {
       lastSelectedScrollKeyRef.current = scrollKey;

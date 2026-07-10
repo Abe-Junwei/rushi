@@ -20,7 +20,7 @@ function makeCtx(selectedIdx: number): TranscriptionLayerInput {
 }
 
 describe("waveformSelectionCommand", () => {
-  it("resolves preview-synced tap away from segment start to seek-within", () => {
+  it("resolves preview-synced tap to select (seek already happened on pointerdown)", () => {
     expect(
       resolveWaveformSelectionTapCommand({
         ctx: makeCtx(0),
@@ -32,7 +32,7 @@ describe("waveformSelectionCommand", () => {
           sessionId: "s1",
         },
       }),
-    ).toEqual({ kind: "seekWithinSegment", timeSec: 3 });
+    ).toEqual({ kind: "selectAndSeekStart", segmentIdx: 1, source: "waveform", sessionId: "s1" });
   });
 
   it("resolves preview-synced tap near segment start to select and seek start", () => {

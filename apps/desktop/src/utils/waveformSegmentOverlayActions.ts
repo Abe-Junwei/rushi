@@ -1,10 +1,5 @@
-import { selectionChromeEffectivePrimaryIdx } from "../services/selection/selectionChromeStore";
-import { segmentStartSec } from "./formatMediaTime";
 import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 import type { OverlayPointerUpIntent } from "./waveformSegmentOverlayGestures";
-
-/** Pointer farther than this from segment start after preview sync ⇒ seek-within on pointerup. */
-export const SEEK_WITHIN_FROM_SYNC_EPSILON_SEC = 0.05;
 
 export type SegmentOverlayTapGesture = {
   selectedIdxAtPointerDown: number;
@@ -34,7 +29,17 @@ export type SegmentOverlayTapResolution =
   | { kind: "select"; segmentIdx: number }
   | { kind: "seek-within"; timeSec: number };
 
-/** 语段 tap：未选中 → 选中并 seek 起点；已选中 → seek 到点击时刻（钳在语段内）。 */
+/**
+ * 语段 tap：未选中 → 选中并 seek 起点；已选中 → seek 到点击时刻（钳在语段内）。
+ *
+ * `viewportSyncedOnDown` means pointerdown just selected this segment (seek to
+ * segment start already happened). pointerup must NOT seek-within — only commit
+ * the selection. seek-within is reserved for tapping an already-selected segment.
+ *
+ * Primary-at-down must come from the pointerdown snapshot (or React SC1). Do not
+ * fall back to SC2 chrome — playing-state down paints chrome before up, which
+ * would misclassify a first select as seek-within (Transport Authority).
+ */
 export function resolveSegmentOverlayTap(args: {
   selectedIdx: number;
   selectedIdxAtPointerDown?: number;
@@ -48,15 +53,9 @@ export function resolveSegmentOverlayTap(args: {
   const clampedPointer = Math.max(lo, Math.min(hi, args.pointerTimeSec));
 
   if (args.viewportSyncedOnDown) {
-    const startSec = segmentStartSec(args.segment);
-    if (Math.abs(clampedPointer - startSec) > SEEK_WITHIN_FROM_SYNC_EPSILON_SEC) {
-      return { kind: "seek-within", timeSec: clampedPointer };
-    }
     return { kind: "select", segmentIdx: args.segmentIdx };
   }
-  const committedSelectedIdx =
-    args.selectedIdxAtPointerDown ??
-    selectionChromeEffectivePrimaryIdx(args.selectedIdx);
+  const committedSelectedIdx = args.selectedIdxAtPointerDown ?? args.selectedIdx;
   if (committedSelectedIdx !== args.segmentIdx) {
     return { kind: "select", segmentIdx: args.segmentIdx };
   }

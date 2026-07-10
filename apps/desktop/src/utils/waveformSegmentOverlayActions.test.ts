@@ -8,7 +8,7 @@ import {
 describe("resolveSegmentOverlayTap", () => {
   const segment = { start_sec: 4, end_sec: 10 };
 
-  it("uses pointerdown tap gesture on click fallback when preview ran", () => {
+  it("selects (no seek-within) when preview synced on pointerdown and pointer is in segment middle", () => {
     expect(
       resolveSegmentOverlayTap({
         selectedIdx: 2,
@@ -18,7 +18,7 @@ describe("resolveSegmentOverlayTap", () => {
         pointerTimeSec: 9.5,
         segment,
       }),
-    ).toEqual({ kind: "seek-within", timeSec: 9.5 });
+    ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
   it("selects when preview synced on pointerdown and pointer is near segment start", () => {
@@ -81,7 +81,7 @@ describe("resolveSegmentOverlayTap", () => {
     ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
-  it("seeks within when chrome primary matches but React SC1 lags", () => {
+  it("seeks within when pointerdown primary already matched the tapped segment", () => {
     expect(
       resolveSegmentOverlayTap({
         selectedIdx: 0,
@@ -91,6 +91,19 @@ describe("resolveSegmentOverlayTap", () => {
         segment,
       }),
     ).toEqual({ kind: "seek-within", timeSec: 7.5 });
+  });
+
+  it("selects when pointerdown primary differs even if live SC1 already caught up", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        selectedIdxAtPointerDown: 0,
+        viewportSyncedOnDown: false,
+        segmentIdx: 2,
+        pointerTimeSec: 7.5,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
   });
 
   it("seeks within segment when tapping the selected segment", () => {
