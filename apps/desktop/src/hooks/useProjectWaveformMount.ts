@@ -18,7 +18,7 @@ import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSy
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
 import {
   applyWaveSurferProgressWithoutClip,
-  installWaveSurferInternalScrollLock,
+  installWaveSurferTierScrollSync,
   installWaveSurferPlayedRegionDisplayFix,
 } from "../services/waveform/waveformSurferProgressCoverage";
 import {
@@ -61,6 +61,7 @@ export function useProjectWaveformMount(
     pendingAppliedWaveformHeightRef,
     appliedZoom,
     syncTierScrollAfterRenderRef,
+    getTierScrollLeftPxRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,
@@ -179,7 +180,7 @@ export function useProjectWaveformMount(
       wsRef.current = ws;
 
       wsUnsubsRef.current.push(
-        installWaveSurferInternalScrollLock(ws),
+        installWaveSurferTierScrollSync(ws, () => getTierScrollLeftPxRef.current()),
         installWaveSurferPlayedRegionDisplayFix(ws),
       );
       if (mediaUrl && !mediaDiskPath) {
@@ -238,6 +239,7 @@ export function useProjectWaveformMount(
     pendingAppliedWaveformHeightRef,
     appliedZoom,
     syncTierScrollAfterRenderRef,
+    getTierScrollLeftPxRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,

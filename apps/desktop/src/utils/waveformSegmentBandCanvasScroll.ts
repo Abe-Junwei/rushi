@@ -34,6 +34,7 @@ export function computeSegmentBandCanvasWindow(input: {
 export function segmentBandCanvasNeedsRepaint(input: {
   scrollLeftPx: number;
   viewportWidthPx: number;
+  timelineWidthPx: number;
   paintedLeftPx: number;
   paintedWidthPx: number;
   paintedHeightPx: number;
@@ -47,8 +48,15 @@ export function segmentBandCanvasNeedsRepaint(input: {
   const visibleStart = input.scrollLeftPx;
   const visibleEnd = input.scrollLeftPx + viewportWidth;
   const innerMargin = Math.max(8, input.bufferPx * 0.35);
-  const safeStart = input.paintedLeftPx + innerMargin;
-  const safeEnd = input.paintedLeftPx + input.paintedWidthPx - innerMargin;
+  const paintedEnd = input.paintedLeftPx + input.paintedWidthPx;
+  // A virtual window clamped to a timeline boundary cannot provide buffer outside
+  // that boundary. Treat the boundary itself as safe, otherwise scrollLeft=0 (or
+  // the timeline end) repaints the same window on every playback frame.
+  const safeStart = input.paintedLeftPx <= 0 ? 0 : input.paintedLeftPx + innerMargin;
+  const safeEnd =
+    paintedEnd >= input.timelineWidthPx
+      ? input.timelineWidthPx
+      : paintedEnd - innerMargin;
 
   if (safeEnd <= safeStart) return true;
   return visibleStart < safeStart || visibleEnd > safeEnd;

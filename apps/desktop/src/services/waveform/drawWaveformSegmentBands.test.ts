@@ -74,6 +74,50 @@ describe("drawWaveformSegmentBands", () => {
     expect(fillRectCalls).toBe(0);
   });
 
+  it("dirtyIndices only clears and paints the requested bands", () => {
+    const cleared: Array<[number, number, number, number]> = [];
+    let fillRectCalls = 0;
+    const ctx = {
+      clearRect: (x: number, y: number, w: number, h: number) => {
+        cleared.push([x, y, w, h]);
+      },
+      fillRect: () => {
+        fillRectCalls += 1;
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    const segments = Array.from({ length: 10 }, (_, i) => ({
+      idx: i,
+      uid: `u-${i}`,
+      start_sec: i * 10,
+      end_sec: i * 10 + 8,
+      text: `s${i}`,
+    }));
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments,
+      scrollLeftPx: 0,
+      viewportWidthPx: 1000,
+      timelineWidthPx: 1000,
+      durationSec: 100,
+      layoutHeightPx: 96,
+      dirtyIndices: [2, 3],
+      selectedIdx: 3,
+    });
+
+    expect(cleared.length).toBe(2);
+    expect(cleared.every((rect) => rect[2] < 1000)).toBe(true);
+    expect(fillRectCalls).toBe(2);
+  });
+
   it("respects skipIndexSet the same as skipIndices (S10 external Set)", () => {
     let fillRectCalls = 0;
     const ctx = {

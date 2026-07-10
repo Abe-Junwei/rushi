@@ -24,6 +24,7 @@ let coalescedScrollLeftPx: number | null = null;
 let coalescedAtMs = 0;
 let forceNextTierScrollFrame = false;
 let pendingPlaybackTimeSec: number | null = null;
+let pendingPlaybackScheduledAtMs: number | null = null;
 let playbackTimeDuringFrame: number | null = null;
 
 export type TierViewportMetricsSnapshot = {
@@ -61,12 +62,17 @@ export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
   coalescedAtMs = 0;
   forceNextTierScrollFrame = false;
   pendingPlaybackTimeSec = null;
+  pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
 }
 
 import {
+  isWaveformScrollProfileEnabled,
+  waveformScrollProfileAudioScheduleCall,
   waveformScrollProfileBeginBurst,
+  waveformScrollProfilePlaybackFrame,
 } from "../services/waveform/waveformScrollProfile";
+import { waveformFrameTimingTierSubscribers } from "../services/waveform/waveformFrameTimingProfile";
 
 function runTierScrollFrame(): void {
   if (scrollFrameActive) return;
@@ -91,16 +97,33 @@ function runTierScrollFrame(): void {
   }
   coalescedScrollLeftPx = scrollLeftPx;
   coalescedAtMs = now;
+  const profileEnabled = isWaveformScrollProfileEnabled();
   waveformScrollProfileBeginBurst();
   if (pendingPlaybackTimeSec != null) {
+    const playbackStartMs = profileEnabled ? performance.now() : 0;
+    const frameLagMs =
+      profileEnabled && pendingPlaybackScheduledAtMs != null
+        ? playbackStartMs - pendingPlaybackScheduledAtMs
+        : null;
     playbackTimeDuringFrame = pendingPlaybackTimeSec;
     for (const sub of playbackSubscribers) {
       sub.cb(pendingPlaybackTimeSec);
     }
+    if (profileEnabled) {
+      waveformScrollProfilePlaybackFrame({
+        frameLagMs,
+        subscriberMs: performance.now() - playbackStartMs,
+      });
+    }
     pendingPlaybackTimeSec = null;
+    pendingPlaybackScheduledAtMs = null;
   }
+  const tierSubscribersStartedAt = profileEnabled ? performance.now() : 0;
   for (const fn of subscribers) {
     fn();
+  }
+  if (tierSubscribersStartedAt > 0) {
+    waveformFrameTimingTierSubscribers(performance.now() - tierSubscribersStartedAt);
   }
   playbackTimeDuringFrame = null;
   scrollFrameMetricsSnapshot = null;
@@ -121,7 +144,9 @@ export function subscribeTierScrollFrame(fn: TierScrollFrameSubscriber): () => v
   };
 }
 
-/** Playback UI tick — runs in the same rAF as tier scroll chrome (WaveSurfer audioprocess-driven). */
+/** Playback UI tick — same rAF as tier scroll chrome.
+ * Playing: driven by useWaveformVisualPlayheadClock rAF media poll;
+ * paused: driven by onWsAudioprocess or syncDisplayPlayheadAfterSeek. */
 export function subscribePlaybackFrame(
   cb: (timeSec: number) => void,
   priority = 1,
@@ -139,7 +164,12 @@ export const subscribePlayheadFrame = subscribePlaybackFrame;
 
 /** Schedule one viewport frame: playback subscribers then scroll chrome (single rAF). */
 export function schedulePlaybackViewportFrame(timeSec: number): void {
+  const profileEnabled = isWaveformScrollProfileEnabled();
+  if (profileEnabled) {
+    waveformScrollProfileAudioScheduleCall();
+  }
   pendingPlaybackTimeSec = timeSec;
+  pendingPlaybackScheduledAtMs = profileEnabled ? performance.now() : null;
   scheduleTierScrollFrame();
 }
 
@@ -203,5 +233,6 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
   coalescedAtMs = 0;
   forceNextTierScrollFrame = false;
   pendingPlaybackTimeSec = null;
+  pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
 }

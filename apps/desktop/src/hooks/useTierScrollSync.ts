@@ -77,6 +77,7 @@ export function useTierScrollSync(args: {
     committedScrollLeftRef.current = sl;
     tierScrollMetrics.liveScrollLeftRef.current = sl;
     tierScrollMetrics.liveClientWidthRef.current = tier.clientWidth;
+    argsRef.current.wfApiRef.current?.syncWaveSurferScrollFromTier?.(sl);
     scheduleViewportChromeFrame();
   };
 
@@ -91,6 +92,7 @@ export function useTierScrollSync(args: {
         Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
         Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
       ) {
+        a.wfApiRef.current?.syncWaveSurferScrollFromTier?.(sl);
         scheduleViewportChromeFrame();
         return;
       }
@@ -110,6 +112,7 @@ export function useTierScrollSync(args: {
       committedScrollLeftRef.current = sl;
       tierScrollMetrics.liveScrollLeftRef.current = sl;
       tierScrollMetrics.liveClientWidthRef.current = vw;
+      a.wfApiRef.current?.syncWaveSurferScrollFromTier?.(sl);
       scheduleViewportChromeFrame();
       if (source === "program" && !options?.deferLayoutCommit) {
         tierScrollMetrics.refreshLayout();

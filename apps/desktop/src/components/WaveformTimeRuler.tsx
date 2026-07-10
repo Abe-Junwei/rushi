@@ -5,7 +5,7 @@ import { useWaveformTimeRulerMetrics } from "../hooks/useWaveformTimeRulerMetric
 import { CspLayout } from "./CspLayout";
 import { WaveformTimeRulerTickLayer } from "./WaveformTimeRulerTickLayer";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 
 export type WaveformTimeRulerProps = {
   durationSec: number;
@@ -90,7 +90,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     if (!layer || !scrollEl) return;
     const applyScrollDeltaTransform = () => {
       const dx = metrics.tickLayerBaseScrollLeftPx - scrollEl.scrollLeft;
-      setCspLayoutRules(layer, { transform: `translate3d(${dx}px, 0, 0)` });
+      setDirectLayoutStyle(layer, { transform: `translate3d(${dx}px, 0, 0)` });
     };
     applyScrollDeltaTransform();
     scrollEl.addEventListener("scroll", applyScrollDeltaTransform, { passive: true });
@@ -98,7 +98,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     return () => {
       scrollEl.removeEventListener("scroll", applyScrollDeltaTransform);
       unsubscribeFrame();
-      setCspLayoutRules(layer, { transform: undefined });
+      setDirectLayoutStyle(layer, { transform: undefined });
     };
   }, [metrics.tickLayerBaseScrollLeftPx, metrics.tickLayerViewportSpace, tierScrollRef]);
 

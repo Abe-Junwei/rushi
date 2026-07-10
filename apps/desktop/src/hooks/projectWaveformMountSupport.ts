@@ -17,6 +17,7 @@ export type ProjectWaveformMountRefs = {
   pendingAppliedWaveformHeightRef: MutableRefObject<number | null>;
   appliedZoom: WaveformAppliedZoomState;
   syncTierScrollAfterRenderRef: MutableRefObject<() => void>;
+  getTierScrollLeftPxRef: MutableRefObject<() => number>;
   lastTimeUiCommitRef: MutableRefObject<number>;
   lastTimeUiCommitMsRef: MutableRefObject<number>;
   scrollNotifyRafRef: MutableRefObject<number>;

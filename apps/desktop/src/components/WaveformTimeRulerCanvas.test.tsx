@@ -144,6 +144,51 @@ describe("WaveformTimeRulerCanvas", () => {
     getContext.mockRestore();
   });
 
+  it("does not repaint on currentTimeSec changes during steady playback", () => {
+    vi.useFakeTimers();
+    const tierScrollRef = makeTierScrollRef({ scrollLeft: 1000, clientWidth: 500 });
+    const { clearRect, getContext } = mockCanvasContext();
+
+    const formatMediaTime = (sec: number) => `${sec}`;
+    const onCenterTierAtClientX = vi.fn();
+    const onSetScrollLeftPx = vi.fn();
+    const baseProps = {
+      durationSec: 100,
+      timelineWidthPx: 2000,
+      tierScrollRef,
+      tierScrollLive: {
+        scrollLeftRef: { current: 1000 },
+        clientWidthRef: { current: 500 },
+      },
+      tierScrollLayout: { scrollLeftPx: 1000, clientWidthPx: 500 },
+      formatMediaTime,
+      onCenterTierAtClientX,
+      onSetScrollLeftPx,
+    };
+
+    const { rerender } = render(
+      <WaveformTimeRulerCanvas {...baseProps} currentTimeSec={50} />,
+    );
+
+    // First playhead move flips interactionActive true → one repaint (brightness affordance).
+    act(() => {
+      rerender(<WaveformTimeRulerCanvas {...baseProps} currentTimeSec={51} />);
+    });
+
+    clearRect.mockClear();
+    // Steady playback: interactionActive already true, so further time changes must not repaint.
+    act(() => {
+      rerender(<WaveformTimeRulerCanvas {...baseProps} currentTimeSec={52} />);
+    });
+    act(() => {
+      rerender(<WaveformTimeRulerCanvas {...baseProps} currentTimeSec={53} />);
+    });
+
+    expect(clearRect).not.toHaveBeenCalled();
+    getContext.mockRestore();
+    vi.useRealTimers();
+  });
+
   it("uses viewportWidthPx fallback when tier metrics are not ready", () => {
     const tierScrollRef = makeTierScrollRef({ scrollLeft: 0, clientWidth: 0 });
     const { clearRect, getContext } = mockCanvasContext();

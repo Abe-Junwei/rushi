@@ -47,7 +47,6 @@ function baseInput(overrides: Partial<DrawWaveformTimeRulerInput> = {}): DrawWav
     viewportWidthPx: 500,
     timelineWidthPx: 2000,
     durationSec: 100,
-    currentTimeSec: 50,
     formatMediaTime: (sec) => `${Math.round(sec)}`,
     interactionActive: false,
     palette,
@@ -93,7 +92,7 @@ describe("drawWaveformTimeRuler", () => {
 
     const { ctx, strokeCalls } = makeCtx();
     drawWaveformTimeRuler(
-      baseInput({ ctx, scrollLeftPx, viewportWidthPx, timelineWidthPx, durationSec, currentTimeSec: 50 }),
+      baseInput({ ctx, scrollLeftPx, viewportWidthPx, timelineWidthPx, durationSec }),
     );
 
     const tickAt50 = strokeCalls.find((call) => Math.abs(call.x - (expectedX + 0.5)) < 0.01);
@@ -137,7 +136,6 @@ describe("drawWaveformTimeRuler", () => {
         viewportWidthPx,
         timelineWidthPx,
         durationSec,
-        currentTimeSec: 0,
       }),
     );
 

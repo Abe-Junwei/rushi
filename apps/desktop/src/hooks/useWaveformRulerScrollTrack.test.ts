@@ -1,6 +1,5 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
 import {
   flushTierScrollFrameForTests,
   resetTierScrollFrameCoordinatorForTests,
@@ -30,12 +29,12 @@ describe("useWaveformRulerScrollTrack", () => {
       }),
     );
 
-    expect(readCspLayoutRulesForElement(track)).toContain("translate3d(-120px, 0, 0)");
+    expect(track.style.transform).toContain("translate3d(-120px, 0, 0)");
 
     tier.scrollLeft = 240;
     scheduleTierScrollFrame();
     flushTierScrollFrameForTests();
-    expect(readCspLayoutRulesForElement(track)).toContain("translate3d(-240px, 0, 0)");
+    expect(track.style.transform).toContain("translate3d(-240px, 0, 0)");
 
     resetTierScrollFrameCoordinatorForTests();
     tier.remove();

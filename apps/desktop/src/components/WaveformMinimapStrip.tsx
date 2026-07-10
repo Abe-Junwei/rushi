@@ -9,11 +9,7 @@ import {
   computeOverviewViewportRect,
   overviewClientXToTimeSec,
 } from "../utils/waveformOverviewGeometry";
-import {
-  clearCspLayoutRules,
-  setCspLayoutRules,
-  CSP_LAYOUT_OWNER_IMPERATIVE,
-} from "../utils/cspElementLayout";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   blitScaledMinimapRaster,
@@ -95,7 +91,7 @@ export function WaveformMinimapStrip({
       if (!el || durationSec <= 0 || overviewWidthPx <= 0) return;
       const leftPx =
         (Math.max(0, Math.min(durationSec, timeSec)) / durationSec) * overviewWidthPx;
-      setCspLayoutRules(el, { left: leftPx });
+      setDirectLayoutStyle(el, { left: leftPx });
     },
     [durationSec, overviewWidthPx],
   );
@@ -103,7 +99,12 @@ export function WaveformMinimapStrip({
   useEffect(() => {
     if (!isReady || !getDisplayPlayheadTimeSec || !subscribePlayheadFrame) return;
     writePlayheadLeft(getDisplayPlayheadTimeSec());
-    return subscribePlayheadFrame((timeSec) => writePlayheadLeft(timeSec));
+    const unsub = subscribePlayheadFrame((timeSec) => writePlayheadLeft(timeSec));
+    return () => {
+      unsub();
+      const el = playheadRef.current;
+      if (el) setDirectLayoutStyle(el, { left: undefined });
+    };
   }, [getDisplayPlayheadTimeSec, isReady, subscribePlayheadFrame, writePlayheadLeft]);
 
   useEffect(() => {
@@ -141,7 +142,7 @@ export function WaveformMinimapStrip({
         canvas.width = devW;
         canvas.height = devH;
       }
-      setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
+      setDirectLayoutStyle(canvas, { width: widthPx, height: heightPx });
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -275,7 +276,7 @@ export function WaveformMinimapStrip({
       const prev = lastRectRef.current;
       if (prev && prev.left === roundedLeft && prev.width === roundedWidth) return;
       lastRectRef.current = { left: roundedLeft, width: roundedWidth };
-      setCspLayoutRules(el, { left: rect.leftPx, width: rect.widthPx });
+      setDirectLayoutStyle(el, { left: rect.leftPx, width: rect.widthPx });
       waveformScrollProfileMinimapViewportWrite();
     };
     apply();
@@ -283,8 +284,7 @@ export function WaveformMinimapStrip({
     return () => {
       unsub();
       lastMinimapViewportRectRef.current = null;
-      // Only clear the imperative slot; CspLayout's React owner keeps left/width.
-      clearCspLayoutRules(el, CSP_LAYOUT_OWNER_IMPERATIVE);
+      setDirectLayoutStyle(el, { left: undefined, width: undefined });
     };
   }, [overviewWidthPx, timelineWidthPx, tierScrollRef, tierScrollLive, tierScrollLayout]);
 

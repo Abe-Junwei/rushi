@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { COLORS } from "../config/tokens";
 import { SEGMENT_FILL_CSS_VAR } from "../config/segmentFillTokens";
 import {
+  invalidateWaveformSegmentBandPaletteCache,
   readCssColorVar,
   readWaveformSegmentBandPalette,
   readWaveformSurferPalette,
@@ -11,6 +12,7 @@ import { clearAllCspScopeRulesForTests } from "./cspNonceStyleRegistry";
 
 afterEach(() => {
   clearAllCspScopeRulesForTests();
+  invalidateWaveformSegmentBandPaletteCache();
   document.documentElement.removeAttribute("data-accent-theme");
   document.documentElement.style.removeProperty("--zen-wf-wave");
   document.documentElement.style.removeProperty("--zen-wf-progress-played");

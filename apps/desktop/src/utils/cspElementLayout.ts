@@ -135,6 +135,30 @@ export function setCspLayoutRules(
   flushElementLayoutRules(element);
 }
 
+/**
+ * High-frequency geometry writes (playhead transform, band/ruler left/width/height).
+ *
+ * Direct `element.style.*` is CSP-legal (never gated by `style-src`/`style-src-attr` —
+ * it does not go through the HTML parser), and avoids the whole-document style recalc
+ * that rewriting a nonce `<style>` textContent triggers every frame. This is the same
+ * path WaveSurfer v7 uses (`cursor.style.left` / `clipPath`). Keep this the ONLY place
+ * in `src/` that touches `element.style` (architecture guard allowlists this file);
+ * callers must route through here so imperative style writes stay auditable.
+ *
+ * Use {@link setCspLayoutRules} instead when a rule needs a selector / pseudo-class /
+ * media query (a real `<style>` element — those DO need the nonce registry).
+ */
+export function setDirectLayoutStyle(element: HTMLElement, rules: CspLayoutRules): void {
+  for (const [key, value] of Object.entries(rules)) {
+    const prop = toKebabProp(key);
+    if (value == null || value === "") {
+      element.style.removeProperty(prop);
+    } else {
+      element.style.setProperty(prop, formatCssValue(key, value));
+    }
+  }
+}
+
 export function clearCspLayoutRules(element: HTMLElement, owner?: string): void {
   if (owner) {
     const owners = elementLayoutOwners.get(element);

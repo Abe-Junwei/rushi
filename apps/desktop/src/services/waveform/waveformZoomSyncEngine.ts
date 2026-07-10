@@ -218,9 +218,8 @@ export function loadPeaksIntoWaveSurfer(input: {
         try {
           const nowTimeSec = ws.getCurrentTime();
           if (Math.abs(nowTimeSec - resumeTimeSec) < 0.5) {
-            // No imperative playhead sync before this setTime — intentionally do NOT mark
-            // imperativePlayheadSyncSuppressUntil. WS `seeking` must still call
-            // syncDisplayPlayheadAfterSeek so the visual clock catches up after peaks reload.
+            // No imperative playhead sync before this setTime. While paused, WS `seeking`
+            // calls syncDisplayPlayheadAfterSeek so band/visual clock catch up.
             ws.setTime(resumeTimeSec);
           }
           if (resumePlaying) void ws.play().catch(() => {});

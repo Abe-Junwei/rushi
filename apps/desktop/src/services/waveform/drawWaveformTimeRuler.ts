@@ -1,7 +1,6 @@
 import {
   buildVisibleRulerTicks,
   computeEmbeddedRulerLabelStride,
-  findHighlightedRulerMajorTickTime,
 } from "./waveformRulerTicks";
 import type { WaveformRulerCanvasPalette } from "../../utils/waveformRulerCanvasColors";
 import {
@@ -22,7 +21,6 @@ export type DrawWaveformTimeRulerInput = {
   viewportWidthPx: number;
   timelineWidthPx: number;
   durationSec: number;
-  currentTimeSec: number;
   formatMediaTime: (sec: number) => string;
   interactionActive: boolean;
   palette: WaveformRulerCanvasPalette;
@@ -44,7 +42,6 @@ export function drawWaveformTimeRuler(input: DrawWaveformTimeRulerInput): void {
     viewportWidthPx,
     timelineWidthPx,
     durationSec,
-    currentTimeSec,
     formatMediaTime,
     interactionActive,
     palette,
@@ -72,16 +69,10 @@ export function drawWaveformTimeRuler(input: DrawWaveformTimeRulerInput): void {
   });
   const majorTicks = ticks.filter((tick) => tick.major);
   const labelStride = computeEmbeddedRulerLabelStride(true, majorStep, tickPxPerSec);
-  const highlightedMajorTickTime = findHighlightedRulerMajorTickTime(
-    majorTicks,
-    currentTimeSec,
-    majorStep,
-  );
 
   const minorColor = palette.minorTick;
   const majorColor = interactionActive ? palette.labelActive : palette.majorTick;
   const labelColor = palette.label;
-  const labelActiveColor = palette.labelActive;
 
   ctx.lineWidth = 1;
   ctx.textBaseline = "alphabetic";
@@ -94,16 +85,11 @@ export function drawWaveformTimeRuler(input: DrawWaveformTimeRulerInput): void {
     );
     if (!isVisibleViewportPx(viewportPx, widthPx, VIEWPORT_TICK_MARGIN_PX)) continue;
 
-    const isHighlightedMajor =
-      major &&
-      highlightedMajorTickTime != null &&
-      Math.abs(t - highlightedMajorTickTime) < 1e-6;
     const tickLen = major ? 7 : 3;
     const yBottom = heightPx;
     const yTop = yBottom - tickLen;
 
-    ctx.strokeStyle =
-      major && interactionActive && isHighlightedMajor ? labelActiveColor : major ? majorColor : minorColor;
+    ctx.strokeStyle = major ? majorColor : minorColor;
     ctx.beginPath();
     ctx.moveTo(viewportPx + 0.5, yTop);
     ctx.lineTo(viewportPx + 0.5, yBottom);
@@ -118,12 +104,8 @@ export function drawWaveformTimeRuler(input: DrawWaveformTimeRulerInput): void {
     );
     if (!isVisibleViewportPx(viewportPx, widthPx, LABEL_VIEWPORT_MARGIN_PX)) return;
 
-    const isHighlightedMajor =
-      highlightedMajorTickTime != null && Math.abs(tick.t - highlightedMajorTickTime) < 1e-6;
-    const active = interactionActive && isHighlightedMajor;
-    ctx.fillStyle = active ? labelActiveColor : labelColor;
-    if (active) ctx.font = `500 11px ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif`;
-    else ctx.font = RULER_FONT;
+    ctx.fillStyle = labelColor;
+    ctx.font = RULER_FONT;
     ctx.fillText(formatMediaTime(tick.t), viewportPx + 2, heightPx - 1);
   });
 }

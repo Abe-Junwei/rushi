@@ -7,7 +7,7 @@ import { ensureAppWindowCloseGuardRegistered } from "./services/appWindowCloseGu
 import { logRuntimeParityBootstrap } from "./services/runtimeParityBootstrap";
 import { bootstrapShellCapabilities } from "./services/shellCapabilities";
 import { installWaveformZoomProfileDevTools } from "./services/waveform/waveformZoomProfile";
-import { installWaveformScrollProfileDevTools } from "./services/waveform/waveformScrollProfile";
+import { installWaveformScrollProfileDevTools } from "./services/waveform/waveformScrollProfileDevTools";
 import { installSelectionLatencyProfileDevTools } from "./services/ui/selectionLatencyProfile";
 import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
 import { bootstrapCspStyleNonce } from "./utils/cspNonceStyleRegistry";

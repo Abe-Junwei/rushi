@@ -1,5 +1,5 @@
 import { useLayoutEffect, type RefObject } from "react";
-import { clearCspLayoutRules, setCspLayoutRules, CSP_LAYOUT_OWNER_IMPERATIVE } from "../utils/cspElementLayout";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { resolveTierScrollLeftPx } from "../utils/waveformViewport";
 
@@ -44,7 +44,7 @@ export function useWaveformRulerScrollTrack({
 
     const applyTransform = () => {
       const scrollLeftPx = readTierScrollLeftPx(scrollEl, tierScrollLive);
-      setCspLayoutRules(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
+      setDirectLayoutStyle(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
 
       if (!onTickRebuild) return;
       if (Math.abs(scrollLeftPx - lastTickBuildScrollPx) < 1) return;
@@ -64,7 +64,7 @@ export function useWaveformRulerScrollTrack({
       unsubFrame();
       window.removeEventListener("resize", applyTransform);
       if (tickRebuildRaf) cancelAnimationFrame(tickRebuildRaf);
-      clearCspLayoutRules(track, CSP_LAYOUT_OWNER_IMPERATIVE);
+      setDirectLayoutStyle(track, { transform: undefined });
     };
   }, [
     enabled,
@@ -83,5 +83,5 @@ export function applyWaveformRulerScrollTrackTransform(
 ): void {
   if (!scrollEl || !track) return;
   const scrollLeftPx = readTierScrollLeftPx(scrollEl, tierScrollLive);
-  setCspLayoutRules(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
+  setDirectLayoutStyle(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
 }

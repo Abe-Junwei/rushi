@@ -2,15 +2,12 @@ import { memo } from "react";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
 import { WaveformTimeRulerCanvas, type WaveformTimeRulerCanvasProps } from "./WaveformTimeRulerCanvas";
 
-type WaveformLiveTimeRulerProps = Omit<
-  WaveformTimeRulerCanvasProps,
-  "currentTimeSec" | "getPlayheadTimeSec"
-> & {
+type WaveformLiveTimeRulerProps = Omit<WaveformTimeRulerCanvasProps, "currentTimeSec"> & {
   isPlaying: boolean;
   isReady: boolean;
   currentTimeSec: number;
   getDisplayPlayheadTimeSec: () => number;
-  subscribePlayheadFrame?: WaveformTimeRulerCanvasProps["subscribePlayheadFrame"];
+  subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
 };
 
 /** 播放期 rAF 节流标尺时间标签；播放头由 {@link WaveformViewportPlayhead} 承担。 */
@@ -42,10 +39,8 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
       durationSec={durationSec}
       timelineWidthPx={timelineWidthPx}
       isReady={isReady}
-      subscribePlayheadFrame={subscribePlayheadFrame}
       formatMediaTime={formatMediaTime}
       currentTimeSec={displayTimeSec}
-      getPlayheadTimeSec={getDisplayPlayheadTimeSec}
     />
   );
 });

@@ -1,11 +1,39 @@
-/** Dev-only tier scroll / band canvas frame counters (localStorage gate). */
+import { logDesktopUi } from "../desktopUiLog";
+import {
+  resetWaveformFrameTimingProfile,
+  takeWaveformFrameTimingSnapshot,
+} from "./waveformFrameTimingProfile";
+import {
+  flushWaveformScrollBurst,
+  resetWaveformScrollBurstProfile,
+  waveformScrollBurstBandRepaint,
+  waveformScrollBurstBandSkipped,
+  waveformScrollBurstBegin,
+  waveformScrollBurstMinimapWrite,
+  waveformScrollBurstRulerRepaint,
+  waveformScrollBurstRulerSkipped,
+} from "./waveformScrollBurstProfile";
+import { formatWaveformScrollProfileTick } from "./waveformScrollProfileTick";
 
 export const WAVEFORM_SCROLL_PROFILE_STORAGE_KEY = "rushi.dev.waveformScrollProfile";
 
 const RECENT_LINES_MAX = 48;
+const AUTO_TICK_INTERVAL_MS = 1000;
 
-type ScrollProfileCounters = {
+export type ScrollProfileCounters = {
+  audioTicks: number;
+  audioDeltaSamples: number;
+  audioDeltaSumMs: number;
+  audioDeltaMaxMs: number;
+  audioHandlerSumMs: number;
+  audioHandlerMaxMs: number;
+  audioScheduleCalls: number;
   tierFrames: number;
+  playbackFrames: number;
+  playbackFrameLagSumMs: number;
+  playbackFrameLagMaxMs: number;
+  playbackSubscriberSumMs: number;
+  playbackSubscriberMaxMs: number;
   bandSkipped: number;
   bandRepaint: number;
   bandCspLeftWrites: number;
@@ -16,10 +44,23 @@ type ScrollProfileCounters = {
 };
 
 let enabled = false;
-let burstActive = false;
-let burstStartedAt = 0;
+let enabledResolved = false;
+let autoTickId: ReturnType<typeof setInterval> | null = null;
+let autoTickStartedAtMs = 0;
 const counters: ScrollProfileCounters = {
+  audioTicks: 0,
+  audioDeltaSamples: 0,
+  audioDeltaSumMs: 0,
+  audioDeltaMaxMs: 0,
+  audioHandlerSumMs: 0,
+  audioHandlerMaxMs: 0,
+  audioScheduleCalls: 0,
   tierFrames: 0,
+  playbackFrames: 0,
+  playbackFrameLagSumMs: 0,
+  playbackFrameLagMaxMs: 0,
+  playbackSubscriberSumMs: 0,
+  playbackSubscriberMaxMs: 0,
   bandSkipped: 0,
   bandRepaint: 0,
   bandCspLeftWrites: 0,
@@ -30,27 +71,35 @@ const counters: ScrollProfileCounters = {
 };
 const recentLines: string[] = [];
 
-function emitLine(line: string): void {
+function resetIntervalCounters(): void {
+  for (const key of Object.keys(counters) as Array<keyof ScrollProfileCounters>) counters[key] = 0;
+}
+
+export function emitWaveformScrollProfileLine(line: string): void {
   recentLines.push(line);
   if (recentLines.length > RECENT_LINES_MAX) recentLines.shift();
   if (typeof console !== "undefined" && typeof console.info === "function") {
     // eslint-disable-next-line no-console -- dev-only scroll profile
     console.info(line);
   }
+  logDesktopUi("INFO", line);
 }
 
 export function isWaveformScrollProfileEnabled(): boolean {
   if (typeof window === "undefined") return false;
-  if (enabled) return true;
+  if (enabledResolved) return enabled;
   try {
-    return window.localStorage.getItem(WAVEFORM_SCROLL_PROFILE_STORAGE_KEY) === "1";
+    enabled = window.localStorage.getItem(WAVEFORM_SCROLL_PROFILE_STORAGE_KEY) === "1";
   } catch {
-    return false;
+    enabled = false;
   }
+  enabledResolved = true;
+  return enabled;
 }
 
 export function setWaveformScrollProfileEnabled(next: boolean): void {
   enabled = next;
+  enabledResolved = true;
   if (typeof window === "undefined") return;
   try {
     if (next) window.localStorage.setItem(WAVEFORM_SCROLL_PROFILE_STORAGE_KEY, "1");
@@ -61,167 +110,128 @@ export function setWaveformScrollProfileEnabled(next: boolean): void {
 }
 
 export function resetWaveformScrollProfileCounters(): void {
-  counters.tierFrames = 0;
-  counters.bandSkipped = 0;
-  counters.bandRepaint = 0;
-  counters.bandCspLeftWrites = 0;
-  counters.minimapViewportWrites = 0;
-  counters.rulerSkipped = 0;
-  counters.rulerRepaint = 0;
-  counters.rulerCspLeftWrites = 0;
-  burstActive = false;
-  burstStartedAt = 0;
+  resetIntervalCounters();
+  autoTickStartedAtMs = performance.now();
+  resetWaveformFrameTimingProfile();
+  resetWaveformScrollBurstProfile();
+}
+
+export function waveformScrollProfileAudioProcess(input: {
+  deltaMs: number | null;
+  handlerMs: number;
+}): void {
+  if (!isWaveformScrollProfileEnabled()) return;
+  counters.audioTicks += 1;
+  if (input.deltaMs != null) {
+    counters.audioDeltaSamples += 1;
+    counters.audioDeltaSumMs += input.deltaMs;
+    counters.audioDeltaMaxMs = Math.max(counters.audioDeltaMaxMs, input.deltaMs);
+  }
+  counters.audioHandlerSumMs += input.handlerMs;
+  counters.audioHandlerMaxMs = Math.max(counters.audioHandlerMaxMs, input.handlerMs);
+}
+
+export function waveformScrollProfileAudioScheduleCall(): void {
+  if (!isWaveformScrollProfileEnabled()) return;
+  counters.audioScheduleCalls += 1;
+}
+
+export function waveformScrollProfilePlaybackFrame(input?: {
+  frameLagMs?: number | null;
+  subscriberMs?: number;
+}): void {
+  if (!isWaveformScrollProfileEnabled()) return;
+  counters.playbackFrames += 1;
+  if (input?.frameLagMs != null) {
+    counters.playbackFrameLagSumMs += input.frameLagMs;
+    counters.playbackFrameLagMaxMs = Math.max(counters.playbackFrameLagMaxMs, input.frameLagMs);
+  }
+  if (input?.subscriberMs != null) {
+    counters.playbackSubscriberSumMs += input.subscriberMs;
+    counters.playbackSubscriberMaxMs = Math.max(counters.playbackSubscriberMaxMs, input.subscriberMs);
+  }
+}
+
+function autoTickFlush(): void {
+  if (!isWaveformScrollProfileEnabled()) return;
+  const now = performance.now();
+  const elapsedMs = Math.max(1, now - autoTickStartedAtMs);
+  autoTickStartedAtMs = now;
+  const frameTimings = takeWaveformFrameTimingSnapshot();
+  const line = formatWaveformScrollProfileTick({ elapsedMs, counters, timings: frameTimings });
+  if (!line) return;
+  emitWaveformScrollProfileLine(line);
+  resetIntervalCounters();
+}
+
+export function startWaveformScrollProfileAutoTick(): void {
+  if (autoTickId != null || typeof setInterval === "undefined") return;
+  autoTickStartedAtMs = performance.now();
+  autoTickId = setInterval(autoTickFlush, AUTO_TICK_INTERVAL_MS);
+}
+
+export function stopWaveformScrollProfileAutoTick(): void {
+  if (autoTickId == null) return;
+  clearInterval(autoTickId);
+  autoTickId = null;
 }
 
 export function waveformScrollProfileBeginBurst(): void {
   if (!isWaveformScrollProfileEnabled()) return;
-  if (!burstActive) {
-    burstActive = true;
-    burstStartedAt = performance.now();
-  }
+  waveformScrollBurstBegin(performance.now());
   counters.tierFrames += 1;
 }
 
 export function waveformScrollProfileBandSkipped(): void {
   if (!isWaveformScrollProfileEnabled()) return;
   counters.bandSkipped += 1;
+  waveformScrollBurstBandSkipped();
 }
 
 export function waveformScrollProfileBandRepaint(cspLeftWrite: boolean): void {
   if (!isWaveformScrollProfileEnabled()) return;
   counters.bandRepaint += 1;
   if (cspLeftWrite) counters.bandCspLeftWrites += 1;
+  waveformScrollBurstBandRepaint(cspLeftWrite);
 }
 
 export function waveformScrollProfileMinimapViewportWrite(): void {
   if (!isWaveformScrollProfileEnabled()) return;
   counters.minimapViewportWrites += 1;
+  waveformScrollBurstMinimapWrite();
 }
 
 export function waveformScrollProfileRulerSkipped(cspLeftWrite: boolean): void {
   if (!isWaveformScrollProfileEnabled()) return;
   counters.rulerSkipped += 1;
   if (cspLeftWrite) counters.rulerCspLeftWrites += 1;
+  waveformScrollBurstRulerSkipped(cspLeftWrite);
 }
 
 export function waveformScrollProfileRulerRepaint(cspLeftWrite: boolean): void {
   if (!isWaveformScrollProfileEnabled()) return;
   counters.rulerRepaint += 1;
   if (cspLeftWrite) counters.rulerCspLeftWrites += 1;
+  waveformScrollBurstRulerRepaint(cspLeftWrite);
 }
 
-/** Call on scroll idle (~120ms after last tier frame) to flush one summary line. */
 export function waveformScrollProfileMaybeFlushBurst(): void {
-  if (!isWaveformScrollProfileEnabled() || !burstActive) return;
-  const elapsedMs = performance.now() - burstStartedAt;
-  if (elapsedMs < 120) return;
-  burstActive = false;
-  const {
-    tierFrames,
-    bandSkipped,
-    bandRepaint,
-    bandCspLeftWrites,
-    rulerSkipped,
-    rulerRepaint,
-    rulerCspLeftWrites,
-    minimapViewportWrites,
-  } = counters;
-  const bandSkipPct =
-    tierFrames > 0 ? Math.round((bandSkipped / tierFrames) * 100) : 0;
-  const rulerSkipPct =
-    tierFrames > 0 ? Math.round((rulerSkipped / tierFrames) * 100) : 0;
-  emitLine(
-    `[scroll-profile] burst ${elapsedMs.toFixed(0)}ms · frames=${tierFrames} · band skip=${bandSkipped} (${bandSkipPct}%) repaint=${bandRepaint} cspLeft=${bandCspLeftWrites} · ruler skip=${rulerSkipped} (${rulerSkipPct}%) repaint=${rulerRepaint} cspLeft=${rulerCspLeftWrites} · minimapVp=${minimapViewportWrites}`,
-  );
-  counters.tierFrames = 0;
-  counters.bandSkipped = 0;
-  counters.bandRepaint = 0;
-  counters.bandCspLeftWrites = 0;
-  counters.minimapViewportWrites = 0;
-  counters.rulerSkipped = 0;
-  counters.rulerRepaint = 0;
-  counters.rulerCspLeftWrites = 0;
+  if (!isWaveformScrollProfileEnabled()) return;
+  const line = flushWaveformScrollBurst(performance.now());
+  if (line) emitWaveformScrollProfileLine(line);
 }
 
-export function installWaveformScrollProfileDevTools(): void {
-  if (typeof window === "undefined") return;
-  const api = {
-    help: () => {
-      const message = [
-        "1. __rushiScrollProfile.enable()",
-        "2. 打开 Editor，波形区横滚 3–5 秒",
-        "3. __rushiScrollProfile.print() 或 __rushiScrollProfile.recent()",
-        "band/ruler skip 高 = 脏区优化生效；ruler repaint≈frames = ruler 仍是主因",
-      ].join("\n");
-      // eslint-disable-next-line no-console -- dev-only
-      console.info(message);
-      return { message };
-    },
-    enable: () => {
-      setWaveformScrollProfileEnabled(true);
-      resetWaveformScrollProfileCounters();
-      const message =
-        "[scroll-profile] enabled — scroll waveform tier; burst summaries auto-log to console";
-      emitLine(message);
-      return {
-        enabled: true,
-        message,
-        next: "scroll 3–5s then __rushiScrollProfile.print()",
-      };
-    },
-    disable: () => {
-      setWaveformScrollProfileEnabled(false);
-      resetWaveformScrollProfileCounters();
-      const message = "[scroll-profile] disabled";
-      emitLine(message);
-      return { enabled: false, message };
-    },
-    enabled: () => isWaveformScrollProfileEnabled(),
-    counters: () => ({ ...counters }),
-    recent: () => [...recentLines],
-    print: () => {
-      if (recentLines.length === 0) {
-        const message =
-          "[scroll-profile] (no lines yet — enable(), scroll waveform tier 3–5s, then print again)";
-        // eslint-disable-next-line no-console -- dev-only
-        console.info(message);
-        return { lines: [] as string[], message, counters: { ...counters } };
-      }
-      for (const line of recentLines) {
-        // eslint-disable-next-line no-console -- dev-only
-        console.info(line);
-      }
-      return { lines: [...recentLines], counters: { ...counters } };
-    },
-    reset: () => {
-      resetWaveformScrollProfileCounters();
-      return { ok: true, counters: { ...counters } };
-    },
-  };
-  Object.defineProperty(window, "__rushiScrollProfile", {
-    value: api,
-    configurable: true,
-    writable: true,
-  });
+export function readWaveformScrollProfileCounters(): ScrollProfileCounters {
+  return { ...counters };
 }
 
-declare global {
-  interface Window {
-    __rushiScrollProfile?: {
-      help: () => { message: string };
-      enable: () => { enabled: true; message: string; next: string };
-      disable: () => { enabled: false; message: string };
-      enabled: () => boolean;
-      counters: () => ScrollProfileCounters;
-      recent: () => string[];
-      print: () => { lines: string[]; message?: string; counters: ScrollProfileCounters };
-      reset: () => { ok: true; counters: ScrollProfileCounters };
-    };
-  }
+export function readWaveformScrollProfileRecentLines(): string[] {
+  return [...recentLines];
 }
 
 export function resetWaveformScrollProfileForTests(): void {
-  enabled = false;
+  stopWaveformScrollProfileAutoTick();
+  setWaveformScrollProfileEnabled(false);
   resetWaveformScrollProfileCounters();
   recentLines.length = 0;
 }

@@ -1,5 +1,6 @@
 import type WaveSurfer from "wavesurfer.js";
 import { setCspLayoutRules } from "../../utils/cspElementLayout";
+import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../../utils/waveformScrollSync";
 import { readTauriStyleCspNonce } from "../../utils/tauriStyleCspNonce";
 import { logDesktopUi } from "../desktopUiLog";
 
@@ -115,11 +116,22 @@ function readWaveSurferScrollContainer(ws: WaveSurfer): HTMLElement | null {
   return renderer.scrollContainer ?? ws.getWrapper()?.parentElement ?? null;
 }
 
-/** Unified stage: tier scroll is the only horizontal scroll authority. */
-export function resetWaveSurferInternalScroll(ws: WaveSurfer): void {
+/**
+ * Push tier scrollLeft into WaveSurfer so lazy canvas tiles track the viewport.
+ * Tier remains the only user-facing scroll authority (ADR-0005).
+ */
+export function syncWaveSurferScrollFromTier(ws: WaveSurfer, scrollLeftPx: number): void {
+  if (!Number.isFinite(scrollLeftPx)) return;
   const scroll = readWaveSurferScrollContainer(ws);
   if (!scroll) return;
-  if (scroll.scrollLeft !== 0) scroll.scrollLeft = 0;
+  const maxSl = Math.max(0, scroll.scrollWidth - scroll.clientWidth);
+  const next = Math.max(0, Math.min(maxSl, scrollLeftPx));
+  if (Math.abs(scroll.scrollLeft - next) < WAVEFORM_SCROLL_SYNC_EPSILON_PX) return;
+  try {
+    ws.setScroll(next);
+  } catch {
+    scroll.scrollLeft = next;
+  }
 }
 
 function installWaveSurferInternalScrollLockStyle(scroll: HTMLElement): () => void {
@@ -131,6 +143,7 @@ function installWaveSurferInternalScrollLockStyle(scroll: HTMLElement): () => vo
   style.setAttribute(WAVESURFER_INTERNAL_SCROLL_LOCK_STYLE_ATTR, "true");
   const nonce = readTauriStyleCspNonce();
   if (nonce) style.setAttribute("nonce", nonce);
+  // Hide WS scrollbar / user pan; programmatic setScroll still works.
   style.textContent = `
     :host .scroll {
       overflow-x: hidden !important;
@@ -141,16 +154,22 @@ function installWaveSurferInternalScrollLockStyle(scroll: HTMLElement): () => vo
   return () => style.remove();
 }
 
-export function installWaveSurferInternalScrollLock(ws: WaveSurfer): () => void {
+/**
+ * Keep WS internal scrollLeft = tier scrollLeft so lazy virtualization paints the
+ * visible window. Does not write back to tier (one-way sync).
+ */
+export function installWaveSurferTierScrollSync(
+  ws: WaveSurfer,
+  getTierScrollLeftPx: () => number,
+): () => void {
   const scroll = readWaveSurferScrollContainer(ws);
   if (!scroll) return () => {};
   const uninstallStyle = installWaveSurferInternalScrollLockStyle(scroll);
-  resetWaveSurferInternalScroll(ws);
-  const onScroll = () => resetWaveSurferInternalScroll(ws);
+  const apply = () => syncWaveSurferScrollFromTier(ws, getTierScrollLeftPx());
+  apply();
+  const onScroll = () => apply();
   scroll.addEventListener("scroll", onScroll, { passive: true });
-  const unsubscribeAfterRender = subscribeWaveSurferAfterRender(ws, () => {
-    resetWaveSurferInternalScroll(ws);
-  });
+  const unsubscribeAfterRender = subscribeWaveSurferAfterRender(ws, apply);
   return () => {
     scroll.removeEventListener("scroll", onScroll);
     unsubscribeAfterRender();
@@ -263,8 +282,12 @@ export function applyWaveSurferProgressWithoutClip(
 }
 
 /**
- * Patch renderer.renderProgress so every WS progress update keeps the main canvas
- * fully visible while the progress layer shows the played-region tint.
+ * Patch renderer.renderProgress.
+ *
+ * WS-1: while playing, skip the WS progress hot path (original renderProgress +
+ * per-frame progressWrapper width writes). Visual time is owned by the DOM
+ * playhead + VRP clock; played-region tint is frozen off during playback.
+ * Paused/seek still runs the original path so static geometry stays correct.
  */
 export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => void {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
@@ -272,7 +295,19 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
   const original = renderer.renderProgress?.bind(renderer);
   if (!original) return () => {};
 
+  let playingProgressSuppressed = false;
+
   renderer.renderProgress = (ratio: number, isPlaying: boolean) => {
+    if (isPlaying) {
+      if (!playingProgressSuppressed) {
+        applyWaveSurferProgressWithoutClip(ws, 0);
+        playingProgressSuppressed = true;
+      } else {
+        hideWaveSurferPlayheadCursor(renderer);
+      }
+      return;
+    }
+    playingProgressSuppressed = false;
     original(ratio, isPlaying);
     applyWaveSurferProgressWithoutClip(ws, resolveWaveSurferProgressRatio(ratio, isPlaying));
   };

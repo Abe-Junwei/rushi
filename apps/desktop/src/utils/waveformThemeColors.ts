@@ -125,8 +125,15 @@ export type WaveformSegmentBandPalette = {
 };
 
 /** 语段 band canvas 配色 — 与 segmentChrome / tokens.css `--segment-fill-*` 同源。 */
+let cachedSegmentBandPalette: WaveformSegmentBandPalette | null = null;
+
+export function invalidateWaveformSegmentBandPaletteCache(): void {
+  cachedSegmentBandPalette = null;
+}
+
 export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
-  return {
+  if (cachedSegmentBandPalette) return cachedSegmentBandPalette;
+  cachedSegmentBandPalette = {
     selected: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.selected,
       "color-mix(in srgb, var(--accent-action) 18%, transparent)",
@@ -158,4 +165,5 @@ export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
       "rgba(55, 53, 47, 0.14)",
     ),
   };
+  return cachedSegmentBandPalette;
 }

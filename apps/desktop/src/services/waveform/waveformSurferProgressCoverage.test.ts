@@ -4,11 +4,11 @@ import { clearAllCspScopeRulesForTests } from "../../utils/cspNonceStyleRegistry
 import {
   applyWaveSurferProgressWithoutClip,
   estimateWaveSurferCanvasCount,
-  installWaveSurferInternalScrollLock,
+  installWaveSurferTierScrollSync,
   installWaveSurferPlayedRegionDisplayFix,
-  resetWaveSurferInternalScroll,
   restoreWaveSurferMainCanvasVisibility,
   setWaveSurferVisualProgressRatioReader,
+  syncWaveSurferScrollFromTier,
   WAVESURFER_MAX_CANVAS_CHUNK_PX,
   waveSurferLazyCanvasIndices,
 } from "./waveformSurferProgressCoverage";
@@ -81,7 +81,7 @@ describe("applyWaveSurferProgressWithoutClip", () => {
 });
 
 describe("installWaveSurferPlayedRegionDisplayFix", () => {
-  it("replaces renderProgress so clip is never applied but played tint remains", () => {
+  it("replaces renderProgress so clip is never applied but played tint remains when paused", () => {
     const canvasWrapper = document.createElement("div");
     const progressWrapper = document.createElement("div");
     const cursor = document.createElement("div");
@@ -118,16 +118,19 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     expect(progressWrapper.style.width).toBe("40%");
   });
 
-  it("uses visual progress ratio while playing when a reader is registered", () => {
+  it("suppresses per-frame progress updates while playing (WS-1)", () => {
     const canvasWrapper = document.createElement("div");
     const progressWrapper = document.createElement("div");
     const cursor = document.createElement("div");
+    let originalCalls = 0;
     const renderer = {
       canvasWrapper,
       progressWrapper,
       cursor,
       options: { cursorWidth: 1 },
-      renderProgress(_ratio: number, _isPlaying: boolean) {},
+      renderProgress(_ratio: number, _isPlaying: boolean) {
+        originalCalls += 1;
+      },
     };
     const ws = {
       getRenderer: () => renderer,
@@ -138,24 +141,31 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     setWaveSurferVisualProgressRatioReader(() => 0.55);
     const uninstall = installWaveSurferPlayedRegionDisplayFix(ws);
     renderer.renderProgress(0.4, true);
+    renderer.renderProgress(0.5, true);
 
-    expect(readCspLayoutRulesForElement(progressWrapper)).toMatch(/width:\s*55(\.\d+)?%/);
+    expect(originalCalls).toBe(0);
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 0%");
     uninstall();
   });
 });
 
-describe("installWaveSurferInternalScrollLock", () => {
+describe("installWaveSurferTierScrollSync", () => {
   function createScrollableWaveSurfer() {
     const host = document.createElement("div");
     const shadow = host.attachShadow({ mode: "open" });
     const scrollContainer = document.createElement("div");
     scrollContainer.className = "scroll";
+    Object.defineProperty(scrollContainer, "scrollWidth", { configurable: true, value: 10_000 });
+    Object.defineProperty(scrollContainer, "clientWidth", { configurable: true, value: 800 });
     scrollContainer.scrollLeft = 160;
     shadow.appendChild(scrollContainer);
     const renderedHandlers = new Set<() => void>();
     const ws = {
       getRenderer: () => ({ scrollContainer }),
       getWrapper: () => null,
+      setScroll: (px: number) => {
+        scrollContainer.scrollLeft = px;
+      },
       on: (event: string, handler: () => void) => {
         if (event === "rendered" || event === "redrawcomplete") {
           renderedHandlers.add(handler);
@@ -166,33 +176,32 @@ describe("installWaveSurferInternalScrollLock", () => {
     return { renderedHandlers, scrollContainer, shadow, ws };
   }
 
-  it("resets WaveSurfer internal scroll to keep tier scroll as the sole authority", () => {
-    const { scrollContainer, ws } = createScrollableWaveSurfer();
-
-    resetWaveSurferInternalScroll(ws);
-
-    expect(scrollContainer.scrollLeft).toBe(0);
-  });
-
-  it("locks internal scroll during scroll and render events", () => {
+  it("syncs WaveSurfer scrollLeft from tier and restores after render", () => {
     const { scrollContainer, renderedHandlers, shadow, ws } = createScrollableWaveSurfer();
+    let tierScroll = 420;
 
-    const uninstall = installWaveSurferInternalScrollLock(ws);
+    const uninstall = installWaveSurferTierScrollSync(ws, () => tierScroll);
 
-    expect(scrollContainer.scrollLeft).toBe(0);
+    expect(scrollContainer.scrollLeft).toBe(420);
     const lockStyle = shadow.querySelector("style[data-rushi-ws-internal-scroll-lock]");
     expect(lockStyle?.textContent).toContain("overflow-x: hidden");
 
-    scrollContainer.scrollLeft = 320;
+    scrollContainer.scrollLeft = 50;
     scrollContainer.dispatchEvent(new Event("scroll"));
-    expect(scrollContainer.scrollLeft).toBe(0);
+    expect(scrollContainer.scrollLeft).toBe(420);
 
-    scrollContainer.scrollLeft = 240;
+    tierScroll = 900;
     renderedHandlers.forEach((handler) => handler());
-    expect(scrollContainer.scrollLeft).toBe(0);
+    expect(scrollContainer.scrollLeft).toBe(900);
 
     uninstall();
     expect(shadow.querySelector("style[data-rushi-ws-internal-scroll-lock]")).toBeNull();
+  });
+
+  it("syncWaveSurferScrollFromTier clamps to scroll range", () => {
+    const { scrollContainer, ws } = createScrollableWaveSurfer();
+    syncWaveSurferScrollFromTier(ws, 50_000);
+    expect(scrollContainer.scrollLeft).toBe(9200);
   });
 });
 

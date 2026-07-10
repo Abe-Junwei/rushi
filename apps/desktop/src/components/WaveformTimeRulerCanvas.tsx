@@ -11,16 +11,18 @@ import {
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
 import { scheduleTierScrollFrame, subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import {
   defaultWaveformRulerCanvasPalette,
   readWaveformRulerCanvasPalette,
   type WaveformRulerCanvasPalette,
 } from "../utils/waveformRulerCanvasColors";
 import {
+  isWaveformScrollProfileEnabled,
   waveformScrollProfileRulerRepaint,
   waveformScrollProfileRulerSkipped,
 } from "../services/waveform/waveformScrollProfile";
+import { waveformFrameTimingRulerPaint } from "../services/waveform/waveformFrameTimingProfile";
 import {
   computeSegmentBandCanvasWindow,
   cspLayoutLeftPxIfChanged,
@@ -38,12 +40,10 @@ export type WaveformTimeRulerCanvasProps = {
   tierScrollRef: RefObject<HTMLElement | null>;
   tierScrollLive: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
+  /** Only feeds ruler-drag brightness affordance (interactionActive); not used for paint. */
   currentTimeSec: number;
-  getPlayheadTimeSec?: () => number;
   formatMediaTime: (sec: number) => string;
   disabled?: boolean;
-  /** Local ruler repaint only — must not call flushTierScrollFrame (scroll snap-back). */
-  subscribePlayheadFrame?: (cb: (timeSec: number) => void) => () => void;
   /** R2: click centers tier scroll — no seek. */
   onCenterTierAtClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -66,10 +66,8 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   tierScrollLive,
   tierScrollLayout,
   currentTimeSec,
-  getPlayheadTimeSec,
   formatMediaTime,
   disabled,
-  subscribePlayheadFrame,
   onCenterTierAtClientX,
   onSetScrollLeftPx,
 }: WaveformTimeRulerCanvasProps) {
@@ -81,8 +79,6 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     durationSec,
     timelineWidthPx,
     viewportWidthPx,
-    currentTimeSec,
-    getPlayheadTimeSec,
     formatMediaTime,
     interactionActive: false,
   });
@@ -91,8 +87,6 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     durationSec,
     timelineWidthPx,
     viewportWidthPx,
-    currentTimeSec,
-    getPlayheadTimeSec,
     formatMediaTime,
     interactionActive: inputRef.current.interactionActive,
   };
@@ -170,6 +164,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
         !segmentBandCanvasNeedsRepaint({
           scrollLeftPx: metrics.scrollLeftPx,
           viewportWidthPx: viewportWidth,
+          timelineWidthPx: input.timelineWidthPx,
           paintedLeftPx: painted.leftPx,
           paintedWidthPx: painted.widthPx,
           paintedHeightPx: painted.heightPx,
@@ -182,6 +177,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       }
       forceRepaintRef.current = false;
 
+      const paintStartedAt = isWaveformScrollProfileEnabled() ? performance.now() : 0;
       const dpr = window.devicePixelRatio || 1;
       const devW = Math.max(1, Math.floor(widthPx * dpr));
       const devH = Math.max(1, Math.floor(heightPx * dpr));
@@ -197,12 +193,12 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       const beforeShellLeft = lastShellLeftRef.current;
       if (dims.cssW !== widthPx || dims.cssH !== heightPx) {
         lastShellLeftRef.current = null;
-        setCspLayoutRules(shell, { left: leftPx, bottom: 0, width: widthPx, height: heightPx });
-        setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
+        setDirectLayoutStyle(shell, { left: leftPx, bottom: 0, width: widthPx, height: heightPx });
+        setDirectLayoutStyle(canvas, { width: widthPx, height: heightPx });
         dims.cssW = widthPx;
         dims.cssH = heightPx;
       } else {
-        cspLayoutLeftPxIfChanged(shell, leftPx, lastShellLeftRef, setCspLayoutRules);
+        cspLayoutLeftPxIfChanged(shell, leftPx, lastShellLeftRef, setDirectLayoutStyle);
       }
       waveformScrollProfileRulerRepaint(lastShellLeftRef.current !== beforeShellLeft);
 
@@ -215,18 +211,17 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
         return;
       }
 
-      const paintTimeSec = input.getPlayheadTimeSec?.() ?? input.currentTimeSec;
       drawWaveformTimeRuler({
         ctx,
         scrollLeftPx: leftPx,
         viewportWidthPx: widthPx,
         timelineWidthPx: input.timelineWidthPx,
         durationSec: input.durationSec,
-        currentTimeSec: paintTimeSec,
         formatMediaTime: input.formatMediaTime,
         interactionActive: input.interactionActive,
         palette: paletteRef.current,
       });
+      if (paintStartedAt > 0) waveformFrameTimingRulerPaint(performance.now() - paintStartedAt);
 
       lastPaintWindowRef.current = { leftPx, widthPx, heightPx, bufferPx };
     };
@@ -250,10 +245,6 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       forceRepaintRef.current = true;
       paintRef.current?.();
     });
-    const unsubPlayhead = subscribePlayheadFrame?.(() => {
-      forceRepaintRef.current = true;
-      paintRef.current?.();
-    });
 
     let ro: ResizeObserver | null = null;
     if (typeof ResizeObserver !== "undefined") {
@@ -270,7 +261,6 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     return () => {
       unsubAppearance();
       unsubFrame();
-      unsubPlayhead?.();
       ro?.disconnect();
       paintRef.current = null;
       window.removeEventListener("resize", onResize);
@@ -279,14 +269,13 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     tierScrollRef,
     tierScrollLayout.clientWidthPx,
     viewportWidthPx,
-    subscribePlayheadFrame,
   ]);
 
   useLayoutEffect(() => {
     forceRepaintRef.current = true;
     invalidatePaintWindow();
     paintRef.current?.();
-  }, [durationSec, timelineWidthPx, viewportWidthPx, currentTimeSec, formatMediaTime, interactionActive, isReady]);
+  }, [durationSec, timelineWidthPx, viewportWidthPx, formatMediaTime, interactionActive, isReady]);
 
   return (
     <CspLayout

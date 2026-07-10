@@ -25,6 +25,7 @@ describe("segmentBandCanvasNeedsRepaint", () => {
     layoutHeightPx: 120,
     bufferPx: 1500,
     viewportWidthPx: 1000,
+    timelineWidthPx: 20_000,
   };
 
   it("requires first paint", () => {
@@ -49,6 +50,35 @@ describe("segmentBandCanvasNeedsRepaint", () => {
       segmentBandCanvasNeedsRepaint({
         ...basePaint,
         scrollLeftPx: 1500,
+      }),
+    ).toBe(false);
+  });
+
+  it("skips repeated repaint when the painted window is clamped to timeline start", () => {
+    expect(
+      segmentBandCanvasNeedsRepaint({
+        ...basePaint,
+        scrollLeftPx: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it("skips repeated repaint when the painted window is clamped to timeline end", () => {
+    expect(
+      segmentBandCanvasNeedsRepaint({
+        ...basePaint,
+        scrollLeftPx: 19_000,
+        paintedLeftPx: 16_000,
+      }),
+    ).toBe(false);
+  });
+
+  it("preserves buffered safe area for a window away from timeline boundaries", () => {
+    expect(
+      segmentBandCanvasNeedsRepaint({
+        ...basePaint,
+        scrollLeftPx: 5600,
+        paintedLeftPx: 5000,
       }),
     ).toBe(false);
   });
