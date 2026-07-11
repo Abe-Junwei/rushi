@@ -27,7 +27,8 @@ export type BuildOnlineSttEnvPresentationInput = {
   lastProbeMessage: string | null;
 };
 
-function vendorShortLabel(providerId: string): string {
+/** Ok-state chip uses full catalog label (not `onlineTranscribeProviderShortLabel`). */
+function vendorChipLabel(providerId: string): string {
   return getSttOnlineProviderDefinition(providerId)?.label ?? "在线 STT";
 }
 
@@ -38,7 +39,7 @@ function chipLabelFor(input: {
   connectionVerified: boolean;
 }): string {
   if (!input.enabled || input.tone === "idle") return "在线 STT 未启用";
-  if (input.tone === "ok") return vendorShortLabel(input.providerId);
+  if (input.tone === "ok") return vendorChipLabel(input.providerId);
   if (input.tone === "error") return "在线 STT 异常";
   if (!input.connectionVerified) return "在线 STT 待验证";
   return "在线 STT 待配置";

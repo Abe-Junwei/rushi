@@ -163,6 +163,7 @@ pub fn run() {
             app_info::open_bundled_user_guide,
             asr_setup::diagnose::asr_setup_diagnose,
             asr_sidecar::bundled::launch::bundled_asr_launch_report,
+            // Intentional defer: registered for env-page FSM; no TS invoke yet (r3h-i1).
             asr_sidecar::supervisor::asr_supervisor_snapshot,
             local_runtime::local_runtime_diagnose,
             local_runtime::installer::commands::local_runtime_download_sidecar,
@@ -206,7 +207,6 @@ pub fn run() {
             project::file_cmd::delete_file,
             project::waveform_peaks_cmd::ensure_waveform_peaks,
             project::waveform_peaks_cmd::waveform_peaks_status,
-            project::waveform_diag_cmd::waveform_release_probe,
             project::waveform_asset_cmd::scoped_waveform_file_meta,
             project::export_cmd::export_project_bundle,
             project::export_cmd::import_project_bundle,
@@ -275,7 +275,6 @@ pub fn run() {
             project::quality_eval::quality_get_baseline_report,
             project::quality_eval::quality_run_eval,
             project::quality_eval::quality_import_report_file,
-            project::quality_eval::quality_save_report_from_json,
             project::quality_eval::quality_set_baseline_from_last,
             project::quality_eval::quality_last_report_path_cmd,
             project::quality_eval::quality_export_correction_memory_jsonl,

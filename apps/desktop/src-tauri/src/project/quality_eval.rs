@@ -284,6 +284,9 @@ pub fn quality_get_baseline_report(
     read_report_file(&path).map(Some)
 }
 
+/// Persist a quality report from JSON. Not registered in `generate_handler!` —
+/// no TS invoke; import path uses `quality_import_report_file`. Kept for optional tooling.
+#[allow(dead_code)]
 #[tauri::command]
 pub fn quality_save_report_from_json(
     state: State<DbState>,

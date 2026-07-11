@@ -6,6 +6,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "open_bundled_user_guide",
     "asr_setup_diagnose",
     "bundled_asr_launch_report",
+    // Intentional defer: env-page FSM read; no TS invoke yet (r3h-i1).
     "asr_supervisor_snapshot",
     "local_runtime_diagnose",
     "local_runtime_download_sidecar",
@@ -46,7 +47,6 @@ pub const APP_COMMANDS: &[&str] = &[
     "delete_file",
     "ensure_waveform_peaks",
     "waveform_peaks_status",
-    "waveform_release_probe",
     "scoped_waveform_file_meta",
     "export_project_bundle",
     "import_project_bundle",
@@ -118,7 +118,6 @@ pub const APP_COMMANDS: &[&str] = &[
     "quality_get_baseline_report",
     "quality_run_eval",
     "quality_import_report_file",
-    "quality_save_report_from_json",
     "quality_set_baseline_from_last",
     "quality_last_report_path_cmd",
     "quality_export_correction_memory_jsonl",

@@ -20,6 +20,10 @@ pub struct WaveformReleaseProbe {
     pub bundled_ffmpeg_exists: bool,
 }
 
+/// Filesystem waveform readiness probe (DB + peaks + bundled ffmpeg).
+/// Not registered in `generate_handler!` — no TS invoke; release uses
+/// `scripts/waveform-release-probe.sh` (filesystem). Kept for optional future IPC.
+#[allow(dead_code)]
 #[tauri::command]
 pub fn waveform_release_probe(
     state: tauri::State<DbState>,

@@ -22,6 +22,7 @@ import {
   type TransportIntent,
 } from "../services/waveform/transport";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import { reconcileSegmentsRefWithState } from "../pages/segmentSegmentsRefSync";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -130,8 +131,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     commitSeekUi,
   });
 
+  // Read-only prop mirror for transport callbacks — not a structure mutation.
   const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
+  reconcileSegmentsRefWithState(segmentsRef, segments);
   const selectedIdxForTransportRef = useRef(selectedIdx);
   selectedIdxForTransportRef.current = selectedIdx;
 

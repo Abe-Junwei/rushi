@@ -43,9 +43,11 @@
 | P2-repr-job | `transcribe_job` / `model_prepare` 用 `str(e)` |
 | P2-ota-notes | update notes `slice(0, 500)` |
 | P2-ffmpeg-timeout | ffmpeg remux 120s watchdog |
-| P2-e2e-stale | CM6 selector；latency profile skip |
+| P2-e2e-stale | CM6 selector；latency profile **un-skip**（`.cm-line` / ArrowDown） |
 | P2-backfill-startup | SHA256 回填改开池后后台线程 |
 | Note | hotwords `title`；STT save→probe `preferPersistedCredentials`；NavBlock 停止文案对齐 |
+| Note M3 | `onlineTranscribeProviderShortLabel`：busy overlay 短标签；chip ok 仍用 catalog 长 label |
+| Note R-15 | plugin-system 标 v1 unused + CLN-905 DEFER（未删 scaffold） |
 
 ### 延期
 
@@ -56,6 +58,8 @@
 | 架构热点拆分 | `useWaveformSegmentPlaybackControls` / `usePrepareModelController` 独立薄片 |
 | Windows IME W-1 | 发版前手测硬门禁 |
 | 协作/CAT/Sherpa | 故意延期产品化 |
+| Orphan IPC | `waveform_release_probe` / `quality_save_report_from_json` **已从 registration+permissions 移除**（Rust 实现保留；release 探针仍走 `scripts/waveform-release-probe.sh`）；`asr_supervisor_snapshot` **intentional defer**（已注册，待 env 页接线，见 r3h-i1） |
+| R-15 plugin-system | `loadBuiltinPlugins` / `export.format` 仅测试消费；生产导出未接 registry。保留 scaffold，入口已标 v1 unused；接线或删除见 CLN-905 |
 
 ---
 

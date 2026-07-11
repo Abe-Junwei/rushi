@@ -366,6 +366,8 @@ pub fn watchdog_tick(handle: &AppHandle) -> bool {
     true
 }
 
+/// Read-only supervisor FSM snapshot.
+/// Intentional defer: registered for env-page wiring (r3h-i1); no TS invoke yet.
 #[tauri::command]
 pub fn asr_supervisor_snapshot(state: tauri::State<AsrSupervisorState>) -> SupervisorSnapshot {
     state.0.lock().map(|g| g.clone()).unwrap_or_else(|e| {

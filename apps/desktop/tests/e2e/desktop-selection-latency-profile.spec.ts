@@ -27,20 +27,6 @@ function buildManySegmentMockInit(segmentCount: number): string {
     kind: "speech",
   }));
   window.__RUSHI_E2E_SET_SEGMENTS__?.(segments);
-  const originalInvoke = window.__TAURI_INTERNALS__?.invoke;
-  if (originalInvoke) {
-    window.__TAURI_INTERNALS__.invoke = async (cmd, args) => {
-      const result = await originalInvoke(cmd, args);
-      if (cmd === "load_file" && result) {
-        return {
-          ...result,
-          file_type: "paired",
-          audio_path: "/tmp/rushi-e2e-selection-latency.wav",
-        };
-      }
-      return result;
-    };
-  }
 })();
 `;
 }
@@ -79,16 +65,9 @@ async function openEditorWorkspace(page: import("@playwright/test").Page): Promi
     .dispatchEvent("click");
 
   await expect(page.locator('[data-purpose="editor-workspace"]')).toBeVisible({ timeout: 20_000 });
-  await expect(page.locator('[data-seg-row="0"]')).toBeVisible({ timeout: 20_000 });
-}
-
-async function clickSegmentRow(
-  page: import("@playwright/test").Page,
-  segIdx: number,
-): Promise<void> {
-  const row = page.locator(`[data-seg-row="${segIdx}"]`);
-  await expect(row).toBeVisible({ timeout: 10_000 });
-  await row.dispatchEvent("click");
+  const content = page.locator('.cm-content[aria-label="语段正文"]').first();
+  await expect(content).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator(".cm-line").nth(2)).toBeVisible({ timeout: 20_000 });
 }
 
 test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
@@ -96,14 +75,17 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     await page.addInitScript(buildManySegmentMockInit(SEGMENT_COUNT));
   });
 
-  test("records profile lines for list click and keyboard advance", async ({ page }) => {
-    test.skip(true, "CM6: data-seg-row removed");
+  test("records profile lines for CM6 line click and keyboard advance", async ({ page }) => {
     test.setTimeout(120_000);
     const profileLines: string[] = [];
+    const maxDepth: string[] = [];
     page.on("console", (msg) => {
       const text = msg.text();
       if (text.includes("[selection-profile] #") && text.includes("total=")) {
         profileLines.push(text);
+      }
+      if (text.includes("Maximum update depth exceeded")) {
+        maxDepth.push(text);
       }
     });
 
@@ -112,18 +94,17 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     const enableResult = await page.evaluate(() => window.__rushiSelectionProfile?.enable());
     expect(enableResult?.enabled).toBe(true);
 
-    await clickSegmentRow(page, 2);
-    await clickSegmentRow(page, 5);
+    const content = page.locator('.cm-content[aria-label="语段正文"]').first();
+    await page.locator(".cm-line").nth(2).click();
+    await page.locator(".cm-line").nth(5).click();
 
-    const textarea = page.locator('[data-seg-row="5"] textarea.seg-text');
-    await textarea.focus();
-    await textarea.press("ArrowDown");
+    await content.focus();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
     await page.waitForTimeout(200);
 
-    const waveformTier = page.locator(".waveform-tier-scroll-fallback").first();
-    await waveformTier.click();
-    await page.keyboard.press("ArrowRight");
-    await page.waitForTimeout(200);
+    expect(maxDepth).toEqual([]);
 
     await page.waitForFunction(
       () =>
@@ -138,8 +119,7 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
     const selectionLines = lines.filter(
       (line) => line.includes("[selection-profile] #") && line.includes("total="),
     );
-    expect(selectionLines.length).toBeGreaterThanOrEqual(3);
-    expect(selectionLines.some((line) => line.includes("waveformKeyboard"))).toBe(true);
+    expect(selectionLines.length).toBeGreaterThanOrEqual(2);
 
     for (const line of selectionLines) {
       const parsed = parseSelectionProfileLine(line);

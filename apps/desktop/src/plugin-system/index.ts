@@ -2,6 +2,13 @@
  * Public API of the Rushi plugin system.
  *
  * Host code imports from here to load plugins, query extensions, etc.
+ *
+ * v1 unused infra (R-15 / Q-PLUGIN-1): `loadBuiltinPlugins()` is only exercised
+ * by unit tests today. Production export (`useExportController`) does not query
+ * `registryQuery("export.format")`; built-ins `export-markdown` / `tts-demo`
+ * remain scaffold until a product thin-slice wires them. Do not delete without
+ * an explicit cleanup decision — see cleanup-candidate-register CLN-905 and
+ * repo-multi-angle-review-2026-07-11 §延期.
  */
 
 export type {

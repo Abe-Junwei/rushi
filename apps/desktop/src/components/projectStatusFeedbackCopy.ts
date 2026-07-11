@@ -1,7 +1,7 @@
 import { ENV_NAV } from "../config/environmentNavCopy";
 import type { TranscribeProgress } from "../pages/transcribePreviewState";
 import type { BusyReason } from "../pages/useProjectController";
-import { getSttOnlineProviderDefinition } from "../services/stt/sttOnlineProviderContract/definitions";
+import { onlineTranscribeProviderShortLabel } from "../services/stt/onlineTranscribeProviderShortLabel";
 import { readExternalSttOnlineRuntimeConfigFromStorage } from "../services/stt/sttOnlineProviderContract/runtimeConfig";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 
@@ -15,12 +15,7 @@ export type BusyOverlayCopy = {
 
 function onlineTranscribeProviderLabel(): string {
   const id = readExternalSttOnlineRuntimeConfigFromStorage().selectedProviderId;
-  const def = getSttOnlineProviderDefinition(id);
-  if (!def) return "云端";
-  if (id === "dashscope-asr") return "百炼";
-  if (id === "iflytek-speed-asr") return "讯飞极速大模型";
-  const short = def.label.split("（")[0]?.split("(")[0]?.trim();
-  return short || def.label;
+  return onlineTranscribeProviderShortLabel(id);
 }
 
 function transcribeBusyCopy(
