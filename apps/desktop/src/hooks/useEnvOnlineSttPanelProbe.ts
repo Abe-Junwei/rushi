@@ -53,13 +53,13 @@ export function useEnvOnlineSttPanelProbe({
     setLastProbeAvailable(null);
   }, []);
 
-  const probeOnlineStt = useCallback(async () => {
+  const probeOnlineStt = useCallback(async (opts?: { preferPersistedCredentials?: boolean }) => {
     const startedAt = Date.now();
     setProbeBusy(true);
     const { olProviderId, olApiKey, olApiSecret, savedApiKeyId, savedApiSecretId } = fields;
     try {
-      const typedApiKey = olApiKey.trim();
-      const typedApiSecret = olApiSecret.trim();
+      const typedApiKey = opts?.preferPersistedCredentials ? "" : olApiKey.trim();
+      const typedApiSecret = opts?.preferPersistedCredentials ? "" : olApiSecret.trim();
       const providerDef = getSttOnlineProviderDefinition(olProviderId);
       const providerApiKeyId = resolveSttApiKeyIdForProvider(olProviderId);
       const providerApiSecretId = resolveSttApiSecretIdForProvider(olProviderId);

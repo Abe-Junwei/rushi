@@ -4,10 +4,13 @@ import {
   mergeSegmentStageFields,
 } from "../services/segmentStagePersist";
 import { withDefaultSegmentStage, newSegmentWithDefaultStage } from "../services/segmentTextStage";
+import { joinMergedSegmentTexts } from "../utils/joinMergedSegmentTexts";
 import { mergeSegmentAnnotations } from "../utils/segmentAnnotation";
 import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids } from "../utils/segmentUid";
 import { sanitizeSegmentsForMedia } from "../utils/segmentMediaSanitize";
 import { trimAdjacentSegmentOverlaps } from "../utils/segmentBoundaryTrim";
+
+export { joinMergedSegmentTexts } from "../utils/joinMergedSegmentTexts";
 
 /** 深拷贝语段数组（不重新索引）。 */
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
@@ -126,7 +129,7 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
     idx: a.idx,
     start_sec: a.start_sec,
     end_sec: b.end_sec,
-    text: `${a.text}\n${b.text}`.trim(),
+    text: joinMergedSegmentTexts(a.text ?? "", b.text ?? ""),
     confidence:
       confA != null && confB != null ? Math.min(confA, confB) : (confA ?? confB ?? null),
     low_confidence: Boolean(a.low_confidence || b.low_confidence),

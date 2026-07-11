@@ -1,11 +1,16 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, afterEach } from "vitest";
+import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../tauri/projectTypes";
 import {
   mountSpikeEditor,
   spikeSelectSegmentLine,
 } from "../components/editor/core/__spike__/createSpikeEditor";
+import {
+  buildTranscriptEditorState,
+  transcriptEditorCoreExtensions,
+} from "../components/editor/core";
 
 function makeSegments(n: number): SegmentDto[] {
   return Array.from({ length: n }, (_, i) => ({
@@ -27,7 +32,7 @@ function percentile(sortedAsc: number[], p: number): number {
     sortedAsc.length - 1,
     Math.max(0, Math.ceil((p / 100) * sortedAsc.length) - 1),
   );
-  return sortedAsc[idx]!;
+  return sortedAsc[idx];
 }
 
 describe("P0 spike perf: CM6 selection dispatch @ 2000 segments", () => {
@@ -59,10 +64,55 @@ describe("P0 spike perf: CM6 selection dispatch @ 2000 segments", () => {
       const p50 = percentile(samples, 50);
       // eslint-disable-next-line no-console
       console.log(
-        `[spike-selection-latency] n=2000 samples=${samples.length} p50=${p50.toFixed(2)}ms p95=${p95.toFixed(2)}ms max=${samples[samples.length - 1]!.toFixed(2)}ms`,
+        `[spike-selection-latency] n=2000 samples=${samples.length} p50=${p50.toFixed(2)}ms p95=${p95.toFixed(2)}ms max=${samples[samples.length - 1].toFixed(2)}ms`,
       );
       // Gate from acceptance: ≤ status quo listCommit ≈400ms; subjective target <50ms.
       expect(p95).toBeLessThanOrEqual(400);
+      expect(p95).toBeLessThan(50);
+    } finally {
+      view.destroy();
+    }
+  });
+});
+
+describe("Transcript editor core perf: typing dispatch @ 2000 segments", () => {
+  let root: HTMLDivElement | null = null;
+
+  afterEach(() => {
+    root?.remove();
+    root = null;
+  });
+
+  it("P95 text edit dispatch stays below immediate-input budget", () => {
+    root = document.createElement("div");
+    document.body.appendChild(root);
+    const segments = makeSegments(2000).map((s) => ({
+      ...s,
+      text_stage: "auto_transcribe" as const,
+    }));
+    const state = buildTranscriptEditorState(segments, {
+      extensions: transcriptEditorCoreExtensions(),
+    });
+    const view = new EditorView({ state, parent: root });
+    try {
+      const samples: number[] = [];
+      for (let i = 0; i < 20; i++) {
+        const line = view.state.doc.line(((i * 17) % 2000) + 1);
+        view.dispatch({ changes: { from: line.from, to: line.to, insert: `warm ${i}` } });
+      }
+      for (let i = 0; i < 120; i++) {
+        const line = view.state.doc.line(((i * 17) % 2000) + 1);
+        const t0 = performance.now();
+        view.dispatch({ changes: { from: line.from, to: line.to, insert: `typed ${i}` } });
+        samples.push(performance.now() - t0);
+      }
+      samples.sort((a, b) => a - b);
+      const p95 = percentile(samples, 95);
+      const p50 = percentile(samples, 50);
+      // eslint-disable-next-line no-console
+      console.log(
+        `[core-typing-latency] n=2000 samples=${samples.length} p50=${p50.toFixed(2)}ms p95=${p95.toFixed(2)}ms max=${samples[samples.length - 1].toFixed(2)}ms`,
+      );
       expect(p95).toBeLessThan(50);
     } finally {
       view.destroy();

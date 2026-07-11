@@ -100,7 +100,7 @@ def _run_job(job_id: str, upload_path: Path, work_dir: Path, hotwords: str | Non
         log.exception("transcribe job %s failed", job_id)
         with _lock:
             job.phase = "error"
-            job.message = repr(e)
+            job.message = str(e)
             job.error = TranscriptionError(
                 code=str(e) if isinstance(e, RuntimeError) else "transcribe_job_failed",
                 message=str(e),

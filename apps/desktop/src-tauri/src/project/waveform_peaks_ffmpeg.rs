@@ -1,7 +1,13 @@
 //! FFmpeg remux fallback when Symphonia cannot probe/decode the source container.
 
+use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::thread;
+use std::time::{Duration, Instant};
+
+/// Hang-prone remux must not block peaks generation forever.
+const FFMPEG_REMUX_TIMEOUT: Duration = Duration::from_secs(120);
 
 pub fn resolve_ffmpeg_command() -> PathBuf {
     crate::bundled_asr_assets::resolve_bundled_ffmpeg()
@@ -27,7 +33,7 @@ pub fn remux_audio_to_pcm_wav(source: &Path, dest: &Path) -> Result<(), String> 
         .to_str()
         .ok_or_else(|| "remux 输出路径无效".to_string())?;
 
-    let output = Command::new(&ffmpeg)
+    let mut child = Command::new(&ffmpeg)
         .args([
             "-y",
             "-nostdin",
@@ -46,11 +52,35 @@ pub fn remux_audio_to_pcm_wav(source: &Path, dest: &Path) -> Result<(), String> 
             "pcm_s16le",
             dest_s,
         ])
-        .output()
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::piped())
+        .spawn()
         .map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    let deadline = Instant::now() + FFMPEG_REMUX_TIMEOUT;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) => {
+                if Instant::now() >= deadline {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err("ffmpeg remux 超时（120 秒）".to_string());
+                }
+                thread::sleep(Duration::from_millis(100));
+            }
+            Err(e) => return Err(format!("等待 ffmpeg 失败: {e}")),
+        }
+    };
+
+    let mut stderr_buf = Vec::new();
+    if let Some(mut pipe) = child.stderr.take() {
+        let _ = pipe.read_to_end(&mut stderr_buf);
+    }
+
+    if !status.success() {
+        let stderr = String::from_utf8_lossy(&stderr_buf);
         let detail = stderr.trim();
         if detail.is_empty() {
             return Err("ffmpeg remux 失败".to_string());

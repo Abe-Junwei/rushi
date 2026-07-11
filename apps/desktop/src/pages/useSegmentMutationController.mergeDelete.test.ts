@@ -42,7 +42,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0].text).toBe("hello\nworld");
+    expect(result.current.segments[0].text).toBe("hello world");
     expect(result.current.segments[0].start_sec).toBe(0);
     expect(result.current.segments[0].end_sec).toBe(2);
   });
@@ -58,7 +58,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithPrevAt(1));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0].text).toBe("hello\nworld");
+    expect(result.current.segments[0].text).toBe("hello world");
     expect(result.current.selectedIdx).toBe(0);
   });
 
@@ -74,7 +74,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithPrevAt(1));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("hello\nedited tail");
+    expect(result.current.segments[0]?.text).toBe("hello edited tail");
   });
 
   it("mergeWithNextAt includes edited text for current row", () => {
@@ -89,7 +89,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("edited head\nworld");
+    expect(result.current.segments[0]?.text).toBe("edited head world");
   });
 
   it("mergeWithNextAt uses segmentsRef when React state lags behind ref", () => {
@@ -110,7 +110,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("typed in dom only\nworld");
+    expect(result.current.segments[0]?.text).toBe("typed in dom only world");
   });
 
   it("mergeWithNextAt includes edits on both adjacent segments", () => {
@@ -126,7 +126,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("edited head\nedited tail");
+    expect(result.current.segments[0]?.text).toBe("edited head edited tail");
   });
 
   it("mergeWithPrevAt includes edit on the previous segment when merging from later row", () => {
@@ -141,7 +141,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeWithPrevAt(1));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("edited prev\nworld");
+    expect(result.current.segments[0]?.text).toBe("edited prev world");
   });
 
   it("mergeSegmentRange includes edits on all folded segments", () => {
@@ -159,7 +159,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeSegmentRange(0, 2));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("A\nB\nC");
+    expect(result.current.segments[0]?.text).toBe("A B C");
   });
 
   it("mergeWithNextAt preserves edited text on unrelated segments after reindex", () => {
@@ -191,7 +191,7 @@ describe("useSegmentMutationController merge/delete", () => {
     act(() => result.current.mutations.mergeSegmentRange(0, 2));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0].text).toBe("a\nb\nc");
+    expect(result.current.segments[0].text).toBe("a b c");
     expect(result.current.selectedIdx).toBe(0);
   });
 

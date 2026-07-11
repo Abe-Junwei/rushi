@@ -243,6 +243,7 @@ describe("useProjectCloseGateController", () => {
     expect(args.cancelTranscribe).toHaveBeenCalled();
     expect(result.current.transcribeNavBlockOpen).toBe(false);
     expect(result.current.closeGateOpen).toBe(true);
+    expect(result.current.closeGateIntent).toBe("navigate");
     expect(args.closeFile).not.toHaveBeenCalled();
   });
 

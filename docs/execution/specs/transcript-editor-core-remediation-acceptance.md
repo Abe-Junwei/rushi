@@ -1,8 +1,9 @@
 # 验收：Transcript Editor Core 整改
 
-> **调研**：[`transcript-editor-core-remediation-research.md`](./transcript-editor-core-remediation-research.md)
-> **计划**：[`transcript-editor-core-remediation-plan.md`](./transcript-editor-core-remediation-plan.md)
-> **说明**：本功能属**编辑器交互/正确性**横切，非能力（环境/ASR/设置）门控功能，故 **能力—UI 状态矩阵 N/A**；改以下三张矩阵验收。
+> **调研**：[`transcript-editor-core-remediation-research.md`](./transcript-editor-core-remediation-research.md)  
+> **计划**：[`transcript-editor-core-remediation-plan.md`](./transcript-editor-core-remediation-plan.md)  
+> **手测总清单（勾选用）**：[`transcript-editor-core-handtest-checklist.md`](./transcript-editor-core-handtest-checklist.md)  
+> **说明**：本功能属**编辑器交互/正确性**横切，非能力（环境/ASR/设置）门控功能，故 **能力—UI 状态矩阵 N/A**；改以下三张矩阵验收。手测步骤与勾选框以 **handtest-checklist** 为准，本文件保留矩阵定义与签收状态。
 
 ---
 
@@ -54,7 +55,7 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 | SC-H11 | delete 段 | 选区回落相邻段 |
 | SC-H12 | 波形拖拽调整边界 | 选中段边界更新，列表/持久化同步 |
 
-- [ ] 全部通过；波形 ↔ 列表**双向零 desync**（无需 reconcile 即一致）。
+- [x] 全部通过；波形 ↔ 列表**双向零 desync**（无需 reconcile 即一致）。（2026-07-11 用户手测）
 
 ---
 
@@ -82,7 +83,7 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 - [x] Filter→CM6（全文 + 隐藏非匹配行）；无 textarea 虚拟列表路径。
 - [x] `EditorSegmentListViewport` / `SegmentRowTextField` / `useSegmentRowTextField*` / 行 reconcile 已删。
 - [x] flag 恒 on；`desktop-waveform-engine.md` §点选契约改写；`selection-chrome-bus-research.md` 顶部标注被取代。
-- [ ] 手测：开 filter → 只见匹配行、↑↓ 不进隐藏段、清 filter 恢复；SC-H8。
+- [x] 手测：开 filter → 只见匹配行、↑↓ 不进隐藏段、清 filter 恢复；SC-H8。（2026-07-11）
 
 ### P9b（SC1/SC2 桥）
 
@@ -119,12 +120,14 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 
 ## 6. 签收
 
-- [ ] E-1..E-7 全过
-- [ ] SC-H1..SC-H12 全过
-- [ ] 性能门禁达标
-- [ ] D-1..D-5 全过
-- [ ] 架构清理签收
-- [ ] 用户手测确认
+手测勾选请在 [`transcript-editor-core-handtest-checklist.md`](./transcript-editor-core-handtest-checklist.md) 完成，通过后在此汇总：
+
+- [x] E-1..E-7 全过
+- [x] SC-H1..SC-H12 全过
+- [x] 性能门禁达标（本机主观；机器侧见 research §7）
+- [x] D-1..D-5 全过（含 handtest §3 展开项）
+- [x] 架构清理签收
+- [x] 用户手测确认（handtest §6 汇总已勾；2026-07-11）
 
 **变更记录**
 
@@ -137,3 +140,5 @@ npm run typecheck && npm run test && npm run lint && node scripts/check-architec
 | 2026-07-11 | P9b2：删 SC1/SC2 可写桥；`selectSegmentTransport` + projection 镜像；draft 留 P9b2b |
 | 2026-07-11 | P9b2b：删 draft store；`flushCm6TextProjection`；dirty/autosave 仅 snapshot |
 | 2026-07-11 | 审查修复：Stage B/undo/correction CM6-first；bounds→meta sync；retired-SoT + meta 写守卫；CONTEXT/waveform-engine 去 SC 双真源 |
+| 2026-07-11 | 手测总清单：[`transcript-editor-core-handtest-checklist.md`](./transcript-editor-core-handtest-checklist.md)（冒烟 + E/SC/D/性能/发版前） |
+| 2026-07-11 | **用户手测签收**：handtest §0–§4 全过；§5 W-2 过；W-1 Windows IME 仍为发版前硬门禁 |

@@ -99,7 +99,6 @@ export function useTranscriptionLayerSelection(opts: {
       selectSegmentTransport(idx, source, opts, {
         ctxRef,
         scrollFitRef,
-        waveformShellRef,
         segmentListRef,
         selectedIdxRef,
         lastSegmentSelectSourceRef,
@@ -115,7 +114,6 @@ export function useTranscriptionLayerSelection(opts: {
       focusWaveformShell,
       segmentListRef,
       selectedIdxRef,
-      waveformShellRef,
     ],
   );
 

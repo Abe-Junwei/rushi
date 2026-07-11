@@ -51,7 +51,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(marker0!.highlighted).toBe(true);
     const dom = marker0!.toDOM();
     expect(dom.querySelector(".cm-transcript-meta-stage")).toBeNull();
-    expect(dom.className).toContain("cm-transcript-meta-marker--active");
+    expect(dom.className).toContain("cm-transcript-meta-marker--primary");
   });
 
   it("builds trailing stage chip from meta.stage + finalizeVia", () => {
@@ -63,15 +63,19 @@ describe("P4 meta gutter + reveal + stage", () => {
     const stage0 = buildTranscriptStageMarker(meta[0]);
     expect(stage0?.label).toBe("自动转写");
     expect(stage0?.stageMod).toBe("auto_transcribe");
-    expect(stage0?.toDOM().className).toContain("cm-transcript-stage-chip--auto_transcribe");
+    expect(stage0?.toDOM().querySelector(".cm-transcript-stage-chip")?.className).toContain(
+      "cm-transcript-stage-chip--auto_transcribe",
+    );
+    expect(stage0?.toDOM().querySelector(".cm-transcript-stage-chip__icon svg")).toBeTruthy();
 
     const stage1 = buildTranscriptStageMarker(meta[1]);
     expect(stage1?.label).toBe("手动转写");
   });
 
-  it("derives gutter width from legacy meta width formula", () => {
-    expect(computeTranscriptMetaGutterWidthPx(132)).toBe(Math.max(44, Math.round((132 - 10) / 2)));
-    expect(computeTranscriptMetaGutterWidthPx(104)).toBe(47);
+  it("derives gutter width from full legacy meta column (stage is after-gutter)", () => {
+    expect(computeTranscriptMetaGutterWidthPx(132)).toBe(132);
+    expect(computeTranscriptMetaGutterWidthPx(104)).toBe(104);
+    expect(computeTranscriptMetaGutterWidthPx(40)).toBe(80);
   });
 
   it("mounts left meta + right stage gutters", () => {

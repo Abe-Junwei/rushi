@@ -96,6 +96,7 @@ export function useProjectCloseGateController(
 
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
+  const transcribeBlockIntentRef = useRef<"app-quit" | "navigate">("navigate");
   const unsavedGateAbortRef = useRef<(() => void) | null>(null);
   const bridgeStateRef = useRef({
     busy,
@@ -119,6 +120,7 @@ export function useProjectCloseGateController(
     setCloseGateIntent,
     setTranscribeNavBlockOpen,
     navigateProceedRef,
+    transcribeBlockIntentRef,
   };
   const navigateCtx = { busy, busyReason, dirty };
   const navigate = createCloseGateNavigateHandlers(navigateState, navigateCtx);
@@ -194,6 +196,7 @@ export function useProjectCloseGateController(
 
   async function confirmTranscribeNavBlock() {
     const proceed = navigateProceedRef.current;
+    const intent = navigate.takeTranscribeBlockIntent();
     setTranscribeNavBlockStopping(true);
     try {
       setTranscribeNavBlockOpen(false);
@@ -204,7 +207,7 @@ export function useProjectCloseGateController(
       } else {
         await cancelTranscribe();
       }
-      navigate.requestNavigateWithUnsavedCheck(proceed);
+      navigate.requestNavigateWithUnsavedCheck(proceed, intent);
     } finally {
       setTranscribeNavBlockStopping(false);
     }
@@ -312,7 +315,8 @@ export function useProjectCloseGateController(
   useAppWindowCloseGuardEffect({
     bridgeStateRef,
     closeAfterSaveRef,
-    onBlockedTranscribe: () => navigate.openTranscribeNavBlock(() => requestAppClose()),
+    onBlockedTranscribe: () =>
+      navigate.openTranscribeNavBlock(() => requestAppClose(), "app-quit"),
     onBlockedUnsaved: () => {
       navigateProceedRef.current = null;
       setCloseGateIntent("app-quit");

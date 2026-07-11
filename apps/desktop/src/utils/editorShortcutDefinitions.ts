@@ -130,12 +130,17 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
+    id: "workflow.advanceSegment",
+    bindings: [BINDING.plain("Tab", { allowInTextarea: true, textareaOnly: true })],
+    keysLabel: "Tab",
+    footerAction: "跳下一条语段",
+    panelAction: "跳到下一语段（不定稿；语段正文内生效）",
+    allowInTextarea: true,
+  },
+  {
     id: "workflow.confirmAdvance",
-    bindings: [
-      BINDING.plain("Tab", { allowInTextarea: true, textareaOnly: true }),
-      BINDING.mod("Enter"),
-    ],
-    keysLabel: "Tab / ⌘/Ctrl + Enter",
+    bindings: [BINDING.mod("Enter")],
+    keysLabel: "⌘/Ctrl + Enter",
     footerAction: "定稿并跳下一条",
     panelAction: "定稿：落库（有未保存改词时写入纠错记忆）并跳到下一语段",
     allowInTextarea: true,

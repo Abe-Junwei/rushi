@@ -41,7 +41,12 @@ export function WelcomeSearchEmptyQueryState({
       {recentQueries.map((q) => {
         const idx = navItems.findIndex((n) => n.type === "recent-query" && n.query === q);
         return (
-          <li key={`q:${q}`}>
+          <li
+            key={`q:${q}`}
+            id={idx >= 0 ? `welcome-search-item-${idx}` : undefined}
+            role="option"
+            aria-selected={activeIndex === idx}
+          >
             <button
               type="button"
               className={`flex w-full items-center gap-1.5 border-0 bg-transparent px-2.5 py-1 text-left text-sm ${rowActiveClass(activeIndex === idx)}`}

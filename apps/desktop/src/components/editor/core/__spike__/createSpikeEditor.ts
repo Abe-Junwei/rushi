@@ -38,7 +38,7 @@ export function mountSpikeEditor(
         "&": { height: `${heightPx}px` },
         ".cm-scroller": { overflow: "auto" },
         ".cm-spike-active-line": {
-          backgroundColor: "color-mix(in srgb, var(--color-saffron, #c45c26) 18%, transparent)",
+          backgroundColor: "color-mix(in srgb, var(--accent-action) 18%, transparent)",
         },
         ".cm-spike-meta-gutter": {
           minWidth: "3.5rem",

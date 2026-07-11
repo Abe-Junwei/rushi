@@ -10,6 +10,7 @@ type Props = {
   controller: ProjectControllerApi;
   disabled?: boolean;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onCreateProject?: () => void;
   onStartTranscribe?: () => void;
   onOpenDeliveryMode?: () => void;
@@ -23,6 +24,7 @@ export function WelcomeActivityBell({
   controller,
   disabled = false,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onCreateProject,
   onStartTranscribe,
   onOpenDeliveryMode,
@@ -34,6 +36,7 @@ export function WelcomeActivityBell({
   const activity = useWelcomeActivityController({
     controller,
     onOpenAsrSettings,
+    onOpenOnlineSttSettings,
     onCreateProject,
     onStartTranscribe,
     onPanelOpen,
@@ -78,6 +81,7 @@ export function WelcomeActivityBell({
             feedItems={activity.feedItems}
             onboardingProgress={activity.onboardingProgress}
             unreadFeedCount={activity.unreadFeedCount}
+            transcribeSource={activity.effectiveTranscribeSource}
             onMarkAllRead={activity.markAllRead}
             onClearHistory={activity.clearHistory}
             onOnboardingAction={activity.handleOnboardingAction}

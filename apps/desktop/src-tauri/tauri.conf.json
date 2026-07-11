@@ -42,7 +42,6 @@
         "scope": {
           "requireLiteralLeadingDot": false,
           "allow": [
-            "$APPDATA/**/*",
             "$APPDATA/studio.lingchuang.rushi/**/*"
           ]
         }

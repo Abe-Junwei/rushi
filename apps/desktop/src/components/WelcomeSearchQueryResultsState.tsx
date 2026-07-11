@@ -80,6 +80,7 @@ export function WelcomeSearchQueryResultsState({
             return (
               <WelcomeSearchFileHitRow
                 key={`${hit.file_id}:${hit.matched_field}`}
+                id={idx >= 0 ? `welcome-search-item-${idx}` : undefined}
                 hit={hit}
                 active={activeIndex === idx}
                 onSelect={() => onFileSelect(hit)}
@@ -98,6 +99,7 @@ export function WelcomeSearchQueryResultsState({
             return (
               <WelcomeSearchContentHitRow
                 key={`${hit.file_id}:${hit.segment_idx}:${hit.char_start}`}
+                id={idx >= 0 ? `welcome-search-item-${idx}` : undefined}
                 hit={hit}
                 active={activeIndex === idx}
                 onSelect={() => onContentSelect(hit)}

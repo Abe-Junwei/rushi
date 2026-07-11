@@ -1,4 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
+import { joinMergedSegmentTexts } from "../utils/joinMergedSegmentTexts";
 
 export type LearnBaselineText = { uid: string; text: string };
 
@@ -13,9 +14,9 @@ export function segmentsToLearnBaseline(segments: SegmentDto[]): LearnBaselineTe
   return out;
 }
 
-/** Align with `mergeTwoSegments` text join (newline between parts). */
+/** Align with `mergeTwoSegments` / `joinMergedSegmentTexts` (no embedded `\n`). */
 function concatMergedBaselineTexts(a: string, b: string): string {
-  return `${a}\n${b}`.trim();
+  return joinMergedSegmentTexts(a, b);
 }
 
 /**

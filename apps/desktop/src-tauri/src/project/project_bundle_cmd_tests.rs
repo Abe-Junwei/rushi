@@ -77,10 +77,10 @@ fn export_and_import_project_bundle_round_trip() {
             confidence: Some(0.9),
             low_confidence: false,
             detail: Some("ok".into()),
-            kind: None,
-            text_stage: "auto_transcribe".to_string(),
-            finalize_via: None,
-            annotation: None,
+            kind: Some("speech".into()),
+            text_stage: "finalized".to_string(),
+            finalize_via: Some("manual".into()),
+            annotation: Some("note-a".into()),
         },
         SegmentDto {
             uid: None,
@@ -138,6 +138,20 @@ fn export_and_import_project_bundle_round_trip() {
         )
         .unwrap();
     assert_eq!(imported_edit_kind, "import_project_bundle");
+
+    let (kind, text_stage, finalize_via, annotation): (Option<String>, String, Option<String>, String) =
+        conn
+            .query_row(
+                "SELECT kind, text_stage, finalize_via, annotation FROM segments \
+                 WHERE file_id = ?1 AND idx = 0",
+                params![&imported.files[0].id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            )
+            .unwrap();
+    assert_eq!(kind.as_deref(), Some("speech"));
+    assert_eq!(text_stage, "finalized");
+    assert_eq!(finalize_via.as_deref(), Some("manual"));
+    assert_eq!(annotation, "note-a");
 
     let _ = fs::remove_dir_all(&export_state.root);
     let _ = fs::remove_dir_all(&import_state.root);

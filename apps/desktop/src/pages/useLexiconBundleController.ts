@@ -118,7 +118,7 @@ export function useLexiconBundleController(args: Args) {
       }
       const initial: Record<string, LexiconBundleConflictResolution["choice"]> = {};
       for (const c of result.preview.conflicts) {
-        initial[c.id] = c.kind === "glossary" ? "local" : "local";
+        initial[c.id] = c.kind === "glossary" ? "merge_aliases" : "local";
       }
       setResolutions(initial);
       setPendingImport(result);

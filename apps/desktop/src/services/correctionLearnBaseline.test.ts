@@ -28,9 +28,9 @@ describe("segmentsToLearnBaseline", () => {
 describe("segmentsToLearnBaselineAligned", () => {
   it("concatenates absorbed snapshot segments on merge", () => {
     const saved = [seg("u1", "左"), seg("u2", "右")];
-    const current = [seg("u1", "左\n右")];
+    const current = [seg("u1", "左右")];
     expect(segmentsToLearnBaselineAligned(saved, current)).toEqual([
-      { uid: "u1", text: "左\n右" },
+      { uid: "u1", text: "左右" },
     ]);
   });
 

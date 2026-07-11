@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportMinimapPeaksFromWaveSurfer,
   interleaveExportPeaksChannel,
+  isMediaOnlyStubMinimapPeaks,
   resetMinimapPeaksCache,
   resolveMinimapPeaksForDraw,
 } from "./minimapPeaksSource";
@@ -17,6 +18,14 @@ describe("interleaveExportPeaksChannel", () => {
     expect(Array.from(interleaveExportPeaksChannel([0.5, -0.25])!)).toEqual([
       -0.5, 0.5, -0.25, 0.25,
     ]);
+  });
+});
+
+describe("isMediaOnlyStubMinimapPeaks", () => {
+  it("treats all-zero / short arrays as stub", () => {
+    expect(isMediaOnlyStubMinimapPeaks(new Float32Array([0, 0]))).toBe(true);
+    expect(isMediaOnlyStubMinimapPeaks(new Float32Array(64))).toBe(true);
+    expect(isMediaOnlyStubMinimapPeaks(new Float32Array([-0.1, 0.1]))).toBe(false);
   });
 });
 
@@ -46,10 +55,11 @@ describe("resolveMinimapPeaksForDraw", () => {
     resetMinimapPeaksCache();
   });
 
-  it("prefers WaveSurfer export when available", async () => {
+  it("prefers PeakCache over WaveSurfer export (WS-2b media-only)", async () => {
     const exportPeaks = new Float32Array([-0.2, 0.2, -0.5, 0.5]);
+    const cachePeaks = new Float32Array([-0.9, 0.9]);
     const peakCache = {
-      getMinimapPeaks: vi.fn(() => ({ peaks: [new Float32Array([0, 1])], duration: 60 })),
+      getMinimapPeaks: vi.fn(() => ({ peaks: [cachePeaks], duration: 60 })),
       getMinimapPeaksAsync: vi.fn(),
     } as unknown as PeakCache;
 
@@ -60,8 +70,25 @@ describe("resolveMinimapPeaksForDraw", () => {
       exportFromWaveSurfer: () => exportPeaks,
     });
 
-    expect(result).toBe(exportPeaks);
-    expect(peakCache.getMinimapPeaks).not.toHaveBeenCalled();
+    expect(result).toBe(cachePeaks);
+    expect(peakCache.getMinimapPeaks).toHaveBeenCalledWith(200, 60);
+  });
+
+  it("ignores all-zero WS stub export and uses PeakCache", async () => {
+    const cachePeaks = new Float32Array([-0.1, 0.1, -0.3, 0.3]);
+    const peakCache = {
+      getMinimapPeaks: vi.fn(() => ({ peaks: [cachePeaks], duration: 120 })),
+      getMinimapPeaksAsync: vi.fn(),
+    } as unknown as PeakCache;
+
+    const result = await resolveMinimapPeaksForDraw({
+      peakCache,
+      overviewWidthPx: 240,
+      layoutDurationSec: 120,
+      exportFromWaveSurfer: () => new Float32Array(480),
+    });
+
+    expect(result).toBe(cachePeaks);
   });
 
   it("falls back to peak cache when export is empty", async () => {
@@ -79,6 +106,33 @@ describe("resolveMinimapPeaksForDraw", () => {
     });
 
     expect(result).toBe(cachePeaks);
+  });
+
+  it("falls back to non-stub WS export when PeakCache is empty", async () => {
+    const exportPeaks = new Float32Array([-0.2, 0.2, -0.5, 0.5]);
+    const peakCache = {
+      getMinimapPeaks: vi.fn(() => null),
+      getMinimapPeaksAsync: vi.fn(() => Promise.resolve(null)),
+    } as unknown as PeakCache;
+
+    const result = await resolveMinimapPeaksForDraw({
+      peakCache,
+      overviewWidthPx: 200,
+      layoutDurationSec: 60,
+      exportFromWaveSurfer: () => exportPeaks,
+    });
+
+    expect(result).toBe(exportPeaks);
+  });
+
+  it("returns null when only WS stub export is available", async () => {
+    const result = await resolveMinimapPeaksForDraw({
+      peakCache: null,
+      overviewWidthPx: 200,
+      layoutDurationSec: 60,
+      exportFromWaveSurfer: () => new Float32Array([0, 0]),
+    });
+    expect(result).toBeNull();
   });
 
   it("uses async peak cache when sync path is too short", async () => {

@@ -80,8 +80,8 @@ export function useGlossaryMineController({ onGlossaryChanged }: Args) {
       if (!targets.length) return;
       setBusy(true);
       setLoadError("");
+      const succeeded: GlossaryLearnPromptRow[] = [];
       try {
-        let added = 0;
         for (const row of targets) {
           await glossaryAdd({
             term: row.afterText,
@@ -95,18 +95,25 @@ export function useGlossaryMineController({ onGlossaryChanged }: Args) {
             hotwordEnabled: true,
           });
           dismissGlossaryPrompt(row.afterText);
-          added += 1;
+          succeeded.push(row);
         }
-        dismissRows(targets);
+        dismissRows(succeeded);
         await onGlossaryChanged();
         await refresh();
         toast.success(
-          added === 1
-            ? `已将「${targets[0].afterText}」加入术语表并纳入热词`
-            : `已将 ${added} 条加入术语表并纳入热词`,
+          succeeded.length === 1
+            ? `已将「${succeeded[0].afterText}」加入术语表并纳入热词`
+            : `已将 ${succeeded.length} 条加入术语表并纳入热词`,
         );
       } catch (e) {
-        setLoadError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setLoadError(msg);
+        if (succeeded.length > 0) {
+          dismissRows(succeeded);
+          await onGlossaryChanged();
+          await refresh();
+        }
+        toast.error(`采纳失败：${succeeded.length}/${targets.length} 成功。${msg}`);
       } finally {
         setBusy(false);
       }

@@ -79,7 +79,9 @@ test.describe("editor maximum update depth guard", () => {
       if (msg.text().includes("Maximum update depth exceeded")) maxDepth.push(msg.text());
     });
     await openEditorWorkspace(page);
-    await expect(page.locator('[data-seg-row="0"]')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.cm-content[aria-label="语段正文"]').first()).toBeVisible({
+      timeout: 20_000,
+    });
     await page.waitForTimeout(300);
     expect(maxDepth).toEqual([]);
   });

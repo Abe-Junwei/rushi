@@ -34,6 +34,8 @@ describe("segmentListHelpers", () => {
       seg({ uid: "b", start_sec: 5, end_sec: 9.5, text: "b" }),
     );
     expect(merged.kind).toBe("speech");
+    expect(merged.text).toBe("a b");
+    expect(merged.text).not.toMatch(/[\n\r]/);
     expect(isPlaceholderSegment(merged, 10)).toBe(false);
   });
 

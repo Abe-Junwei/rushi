@@ -5,7 +5,12 @@ import {
   ACTIVITY_FEED_MESSAGE_CLASS,
   ACTIVITY_FEED_ROW_TEXT_CLASS,
 } from "../services/ui/activityFeedPresentation";
-import { ONBOARDING_STEPS, type OnboardingStepDef } from "../services/onboarding/onboardingChecklist";
+import {
+  ONBOARDING_STEPS,
+  resolveOnboardingTranscribeEnvStep,
+  type OnboardingStepDef,
+} from "../services/onboarding/onboardingChecklist";
+import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -18,6 +23,7 @@ type Props = {
   pendingSteps: OnboardingStepDef[];
   canCreateProject: boolean;
   inEditorFile: boolean;
+  transcribeSource: TranscribeSource;
   onOnboardingAction: (stepId: string) => void;
   onStartTranscribe?: () => void;
   onOpenLastEditor?: () => void;
@@ -29,6 +35,7 @@ export function WelcomeActivityOnboardingSection({
   pendingSteps,
   canCreateProject,
   inEditorFile,
+  transcribeSource,
   onOnboardingAction,
   onStartTranscribe,
   onOpenLastEditor,
@@ -36,6 +43,8 @@ export function WelcomeActivityOnboardingSection({
   onDismissOnboarding,
 }: Props) {
   if (pendingSteps.length === 0) return null;
+
+  const transcribeEnvStep = resolveOnboardingTranscribeEnvStep(transcribeSource);
 
   return (
     <section aria-label="上手待办">
@@ -55,6 +64,9 @@ export function WelcomeActivityOnboardingSection({
         {pendingSteps.map((step) => {
           const stepIndex = ONBOARDING_STEPS.findIndex((row) => row.id === step.id);
           const stepNumber = stepIndex >= 0 ? stepIndex + 1 : 0;
+          const title = step.id === "asr_ready" ? transcribeEnvStep.title : step.title;
+          const description =
+            step.id === "asr_ready" ? transcribeEnvStep.description : step.description;
           return (
             <li key={step.id} className="px-2 py-1 hover:bg-notion-sidebar-hover">
               <div className={`flex items-start gap-1.5 ${ACTIVITY_FEED_ROW_TEXT_CLASS}`}>
@@ -67,12 +79,12 @@ export function WelcomeActivityOnboardingSection({
                 <div className="min-w-0 flex-1">
                   <p className={`${ACTIVITY_FEED_MESSAGE_CLASS} font-medium text-notion-text`}>
                     {stepNumber > 0 ? `${stepNumber}. ` : ""}
-                    {step.title}
+                    {title}
                   </p>
                   <p
                     className={`${ACTIVITY_FEED_MESSAGE_CLASS} mt-px text-label leading-tight text-notion-text-muted`}
                   >
-                    {step.description}
+                    {description}
                   </p>
                   {step.id === "asr_ready" ? (
                     <button
@@ -80,7 +92,7 @@ export function WelcomeActivityOnboardingSection({
                       className={`${CONTROL_BTN_LINK} mt-0.5 inline px-0 py-0 text-label leading-tight`}
                       onClick={() => onOnboardingAction(step.id)}
                     >
-                      打开本机 ASR
+                      {transcribeSource === "online" ? "打开在线 STT" : "打开本机 ASR"}
                     </button>
                   ) : null}
                   {step.id === "project_audio" && canCreateProject ? (

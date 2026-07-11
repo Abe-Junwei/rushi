@@ -21,7 +21,7 @@ function withFinalizedStage(
   };
 }
 
-function withManualTranscribeStage(seg: SegmentDto): SegmentDto {
+export function withManualTranscribeStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: "manual_transcribe", finalize_via: clearedFinalize() };
 }
 

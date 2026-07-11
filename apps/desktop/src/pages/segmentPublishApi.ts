@@ -8,6 +8,7 @@ import {
   type SegmentListNext,
 } from "./flushSegmentTextDrafts";
 import { flushCm6TextProjection } from "../components/editor/core/onDocChanged";
+import { withManualTranscribeStage } from "../services/segmentStagePersist";
 
 export type SegmentPublishApi = {
   getCurrentSegmentsSnapshot: () => SegmentDto[];
@@ -40,7 +41,7 @@ export function createSegmentPublishApi(
           const cur = prev[idx];
           if (!cur || cur.text === text) return;
           const next = [...prev];
-          next[idx] = { ...cur, text };
+          next[idx] = withManualTranscribeStage({ ...cur, text });
           segmentsRef.current = next;
           setSegments(next);
         },

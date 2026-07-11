@@ -29,7 +29,6 @@ import { revealSegmentInView } from "../components/editor/core/revealSegment";
 import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
-import { isEditorFocusGateOpen } from "../utils/editorFocusGate";
 import {
   shouldRevealOnSegmentSelect,
   shouldSeekOnSegmentSelect,
@@ -41,11 +40,10 @@ type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 export type SelectSegmentTransportDeps = {
   ctxRef: RefObject<TranscriptionLayerInput>;
   scrollFitRef: RefObject<{ timeline: TimelineApi }>;
-  waveformShellRef: RefObject<HTMLElement | null>;
   segmentListRef: RefObject<HTMLDivElement | null>;
   selectedIdxRef?: MutableRefObject<number>;
   lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
-  scheduleRevealSelectedSegment: (source: SegmentSelectSource) => void;
+  scheduleRevealSelectedSegment: (source: SegmentSelectSource, idx: number) => void;
   cancelPendingSelectionReveal: () => void;
   focusWaveformShell: () => void;
 };
@@ -63,7 +61,6 @@ export function selectSegmentTransport(
   const {
     ctxRef,
     scrollFitRef,
-    waveformShellRef,
     segmentListRef,
     selectedIdxRef,
     lastSegmentSelectSourceRef,
@@ -90,14 +87,9 @@ export function selectSegmentTransport(
     !opts?.shiftKey &&
     !opts?.toggle &&
     consumeWaveformSegmentPreviewViewportSync(idx, opts?.previewSessionId);
-  const editorFocusGateOpen = isEditorFocusGateOpen({
-    segmentsLength: c.segments.length,
-    waveformShell: waveformShellRef.current,
-  });
   const shouldReveal = shouldRevealOnSegmentSelect({
     source,
     idxChanged: idxChangedFromAuthority,
-    editorFocusGateOpen,
   });
   const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChangedFromAuthority;
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
@@ -146,10 +138,13 @@ export function selectSegmentTransport(
         selectionProfileTime("seek", () => {
           syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx });
         });
+        selectionProfileTime("viewport", () => {
+          syncWaveformSegmentSelectReveal(tl, s, { forceBandPaint: false });
+        });
       }
     });
     if (!isWaveformKbBurst) {
-      scheduleRevealSelectedSegment("listKeyboard");
+      scheduleRevealSelectedSegment("listKeyboard", idx);
     }
     if (shouldFocusWaveformShellForSelectSource(source) && !opts?.preferSegmentTextFocus) {
       selectionProfileTime("focus", focusWaveformShell);
@@ -184,7 +179,7 @@ export function selectSegmentTransport(
   });
 
   if (shouldReveal && !isWaveformLike) {
-    scheduleRevealSelectedSegment(source);
+    scheduleRevealSelectedSegment(source, idx);
   }
   if (isSelectionLatencyProfileEnabled()) {
     const listOwnsFlush =

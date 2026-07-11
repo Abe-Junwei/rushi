@@ -58,16 +58,10 @@ test.describe("desktop core journey smoke (mocked Tauri)", () => {
       timeout: 20_000,
     });
 
-    const textarea = page.locator('textarea[aria-label="语段正文"]').first();
+    const textarea = page.locator('.cm-content[aria-label="语段正文"]').first();
     await expect(textarea).toBeVisible();
-    await textarea.evaluate((node, value) => {
-      const setter = Object.getOwnPropertyDescriptor(
-        window.HTMLTextAreaElement.prototype,
-        "value",
-      )?.set;
-      setter?.call(node, value);
-      node.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
-    }, "编辑后的核心旅程语段");
+    await textarea.click();
+    await textarea.fill("编辑后的核心旅程语段");
 
     await page.getByRole("button", { name: "保存" }).dispatchEvent("click");
     await page.waitForFunction(() =>

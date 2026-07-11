@@ -48,11 +48,14 @@ export const transcriptFilterVisibilityField = StateField.define<FilterVisibilit
     for (const e of tr.effects) {
       if (e.is(setTranscriptFilterVisibleEffect)) visible = e.value;
     }
-    if (visible !== value.visible || tr.docChanged) {
+    if (visible !== value.visible) {
       return {
         visible,
         decorations: buildHiddenLineDecorations(tr.state, visible),
       };
+    }
+    if (tr.docChanged) {
+      return { visible, decorations: value.decorations.map(tr.changes) };
     }
     return value;
   },

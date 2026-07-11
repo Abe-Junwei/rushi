@@ -116,15 +116,21 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "l", metaKey: true }))).toBe("workflow.addCorrectionMemory");
   });
 
-  it("matches confirmAdvance on Tab in transcript textarea only", () => {
+  it("matches advanceSegment on Tab in transcript textarea only", () => {
     expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: true })).toBe(
-      "workflow.confirmAdvance",
+      "workflow.advanceSegment",
     );
     expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: false })).toBeNull();
   });
 
   it("matches confirmAdvance on Cmd+Enter", () => {
     expect(matchEditorShortcut(keyEvent({ key: "Enter", metaKey: true }))).toBe(
+      "workflow.confirmAdvance",
+    );
+  });
+
+  it("does not match confirmAdvance on Tab", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: true })).not.toBe(
       "workflow.confirmAdvance",
     );
   });

@@ -738,6 +738,123 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.setTime).not.toHaveBeenCalledWith(10);
   });
 
+  it("replays from segment start after auto-stopping at segment end", async () => {
+    let playhead = 10;
+    let playing = false;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+
+    playhead = 15;
+    await act(async () => {
+      schedulePlaybackViewportFrame(15);
+      flushTierScrollFrameForTests();
+    });
+
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(playing).toBe(false);
+    expect(ws.setTime).toHaveBeenCalledWith(20);
+
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.setTime).not.toHaveBeenCalledWith(20);
+    expect(playing).toBe(true);
+  });
+
+  it("does not replay from segment start after seek clears auto-stop replay intent", async () => {
+    let playhead = 10;
+    let playing = false;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+
+    playhead = 15;
+    await act(async () => {
+      schedulePlaybackViewportFrame(15);
+      flushTierScrollFrameForTests();
+    });
+
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+    expect(playing).toBe(false);
+
+    act(() => {
+      result.current.clearPausedResumeAnchor();
+    });
+    playhead = 25;
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+    expect(ws.play).toHaveBeenCalled();
+    expect(playing).toBe(true);
+  });
+
   it("user pause cancels a pending segment-end seek so playhead does not jump", async () => {
     let playhead = 10;
     let playing = false;

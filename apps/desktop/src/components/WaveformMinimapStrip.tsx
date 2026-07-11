@@ -12,6 +12,7 @@ import {
 import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
+  blitMinimapRasterAtSize,
   blitScaledMinimapRaster,
   canScaleMinimapRasterCache,
   createMinimapRasterCacheEntry,
@@ -180,8 +181,7 @@ export function WaveformMinimapStrip({
               canScaleMinimapRasterCache(cache, peaks, heightPx) &&
               cache.widthPx === widthPx
             ) {
-              ctx.clearRect(0, 0, widthPx, heightPx);
-              ctx.drawImage(cache.canvas, 0, 0, widthPx, heightPx);
+              blitMinimapRasterAtSize(ctx, cache, widthPx, heightPx);
               setMinimapPeaksReady(true);
               return;
             }

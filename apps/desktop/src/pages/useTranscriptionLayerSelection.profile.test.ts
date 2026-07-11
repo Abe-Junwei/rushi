@@ -178,6 +178,77 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
+  it("list reveal uses transport idx when React selectedIdx is stale", () => {
+    const ctx = makeCtx(5);
+    // P9b2: React selectedIdx may lag; transport idx must drive waveform reveal.
+    ctx.selectedIdx = 0;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "list");
+    });
+
+    expect(selectedIdxRef.current).toBe(3);
+    expect(ctx.selectedIdx).toBe(0);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: ctx.segments[3].start_sec,
+      end_sec: ctx.segments[3].end_sec,
+    });
+  });
+
+  it("list reveal still runs when CM6 projection already moved primary", () => {
+    const ctx = makeCtx(5);
+    ctx.selectedIdx = 0;
+    seedTranscriptProjectionForTests({
+      primaryIdx: 3,
+      selectedSet: new Set([3]),
+      rangeAnchor: 3,
+      lineCount: 5,
+    });
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "list");
+    });
+
+    expect(selectedIdxRef.current).toBe(3);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: ctx.segments[3].start_sec,
+      end_sec: ctx.segments[3].end_sec,
+    });
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+  });
+
   it("listKeyboard reveals once on burst finalize when editor focus gate open and does not seek", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
@@ -277,7 +348,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     document.body.innerHTML = "";
   });
 
-  it("non-burst listKeyboard skips reveal when editor focus gate closed", () => {
+  it("non-burst listKeyboard defers reveal until debounce", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
     ctx.selectedIdxRef = selectedIdxRef;
@@ -393,7 +464,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(document.activeElement).toBe(waveformShell);
   });
 
-  it("waveformKeyboard updates selectedIdxRef and seeks during burst steps", () => {
+  it("waveformKeyboard updates selectedIdxRef and reveals current segment during burst steps", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
     ctx.selectedIdxRef = selectedIdxRef;
@@ -422,7 +493,12 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(selectedIdxRef.current).toBe(3);
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
-    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        start_sec: ctx.segments[3].start_sec,
+        end_sec: ctx.segments[3].end_sec,
+      }),
+    );
   });
 
   it("seeks on waveform segment change (CM6 path; SC2 paint skipped)", () => {

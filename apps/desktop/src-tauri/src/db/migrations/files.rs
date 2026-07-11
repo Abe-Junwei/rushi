@@ -28,8 +28,6 @@ pub(super) fn migrate_files_import_provenance(conn: &Connection) -> rusqlite::Re
             [],
         )?;
     }
-    if let Err(e) = crate::project::import_duplicate::backfill_files_import_provenance(conn) {
-        eprintln!("[db] backfill_files_import_provenance: {e}");
-    }
+    // SHA256 backfill runs deferred after pool open (see bootstrap_db_at) so migrate never blocks on hashing.
     Ok(())
 }

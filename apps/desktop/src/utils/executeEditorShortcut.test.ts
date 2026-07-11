@@ -59,7 +59,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
 }
 
 function makeConfirmAdvanceQueue(): ConfirmAdvanceTabQueueRef {
-  return { inFlight: false, pendingSteps: 0 };
+  return { inFlight: false, pending: [] };
 }
 
 function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]> = {}) {
@@ -281,6 +281,25 @@ describe("executeEditorShortcut", () => {
       expect(wf.playSegmentAtIndex).not.toHaveBeenCalled();
     }, { timeout: 3000 });
     document.body.innerHTML = "";
+  });
+
+  it("advanceSegment jumps without finalizing", async () => {
+    vi.spyOn(waveformPrefs, "readStoredTabAdvanceLoopsSegment").mockReturnValue(false);
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
+    const selectSegmentAt = vi.fn();
+    const focusSegmentTextarea = vi.fn();
+
+    executeEditorShortcut(
+      "workflow.advanceSegment",
+      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea }),
+    );
+
+    await vi.waitFor(() => {
+      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
+      expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
+    });
+    expect(confirmSegmentEditAndAdvance).not.toHaveBeenCalled();
   });
 
   it("advances to next segment from selectedIdx when blurred", () => {

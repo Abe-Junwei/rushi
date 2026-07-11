@@ -104,6 +104,7 @@ export function WelcomeTopBar({
           controller={controller}
           disabled={searchDisabled}
           onOpenAsrSettings={onOpenAsrSettings}
+          onOpenOnlineSttSettings={onOpenOnlineSttSettings}
           onCreateProject={onCreateProject}
           onPanelOpen={search.closeSearch}
         />

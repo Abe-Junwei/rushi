@@ -133,7 +133,7 @@ def start_prepare_async(model_id: str | None = None, *, force: bool = False) -> 
                 else "model_prepare_failed"
             )
             log.exception("model_prepare async failed")
-            finish_prepare_error(code, repr(e), run_token=run_token)
+            finish_prepare_error(code, str(e), run_token=run_token)
         finally:
             clear_prepare_cancel()
 

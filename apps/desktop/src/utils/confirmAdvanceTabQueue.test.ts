@@ -57,7 +57,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
 }
 
 describe("confirmAdvanceTabQueue", () => {
-  it("queues rapid Tab presses and drains sequentially", async () => {
+  it("Tab advance queues steps without finalizing", async () => {
     let selectedIdx = 0;
     const ctx = makeCtx();
     const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));
@@ -68,7 +68,7 @@ describe("confirmAdvanceTabQueue", () => {
     const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
     ctx.confirmSegmentEditAndAdvance = confirmSegmentEditAndAdvance;
 
-    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pendingSteps: 0 };
+    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pending: [] };
     const deps = {
       getCtx,
       segmentListFilterNavState: { active: false, indices: [] },
@@ -86,21 +86,56 @@ describe("confirmAdvanceTabQueue", () => {
 
     await vi.waitFor(() => {
       expect(queue.inFlight).toBe(false);
-      expect(queue.pendingSteps).toBe(0);
+      expect(queue.pending).toHaveLength(0);
     });
 
-    expect(confirmSegmentEditAndAdvance).toHaveBeenCalledTimes(3);
-    expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(1, 0);
-    expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(2, 1);
-    expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(3, 2);
+    expect(confirmSegmentEditAndAdvance).not.toHaveBeenCalled();
     expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
     expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledTimes(1);
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledWith(2, { loop: true });
   });
 
+  it("Cmd+Enter finalize path still confirms then advances", async () => {
+    let selectedIdx = 0;
+    const ctx = makeCtx();
+    const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));
+    const selectSegmentAt = vi.fn((idx: number) => {
+      selectedIdx = idx;
+    });
+    const focusSegmentTextarea = vi.fn();
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    ctx.confirmSegmentEditAndAdvance = confirmSegmentEditAndAdvance;
+
+    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pending: [] };
+    const deps = {
+      getCtx,
+      segmentListFilterNavState: { active: false, indices: [] },
+      selectSegmentAt,
+      focusSegmentTextarea,
+      wf: {
+        preserveLoopForNextSegmentSelect: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+      },
+    };
+
+    enqueueConfirmAdvanceTab(queue, deps, { finalize: true });
+    enqueueConfirmAdvanceTab(queue, deps, { finalize: true });
+
+    await vi.waitFor(() => {
+      expect(queue.inFlight).toBe(false);
+      expect(queue.pending).toHaveLength(0);
+    });
+
+    expect(confirmSegmentEditAndAdvance).toHaveBeenCalledTimes(2);
+    expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(1, 0);
+    expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(2, 1);
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
+  });
+
   it("caps queued Tab steps", () => {
-    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pendingSteps: 0 };
+    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pending: [] };
     const deps = {
       getCtx: () => makeCtx(),
       segmentListFilterNavState: { active: false, indices: [] },
@@ -111,6 +146,6 @@ describe("confirmAdvanceTabQueue", () => {
     for (let i = 0; i < CONFIRM_ADVANCE_TAB_QUEUE_MAX + 3; i += 1) {
       enqueueConfirmAdvanceTab(queue, deps);
     }
-    expect(queue.pendingSteps).toBe(CONFIRM_ADVANCE_TAB_QUEUE_MAX);
+    expect(queue.pending).toHaveLength(CONFIRM_ADVANCE_TAB_QUEUE_MAX);
   });
 });

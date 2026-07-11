@@ -44,7 +44,25 @@ pub fn bootstrap_db_at(db_path: &Path) -> Result<DbPool, String> {
         let conn = Connection::open(db_path).map_err(|e| e.to_string())?;
         migrate(&conn).map_err(|e| e.to_string())?;
     }
-    open_pool(db_path)
+    let pool = open_pool(db_path)?;
+    // Defer SHA256 provenance backfill so startup migrate is not blocked hashing every audio file.
+    spawn_import_provenance_backfill(pool.clone());
+    Ok(pool)
+}
+
+fn spawn_import_provenance_backfill(pool: DbPool) {
+    std::thread::spawn(move || {
+        let conn = match pool.get() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("[db] backfill_files_import_provenance: pool get failed: {e}");
+                return;
+            }
+        };
+        if let Err(e) = crate::project::import_duplicate::backfill_files_import_provenance(&conn) {
+            eprintln!("[db] backfill_files_import_provenance: {e}");
+        }
+    });
 }
 
 #[cfg(test)]

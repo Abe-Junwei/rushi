@@ -29,6 +29,7 @@ export {
   setTranscriptMultiSelectionEffect,
   primarySegmentIdx,
   getTranscriptMultiSelection,
+  transcriptMultiSelectionEqual,
   type TranscriptMultiSelection,
 } from "./selectionField";
 export {
@@ -44,6 +45,7 @@ export {
   syncTranscriptProjectionFromView,
   getTranscriptProjectionSnapshot,
   subscribeTranscriptProjection,
+  subscribeTranscriptSelectionProjection,
   resetTranscriptProjectionForTests,
   seedTranscriptProjectionForTests,
   useTranscriptProjection,

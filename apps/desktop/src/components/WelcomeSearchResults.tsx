@@ -47,8 +47,8 @@ export function WelcomeSearchResults({
   return (
     <div
       className={`${WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS} z-50`}
-      role="dialog"
-      aria-label="工作区搜索"
+      role="region"
+      aria-label="搜索结果"
       onMouseDown={(e) => e.preventDefault()}
     >
       <div className={WELCOME_TOPBAR_DROPDOWN_HEADER_STRIP_CLASS}>

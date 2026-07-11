@@ -40,6 +40,15 @@ export function resetMinimapPeaksCache(): void {
   minimapPeaksCache = null;
 }
 
+/** WS-2b media-only stub is `[0, 0]`; exportPeaks may upsample that to an all-zero strip. */
+export function isMediaOnlyStubMinimapPeaks(peaks: ArrayLike<number>): boolean {
+  if (peaks.length < 2) return true;
+  for (let i = 0; i < peaks.length; i += 1) {
+    if ((peaks[i] ?? 0) !== 0) return false;
+  }
+  return true;
+}
+
 async function resolveMinimapPeaksForDrawInner(input: {
   peakCache: PeakCache | null;
   overviewWidthPx: number;
@@ -49,11 +58,8 @@ async function resolveMinimapPeaksForDrawInner(input: {
   const { peakCache, overviewWidthPx, layoutDurationSec, exportFromWaveSurfer } = input;
   const widthPx = Math.max(1, Math.floor(overviewWidthPx));
 
-  const exportPeaks = exportFromWaveSurfer?.() ?? null;
-  if (exportPeaks && exportPeaks.length >= 2) {
-    return exportPeaks;
-  }
-
+  // WS-2b: PeakCache is the peaks truth source. WaveSurfer holds media-only stub
+  // peaks, so exportPeaks must not win over PeakCache.
   if (peakCache && layoutDurationSec > 0) {
     const syncBundle = peakCache.getMinimapPeaks(widthPx, layoutDurationSec);
     const syncCh0 = syncBundle?.peaks[0];
@@ -67,11 +73,15 @@ async function resolveMinimapPeaksForDrawInner(input: {
         return ch0 instanceof Float32Array ? ch0 : Float32Array.from(ch0);
       }
     } catch {
-      /* fall through */
+      /* fall through to WS export */
     }
   }
 
-  return exportPeaks;
+  const exportPeaks = exportFromWaveSurfer?.() ?? null;
+  if (exportPeaks && exportPeaks.length >= 2 && !isMediaOnlyStubMinimapPeaks(exportPeaks)) {
+    return exportPeaks;
+  }
+  return null;
 }
 
 export async function resolveMinimapPeaksForDraw(input: {
@@ -89,7 +99,8 @@ export async function resolveMinimapPeaksForDraw(input: {
     minimapPeaksCache &&
     minimapPeaksCache.widthPx === widthPx &&
     minimapPeaksCache.peakCacheGeneration === peakCacheGeneration &&
-    Math.abs(minimapPeaksCache.layoutDurationSec - layoutDurationSec) < 1e-6
+    Math.abs(minimapPeaksCache.layoutDurationSec - layoutDurationSec) < 1e-6 &&
+    !isMediaOnlyStubMinimapPeaks(minimapPeaksCache.peaks)
   ) {
     return minimapPeaksCache.peaks;
   }

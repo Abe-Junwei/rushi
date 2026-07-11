@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../../config/environmentNavCopy";
 import { formatDiskFree, type AsrSetupReport } from "./asrSetupContract";
 import {
   isLocalRuntimeInstallRunning,
@@ -69,7 +70,7 @@ export function computeRuntimeDownloadProgress(
 const MANIFEST_BLOCKED_MISSING_STATUS = "尚未安装 · 应用内下载不可用";
 
 const MANIFEST_BLOCKED_DEV_HINT =
-  "开发环境见「环境 → 本机 ASR」诊断，或运行 python -m rushi_asr。";
+  `开发环境见「${ENV_NAV.localAsr}」诊断，或运行 python -m rushi_asr。`;
 
 export function buildDiskMetaLine(report: AsrSetupReport | null): string | null {
   if (!report?.diskFreeBytes) return null;

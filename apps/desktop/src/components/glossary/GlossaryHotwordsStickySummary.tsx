@@ -8,7 +8,10 @@ export function GlossaryHotwordsStickySummary({ g }: Props) {
   return (
     <div className="sticky top-0 z-20 shrink-0 border-b border-notion-divider bg-notion-callout-bg">
       <div className="flex items-center justify-between gap-3 px-4 py-2">
-        <p className={`m-0 min-w-0 flex-1 truncate ${PANEL_TYPOGRAPHY.body} text-notion-text`}>
+        <p
+          className={`m-0 min-w-0 flex-1 truncate ${PANEL_TYPOGRAPHY.body} text-notion-text`}
+          title={g.hotwordsSummary}
+        >
           {g.hotwordsSummary}
         </p>
         <span

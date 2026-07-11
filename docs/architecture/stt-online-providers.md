@@ -46,7 +46,7 @@
 - **运行时配置**：启用开关、`endpoint`、**`timeoutMs`**；对 **AppKey / ProjectId 等非根密钥** 可持久化（`rushi.stt.online.appKey`）。  
 - **持久化策略**：`localStorage` 存非敏感项与 **`apiKeyId` 引用**；**根密钥 / Token** 经 Tauri `stt_save_api_key` 等命令写入本地受保护存储，重启后免填。  
 - **安全基线**：外部 `endpoint` 仅允许 **HTTPS** 或 **本机 HTTP**（`isAllowedExternalProviderEndpoint`）。  
-- **可达性探测**：`probeExternal*Health`（GET + 可选 Bearer，映射 HTTP 状态到 `available` / `401` / `timeout` 等）。  
+- **可达性探测**：`probeExternal*Health`（GET + 可选 Bearer，映射 HTTP 状态到 `available` / `401` / `timeout` 等）。环境面板「保存」成功且具备 Key 后会**自动探测**并更新 top-bar chip；手动「探测连接」仍保留。  
 - **解析态**：`requestedProviderId` vs `effectiveProviderId`、`fellBackToLocal`（Rushi 可映射为「请求在线 → 失败回退本机 ASR」）。
 
 Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`TranscriptionProvider`** 与 **`TranscriptionResult`**；本机 HTTP 适配在 `apps/desktop/src/api/httpAsrProvider.ts`。在线多厂商应在 **同一结果契约** 上增加 **适配层**（各厂商 JSON → `TranscriptionResult`），而不是扩散多套 UI 类型。

@@ -1,5 +1,6 @@
 import { Check, Circle, X } from "lucide-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
+import { ENV_NAV } from "../config/environmentNavCopy";
 import {
   ONBOARDING_STEPS,
   resolveOnboardingTranscribeEnvStep,
@@ -89,7 +90,7 @@ export function WelcomeOnboardingChecklist({
                     className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
                     onClick={onOpenOnlineSttSettings}
                   >
-                    打开环境 → 在线 STT
+                    打开{ENV_NAV.onlineStt}
                   </button>
                 ) : null}
                 {step.id === "asr_ready" && transcribeSource !== "online" && onOpenAsrSettings ? (
@@ -98,7 +99,7 @@ export function WelcomeOnboardingChecklist({
                     className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
                     onClick={onOpenAsrSettings}
                   >
-                    打开环境 → 本机 ASR
+                    打开{ENV_NAV.localAsr}
                   </button>
                 ) : null}
                 {step.id === "project_audio" && onCreateProject ? (

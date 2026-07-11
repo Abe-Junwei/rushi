@@ -1,7 +1,9 @@
 # 计划：Transcript Editor Core 整改（分阶段落地）
 
 > **调研门禁**：本计划实现前提为 [`transcript-editor-core-remediation-research.md`](./transcript-editor-core-remediation-research.md) 已采纳 **且 P0 spike 通过**（否则回退路线 A）。
-> **验收**：[`transcript-editor-core-remediation-acceptance.md`](./transcript-editor-core-remediation-acceptance.md)
+> **验收**：[`transcript-editor-core-remediation-acceptance.md`](./transcript-editor-core-remediation-acceptance.md)  
+> **手测总清单**：[`transcript-editor-core-handtest-checklist.md`](./transcript-editor-core-handtest-checklist.md)  
+> **状态**：本机手测签收 ✅（2026-07-11；§0–§4 全过；Windows W-1 发版前再测）  
 > **执行纪律**：单人短循环（每轮 2–4h、一个纵向薄片），每轮结束必过 `npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs`；每阶段独立可回滚、feature flag 并存新旧。
 
 ---

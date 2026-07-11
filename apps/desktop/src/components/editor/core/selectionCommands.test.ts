@@ -14,6 +14,7 @@ import {
   syncTranscriptProjectionFromView,
   resetTranscriptProjectionForTests,
   subscribeTranscriptProjection,
+  subscribeTranscriptSelectionProjection,
 } from "./index";
 
 function makeSegments(n: number): SegmentDto[] {
@@ -106,6 +107,29 @@ describe("P2 selection commands + projection", () => {
     expect(getTranscriptProjectionSnapshot().primaryIdx).toBe(4);
     expect(getTranscriptProjectionSnapshot().selectedSet.has(4)).toBe(true);
     unsub();
+  });
+
+  it("text edits do not notify selection-only projection subscribers", () => {
+    view = mountCore(5);
+    selectSegmentCommand(view, 1);
+    let allTicks = 0;
+    let selectionTicks = 0;
+    const unsubAll = subscribeTranscriptProjection(() => {
+      allTicks += 1;
+    });
+    const unsubSelection = subscribeTranscriptSelectionProjection(() => {
+      selectionTicks += 1;
+    });
+    const beforeSelectionVersion = getTranscriptProjectionSnapshot().selectionVersion;
+    const line = view.state.doc.line(2);
+
+    view.dispatch({ changes: { from: line.from, to: line.to, insert: "typed" } });
+
+    expect(allTicks).toBeGreaterThan(0);
+    expect(selectionTicks).toBe(0);
+    expect(getTranscriptProjectionSnapshot().selectionVersion).toBe(beforeSelectionVersion);
+    unsubAll();
+    unsubSelection();
   });
 
   it("paints primary decoration class on selected line", () => {

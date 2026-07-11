@@ -154,7 +154,7 @@ export function useEnvLlmConfigPanelPersistence({
     setSavedApiKeyId,
   ]);
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<"probe" | "skip"> => {
     onInvalidateProbe();
     setSaveBusy(true);
     try {
@@ -190,8 +190,8 @@ export function useEnvLlmConfigPanelPersistence({
         setApiKey("");
         bumpKeychainCheck();
         onLlmRuntimeChanged?.();
-        toast.success("已保存，请探测连接。");
-        return;
+        toast.success("已保存，正在探测连接…");
+        return "probe";
       }
       if (!nextApiKeyId) {
         persistLlmRuntimeConfig({ providerId, baseUrl, model }, { clearApiKeyId: true });
@@ -201,7 +201,7 @@ export function useEnvLlmConfigPanelPersistence({
         bumpKeychainCheck();
         onLlmRuntimeChanged?.();
         toast.info("已保存 LLM 配置与提示词；云端调用前仍需填写 API Key。");
-        return;
+        return "skip";
       }
       persistLlmRuntimeConfig({
         providerId,
@@ -216,14 +216,12 @@ export function useEnvLlmConfigPanelPersistence({
       onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
-        toast.success("API Key 已保存。");
-      } else if (nextApiKeyId) {
-        toast.success("已保存，沿用已存 Key。");
-      } else {
-        toast.info("已保存配置，请填写 API Key。");
       }
+      toast.success("已保存，正在探测连接…");
+      return "probe";
     } catch (e) {
       toast.errorFromUnknown(e);
+      return "skip";
     } finally {
       setSaveBusy(false);
     }

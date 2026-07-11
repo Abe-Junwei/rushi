@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../config/environmentNavCopy";
 import type { TranscribeProgress } from "../pages/transcribePreviewState";
 import type { BusyReason } from "../pages/useProjectController";
 import { getSttOnlineProviderDefinition } from "../services/stt/sttOnlineProviderContract/definitions";
@@ -89,7 +90,7 @@ export function busyOverlayCopy(
       return {
         title: "正在安装",
         lead: "执行安装脚本",
-        detail: "终端输出可在「环境 → 本机 ASR」中查看",
+        detail: `终端输出可在「${ENV_NAV.localAsr}」中查看`,
       };
     case "export":
       return {

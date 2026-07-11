@@ -32,10 +32,10 @@ describe("segmentSelection", () => {
     expect(selectionRangeFromTimeMarquee(segments, 1, 5, 8)).toEqual({ lo: 0, hi: 2 });
   });
 
-  it("mergeSegmentRangeFold joins text with newlines", () => {
+  it("mergeSegmentRangeFold joins text without newlines", () => {
     const segments = [seg(0, 1, "a"), seg(1, 2, "b"), seg(2, 3, "c")];
     const merged = mergeSegmentRangeFold(segments, 0, 2);
-    expect(merged.text).toBe("a\nb\nc");
+    expect(merged.text).toBe("a b c");
     expect(merged.start_sec).toBe(0);
     expect(merged.end_sec).toBe(3);
   });
@@ -46,7 +46,7 @@ describe("segmentSelection", () => {
       { ...seg(1, 2, "B*"), uid: "uid-b" },
     ];
     const merged = mergeSegmentRangeFold(segments, 0, 1);
-    expect(merged.text).toBe("a\nB*");
+    expect(merged.text).toBe("a B*");
   });
 
   it("computeSegmentLassoOutcome selects intersecting segments", () => {

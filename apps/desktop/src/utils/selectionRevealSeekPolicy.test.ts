@@ -10,45 +10,46 @@ describe("selectionRevealSeekPolicy", () => {
     expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(false);
   });
 
-  it("list sources reveal when idx changes", () => {
+  it("list sources reveal even when CM6 already moved primary", () => {
     expect(
       shouldRevealOnSegmentSelect({
         source: "list",
         idxChanged: true,
-        editorFocusGateOpen: false,
       }),
     ).toBe(true);
     expect(
       shouldRevealOnSegmentSelect({
         source: "listAdvance",
         idxChanged: true,
-        editorFocusGateOpen: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "list",
+        idxChanged: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "listAdvance",
+        idxChanged: false,
       }),
     ).toBe(true);
   });
 
-  it("listKeyboard reveals on idx change regardless of focus gate", () => {
+  it("listKeyboard reveals regardless of idx change", () => {
     expect(
       shouldRevealOnSegmentSelect({
         source: "listKeyboard",
         idxChanged: true,
-        editorFocusGateOpen: true,
-      }),
-    ).toBe(true);
-    expect(
-      shouldRevealOnSegmentSelect({
-        source: "listKeyboard",
-        idxChanged: true,
-        editorFocusGateOpen: false,
       }),
     ).toBe(true);
     expect(
       shouldRevealOnSegmentSelect({
         source: "listKeyboard",
         idxChanged: false,
-        editorFocusGateOpen: true,
       }),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it("contextMenu and multiSelect never reveal", () => {
@@ -56,14 +57,12 @@ describe("selectionRevealSeekPolicy", () => {
       shouldRevealOnSegmentSelect({
         source: "contextMenu",
         idxChanged: true,
-        editorFocusGateOpen: false,
       }),
     ).toBe(false);
     expect(
       shouldRevealOnSegmentSelect({
         source: "multiSelect",
         idxChanged: true,
-        editorFocusGateOpen: true,
       }),
     ).toBe(false);
   });
@@ -73,14 +72,12 @@ describe("selectionRevealSeekPolicy", () => {
       shouldRevealOnSegmentSelect({
         source: "waveform",
         idxChanged: false,
-        editorFocusGateOpen: true,
       }),
     ).toBe(false);
     expect(
       shouldRevealOnSegmentSelect({
         source: "waveformKeyboard",
         idxChanged: true,
-        editorFocusGateOpen: true,
       }),
     ).toBe(true);
   });

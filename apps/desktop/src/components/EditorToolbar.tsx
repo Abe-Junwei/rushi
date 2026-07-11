@@ -158,6 +158,7 @@ export const EditorToolbar = memo(function EditorToolbar({
             controller={c}
             disabled={c.busy}
             onOpenAsrSettings={onOpenAsrSettings}
+            onOpenOnlineSttSettings={onOpenOnlineSttSettings}
             onStartTranscribe={() => void c.runTranscribe()}
             onOpenDeliveryMode={() => runDeliveryModeTranscribeAction()}
             inEditorFile={Boolean(c.currentFileId)}

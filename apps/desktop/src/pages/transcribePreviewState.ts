@@ -93,6 +93,7 @@ export function isTranscribeTerminalPhase(phase: string): boolean {
   return phase === "done" || phase === "error" || phase === "cancelled" || phase === "unknown";
 }
 
+import { ENV_NAV } from "../config/environmentNavCopy";
 import { readShellManagesBundledSidecarSync } from "../services/shellCapabilities";
 
 /** Sidecar lacks R3e-C async routes (stale PyInstaller build). */
@@ -108,7 +109,7 @@ const TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV =
   "当前侧车不支持增量转写（缺少 /v1/transcribe/async），已回退为整段拉取。请用源码侧车（npm run desktop:dev 会提示）或重建内置侧车：scripts/build-asr-sidecar-unix.sh。";
 
 const TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED =
-  "当前侧车不支持增量转写，已回退为整段拉取。请在「环境 → 本机 ASR」点「应用并重启侧车」或「一键准备本机 ASR」。";
+  `当前侧车不支持增量转写，已回退为整段拉取。请在「${ENV_NAV.localAsr}」点「应用并重启侧车」或「一键准备本机 ASR」。`;
 
 function transcribeAsyncFallbackHintFromShellManaged(shellManaged: boolean): string {
   return shellManaged

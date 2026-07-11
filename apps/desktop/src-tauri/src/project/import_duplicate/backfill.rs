@@ -6,7 +6,7 @@ use super::hash::{file_sha256_hex, segments_fingerprint_from_db};
 use super::path_meta::source_file_meta;
 use super::types::SourceFileMeta;
 
-/// One-time backfill for legacy rows missing provenance (run from db migrate).
+/// One-time backfill for legacy rows missing provenance (deferred after DB pool open).
 pub fn backfill_files_import_provenance(conn: &rusqlite::Connection) -> Result<(), String> {
     let mut stmt = conn
         .prepare(

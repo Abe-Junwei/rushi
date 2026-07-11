@@ -1,6 +1,7 @@
 import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import type { OnboardingProgress } from "../services/onboarding/onboardingProgress";
 import { listPendingOnboardingSteps } from "../services/onboarding/onboardingActivity";
+import type { TranscribeSource } from "../services/stt/transcribeSource";
 import type { ActivityFeedItem } from "../services/ui/activityFeed";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 import {
@@ -18,6 +19,7 @@ type Props = {
   feedItems: readonly ActivityFeedItem[];
   onboardingProgress: OnboardingProgress;
   unreadFeedCount: number;
+  transcribeSource: TranscribeSource;
   onMarkAllRead: () => void;
   onClearHistory: () => void;
   onOnboardingAction: (stepId: string) => void;
@@ -34,6 +36,7 @@ export function WelcomeActivityPanel({
   feedItems,
   onboardingProgress,
   unreadFeedCount,
+  transcribeSource,
   onMarkAllRead,
   onClearHistory,
   onOnboardingAction,
@@ -53,8 +56,8 @@ export function WelcomeActivityPanel({
   return (
     <div
       className={`${WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS} z-[100]`}
-      role="dialog"
-      aria-label="活动与提醒"
+      role="region"
+      aria-label="活动"
       onMouseDown={(e) => e.preventDefault()}
     >
       <div
@@ -91,6 +94,7 @@ export function WelcomeActivityPanel({
             pendingSteps={pendingSteps}
             canCreateProject={canCreateProject}
             inEditorFile={inEditorFile}
+            transcribeSource={transcribeSource}
             onOnboardingAction={onOnboardingAction}
             onStartTranscribe={onStartTranscribe}
             onOpenLastEditor={onOpenLastEditor}

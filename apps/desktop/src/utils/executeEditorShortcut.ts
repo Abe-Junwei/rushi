@@ -165,6 +165,7 @@ export function executeEditorShortcut(
     case "workflow.save":
       void ctx.saveSegments();
       return true;
+    case "workflow.advanceSegment":
     case "workflow.confirmAdvance": {
       const ctx = readCtx(deps);
       const idx = resolveConfirmAdvanceStartingIdx(ctx);
@@ -175,13 +176,17 @@ export function executeEditorShortcut(
           ? deps.confirmAdvanceQueueRef.current
           : deps.confirmAdvanceQueueRef);
       if (!queue) return true;
-      enqueueConfirmAdvanceTab(queue, {
-        getCtx: () => readCtx(deps),
-        segmentListFilterNavState: deps.segmentListFilterNavState,
-        selectSegmentAt: (ni, source) => deps.selectSegmentAt(ni, source),
-        focusSegmentTextarea: deps.focusSegmentTextarea,
-        wf,
-      });
+      enqueueConfirmAdvanceTab(
+        queue,
+        {
+          getCtx: () => readCtx(deps),
+          segmentListFilterNavState: deps.segmentListFilterNavState,
+          selectSegmentAt: (ni, source) => deps.selectSegmentAt(ni, source),
+          focusSegmentTextarea: deps.focusSegmentTextarea,
+          wf,
+        },
+        { finalize: id === "workflow.confirmAdvance" },
+      );
       return true;
     }
     case "workflow.find":

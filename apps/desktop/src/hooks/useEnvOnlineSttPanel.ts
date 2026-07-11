@@ -125,6 +125,11 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
 
   const formBusy = busy || probeHook.probeBusy || persistence.saveBusy;
 
+  const saveOnlineStt = useCallback(async () => {
+    const ok = await persistence.saveOnlineStt();
+    if (ok) await probeHook.probeOnlineStt({ preferPersistedCredentials: true });
+  }, [persistence.saveOnlineStt, probeHook.probeOnlineStt]);
+
   return {
     formBusy,
     olProbeBusy: probeHook.probeBusy,
@@ -150,7 +155,7 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
     setOlAccent,
     onProviderChange: persistence.onProviderChange,
     clearSavedApiKey: persistence.clearSavedApiKey,
-    saveOnlineStt: persistence.saveOnlineStt,
+    saveOnlineStt,
     probeOnlineStt: probeHook.probeOnlineStt,
   };
 }

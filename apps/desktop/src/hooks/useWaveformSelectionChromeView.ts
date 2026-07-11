@@ -6,19 +6,19 @@ import {
 } from "../services/selection/resolveWaveformSelectionChromeView";
 import {
   getTranscriptProjectionSnapshot,
-  subscribeTranscriptProjection,
+  subscribeTranscriptSelectionProjection,
 } from "../components/editor/core/transcriptProjection";
 
 function projectionVersion(): string {
   const proj = getTranscriptProjectionSnapshot();
-  return `${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
+  return `${proj.primaryIdx}:${proj.selectionVersion}:${proj.selectedSet.size}`;
 }
 
 export function useWaveformSelectionChromeView(
   input: WaveformSelectionChromeReactInput,
 ): WaveformSelectionChromeView {
   const version = useSyncExternalStore(
-    subscribeTranscriptProjection,
+    subscribeTranscriptSelectionProjection,
     projectionVersion,
     () => "0",
   );

@@ -5,6 +5,7 @@ import { formatTranscribeDiagSummary, shouldShowTranscribeEnvAction, transcribeF
 import { createPortal } from "react-dom";
 import { TriangleAlert } from "lucide-react";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_PRIMARY } from "../config/controlStyles";
+import { ENV_NAV } from "../config/environmentNavCopy";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { BlockingProgressCard } from "./BlockingProgressCard";
 import { busyOverlayCopy, transcribeCancelStoppingLabel } from "./projectStatusFeedbackCopy";
@@ -115,7 +116,7 @@ export function TranscribeDiagBanner({
       <div className="flex flex-wrap gap-2">
         {showEnv ? (
           <button type="button" className={CONTROL_BTN_DANGER} onClick={onOpenEnvironment}>
-            打开环境 → 本机 ASR
+            打开{ENV_NAV.localAsr}
           </button>
         ) : null}
         {onDismiss ? (
@@ -207,7 +208,7 @@ export function AsrErrorBanner({
         </div>
       </div>
       <button type="button" className={CONTROL_BTN_DANGER} onClick={onOpenEnvironment}>
-        打开环境 → 本机 ASR
+        打开{ENV_NAV.localAsr}
       </button>
     </div>
   );
@@ -247,7 +248,7 @@ export function OnlineSttEnvBanner({
         </div>
       </div>
       <button type="button" className={buttonClass} onClick={onOpenOnlineSttSettings}>
-        打开环境 → 在线 STT
+        打开{ENV_NAV.onlineStt}
       </button>
     </div>
   );

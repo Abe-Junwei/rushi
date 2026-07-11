@@ -4,6 +4,7 @@ import { useActivityFeedSnapshot } from "./useActivityFeedSnapshot";
 import { useActivityInboxPanel } from "./useActivityInboxPanel";
 import { countPendingOnboardingSteps } from "../services/onboarding/onboardingActivity";
 import { ONBOARDING_PROGRESS_CHANGED_EVENT } from "../services/onboarding/onboardingProgress";
+import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 import type { ActivityFeedItem } from "../services/ui/activityFeed";
 import { runActivityFeedItemAction } from "../services/ui/runActivityFeedItemAction";
 import { useOnboardingChecklistController } from "./useOnboardingChecklistController";
@@ -11,6 +12,7 @@ import { useOnboardingChecklistController } from "./useOnboardingChecklistContro
 type Args = {
   controller: ProjectControllerApi;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onCreateProject?: () => void;
   onStartTranscribe?: () => void;
   onPanelOpen?: () => void;
@@ -19,6 +21,7 @@ type Args = {
 export function useWelcomeActivityController({
   controller,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onCreateProject,
   onStartTranscribe,
   onPanelOpen,
@@ -49,6 +52,8 @@ export function useWelcomeActivityController({
     [onboarding.progress],
   );
 
+  const effectiveTranscribeSource = resolveEffectiveTranscribeSource(controller.transcribeSource);
+
   const showBadge = unreadFeedCount > 0 || pendingOnboardingCount > 0;
 
   const openLastEditor = useCallback(() => {
@@ -60,14 +65,24 @@ export function useWelcomeActivityController({
     (stepId: string) => {
       closePanel();
       if (stepId === "asr_ready") {
-        onOpenAsrSettings?.();
+        if (effectiveTranscribeSource === "online") {
+          onOpenOnlineSttSettings?.();
+        } else {
+          onOpenAsrSettings?.();
+        }
         return;
       }
       if (stepId === "project_audio") {
         onCreateProject?.();
       }
     },
-    [closePanel, onCreateProject, onOpenAsrSettings],
+    [
+      closePanel,
+      effectiveTranscribeSource,
+      onCreateProject,
+      onOpenAsrSettings,
+      onOpenOnlineSttSettings,
+    ],
   );
 
   const startTranscribe = useCallback(() => {
@@ -107,6 +122,7 @@ export function useWelcomeActivityController({
     unreadFeedCount,
     onboardingProgress: onboarding.progress,
     pendingOnboardingCount,
+    effectiveTranscribeSource,
     openLastEditor,
     handleOnboardingAction,
     startTranscribe,

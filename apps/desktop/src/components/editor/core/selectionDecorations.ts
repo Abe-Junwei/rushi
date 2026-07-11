@@ -5,6 +5,7 @@ import type { DecorationSet } from "@codemirror/view";
 import {
   primarySegmentIdx,
   transcriptMultiSelectionField,
+  transcriptMultiSelectionEqual,
 } from "./selectionField";
 
 const primaryDeco = Decoration.line({
@@ -38,14 +39,14 @@ export const transcriptSelectionDecorations = StateField.define<DecorationSet>({
   },
   update(value, tr) {
     const selectionChanged =
-      tr.selection != null && !tr.startState.selection.eq(tr.selection);
+      primarySegmentIdx(tr.startState) !== primarySegmentIdx(tr.state);
     const multiChanged =
-      tr.startState.field(transcriptMultiSelectionField) !==
-      tr.state.field(transcriptMultiSelectionField);
-    if (!tr.docChanged && !selectionChanged && !multiChanged) {
-      return value.map(tr.changes);
-    }
-    return buildSelectionDecorations(tr.state);
+      !transcriptMultiSelectionEqual(
+        tr.startState.field(transcriptMultiSelectionField),
+        tr.state.field(transcriptMultiSelectionField),
+      );
+    if (selectionChanged || multiChanged) return buildSelectionDecorations(tr.state);
+    return tr.docChanged ? value.map(tr.changes) : value;
   },
   provide: (f) => EditorView.decorations.from(f),
 });

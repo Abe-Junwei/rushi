@@ -7,6 +7,8 @@ export type TranscribeNavBlockMode = "single" | "batch";
 type TranscribeNavBlockDialogProps = {
   open: boolean;
   stopping: boolean;
+  /** Overrides default "正在停止…" while cancel is in flight. */
+  stoppingLabel?: string;
   mode?: TranscribeNavBlockMode;
   onStay: () => void;
   onStopAndLeave: () => void;
@@ -33,6 +35,7 @@ const COPY: Record<
 export function TranscribeNavBlockDialog({
   open,
   stopping,
+  stoppingLabel = "正在停止…",
   mode = "single",
   onStay,
   onStopAndLeave,
@@ -81,7 +84,7 @@ export function TranscribeNavBlockDialog({
               disabled={stopping}
               onClick={onStopAndLeave}
             >
-              {stopping ? "正在停止…" : copy.stop}
+              {stopping ? stoppingLabel : copy.stop}
             </button>
           </div>
         </div>

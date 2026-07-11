@@ -51,11 +51,14 @@ export const transcriptPanelHighlightField = StateField.define<PanelHighlightSta
     for (const e of tr.effects) {
       if (e.is(setTranscriptPanelHighlightEffect)) highlight = e.value;
     }
-    if (highlight !== value.highlight || tr.docChanged) {
+    if (highlight !== value.highlight) {
       return {
         highlight,
         decorations: buildPanelHighlightDecorations(tr.state, highlight),
       };
+    }
+    if (tr.docChanged) {
+      return { highlight, decorations: value.decorations.map(tr.changes) };
     }
     return value;
   },
@@ -64,7 +67,7 @@ export const transcriptPanelHighlightField = StateField.define<PanelHighlightSta
 
 export const transcriptPanelHighlightTheme = EditorView.theme({
   ".cm-transcript-panel-highlight": {
-    backgroundColor: "color-mix(in srgb, var(--color-saffron, #c45c26) 34%, transparent)",
+    backgroundColor: "color-mix(in srgb, var(--accent-action) 34%, transparent)",
     borderRadius: "2px",
   },
 });

@@ -9,14 +9,15 @@ function rowActiveClass(active: boolean): string {
 }
 
 type Props = {
+  id?: string;
   hit: WelcomeContentSearchHit;
   active: boolean;
   onSelect: () => void;
 };
 
-export function WelcomeSearchContentHitRow({ hit, active, onSelect }: Props) {
+export function WelcomeSearchContentHitRow({ id, hit, active, onSelect }: Props) {
   return (
-    <li>
+    <li id={id} role="option" aria-selected={active}>
       <button
         type="button"
         className={`flex w-full items-start gap-1.5 border-0 bg-transparent px-2.5 py-1 text-left ${rowActiveClass(active)}`}

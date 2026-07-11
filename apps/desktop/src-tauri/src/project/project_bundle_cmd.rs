@@ -295,9 +295,17 @@ pub(super) fn import_project_bundle_from_path(
             let uid = segment_uid_or_new(&s.uid);
             let low = if s.low_confidence { 1i64 } else { 0i64 };
             let detail = s.detail.as_deref().unwrap_or("");
+            let kind = s.kind.as_deref().filter(|k| !k.trim().is_empty());
+            let text_stage = if s.text_stage.trim().is_empty() {
+                "auto_transcribe"
+            } else {
+                s.text_stage.as_str()
+            };
+            let finalize_via = s.finalize_via.as_deref().filter(|v| !v.trim().is_empty());
+            let annotation = s.annotation.as_deref().unwrap_or("").trim();
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 params![
                     &file_id,
                     uid.as_str(),
@@ -308,6 +316,10 @@ pub(super) fn import_project_bundle_from_path(
                     s.confidence,
                     low,
                     detail,
+                    kind,
+                    text_stage,
+                    finalize_via,
+                    annotation,
                 ],
             )
             .map_err(CommandError::from)?;

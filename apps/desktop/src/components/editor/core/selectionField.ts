@@ -50,3 +50,15 @@ export function primarySegmentIdx(state: EditorState): number {
 export function getTranscriptMultiSelection(state: EditorState): TranscriptMultiSelection {
   return state.field(transcriptMultiSelectionField);
 }
+
+export function transcriptMultiSelectionEqual(
+  a: TranscriptMultiSelection,
+  b: TranscriptMultiSelection,
+): boolean {
+  if (a === b) return true;
+  if (a.rangeAnchor !== b.rangeAnchor || a.selectedSet.size !== b.selectedSet.size) return false;
+  for (const idx of a.selectedSet) {
+    if (!b.selectedSet.has(idx)) return false;
+  }
+  return true;
+}

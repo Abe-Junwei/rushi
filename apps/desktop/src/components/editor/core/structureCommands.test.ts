@@ -90,8 +90,9 @@ describe("P6 structureCommands", () => {
     expect(v.state.doc.lines).toBe(2);
     const out = serializeTranscriptEditorState(v.state);
     expect(out[0]!.uid).toBe("u0");
-    expect(out[0]!.text).toContain("语段0");
-    expect(out[0]!.text).toContain("语段1");
+    expect(out[0]!.text).toBe("语段0内容较长一些语段1内容较长一些");
+    expect(out[0]!.text).not.toMatch(/[\n\r\u240A]/);
+    expect(v.state.doc.line(1).text).not.toMatch(/[\n\r\u240A]/);
     expect(primarySegmentIdx(v.state)).toBe(0);
   });
 

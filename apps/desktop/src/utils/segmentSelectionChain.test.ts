@@ -41,7 +41,7 @@ describe("selection → batch op chain simulation", () => {
     expect(envelope?.hi).toBe(2);
 
     const merged = mergeSegmentRangeFold(segments, envelope!.lo, envelope!.hi);
-    expect(merged.text).toBe("a\nb\nc");
+    expect(merged.text).toBe("a b c");
   });
 
   it("toggle non-contiguous blocks merge but allows sparse delete indices", () => {

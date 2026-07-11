@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
-import { withAiRevisedStage } from "../services/segmentStagePersist";
+import {
+  withAiRevisedStage,
+  withManualTranscribeStage,
+} from "../services/segmentStagePersist";
 import { flushCm6TextProjection } from "../components/editor/core/onDocChanged";
 import { dispatchTranscriptSyncMetaFromSegments } from "../components/editor/core/transcriptEditorViewHandle";
 import type { SegmentPublishApi } from "./segmentPublishApi";
@@ -90,7 +93,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         pendingAiRevisedUidsRef.current.delete(uid);
       }
       const nextRow = { ...cur, text };
-      const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
+      const patched = options?.fromLlm
+        ? withAiRevisedStage(nextRow)
+        : withManualTranscribeStage(nextRow);
       segmentPublish.publishTextBulk((base) => {
         const out = [...base];
         out[idx] = patched;

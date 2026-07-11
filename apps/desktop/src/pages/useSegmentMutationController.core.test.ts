@@ -25,7 +25,9 @@ describe("useSegmentMutationController core", () => {
 
   it("updateSegmentText changes text and preserves other fields", () => {
     const { result } = renderHook(() =>
-      useTestSegmentMutationController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })]),
+      useTestSegmentMutationController([
+        makeSeg({ text: "hello", start_sec: 0, end_sec: 1, text_stage: "auto_transcribe" }),
+      ]),
     );
 
     act(() => result.current.mutations.updateSegmentText(0, "world"));
@@ -33,6 +35,8 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[0].text).toBe("world");
     expect(result.current.segments[0].start_sec).toBe(0);
     expect(result.current.segments[0].end_sec).toBe(1);
+    expect(result.current.segments[0].text_stage).toBe("manual_transcribe");
+    expect(result.current.segments[0].finalize_via).toBeNull();
   });
 
   it("updateSegmentTime mutates the specified field", () => {
@@ -156,7 +160,7 @@ describe("useSegmentMutationController core", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("edited head\nworld");
+    expect(result.current.segments[0]?.text).toBe("edited head world");
   });
 
   it("mergeWithNextAt uses segmentsRef when React state lags behind ref", () => {
@@ -177,7 +181,7 @@ describe("useSegmentMutationController core", () => {
     act(() => result.current.mutations.mergeWithNextAt(0));
 
     expect(result.current.segments).toHaveLength(1);
-    expect(result.current.segments[0]?.text).toBe("edited head\nworld");
+    expect(result.current.segments[0]?.text).toBe("edited head world");
   });
 
   it("updateSegmentText round-trip within same tick keeps segments in sync", () => {

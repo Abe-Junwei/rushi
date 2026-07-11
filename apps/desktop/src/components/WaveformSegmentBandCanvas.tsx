@@ -5,7 +5,7 @@ import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegme
 import { resolveWaveformSelectionChromeView } from "../services/selection/resolveWaveformSelectionChromeView";
 import {
   getTranscriptProjectionSnapshot,
-  subscribeTranscriptProjection,
+  subscribeTranscriptSelectionProjection,
 } from "./editor/core/transcriptProjection";
 import { resolveWaveformSelectionRenderProjection } from "../services/waveform/waveformSelectionRenderProjection";
 import {
@@ -92,10 +92,10 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
 }: WaveformSegmentBandCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chromeVersion = useSyncExternalStore(
-    subscribeTranscriptProjection,
+    subscribeTranscriptSelectionProjection,
     () => {
       const proj = getTranscriptProjectionSnapshot();
-      return `p:${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
+      return `p:${proj.primaryIdx}:${proj.selectionVersion}:${proj.selectedSet.size}`;
     },
     () => "0",
   );
@@ -232,7 +232,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const painted = lastPaintWindowRef.current;
       const paintedChromeVersion = lastPaintedChromeVersionRef.current;
       const proj = getTranscriptProjectionSnapshot();
-      const chromeVersionNow = `p:${proj.primaryIdx}:${proj.metaVersion}:${proj.selectedSet.size}`;
+      const chromeVersionNow = `p:${proj.primaryIdx}:${proj.selectionVersion}:${proj.selectedSet.size}`;
       const selectionChromeChanged = chromeVersionNow !== paintedChromeVersion;
       const selectionPrimaryChanged = selectionView.selectedIdx !== lastPaintedPrimaryIdxRef.current;
       const boundsSignatureChanged =

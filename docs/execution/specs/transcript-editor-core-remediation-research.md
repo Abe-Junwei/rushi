@@ -1,6 +1,6 @@
 # 调研：Transcript Editor Core 整改（选区/编辑单一真源 + 成熟编辑器内核）
 
-> **状态**：已采纳 · **P9a/P9b1/P9b2/P9b2b 完成** · 下一阶段手测签收  
+> **状态**：已采纳 · **P9a/P9b1/P9b2/P9b2b 完成** · **本机手测签收 ✅**（2026-07-11；清单：[`transcript-editor-core-handtest-checklist.md`](./transcript-editor-core-handtest-checklist.md)）· 残留：**Windows 发版前 IME 硬门禁**
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) — 编辑器交互 perf / 正确性横切  
 > **关联 spec**：[`transcript-editor-core-remediation-plan.md`](./transcript-editor-core-remediation-plan.md) · [`transcript-editor-core-remediation-acceptance.md`](./transcript-editor-core-remediation-acceptance.md)（编码前须链接本文）  
 > **取代关系**：本文 **取代** [`selection-chrome-bus-research.md`](./selection-chrome-bus-research.md) 的核心决策「保留 `selectedIdx` React state + SC2 chrome 双写 + reconcile」。原决策把「Descript 式全文档模型（路线 E）」列为非目标；本文将其**改为选定方案**（详见 §4）。  
@@ -80,6 +80,25 @@
 
 ---
 
+## 3.1 输入延迟对齐（2026-07-11 追加）
+
+用户反馈：CM6 版本在中文 IME 与英文输入下仍有轻微滞后，问题不只是不等 React `segments` 回写，而是输入 hot path 唤醒了过多非编辑订阅者。
+
+| 成熟路线 | 机制 | 对 Rushi 的结论 |
+|---|---|---|
+| CodeMirror 6 decoration / plugin | `DecorationSet` 通过 `tr.changes` 映射；只在 selection/filter/highlight 等语义输入变化时重建；视口相关 decoration 可按 visible range 计算 | 输入 transaction 内只做必要的 doc/meta/decoration 映射，禁止纯文本输入触发全量 decoration/gutter 重建 |
+| Monaco / VS Code 模型 | editor model 是输入真源；React/应用状态是 follower；保存、索引、诊断走 debounce/idle；避免 `value` 受控回灌造成光标抖动 | 保持 CM6 doc/meta 为热路径真源，React `segments`、Dirty state、autosave 通过稳定 ref + debounce 跟随 |
+| ProseMirror / Tiptap transaction plugin | 视觉插件状态随 transaction 同步派生；外部应用状态在 transaction 后低优先级发布 | stage chip、选中/hover 高亮必须在 CM6 transaction/plugin state 内完成；波形 chrome 订阅不得因纯文本输入重绘 |
+
+**决策补充**：
+
+- 输入即时反馈（文本、光标、行高亮、stage chip）落在 CM6 transaction 内。
+- React `segments`、Dirty state、autosave、undo 快照继续通过文本投递桥跟随，但不参与 keystroke-to-paint。
+- `transcriptProjection` 拆成「selection/meta 语义版本」与「文本投递」：纯文本输入不再唤醒 waveform selection chrome / band canvas。
+- 不采用 React controlled editor；不把问题简化为调小 48ms debounce；不重写为另一套编辑器内核。
+
+---
+
 ## 4. 决策摘要
 
 | 问题 | 结论 |
@@ -139,6 +158,8 @@
 | 2026-07-10 | 换行策略定稿（U+240A）；Chromium 2000 段滚动 fps=62、gutterΔ=0；本机 P0 达标，待签字进 P1 |
 | 2026-07-10 | 用户签字进入 P1；落地 `components/editor/core/` 骨架 + flag（默认 off） |
 | 2026-07-10 | P2：selection field/commands/decorations + transcriptProjection 单向投影 |
+| 2026-07-11 | 追加输入延迟对齐：CM6 transaction hot path、projection slice、decoration 增量化，避免纯文本输入唤醒 waveform chrome |
+| 2026-07-11 | 用户手测签收：handtest §0–§4 全过；Windows W-1 仍为发版前硬门禁 |
 
 ---
 

@@ -79,6 +79,15 @@ export function findLastSegmentIndexStartingAtOrBefore(
   return last;
 }
 
+type BandGeom = {
+  idx: number;
+  leftViewportPx: number;
+  bandWidthPx: number;
+  selected: boolean;
+  inSelection: boolean;
+  multiSelectActive: boolean;
+};
+
 export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): void {
   const {
     ctx,
@@ -120,27 +129,18 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
   const skip = input.skipIndexSet ?? new Set(input.skipIndices ?? []);
   const listVisible = input.listVisibleIndexSet ?? null;
 
-  const paintOne = (idx: number) => {
+  const resolveGeom = (idx: number): BandGeom | null => {
     const seg = segments[idx];
-    if (!seg) return;
+    if (!seg) return null;
     const lo = Math.min(seg.start_sec, seg.end_sec);
     const hi = Math.max(seg.start_sec, seg.end_sec);
-    if (hi < timeWindow.start || lo > timeWindow.end) return;
+    if (hi < timeWindow.start || lo > timeWindow.end) return null;
 
     const leftTimelinePx = timeToTimelinePx(lo, timelineWidthPx, durationSec);
     const rightTimelinePx = timeToTimelinePx(hi, timelineWidthPx, durationSec);
     const bandWidthPx = Math.max(2, rightTimelinePx - leftTimelinePx);
     const leftViewportPx = leftTimelinePx - scrollLeftPx;
-    if (leftViewportPx + bandWidthPx < 0 || leftViewportPx > widthPx) return;
-
-    // Dirty-rect must clear even when DOM overlay owns the band (skip/dominant).
-    // Otherwise idle pixels remain under the translucent selected overlay and the
-    // same segment looks split-tone (idle+selected vs selected-only).
-    if (dirtyOnly) {
-      ctx.clearRect(leftViewportPx, 0, bandWidthPx, heightPx);
-    }
-    if (dominant.has(idx) || skip.has(idx)) return;
-    if (listVisible && !listVisible.has(idx)) return;
+    if (leftViewportPx + bandWidthPx < 0 || leftViewportPx > widthPx) return null;
 
     const { selected, inSelection, multiSelectActive } = resolveWaveformSegmentFillState({
       idx,
@@ -150,32 +150,78 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
       selectionHi,
       selectionCount,
     });
+    return { idx, leftViewportPx, bandWidthPx, selected, inSelection, multiSelectActive };
+  };
+
+  const clearDirtyBand = (geom: BandGeom) => {
+    // Dirty-rect must clear even when DOM overlay owns the band (skip/dominant).
+    // Otherwise idle pixels remain under the translucent selected overlay and the
+    // same segment looks split-tone (idle+selected vs selected-only).
+    ctx.clearRect(geom.leftViewportPx, 0, geom.bandWidthPx, heightPx);
+  };
+
+  const fillBand = (geom: BandGeom) => {
+    const { idx, leftViewportPx, bandWidthPx, selected, inSelection, multiSelectActive } = geom;
+    if (dominant.has(idx) || skip.has(idx)) return;
+    if (listVisible && !listVisible.has(idx)) return;
+    const seg = segments[idx];
+    if (!seg) return;
     ctx.fillStyle = segmentBandFillStyle(seg, selected, playheadSec, palette, {
       inSelection,
       multiSelectActive,
     });
     ctx.fillRect(leftViewportPx, insetTop, bandWidthPx, bandHeight);
+  };
 
-    // Overlay-owned selected segments draw their own accent edges above canvas.
-    // Avoid stacking a neutral canvas stroke under that DOM border.
-    if (skip.has(idx + 1) || skip.has(idx - 1)) return;
+  const canPaintCanvasBand = (idx: number): boolean => {
+    if (dominant.has(idx) || skip.has(idx)) return false;
+    if (listVisible && !listVisible.has(idx)) return false;
+    return Boolean(segments[idx]);
+  };
+
+  const paintSeparatorAt = (edgePx: number, color: string) => {
+    ctx.fillStyle = color;
+    ctx.fillRect(Math.round(edgePx) - 1, insetTop, 1, bandHeight);
+  };
+
+  const paintBandSeparators = (geom: BandGeom) => {
+    const { idx, leftViewportPx, bandWidthPx, selected, inSelection } = geom;
+    if (!canPaintCanvasBand(idx)) return;
 
     // Canvas separators stay structural and solid; low-confidence styling is a
     // DOM-overlay affordance (dashed borders) when the segment is interactive.
-    ctx.strokeStyle = selected
+    // Drawn in a second pass so the next abutting band's fill cannot cover them.
+    // Use integer-pixel fills instead of stroke: segment boundaries often land
+    // on fractional timeline pixels, where a stroked 1px line gets antialiased
+    // enough to disappear against same-color adjacent fills.
+    const color = selected
       ? palette.selectedBorder
       : inSelection
         ? palette.inSelectionBorder
         : palette.border;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(leftViewportPx + bandWidthPx - 0.5, insetTop);
-    ctx.lineTo(leftViewportPx + bandWidthPx - 0.5, insetTop + bandHeight);
-    ctx.stroke();
+
+    if (idx > 0 && !canPaintCanvasBand(idx - 1)) {
+      paintSeparatorAt(leftViewportPx, color);
+    }
+    paintSeparatorAt(leftViewportPx + bandWidthPx, color);
+  };
+
+  const paintIndices = (indices: Iterable<number>) => {
+    const geoms: BandGeom[] = [];
+    for (const idx of indices) {
+      const geom = resolveGeom(idx);
+      if (!geom) continue;
+      if (dirtyOnly) clearDirtyBand(geom);
+      geoms.push(geom);
+    }
+    // Two-pass: fills first, then separators. Abutting segments (end==next.start)
+    // would otherwise have the next fillRect cover the previous right-edge stroke.
+    for (const geom of geoms) fillBand(geom);
+    for (const geom of geoms) paintBandSeparators(geom);
   };
 
   if (dirtyOnly) {
-    for (const idx of dirtyIndices) paintOne(idx);
+    paintIndices(dirtyIndices);
     return;
   }
 
@@ -189,5 +235,7 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
 
   if (indexTo < indexFrom) return;
 
-  for (let idx = indexFrom; idx <= indexTo; idx += 1) paintOne(idx);
+  const indices: number[] = [];
+  for (let idx = indexFrom; idx <= indexTo; idx += 1) indices.push(idx);
+  paintIndices(indices);
 }

@@ -44,7 +44,7 @@ export function useEnvOnlineSttPanelCredentialActions({
 }: UseEnvOnlineSttPanelCredentialActionsArgs) {
   const [saveBusy, setSaveBusy] = useState(false);
 
-  const saveOnlineStt = useCallback(async () => {
+  const saveOnlineStt = useCallback(async (): Promise<boolean> => {
     onInvalidateProbe();
     setSaveBusy(true);
     const { olProviderId, olApiKey, olApiSecret, savedApiKeyId, savedApiSecretId } = fields;
@@ -99,12 +99,12 @@ export function useEnvOnlineSttPanelCredentialActions({
       onSttOnlineRuntimeChanged?.();
       if (typedApiKey) {
         setOlApiKey("");
-        toast.success(`${apiKeyLabel} 已保存，请重新探测连接。`);
-      } else {
-        toast.success("已保存，沿用已存 Key。");
       }
+      toast.success("已保存，正在探测连接…");
+      return true;
     } catch (e) {
       toast.errorFromUnknown(e);
+      return false;
     } finally {
       setSaveBusy(false);
     }

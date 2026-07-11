@@ -76,13 +76,13 @@ describe("drawWaveformSegmentBands", () => {
 
   it("dirtyIndices only clears and paints the requested bands", () => {
     const cleared: Array<[number, number, number, number]> = [];
-    let fillRectCalls = 0;
+    let bandFillRectCalls = 0;
     const ctx = {
       clearRect: (x: number, y: number, w: number, h: number) => {
         cleared.push([x, y, w, h]);
       },
-      fillRect: () => {
-        fillRectCalls += 1;
+      fillRect: (_x: number, _y: number, w: number) => {
+        if (w > 1) bandFillRectCalls += 1;
       },
       stroke: () => {},
       beginPath: () => {},
@@ -115,26 +115,23 @@ describe("drawWaveformSegmentBands", () => {
 
     expect(cleared.length).toBe(2);
     expect(cleared.every((rect) => rect[2] < 1000)).toBe(true);
-    expect(fillRectCalls).toBe(2);
+    expect(bandFillRectCalls).toBe(2);
   });
 
   it("dirtyIndices still clearRect skipped overlay-owned bands", () => {
     const cleared: Array<[number, number, number, number]> = [];
-    const strokes: number[] = [];
-    let fillRectCalls = 0;
+    const filled: Array<[number, number, number, number]> = [];
     const ctx = {
       clearRect: (x: number, y: number, w: number, h: number) => {
         cleared.push([x, y, w, h]);
       },
-      fillRect: () => {
-        fillRectCalls += 1;
+      fillRect: (x: number, y: number, w: number, h: number) => {
+        filled.push([x, y, w, h]);
       },
       stroke: () => {},
       beginPath: () => {},
       moveTo: () => {},
-      lineTo: (x: number) => {
-        strokes.push(x);
-      },
+      lineTo: () => {},
       fillStyle: "",
       strokeStyle: "",
       lineWidth: 1,
@@ -160,23 +157,25 @@ describe("drawWaveformSegmentBands", () => {
 
     expect(cleared.some((rect) => rect[0] === 30 && rect[2] === 50)).toBe(true);
     // Neighbors paint; overlay-owned selected band is cleared but not filled.
-    expect(fillRectCalls).toBe(2);
-    // Selected DOM overlay owns the adjacent boundaries; canvas must not double-stroke.
-    expect(strokes).not.toContain(29.5);
-    expect(strokes).not.toContain(99.5);
+    expect(filled.filter((rect) => rect[2] > 1)).toHaveLength(2);
+    // Neighbor separators still paint under the translucent DOM overlay, so a
+    // selected/overlay-owned abutting boundary does not disappear.
+    expect(filled.some((rect) => rect[0] === 29 && rect[2] === 1)).toBe(true);
+    expect(filled.some((rect) => rect[0] === 79 && rect[2] === 1)).toBe(true);
+    expect(filled.some((rect) => rect[0] === 99 && rect[2] === 1)).toBe(true);
   });
 
   it("draws separators between adjacent canvas-owned segments", () => {
-    const strokes: number[] = [];
+    const filled: Array<[number, number, number, number]> = [];
     const ctx = {
       clearRect: () => {},
-      fillRect: () => {},
+      fillRect: (x: number, y: number, w: number, h: number) => {
+        filled.push([x, y, w, h]);
+      },
       stroke: () => {},
       beginPath: () => {},
       moveTo: () => {},
-      lineTo: (x: number) => {
-        strokes.push(x);
-      },
+      lineTo: () => {},
       fillStyle: "",
       strokeStyle: "",
       lineWidth: 1,
@@ -195,7 +194,80 @@ describe("drawWaveformSegmentBands", () => {
       layoutHeightPx: 96,
     });
 
-    expect(strokes).toContain(29.5);
+    expect(filled.some((rect) => rect[0] === 29 && rect[2] === 1)).toBe(true);
+  });
+
+  it("paints abutting separators after all fills (no cover-up)", () => {
+    const ops: Array<{ kind: "band" | "separator" | "clear" }> = [];
+    const ctx = {
+      clearRect: () => {
+        ops.push({ kind: "clear" });
+      },
+      fillRect: (_x: number, _y: number, w: number) => {
+        ops.push({ kind: w === 1 ? "separator" : "band" });
+      },
+      stroke: () => {},
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 3, text: "a" },
+        { idx: 1, uid: "b", start_sec: 3, end_sec: 8, text: "b" },
+        { idx: 2, uid: "c", start_sec: 8, end_sec: 10, text: "c" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 100,
+      timelineWidthPx: 100,
+      durationSec: 10,
+      layoutHeightPx: 96,
+    });
+
+    expect(ops.filter((op) => op.kind === "band")).toHaveLength(3);
+    expect(ops.filter((op) => op.kind === "separator")).toHaveLength(3);
+    const lastBand = ops.map((op) => op.kind).lastIndexOf("band");
+    const firstSeparator = ops.findIndex((op) => op.kind === "separator");
+    expect(firstSeparator).toBeGreaterThan(lastBand);
+  });
+
+  it("paints fractional-time abutting separators as a solid pixel", () => {
+    const filled: Array<[number, number, number, number]> = [];
+    const ctx = {
+      clearRect: () => {},
+      fillRect: (x: number, y: number, w: number, h: number) => {
+        filled.push([x, y, w, h]);
+      },
+      stroke: () => {
+        throw new Error("separator should not use antialiased stroke");
+      },
+      beginPath: () => {},
+      moveTo: () => {},
+      lineTo: () => {},
+      fillStyle: "",
+      strokeStyle: "",
+      lineWidth: 1,
+    } as unknown as CanvasRenderingContext2D;
+
+    drawWaveformSegmentBands({
+      ctx,
+      segments: [
+        { idx: 0, uid: "a", start_sec: 0, end_sec: 1, text: "a" },
+        { idx: 1, uid: "b", start_sec: 1, end_sec: 2, text: "b" },
+      ],
+      scrollLeftPx: 0,
+      viewportWidthPx: 100,
+      timelineWidthPx: 100,
+      durationSec: 3,
+      layoutHeightPx: 96,
+    });
+
+    expect(filled.some((rect) => rect[0] === 32 && rect[2] === 1)).toBe(true);
   });
 
   it("respects skipIndexSet the same as skipIndices (S10 external Set)", () => {
@@ -229,11 +301,11 @@ describe("drawWaveformSegmentBands", () => {
   });
 
   it("does not fill indices outside listVisibleIndexSet", () => {
-    let fillRectCalls = 0;
+    let bandFillRectCalls = 0;
     const ctx = {
       clearRect: () => {},
-      fillRect: () => {
-        fillRectCalls += 1;
+      fillRect: (_x: number, _y: number, w: number) => {
+        if (w > 1) bandFillRectCalls += 1;
       },
       stroke: () => {},
       beginPath: () => {},
@@ -258,7 +330,7 @@ describe("drawWaveformSegmentBands", () => {
       listVisibleIndexSet: new Set([0]),
     });
 
-    expect(fillRectCalls).toBe(1);
+    expect(bandFillRectCalls).toBe(1);
   });
 
   it("dirtyIndices clear filtered-out bands without filling them", () => {
@@ -298,13 +370,13 @@ describe("drawWaveformSegmentBands", () => {
 
   it("full clearRect runs when dirtyIndices is omitted (gap ghost guard)", () => {
     const cleared: Array<[number, number, number, number]> = [];
-    let fillRectCalls = 0;
+    let bandFillRectCalls = 0;
     const ctx = {
       clearRect: (x: number, y: number, w: number, h: number) => {
         cleared.push([x, y, w, h]);
       },
-      fillRect: () => {
-        fillRectCalls += 1;
+      fillRect: (_x: number, _y: number, w: number) => {
+        if (w > 1) bandFillRectCalls += 1;
       },
       stroke: () => {},
       beginPath: () => {},
@@ -333,7 +405,7 @@ describe("drawWaveformSegmentBands", () => {
     expect(cleared.some((r) => r[0] === 0 && r[1] === 0 && r[2] === 400 && r[3] === 96)).toBe(
       true,
     );
-    expect(fillRectCalls).toBe(2);
+    expect(bandFillRectCalls).toBe(2);
   });
 
   it("dirtyIndices-only path does not clear the full window (documents gap risk)", () => {

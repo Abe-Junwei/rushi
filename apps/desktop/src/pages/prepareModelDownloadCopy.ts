@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../config/environmentNavCopy";
 import {
   packagedOrDev,
   packagedOrDevArray,
@@ -23,7 +24,7 @@ function commonRetryTips(): string[] {
     ];
   }
   return [
-    "在「环境 → 本机 ASR」点「一键准备」重试。",
+    `在「${ENV_NAV.localAsr}」点「一键准备」重试。`,
     "点「重新检测 ASR」确认服务仍在本机运行。",
     "若多次失败：检查网络/代理/VPN，或更换网络后再试。",
   ];
@@ -164,7 +165,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       tips: [
         packagedOrDev(
           "确认侧车已启动：npm run desktop:dev（自动拉起）或 npm run asr:dev。",
-          "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+          `请在「${ENV_NAV.localAsr}」点「一键准备本机 ASR」或「重试内置侧车」。`,
         ),
         packagedOrDev(
           "终端执行：curl -sf http://127.0.0.1:8741/health 应有 JSON 返回。",

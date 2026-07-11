@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../../config/environmentNavCopy";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
 import type { ModelMemoryState } from "./asrModelMemoryState";
@@ -135,7 +136,7 @@ function blockReasonFor(input: {
   sidecarAsyncTranscribeCapable?: boolean;
 }): string | null {
   if (input.asrHealth !== "ok" || !input.asrCaps) {
-    return "本机 ASR 未就绪：请先在「环境 → 本机 ASR」完成侧车与模型准备。";
+    return `本机 ASR 未就绪：请先在「${ENV_NAV.localAsr}」完成侧车与模型准备。`;
   }
   if (input.sidecarAsyncTranscribeCapable === false) {
     return packagedOrDev(

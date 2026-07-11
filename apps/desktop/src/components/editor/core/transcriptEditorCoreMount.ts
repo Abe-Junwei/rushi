@@ -2,6 +2,7 @@ import { Compartment, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { computeSegmentLaneRowPx } from "../../../utils/segmentLayout";
+import { segmentListRowMinHeightPx } from "../../../utils/segmentListVirtualWindowCore";
 import { transcriptEditorCoreExtensions } from "./transcriptEditorCoreExtensions";
 import { selectSegmentCommand } from "./selectionCommands";
 import { createOnDocChangedBridge, applyProjectedTextDiff } from "./onDocChanged";
@@ -20,8 +21,11 @@ export function buildTranscriptAppearanceTheme(args: {
   fontItalic: boolean;
   metaGutterWidthPx: number;
 }): Extension {
-  const linePad = Math.max(4, Math.round(args.fontPx * 0.22));
-  const minLine = Math.max(28, Math.round(computeSegmentLaneRowPx(args.fontPx) * 0.42));
+  // Match legacy list row stride (`segmentListRowMinHeightPx` + seg-text line-height 1.72).
+  const lineHeight = 1.72;
+  const minLine = segmentListRowMinHeightPx(computeSegmentLaneRowPx(args.fontPx));
+  const contentLine = Math.round(args.fontPx * lineHeight);
+  const linePad = Math.max(16, Math.ceil((minLine - contentLine) / 2));
   return EditorView.theme({
     "&": {
       height: "100%",
@@ -29,20 +33,53 @@ export function buildTranscriptAppearanceTheme(args: {
       fontFamily: args.fontFamily,
       fontWeight: String(args.fontWeight),
       fontStyle: args.fontItalic ? "italic" : "normal",
+      letterSpacing: "0.005em",
+      color: "var(--notion-text)",
+      backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
+      "--cm-transcript-line-pad": `${linePad}px`,
     },
-    ".cm-scroller": { overflow: "auto" },
-    ".cm-content": { padding: "0.35rem 0.5rem 0.5rem 0" },
+    ".cm-scroller": {
+      overflow: "auto",
+      fontFamily: "inherit",
+      padding: "0.75rem",
+      boxSizing: "border-box",
+    },
+    // !important: CM6 `&light .cm-gutters` is more specific than plain theme selectors.
+    ".cm-gutters": {
+      backgroundColor: "transparent !important",
+      border: "0 solid transparent !important",
+      margin: "0",
+      padding: "0",
+    },
+    ".cm-gutters-before": {
+      borderRightWidth: "0 !important",
+      backgroundColor: "transparent !important",
+    },
+    ".cm-gutters-after": {
+      borderLeftWidth: "0 !important",
+      backgroundColor: "transparent !important",
+    },
+    ".cm-content": {
+      padding: "0.15rem 0 0.5rem 0",
+      caretColor: "var(--accent-action-strong)",
+    },
     ".cm-line": {
       paddingTop: `${linePad}px`,
       paddingBottom: `${linePad}px`,
+      paddingLeft: "0.75rem",
+      paddingRight: "0.75rem",
       minHeight: `${minLine}px`,
+      lineHeight: String(lineHeight),
+      fontWeight: "inherit",
+      boxSizing: "border-box",
+      borderRadius: "0",
     },
     ".cm-transcript-primary-line": {
-      backgroundColor: "color-mix(in srgb, var(--color-saffron, #c45c26) 16%, transparent)",
+      backgroundColor: "var(--segment-fill-selected-list)",
     },
     ".cm-transcript-in-selection-line": {
-      backgroundColor: "color-mix(in srgb, var(--color-saffron, #c45c26) 8%, transparent)",
+      backgroundColor: "var(--segment-fill-in-selection-list)",
     },
   });
 }
@@ -91,6 +128,16 @@ export function buildTranscriptEditorCoreExtensions(args: {
     }),
     createOnDocChangedBridge({
       debounceMs: 48,
+      onTextLineProjected: (idx, text) => {
+        args.applyingFromBridgeRef.current = true;
+        try {
+          args.updateSegmentTextRef.current(idx, text);
+        } finally {
+          window.setTimeout(() => {
+            args.applyingFromBridgeRef.current = false;
+          }, 0);
+        }
+      },
       onTextLinesProjected: (projected) => {
         args.applyingFromBridgeRef.current = true;
         try {
@@ -100,9 +147,9 @@ export function buildTranscriptEditorCoreExtensions(args: {
             updateSegmentText: (idx, text) => args.updateSegmentTextRef.current(idx, text),
           });
         } finally {
-          queueMicrotask(() => {
+          window.setTimeout(() => {
             args.applyingFromBridgeRef.current = false;
-          });
+          }, 0);
         }
       },
     }),

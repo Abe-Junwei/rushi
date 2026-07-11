@@ -29,13 +29,17 @@ export function drawWaveformMinimap(
   const drawColumn = (x: number, colW: number, min: number, max: number) => {
     const halfBar = peakHalfHeightPx(min, max, drawHalfH);
     const yTop = midY - halfBar;
-    ctx.fillRect(x, yTop, Math.max(1, colW), Math.max(1, halfBar * 2));
+    // Integer pixel bounds avoid subpixel antialias blur on Retina.
+    const ix = Math.floor(x);
+    const iw = Math.max(1, Math.round(x + colW) - ix);
+    ctx.fillRect(ix, yTop, iw, Math.max(1, halfBar * 2));
   };
 
   if (colCount <= w) {
-    const colW = w / colCount;
     for (let i = 0; i < colCount; i += 1) {
-      drawColumn(i * colW, colW, peaks[i * 2] ?? 0, peaks[i * 2 + 1] ?? 0);
+      const x0 = (i * w) / colCount;
+      const x1 = ((i + 1) * w) / colCount;
+      drawColumn(x0, x1 - x0, peaks[i * 2] ?? 0, peaks[i * 2 + 1] ?? 0);
     }
     return;
   }

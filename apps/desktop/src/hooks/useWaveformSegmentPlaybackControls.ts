@@ -14,7 +14,7 @@ import {
   type SegmentPlayFromResolution,
 } from "../services/waveform/transport";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
-import { subscribeTranscriptProjection } from "../components/editor/core/transcriptProjection";
+import { subscribeTranscriptSelectionProjection } from "../components/editor/core/transcriptProjection";
 import { subscribePlaybackFrame } from "../utils/tierScrollFrameCoordinator";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 
@@ -62,9 +62,11 @@ export function useWaveformSegmentPlaybackControls(args: {
   isSelectedSegmentPlayingRef.current = isSelectedSegmentPlaying;
   const preserveLoopOnNextSelectRef = useRef(false);
   const pausedResumeAnchorRef = useRef<{ idx: number; timeSec: number } | null>(null);
+  const autoStoppedSegmentIdxRef = useRef<number | null>(null);
 
   const clearPausedResumeAnchor = useCallback(() => {
     pausedResumeAnchorRef.current = null;
+    autoStoppedSegmentIdxRef.current = null;
   }, []);
 
   /** Flag-on: CM6 projection primary (SC1 bridge fallback). */
@@ -92,6 +94,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   const clearSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
+    autoStoppedSegmentIdxRef.current = null;
     setIsSelectedSegmentPlaying(false);
   }, []);
 
@@ -99,6 +102,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   const cancelSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
+    autoStoppedSegmentIdxRef.current = null;
     playGenerationRef.current += 1;
     setIsSelectedSegmentPlaying(false);
   }, []);
@@ -216,11 +220,15 @@ export function useWaveformSegmentPlaybackControls(args: {
       const seg = latestSegmentsRef.current[idx];
       if (!seg) return;
       const pausedAnchor = pausedResumeAnchorRef.current;
+      const autoStoppedSameSegment = autoStoppedSegmentIdxRef.current === idx;
       const resumeFromSec =
-        options?.fromSec == null && pausedAnchor?.idx === idx
+        options?.fromSec == null && autoStoppedSameSegment
+          ? Math.min(seg.start_sec, seg.end_sec)
+          : options?.fromSec == null && pausedAnchor?.idx === idx
           ? pausedAnchor.timeSec
           : options?.fromSec;
       pausedResumeAnchorRef.current = null;
+      autoStoppedSegmentIdxRef.current = null;
       const playFrom = resolveSegmentPlayFrom({
         segment: seg,
         fromSec: resumeFromSec,
@@ -338,10 +346,11 @@ export function useWaveformSegmentPlaybackControls(args: {
             atomicMediaSeek(clampedEnd);
           }
         } else {
+          autoStoppedSegmentIdxRef.current = resolveEffectiveSelectedIdx();
           segmentPlaybackBoundRef.current = null;
           setIsSelectedSegmentPlaying(false);
           // Freeze at segment end — never seek back to start on auto-stop.
-          // Next Space uses resolveSegmentPlayFrom → playhead (may be at end / past).
+          // The next selected-segment play is explicitly routed back to segment start.
           const clampedEnd = Math.max(0, Math.min(endSec, live.getDuration()));
           if (Number.isFinite(clampedEnd)) {
             atomicMediaSeek(clampedEnd);
@@ -349,7 +358,7 @@ export function useWaveformSegmentPlaybackControls(args: {
         }
       });
     },
-    [atomicMediaSeek, isReady, resolvePlayheadSec, wsRef],
+    [atomicMediaSeek, isReady, resolveEffectiveSelectedIdx, resolvePlayheadSec, wsRef],
   );
 
   /**
@@ -431,7 +440,7 @@ export function useWaveformSegmentPlaybackControls(args: {
         syncSelectedSegmentPlayingUi();
       });
     };
-    const unsubProjection = subscribeTranscriptProjection(syncAfterSelectionCommit);
+    const unsubProjection = subscribeTranscriptSelectionProjection(syncAfterSelectionCommit);
     return () => {
       unsubProjection();
     };
@@ -462,6 +471,12 @@ export function useWaveformSegmentPlaybackControls(args: {
     const anchor = pausedResumeAnchorRef.current;
     if (anchor && anchor.idx !== resolveEffectiveSelectedIdx()) {
       pausedResumeAnchorRef.current = null;
+    }
+    if (
+      autoStoppedSegmentIdxRef.current != null &&
+      autoStoppedSegmentIdxRef.current !== resolveEffectiveSelectedIdx()
+    ) {
+      autoStoppedSegmentIdxRef.current = null;
     }
     if (preserveLoopOnNextSelectRef.current) {
       preserveLoopOnNextSelectRef.current = false;

@@ -1,8 +1,10 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import { useEnvLlmPromptConfig } from "../hooks/useEnvLlmPromptConfig";
 import { resolveLlmEnvEffectiveConfig } from "../services/llm/llmEnvStatus";
+import { ollamaDetectReady } from "../services/llm/llmEnvStatusTone";
+import { toast } from "../services/ui/toast";
 import {
   getLlmProviderDefinition,
   isLocalLoopbackLlmConfig,
@@ -85,6 +87,21 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     settingsOverlay,
   );
 
+  const save = useCallback(async () => {
+    const outcome = await persistence.save();
+    if (outcome !== "probe") return;
+    if (localLoopback) {
+      const out = await refreshDetect();
+      if (out.reachable && ollamaDetectReady(out)) {
+        toast.success(out.message?.trim() || "Ollama 连接就绪。");
+      } else {
+        toast.error(out.message?.trim() || "Ollama 不可达，请确认本机服务已启动。");
+      }
+      return;
+    }
+    await probeHook.probe({ preferPersistedCredentials: true });
+  }, [localLoopback, persistence.save, probeHook.probe, refreshDetect]);
+
   return {
     llmEnvMode,
     formBusy,
@@ -105,7 +122,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     setModel,
     setApiKey,
     invalidateProbe: probeHook.invalidateProbe,
-    save: persistence.save,
+    save,
     probe: probeHook.probe,
     clearSavedApiKey: persistence.clearSavedApiKey,
     keychainChecking,

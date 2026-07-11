@@ -113,11 +113,6 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     [ctxRef, scrollFitRef],
   );
 
-  const revealSegmentAtChromePrimary = useCallback(() => {
-    const c = ctxRef.current;
-    revealSegmentAtIndex(effectiveTranscriptPrimaryIdx(c.selectedIdx));
-  }, [ctxRef, revealSegmentAtIndex]);
-
   const finalizeListKeyboardViewport = useCallback(
     (revealIdx?: number) => {
       cancelAnimationFrame(pendingRevealRafRef.current);
@@ -156,15 +151,18 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
   }, [finalizeListKeyboardViewport]);
 
   const scheduleRevealSelectedSegment = useCallback(
-    (source: SegmentSelectSource) => {
+    (source: SegmentSelectSource, idx: number) => {
       cancelAnimationFrame(pendingRevealRafRef.current);
       pendingRevealRafRef.current = 0;
       window.clearTimeout(pendingRevealTimeoutRef.current);
       pendingRevealTimeoutRef.current = 0;
 
+      // Prefer the transport idx — React `selectedIdx` lags after P9b2 (CM6 is SoT).
       const reveal = () => {
         pendingRevealTimeoutRef.current = 0;
-        selectionProfileTime("viewport", revealSegmentAtChromePrimary);
+        selectionProfileTime("viewport", () => {
+          revealSegmentAtIndex(idx);
+        });
       };
 
       if (source === "listKeyboard") {
@@ -177,18 +175,12 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
 
       pendingRevealRafRef.current = requestAnimationFrame(() => {
         pendingRevealRafRef.current = 0;
-        const c = ctxRef.current;
-        const seg = c.segments[c.selectedIdx];
-        if (!seg) return;
         selectionProfileTime("viewport", () => {
-          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
+          revealSegmentAtIndex(idx);
         });
       });
     },
-    [ctxRef, revealSegmentAtChromePrimary, scrollFitRef],
+    [revealSegmentAtIndex],
   );
 
   const runListKeyboardBurstListScroll = useCallback((idx: number) => {

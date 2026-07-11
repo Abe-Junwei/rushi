@@ -8,9 +8,14 @@ import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/project
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
+export type ConfirmAdvanceStep = {
+  /** Cmd+Enter / 右键定稿路径为 true；Tab 跳段为 false。 */
+  finalize: boolean;
+};
+
 export type ConfirmAdvanceTabQueueRef = {
   inFlight: boolean;
-  pendingSteps: number;
+  pending: ConfirmAdvanceStep[];
 };
 
 export const CONFIRM_ADVANCE_TAB_QUEUE_MAX = 8;
@@ -40,8 +45,10 @@ function nextFrame(): Promise<void> {
 export function enqueueConfirmAdvanceTab(
   queue: ConfirmAdvanceTabQueueRef,
   deps: ConfirmAdvanceTabQueueDeps,
+  opts?: { finalize?: boolean },
 ): void {
-  queue.pendingSteps = Math.min(queue.pendingSteps + 1, CONFIRM_ADVANCE_TAB_QUEUE_MAX);
+  if (queue.pending.length >= CONFIRM_ADVANCE_TAB_QUEUE_MAX) return;
+  queue.pending.push({ finalize: opts?.finalize === true });
   if (!queue.inFlight) {
     void drainConfirmAdvanceTabQueue(queue, deps);
   }
@@ -56,8 +63,9 @@ export async function drainConfirmAdvanceTabQueue(
   let lastAdvancedIdx: number | null = null;
   let cursorIdx = resolveConfirmAdvanceSegmentIdx(deps.getCtx());
   try {
-    while (queue.pendingSteps > 0) {
-      queue.pendingSteps -= 1;
+    while (queue.pending.length > 0) {
+      const step = queue.pending.shift();
+      if (!step) continue;
       const ctx = deps.getCtx();
       if (cursorIdx < 0 || cursorIdx >= ctx.segments.length) continue;
 
@@ -70,7 +78,9 @@ export async function drainConfirmAdvanceTabQueue(
       );
 
       if (nextIdx == null || nextIdx === fromIdx) {
-        await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+        if (step.finalize) {
+          await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+        }
         continue;
       }
 
@@ -79,11 +89,13 @@ export async function drainConfirmAdvanceTabQueue(
       lastAdvancedIdx = nextIdx;
       cursorIdx = nextIdx;
       await nextFrame();
-      await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+      if (step.finalize) {
+        await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+      }
     }
   } finally {
     queue.inFlight = false;
-    if (queue.pendingSteps > 0) {
+    if (queue.pending.length > 0) {
       void drainConfirmAdvanceTabQueue(queue, deps);
     } else if (lastAdvancedIdx != null && readStoredTabAdvanceLoopsSegment()) {
       deps.wf.preserveLoopForNextSegmentSelect();

@@ -18,7 +18,7 @@
 | `api_key_id` 持久化 | localStorage 键 `rushi.llm.apiKeyId`（默认 `default`）；**不**存明文 Key |
 | 解析顺序 | `postprocess_auto_punctuate`：若 `runtime.api_key` 非空 → 用会话桥接；否则 `api_key_id` → keychain → 开发 env `RUSHI_POSTPROCESS_API_KEY` |
 | 探测 | Tauri `llm_probe_connection`：`GET {base}/models` 或最小开销请求；返回 `{ ok, status?, message, latency_ms? }` |
-| UI | `EnvLlmConfigPanel`：保存 Key 写 keychain；显示「已保存 / 未配置」；「探测连接」按钮 + 结果文案 |
+| UI | `EnvLlmConfigPanel`：保存 Key 写 keychain；显示「已保存 / 未配置」；「探测连接」按钮 + 结果文案；**保存成功且具备可探测凭证后自动探测**（手动探测仍保留） |
 | 契约 | `postprocessRuntimeContract.ts`：`LLM_STORAGE_KEYS.apiKeyId`、读写 helper；探测类型与 STT probe 状态机对齐 |
 
 ### 不做（R3a）
@@ -81,13 +81,13 @@
 ### B. 探测 — 成功
 
 1. 配置有效 Key 与 `https://api.deepseek.com/v1`。
-2. 点击「探测连接」。
-3. 确认显示成功类文案与耗时；无 Key 泄露到界面持久字段。
+2. 点击「保存配置」（应自动探测）；或单独点「探测连接」。
+3. 确认显示成功类文案与耗时；top-bar LLM chip 更新为已验证；无 Key 泄露到界面持久字段。
 
 ### C. 探测 — 失败
 
 1. 故意填错 Key 或错误 base_url。
-2. 探测应显示失败说明（含 HTTP 状态或网络类中文提示）。
+2. 保存或探测应显示失败说明（含 HTTP 状态或网络类中文提示）；chip 不为绿。
 3. 自动标点触发时应同类错误，**不**写回语段。
 
 ### D. 会话桥接优先（回归 R2）

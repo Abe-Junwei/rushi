@@ -57,6 +57,7 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "edit.redo" ||
     shortcutId === "workflow.save" ||
     shortcutId === "workflow.confirmAdvance" ||
+    shortcutId === "workflow.advanceSegment" ||
     shortcutId === "workflow.find" ||
     shortcutId === "workflow.openSettings" ||
     shortcutId === "workflow.openActivityInbox" ||
@@ -89,7 +90,7 @@ export function useEditorShortcutDispatcher(args: {
   argsRef.current = args;
   const confirmAdvanceQueueRef = useRef<ConfirmAdvanceTabQueueRef>({
     inFlight: false,
-    pendingSteps: 0,
+    pending: [],
   });
 
   useEffect(() => {

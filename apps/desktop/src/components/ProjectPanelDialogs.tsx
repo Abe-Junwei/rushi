@@ -19,6 +19,7 @@ import { SegmentAnnotationDialog } from "./SegmentAnnotationDialog";
 import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
 import { TranscribeNavBlockDialog } from "./TranscribeNavBlockDialog";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
+import { transcribeCancelStoppingLabel } from "./projectStatusFeedbackCopy";
 
 export type ProjectPanelDialogsProps = {
   c: ProjectControllerApi;
@@ -223,6 +224,11 @@ export function ProjectPanelDialogs({
       <TranscribeNavBlockDialog
         open={c.transcribeNavBlockOpen}
         stopping={c.transcribeNavBlockStopping}
+        stoppingLabel={
+          c.busyReason === "batch_transcribe"
+            ? "正在停止…"
+            : transcribeCancelStoppingLabel(c.transcribeSource)
+        }
         mode={c.busyReason === "batch_transcribe" ? "batch" : "single"}
         onStay={c.cancelTranscribeNavBlock}
         onStopAndLeave={() => void c.confirmTranscribeNavBlock()}

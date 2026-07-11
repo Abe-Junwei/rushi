@@ -135,9 +135,9 @@ describe("EnvLlmConfigPanel", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "保存配置" })[0]);
     await waitFor(() => {
-      expect(toastSuccess).toHaveBeenCalled();
+      expect(llmProbeConnection.mock.calls.length).toBeGreaterThanOrEqual(2);
+      expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
     });
-    expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
     expect(screen.queryByText(/Key 已保存，请探测连接/)).toBeNull();
   });
 
@@ -162,7 +162,7 @@ describe("EnvLlmConfigPanel", () => {
     expect(screen.queryByText(/已验证，导出润色可用/)).toBeNull();
   });
 
-  it("probes with keychain id after save clears the input", async () => {
+  it("auto-probes with keychain id after save clears the input", async () => {
     llmProbeConnection.mockResolvedValue({
       ok: true,
       message: "连接成功。",
@@ -179,12 +179,6 @@ describe("EnvLlmConfigPanel", () => {
 
     await waitFor(() => {
       expect(llmSaveApiKey).toHaveBeenCalled();
-    });
-
-    const probeButton = screen.getByRole("button", { name: "探测连接" });
-    fireEvent.click(probeButton);
-
-    await waitFor(() => {
       expect(llmProbeConnection).toHaveBeenCalled();
     });
     const req = llmProbeConnection.mock.calls[0]?.[0] as {
@@ -192,6 +186,9 @@ describe("EnvLlmConfigPanel", () => {
     };
     expect(req.runtime?.apiKeyId).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(req.runtime?.apiKey).toBeUndefined();
+    await waitFor(() => {
+      expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
+    });
   });
 
   it("shows LLM source switch; ollama banner only in local mode", async () => {

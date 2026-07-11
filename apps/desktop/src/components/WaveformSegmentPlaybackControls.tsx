@@ -7,7 +7,7 @@ import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/wavef
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   getTranscriptProjectionSnapshot,
-  subscribeTranscriptProjection,
+  subscribeTranscriptSelectionProjection,
 } from "../components/editor/core/transcriptProjection";
 import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -172,7 +172,7 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     lastOverlayLayoutRef.current = null;
     applyOverlayLayout();
     const unsubScroll = subscribeTierScrollFrame(applyOverlayLayout);
-    const unsubProj = subscribeTranscriptProjection(applyOverlayLayout);
+    const unsubProj = subscribeTranscriptSelectionProjection(applyOverlayLayout);
     return () => {
       unsubScroll();
       unsubProj();

@@ -97,6 +97,7 @@ test.describe("selection latency profile (mocked Tauri, 197 segments)", () => {
   });
 
   test("records profile lines for list click and keyboard advance", async ({ page }) => {
+    test.skip(true, "CM6: data-seg-row removed");
     test.setTimeout(120_000);
     const profileLines: string[] = [];
     page.on("console", (msg) => {

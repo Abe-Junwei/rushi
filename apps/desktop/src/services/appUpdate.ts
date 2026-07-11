@@ -63,7 +63,7 @@ export async function checkForAppUpdate(appVersion: string): Promise<AppUpdateCh
       kind: "available",
       update,
       version: update.version,
-      notes: update.body ?? undefined,
+      notes: update.body ? update.body.slice(0, 500) : undefined,
     };
   } catch (error) {
     return { kind: "error", message: mapAppUpdateError(error) };
