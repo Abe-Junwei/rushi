@@ -163,7 +163,7 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi: vi.fn(),
+        selectedIdxRef: { current: 0 },
       }),
     );
 
@@ -199,7 +199,7 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: null },
-        setSelectedIdxUi: vi.fn(),
+        selectedIdxRef: { current: 0 },
       }),
     );
 
@@ -215,10 +215,12 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
     expect(selectionProfileMeetsHandChromeGate(parsed!)).toBe(true);
   });
 
-  it(`V-CI: ${SELECTION_PROFILE_BASELINE_SEGMENT_COUNT}-seg waveformKeyboard burst syncPathTotal ≤ ${SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS}ms`, () => {
+  it(`V-CI: ${SELECTION_PROFILE_BASELINE_SEGMENT_COUNT}-seg waveformKeyboard burst step ≤ ${SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS}ms`, () => {
     const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
     const targetIdx = 68;
     const ctx = makeCtx(segmentCount, 0);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
     seedOverlayNodes(timeline.overlayRoot, [0, targetIdx]);
@@ -233,20 +235,19 @@ describe("selection chrome sync path perf (V-CI / F-SPLIT)", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi: vi.fn(),
+        selectedIdxRef,
       }),
     );
 
+    // waveformKeyboard is always a burst step (no selection-profile line until keyup).
+    const t0 = performance.now();
     act(() => {
       result.current.selectSegmentAt(targetIdx, "waveformKeyboard");
-      selectionProfileFlush();
     });
+    const elapsed = performance.now() - t0;
 
-    const parsed = parseSelectionProfileLine(
-      latestProfileLine((line) => line.includes(`waveformKeyboard idx=${targetIdx}`)),
-    );
-    expect(parsed).not.toBeNull();
-    expect(parsed!.spans.listChrome ?? 0).toBe(0);
-    expect(selectionProfileMeetsCiGate(parsed!)).toBe(true);
+    expect(selectedIdxRef.current).toBe(targetIdx);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+    expect(elapsed).toBeLessThanOrEqual(SELECTION_PROFILE_CI_SYNC_PATH_MAX_MS);
   });
 });

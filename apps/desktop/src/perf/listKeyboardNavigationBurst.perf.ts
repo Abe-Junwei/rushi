@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTranscriptionLayerSelection } from "../pages/useTranscriptionLayerSelection";
 import {
@@ -70,8 +70,6 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
   });
 
   it(`LKB-1: ${LIST_KEYBOARD_BURST_SEGMENT_COUNT}-seg scroll meta burst ≤ ${LIST_KEYBOARD_BURST_PLAN_MAX_MS}ms per step`, () => {
-    const rowMin = segmentListRowMinHeightPx(70);
-    const stride = segmentListItemStridePx(rowMin);
     const displayCount = LIST_KEYBOARD_BURST_SEGMENT_COUNT;
 
     let selectedDisplayIndex = 0;
@@ -86,8 +84,8 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
         filteredIndices: [],
         transcriptRowHeightPx: 70,
         virtualizeMinCount: SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
-        rowMinHeightPx: rowMin,
-        itemStridePx: stride,
+        rowMinHeightPx: segmentListRowMinHeightPx,
+        itemStridePx: segmentListItemStridePx,
       });
       const elapsed = performance.now() - t0;
       expect(elapsed).toBeLessThanOrEqual(LIST_KEYBOARD_BURST_PLAN_MAX_MS);
@@ -100,6 +98,8 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
     const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
     const targetIdx = 42;
     const ctx = makeCtx(segmentCount, 0);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline(segmentCount);
 
@@ -117,7 +117,7 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi: vi.fn(),
+        selectedIdxRef,
       }),
     );
 
@@ -136,9 +136,10 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
   it("LKB-2: listKeyboard burst defers SC1 commit until keyup flush", () => {
     const segmentCount = SELECTION_PROFILE_BASELINE_SEGMENT_COUNT;
     const ctx = makeCtx(segmentCount, 0);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline(segmentCount);
-    const setSelectedIdxUi = vi.fn();
 
     const rowMin = segmentListRowMinHeightPx(70);
     const stride = segmentListItemStridePx(rowMin);
@@ -154,7 +155,7 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef: { current: listRoot },
-        setSelectedIdxUi,
+        selectedIdxRef,
       }),
     );
 
@@ -165,21 +166,18 @@ describe("list keyboard navigation burst perf (V-CI / LKB-1)", () => {
       }
     });
 
-    expect(setSelectedIdxUi).not.toHaveBeenCalled();
+    const finalIdx = LIST_KEYBOARD_BURST_STEPS * 17;
+    expect(selectedIdxRef.current).toBe(finalIdx);
 
     const midBurstLines = readRecentSelectionLatencyProfileLines().filter((line) =>
       /\[selection-profile\] #\d+ listKeyboard idx=/.test(line),
     );
     expect(midBurstLines).toHaveLength(0);
 
-    const finalIdx = LIST_KEYBOARD_BURST_STEPS * 17;
     act(() => {
       result.current.commitListKeyboardBurst(finalIdx);
       selectionProfileFlush();
     });
-
-    expect(setSelectedIdxUi).toHaveBeenCalledTimes(1);
-    expect(setSelectedIdxUi).toHaveBeenCalledWith(finalIdx);
 
     const commitLines = readRecentSelectionLatencyProfileLines().filter((line) =>
       line.includes(`listKeyboard commit idx=${finalIdx}`),

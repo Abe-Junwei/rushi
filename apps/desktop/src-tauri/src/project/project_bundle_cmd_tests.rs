@@ -139,15 +139,19 @@ fn export_and_import_project_bundle_round_trip() {
         .unwrap();
     assert_eq!(imported_edit_kind, "import_project_bundle");
 
-    let (kind, text_stage, finalize_via, annotation): (Option<String>, String, Option<String>, String) =
-        conn
-            .query_row(
-                "SELECT kind, text_stage, finalize_via, annotation FROM segments \
+    let (kind, text_stage, finalize_via, annotation): (
+        Option<String>,
+        String,
+        Option<String>,
+        String,
+    ) = conn
+        .query_row(
+            "SELECT kind, text_stage, finalize_via, annotation FROM segments \
                  WHERE file_id = ?1 AND idx = 0",
-                params![&imported.files[0].id],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
-            )
-            .unwrap();
+            params![&imported.files[0].id],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+        )
+        .unwrap();
     assert_eq!(kind.as_deref(), Some("speech"));
     assert_eq!(text_stage, "finalized");
     assert_eq!(finalize_via.as_deref(), Some("manual"));
