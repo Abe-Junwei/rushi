@@ -91,7 +91,7 @@ jobs:
         run: bash scripts/bootstrap-asr-venv.sh
 
       - name: Cache ModelScope download (Plan B staging)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: dist/bundled-asr-models/.modelscope-cache
           key: bundled-asr-models-v1-macos-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
@@ -332,7 +332,7 @@ jobs:
         run: bash scripts/bootstrap-asr-venv.sh
 
       - name: Cache ModelScope download (Plan B staging)
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: dist/bundled-asr-models/.modelscope-cache
           key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
