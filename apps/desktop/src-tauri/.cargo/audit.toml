@@ -1,5 +1,9 @@
-# Transitive via gtk/glib proc-macros; no patched release available.
+# Advisories we cannot clear without upstream bumps (Tauri GTK stack / docx-rs / calamine).
 [advisories]
 ignore = [
+  # Historical ignore (gtk/glib proc-macros path).
   "RUSTSEC-2024-0370",
+  # quick-xml DoS: docx-rs pins 0.36; calamine/tauri-plist pin 0.39; patched >=0.41 not adoptable yet.
+  "RUSTSEC-2026-0194",
+  "RUSTSEC-2026-0195",
 ]

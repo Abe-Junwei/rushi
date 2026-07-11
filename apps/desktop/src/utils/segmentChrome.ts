@@ -14,7 +14,7 @@ export function resolveVisitedSegmentIndexAtPlayhead(
   let ans = -1;
   while (lo <= hi) {
     const mid = (lo + hi) >> 1;
-    const start = Math.min(segments[mid]!.start_sec, segments[mid]!.end_sec);
+    const start = Math.min(segments[mid].start_sec, segments[mid].end_sec);
     if (playheadSec > start + PLAYHEAD_EPS_SEC) {
       ans = mid;
       lo = mid + 1;

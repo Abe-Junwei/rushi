@@ -320,8 +320,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => 15,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
     });
     const wsRef = { current: ws };
@@ -340,7 +341,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     // Force UI flag true while media is paused (the regression that blocked Space).
     playing = true;
-    await act(async () => {
+    act(() => {
       rerender();
     });
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
@@ -373,9 +374,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => 10,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
         handlers.get("play")?.();
+        return Promise.resolve();
       }),
       on: vi.fn((event: string, cb: () => void) => {
         handlers.set(event, cb);
@@ -451,8 +453,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
       pause: vi.fn(() => {
         playing = false;
       }),
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
     });
     const wsRef = { current: ws };
@@ -495,8 +498,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
       pause: vi.fn(() => {
         playing = false;
       }),
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
     });
     const wsRef = { current: ws };
@@ -561,7 +565,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       { initialProps: { selectedIdx: 0 } },
     );
 
-    await act(async () => {
+    act(() => {
       // Simulate already-playing segment A (bound armed via select sync path).
       playing = true;
       playhead = 15;
@@ -576,7 +580,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       rangeAnchor: 1,
       lineCount: 2,
     });
-    await act(async () => {
+    act(() => {
       rerender({ selectedIdx: 1 });
     });
 
@@ -597,7 +601,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       lineCount: 2,
     });
 
-    let playhead = 30;
+    const playhead = 30;
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => true,
@@ -643,8 +647,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       on,
     });
@@ -670,7 +675,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     // Arm the bound while still inside the segment, then cross the end.
     playhead = 15;
-    await act(async () => {
+    act(() => {
       emit("audioprocess");
     });
     playhead = 19.99;
@@ -692,8 +697,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
@@ -720,7 +726,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
 
     playhead = 15;
-    await act(async () => {
+    act(() => {
       schedulePlaybackViewportFrame(15);
       flushTierScrollFrameForTests();
     });
@@ -744,8 +750,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
@@ -770,7 +777,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     playhead = 15;
-    await act(async () => {
+    act(() => {
       schedulePlaybackViewportFrame(15);
       flushTierScrollFrameForTests();
     });
@@ -801,8 +808,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
@@ -827,7 +835,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     playhead = 15;
-    await act(async () => {
+    act(() => {
       schedulePlaybackViewportFrame(15);
       flushTierScrollFrameForTests();
     });
@@ -862,8 +870,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
@@ -890,7 +899,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       await result.current.playSegmentAtIndex(0, { fromSec: 10 });
     });
     playhead = 15;
-    await act(async () => {
+    act(() => {
       emit("audioprocess");
     });
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();

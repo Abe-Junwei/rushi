@@ -47,7 +47,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     const marker0 = buildTranscriptMetaMarker(meta[0], 0, { highlighted: true });
     expect(marker0).toBeTruthy();
     expect(marker0!.indexLabel).toBe("1.");
-    expect(marker0!.timeLabel).toBe(formatTranscriptTimestamp(segs[0]!.start_sec));
+    expect(marker0!.timeLabel).toBe(formatTranscriptTimestamp(segs[0].start_sec));
     expect(marker0!.highlighted).toBe(true);
     const dom = marker0!.toDOM();
     expect(dom.querySelector(".cm-transcript-meta-stage")).toBeNull();

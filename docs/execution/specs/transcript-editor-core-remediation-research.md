@@ -17,14 +17,14 @@
 - 编辑中**删一个字符即丢失编辑态**（textarea blur）；
 - 编辑中**按空格/回车触发播放**（全局快捷键截获，因为焦点已丢）。
 
-根因已定位（非表面 bug）：选区存在**两个真源**，靠时序弥合，弥合窗口内任何重渲染都可能把「正在编辑的聚焦行」拉回旧真源 → `selected` 翻 `false` → 触发 deselect blur（[`useSegmentRowTextFieldEditing.ts:117–123`](../../../apps/desktop/src/hooks/useSegmentRowTextFieldEditing.ts)）→ 丢光标 → 空格落到波形 play toggle。
+根因已定位（非表面 bug）：选区存在**两个真源**，靠时序弥合，弥合窗口内任何重渲染都可能把「正在编辑的聚焦行」拉回旧真源 → `selected` 翻 `false` → 触发 deselect blur（`apps/desktop/src/hooks/useSegmentRowTextFieldEditing.ts:117–123`）→ 丢光标 → 空格落到波形 play toggle。
 
 | 真源 | 位置 | 谁写 |
 |------|------|------|
-| **SC1** 逻辑选中 | React `useState`：[`useProjectEditorState.ts:34`](../../../apps/desktop/src/pages/useProjectEditorState.ts) `selectedIdx` + [`useSegmentSelectionController.ts:26`](../../../apps/desktop/src/pages/useSegmentSelectionController.ts) `selectedIndices` | 各 committer 经 `startTransition` |
-| **SC2** 视觉 chrome | 外部 store：[`selectionChromeStore.ts`](../../../apps/desktop/src/services/selection/selectionChromeStore.ts) + imperative DOM 双写 [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts) | `publishSelectionChrome` 抢跑 |
+| **SC1** 逻辑选中 | React `useState`：[`useProjectEditorState.ts:34`](../../../apps/desktop/src/pages/useProjectEditorState.ts) `selectedIdx` + `apps/desktop/src/pages/useSegmentSelectionController.ts:26` `selectedIndices` | 各 committer 经 `startTransition` |
+| **SC2** 视觉 chrome | 外部 store：`apps/desktop/src/services/selection/selectionChromeStore.ts` + imperative DOM 双写 `apps/desktop/src/services/selection/applySelectionChromeImperative.ts` | `publishSelectionChrome` 抢跑 |
 
-弥合机制：[`reconcileSelectionChromeFromReact.ts`](../../../apps/desktop/src/services/selection/reconcileSelectionChromeFromReact.ts) + `leadingSc1PrimaryIdx` 守卫 + committer 的 `startTransition`。**只要双真源在，缝就在。**
+弥合机制：`apps/desktop/src/services/selection/reconcileSelectionChromeFromReact.ts` + `leadingSc1PrimaryIdx` 守卫 + committer 的 `startTransition`。**只要双真源在，缝就在。**
 
 ---
 
@@ -33,7 +33,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 长转写（90–数千语段，多小时音频）编辑：波形/列表点选、键盘 ↑↓ 连按、进入行内编辑打字（含中文 IME）、split/merge/delete、find/replace。期望：点击 <50ms 高亮、**编辑态稳定不丢焦、打字不误触全局快捷键**、连按不卡。 |
-| **本仓现状** | 见 §0：SC1/SC2 双真源 + 弥合层；文本行是**每行一个 `<textarea>`**（[`SegmentRowTextField.tsx`](../../../apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx)），靠 `key={draftKey}@epoch` **重挂**同步、`useSegmentDraftStore` 存草稿、`focusTranscriptSegmentTextarea` rAF 重试兜底聚焦；列表自建虚拟化（[`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)，≥90 段启用），会 unmount/remount 行 → 销毁 textarea DOM。 |
+| **本仓现状** | 见 §0：SC1/SC2 双真源 + 弥合层；文本行是**每行一个 `<textarea>`**（`apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx`），靠 `key={draftKey}@epoch` **重挂**同步、`useSegmentDraftStore` 存草稿、`focusTranscriptSegmentTextarea` rAF 重试兜底聚焦；列表自建虚拟化（[`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)，≥90 段启用），会 unmount/remount 行 → 销毁 textarea DOM。 |
 | **成功标准（可手测）** | ① 任意语段点击/双击必现光标、可编辑；② 编辑中删字、打字、按空格/回车**不丢焦、不误播**；③ 2000 段文件选区切换 P95 ≤ 现状 `listCommit`，滚动不掉帧；④ SC 手测矩阵（[acceptance](./transcript-editor-core-remediation-acceptance.md) SC-H1–H12）全过。 |
 
 ---
@@ -72,7 +72,7 @@
 
 | 模块 | 路径 | 在新架构中的去向 |
 |------|------|------------------|
-| 选中唯一入口内核 | [`useTranscriptionLayerSelection.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts) / [`runSelectSegmentAt.ts`](../../../apps/desktop/src/pages/runSelectSegmentAt.ts) | 折叠为 CM6 selection 命令 |
+| 选中唯一入口内核 | [`useTranscriptionLayerSelection.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts) / `apps/desktop/src/pages/runSelectSegmentAt.ts` | 折叠为 CM6 selection 命令 |
 | 波形 band/overlay 投影 | [`resolveWaveformSelectionChromeView.ts`](../../../apps/desktop/src/services/selection/resolveWaveformSelectionChromeView.ts) · [`WaveformSegmentBandCanvas.tsx`](../../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) | 改订阅「CM6→投影 store」（单向） |
 | reveal/seek 策略 | [`selectionRevealSeekPolicy.ts`](../../../apps/desktop/src/utils/selectionRevealSeekPolicy.ts) | 保留；读 CM6 primary |
 | 性能 profile | [`selectionLatencyProfile.ts`](../../../apps/desktop/src/services/ui/selectionLatencyProfile.ts) `__rushiSelectionProfile` | P0/回归门禁复用 |

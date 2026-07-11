@@ -25,7 +25,7 @@ const silencedWaveSurfers = new WeakSet<object>();
  * Idempotent per instance.
  */
 export function silenceWaveSurferRendererClock(ws: WaveSurfer): boolean {
-  if (silencedWaveSurfers.has(ws as object)) return false;
+  if (silencedWaveSurfers.has(ws)) return false;
   const internal = ws as unknown as WaveSurferClockInternals;
   try {
     const timer = internal.timer;
@@ -43,7 +43,7 @@ export function silenceWaveSurferRendererClock(ws: WaveSurfer): boolean {
     if (renderer) {
       renderer.renderProgress = () => {};
     }
-    silencedWaveSurfers.add(ws as object);
+    silencedWaveSurfers.add(ws);
     return true;
   } catch {
     return false;
@@ -52,5 +52,5 @@ export function silenceWaveSurferRendererClock(ws: WaveSurfer): boolean {
 
 /** Test-only: allow re-silencing the same mock instance. */
 export function resetWaveSurferRendererClockSilenceForTests(ws?: WaveSurfer): void {
-  if (ws) silencedWaveSurfers.delete(ws as object);
+  if (ws) silencedWaveSurfers.delete(ws);
 }

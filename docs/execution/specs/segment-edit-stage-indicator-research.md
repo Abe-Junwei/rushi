@@ -13,7 +13,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 改稿工作台中，用户需要 **一眼区分** 语段处于哪一编辑阶段：**自动转写**、**AI 改稿**、**手动转写**、**定稿**。提示放在 **语段行右侧**，用 **简短文案 + 徽标**；窄窗下仍可读。 |
-| **本仓现状** | **数据**：[`SegmentDto`](../../../apps/desktop/src/tauri/projectTypes.ts) 仅有 `confidence` / `low_confidence` / `detail` / `kind`，**无** 编辑阶段或 review 状态字段；SQLite `segments` 表同构。**行为**：<br>· ASR：`project_run_transcribe` 整批替换语段（[`run_transcribe_cmd/mod.rs`](../../../apps/desktop/src-tauri/src/project/run_transcribe_cmd/mod.rs)）<br>· LLM：Stage B / 自动标点 / 段界 refine 等写回后 **不** 标记来源（[`PostTranscribeStageBDialog`](../../../apps/desktop/src/components/PostTranscribeStageBDialog.tsx)、[`auto-punctuate-plan.md`](./auto-punctuate-plan.md)）<br>· 人工确认：⌘/Ctrl+Enter → [`confirmSegmentEditAndAdvance`](../../../apps/desktop/src/pages/useProjectSaveController.ts) 落库并跳下一条，**无** per-segment「已确认」持久标记；与普通自动保存（2s）在数据层无区别<br>· **已有 UI**：`low_confidence` 影响 [`segmentChrome.ts`](../../../apps/desktop/src/utils/segmentChrome.ts) 行底色，但 **无** 右侧阶段徽标；Stitch spec §7.3 仍写「低置信徽章」在左 gutter，与现网 [`SegmentRowTimestampColumn`](../../../apps/desktop/src/components/segmentRow/SegmentRowTimestampColumn.tsx) 仅行号+时间戳不一致<br>· **审计**：`edit_log` + `save_segments.text_changes` 可事后推断「谁改过字」，但 **不能** 高效驱动每行 UI，且不含「LLM 写回 vs 手改 vs 确认」语义 |
+| **本仓现状** | **数据**：[`SegmentDto`](../../../apps/desktop/src/tauri/projectTypes.ts) 仅有 `confidence` / `low_confidence` / `detail` / `kind`，**无** 编辑阶段或 review 状态字段；SQLite `segments` 表同构。**行为**：<br>· ASR：`project_run_transcribe` 整批替换语段（[`run_transcribe_cmd/mod.rs`](../../../apps/desktop/src-tauri/src/project/run_transcribe_cmd/mod.rs)）<br>· LLM：Stage B / 自动标点 / 段界 refine 等写回后 **不** 标记来源（[`PostTranscribeStageBDialog`](../../../apps/desktop/src/components/PostTranscribeStageBDialog.tsx)、[`auto-punctuate-plan.md`](./auto-punctuate-plan.md)）<br>· 人工确认：⌘/Ctrl+Enter → [`confirmSegmentEditAndAdvance`](../../../apps/desktop/src/pages/useProjectSaveController.ts) 落库并跳下一条，**无** per-segment「已确认」持久标记；与普通自动保存（2s）在数据层无区别<br>· **已有 UI**：`low_confidence` 影响 [`segmentChrome.ts`](../../../apps/desktop/src/utils/segmentChrome.ts) 行底色，但 **无** 右侧阶段徽标；Stitch spec §7.3 仍写「低置信徽章」在左 gutter，与现网 `apps/desktop/src/components/segmentRow/SegmentRowTimestampColumn.tsx` 仅行号+时间戳不一致<br>· **审计**：`edit_log` + `save_segments.text_changes` 可事后推断「谁改过字」，但 **不能** 高效驱动每行 UI，且不含「LLM 写回 vs 手改 vs 确认」语义 |
 | **成功标准** | （1）**自动转写 / AI改稿 / 手动转写** 任一段均可 **右键或 ⌘Enter** 定为 **定稿**；（2）四态自动迁移链路正确；（3）重转写回到自动转写；（4）硬闸门通过。 |
 
 ### 1.1 与现有概念边界
@@ -63,7 +63,7 @@
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| 语段行布局 | [`SegmentTextListRow.tsx`](../../../apps/desktop/src/components/SegmentTextListRow.tsx) | 左时间戳 + 正文；**新增右列** |
+| 语段行布局 | `apps/desktop/src/components/SegmentTextListRow.tsx` | 左时间戳 + 正文；**新增右列** |
 | 行 chrome | [`segmentChrome.ts`](../../../apps/desktop/src/utils/segmentChrome.ts) | 选中/低置信底色；徽标色与之协调 |
 | 确认改词 / 定稿 | [`segmentConfirmEligible.ts`](../../../apps/desktop/src/services/segmentConfirmEligible.ts) + [`useProjectSaveController.ts`](../../../apps/desktop/src/pages/useProjectSaveController.ts) | ⌘Enter / 右键 → `finalized` |
 | 转写落库 | [`run_transcribe_cmd/mod.rs`](../../../apps/desktop/src-tauri/src/project/run_transcribe_cmd/mod.rs) | 批量设 `auto_transcribe` |
@@ -179,7 +179,7 @@ stateDiagram-v2
 
 | 规则 | 说明 |
 |------|------|
-| 位置 | [`SegmentTextListRow`](../../../apps/desktop/src/components/SegmentTextListRow.tsx) 正文 [`SegmentRowTextField`](../../../apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx) **右侧** 新组件 `SegmentRowStageBadge` |
+| 位置 | `apps/desktop/src/components/SegmentTextListRow.tsx` 正文 `apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx` **右侧** 新组件 `SegmentRowStageBadge` |
 | 层级 | Badge **只读**；**定稿** 仅 ⌘Enter 与右键「标记定稿」（§4.1.2）；不做 checkbox |
 | 样式 | `label-caps` 级 10–11px；圆角 pill；背景 `notion-callout-bg` / saffron tint；**不加第三层 border**（Jieyu 面板规则） |
 | 组合 | 未保存圆点可与任意 stage badge 叠加；`low_confidence` **不**在 badge 重复出字 |

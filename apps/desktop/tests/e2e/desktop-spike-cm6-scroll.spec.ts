@@ -14,7 +14,7 @@ test.describe("P0 spike CM6 scroll + gutter", () => {
       return window.__spikeBench!();
     });
 
-    // eslint-disable-next-line no-console
+     
     console.log("[spike-scroll-bench]", JSON.stringify(result));
 
     expect(result.segmentCount).toBe(2000);

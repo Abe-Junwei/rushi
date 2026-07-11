@@ -80,8 +80,8 @@ describe("P0 spike: buildSpikeEditorState", () => {
     expect(state.doc.lines).toBe(2);
     expect(state.doc.line(1).text).toContain(SPIKE_NEWLINE_ESCAPE);
     const back = serializeSpikeEditorState(state);
-    expect(back[0]!.text).toBe("line1\nline2");
-    expect(back[1]!.text).toBe("ok");
+    expect(back[0].text).toBe("line1\nline2");
+    expect(back[1].text).toBe("ok");
   });
 
   it("keeps line count == segment count when newlines are explicitly encoded", () => {
@@ -109,15 +109,15 @@ describe("P0 spike: buildSpikeEditorState", () => {
     const state = buildSpikeEditorState(encoded);
     expect(state.doc.lines).toBe(2);
     const back = serializeSpikeEditorState(state);
-    expect(back[0]!.text).toBe("line1\nline2");
+    expect(back[0].text).toBe("line1\nline2");
   });
 });
 
 describe("P0 spike: auditSegmentNewlines", () => {
   it("reports hits and hitRate", () => {
     const segments = makeSegments(4);
-    segments[1] = { ...segments[1]!, text: "a\nb" };
-    segments[3] = { ...segments[3]!, text: "x\ry" };
+    segments[1] = { ...segments[1], text: "a\nb" };
+    segments[3] = { ...segments[3], text: "x\ry" };
     const audit = auditSegmentNewlines(segments);
     expect(audit.totalSegments).toBe(4);
     expect(audit.hits).toHaveLength(2);

@@ -125,7 +125,7 @@ export function splitSegmentAtTimeCommand(
   const live = withLiveTextsFromState(view.state, baseline);
   const idx = live.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
   if (idx < 0) return false;
-  const s = live[idx]!;
+  const s = live[idx];
   const pair = buildSplitPair(s, t);
   if (!pair) return false;
   const out = [...live];
@@ -217,10 +217,10 @@ export function deleteSegmentIndicesCommand(
     .sort((a, b) => a - b);
   if (indices.length === 0) return false;
   if (indices.length === 1) {
-    return deleteSegmentAtCommand(view, baseline, indices[0]!);
+    return deleteSegmentAtCommand(view, baseline, indices[0]);
   }
-  const lo = indices[0]!;
-  const hi = indices[indices.length - 1]!;
+  const lo = indices[0];
+  const hi = indices[indices.length - 1];
   const contiguous = indices.length === hi - lo + 1 && indices.every((v, i) => v === lo + i);
   if (contiguous) {
     return deleteSegmentRangeCommand(view, baseline, lo, hi);

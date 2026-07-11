@@ -60,8 +60,8 @@ describe("P1 build/serializeTranscriptEditorState", () => {
       { uid: "z", idx: 1, start_sec: 1, end_sec: 2, text: "你好 👋🌍" },
     ];
     const back = serializeTranscriptEditorState(buildTranscriptEditorState(segments));
-    expect(back[0]!.text).toBe("");
-    expect(back[1]!.text).toBe("你好 👋🌍");
+    expect(back[0].text).toBe("");
+    expect(back[1].text).toBe("你好 👋🌍");
   });
 
   it("encodes embedded newlines reversibly (default)", () => {
@@ -72,12 +72,12 @@ describe("P1 build/serializeTranscriptEditorState", () => {
     const state = buildTranscriptEditorState(segments);
     expect(state.doc.lines).toBe(2);
     expect(state.doc.line(1).text).toContain(TRANSCRIPT_NEWLINE_ESCAPE);
-    expect(serializeTranscriptEditorState(state)[0]!.text).toBe("a\nb");
+    expect(serializeTranscriptEditorState(state)[0].text).toBe("a\nb");
   });
 
   it("auditSegmentNewlines reports hits", () => {
     const segments = makeSegments(3);
-    segments[1] = { ...segments[1]!, text: "x\ny" };
+    segments[1] = { ...segments[1], text: "x\ny" };
     const audit = auditSegmentNewlines(segments);
     expect(audit.hits).toHaveLength(1);
     expect(audit.hitRate).toBeCloseTo(1 / 3);
@@ -111,8 +111,8 @@ describe("P1 transactionPersistenceBridge", () => {
         changes: { from: line.from, to: line.to, insert: "改写后的正文" },
       });
       expect(projected).toHaveLength(1);
-      expect(projected[0]![1]!.text).toBe("改写后的正文");
-      expect(projected[0]![0]!.text).toBe("语段 0");
+      expect(projected[0][1].text).toBe("改写后的正文");
+      expect(projected[0][0].text).toBe("语段 0");
       // Selection-only dispatch must not project.
       view.dispatch({ selection: { anchor: line.from } });
       expect(projected).toHaveLength(1);

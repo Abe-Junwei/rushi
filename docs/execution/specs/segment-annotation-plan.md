@@ -66,7 +66,7 @@
 
 ### 3.3 行尾图标
 
-在 [`SegmentRowStageBadge.tsx`](../../../apps/desktop/src/components/segmentRow/SegmentRowStageBadge.tsx) 内（或子组件 `SegmentRowAnnotationMarker.tsx`）：
+在 `apps/desktop/src/components/segmentRow/SegmentRowStageBadge.tsx` 内（或子组件 `SegmentRowAnnotationMarker.tsx`）：
 
 - 条件：`segment.annotation?.trim()` 非空
 - 图标：lucide `FileText`，`LUCIDE_ICON_SIZE_SM`，`text-notion-text-muted`

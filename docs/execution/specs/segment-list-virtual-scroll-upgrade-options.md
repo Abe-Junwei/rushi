@@ -3,7 +3,7 @@
 > **关联 Plan**：[`waveform-selection-reveal-seek-plan.md`](./waveform-selection-reveal-seek-plan.md) §S8 / §B  
 > **关联调研**：[`waveform-list-ux-boundaries-research.md`](./waveform-list-ux-boundaries-research.md) §4  
 > **状态**：决策用附录；**Phase 0（S8 基线）已编码 + 手测 Go**（2026-06-20）；Phase 1 待 G1–G4 触发  
-> **真源代码**：[`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)、[`segmentListScrollIntoView.ts`](../../../apps/desktop/src/utils/segmentListScrollIntoView.ts)、[`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts)、[`useTranscriptionLayerSegmentListDrag.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSegmentListDrag.ts)
+> **真源代码**：[`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)、[`segmentListScrollIntoView.ts`](../../../apps/desktop/src/utils/segmentListScrollIntoView.ts)、`apps/desktop/src/components/editor/useEditorSegmentListScroll.ts`、[`useTranscriptionLayerSegmentListDrag.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSegmentListDrag.ts)
 
 ---
 

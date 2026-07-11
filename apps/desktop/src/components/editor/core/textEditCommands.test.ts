@@ -55,7 +55,7 @@ describe("P7 textEditCommands + panel highlight", () => {
     const segs = makeSegs(["你好世界"]);
     const v = mount(segs);
     expect(replaceSegmentCharRangeCommand(v, 0, 2, 2, "宇宙")).toBe(true);
-    expect(serializeTranscriptEditorState(v.state)[0]!.text).toBe("你好宇宙");
+    expect(serializeTranscriptEditorState(v.state)[0].text).toBe("你好宇宙");
   });
 
   it("replaces full line text and bulk updates", () => {

@@ -155,7 +155,7 @@ Phase 5 [DONE]  LKB-2 + U18 profile 静默 + guard 拆分 + 补丁取舍
 
 ### Step 2.2 — Profile 补全
 
-**文件**：[`selectionLatencyProfile.ts`](../../../apps/desktop/src/services/ui/selectionLatencyProfile.ts) · [`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts)
+**文件**：[`selectionLatencyProfile.ts`](../../../apps/desktop/src/services/ui/selectionLatencyProfile.ts) · `apps/desktop/src/components/editor/useEditorSegmentListScroll.ts`
 
 1. ✅ `useEditorSegmentListScroll` layout effect 对 listKeyboard commit 调用 `selectionProfileMarkListCommit()`。
 2. ✅ `commitListKeyboardBurst` 不再主动 rAF flush，依赖 layout effect 标记 `listCommit` 后 flush。
@@ -200,9 +200,9 @@ keyup 一次:
 
 **文件**：
 
-- [`applyListKeyboardBurstListScroll.ts`](../../../apps/desktop/src/components/editor/applyListKeyboardBurstListScroll.ts) — burst 内 `planEditorSegmentListSelectionScroll` + 写 `scrollTop`
+- `apps/desktop/src/components/editor/applyListKeyboardBurstListScroll.ts` — burst 内 `planEditorSegmentListSelectionScroll` + 写 `scrollTop`
 - [`listKeyboardBurstCoordinator.ts`](../../../apps/desktop/src/services/selection/listKeyboardBurstCoordinator.ts) — scroll epoch 通知 / imperative scroll key / virtual pin
-- [`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) — layout effect 对 burst 经 `shouldSkipLayoutScrollForListKeyboard` 跳过
+- `apps/desktop/src/components/editor/useEditorSegmentListScroll.ts` — layout effect 对 burst 经 `shouldSkipLayoutScrollForListKeyboard` 跳过
 
 ### Step 3.3 — Keyboard 层配合（**U1–U2 · U15**）
 
@@ -233,7 +233,7 @@ keyup 一次:
 
 ### Step 4.2 — virtualWindow 与 SC1 解耦（**U11–U12**） ✅
 
-**文件**：[`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts) · [`EditorSegmentListViewport.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentListViewport.tsx)
+**文件**：`apps/desktop/src/components/editor/useEditorSegmentListScroll.ts` · `apps/desktop/src/components/editor/EditorSegmentListViewport.tsx`
 
 - ✅ `virtualWindow` pin **已显式化** via `listKeyboardBurstCoordinator`。
 - ✅ `virtualWindow` useMemo **仅**依赖 `scrollEpoch` / `selectSourceEpoch`；`selectedDisplayIndex` 经 ref。

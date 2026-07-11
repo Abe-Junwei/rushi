@@ -61,10 +61,10 @@ describe("P6 structureCommands", () => {
     expect(v.state.doc.lines).toBe(3);
     expect(v.state.field(segmentMetaField)).toHaveLength(3);
     const out = serializeTranscriptEditorState(v.state);
-    expect(out[0]!.uid).toBe("u0");
-    expect(out[0]!.end_sec).toBeCloseTo(0.5, 5);
-    expect(out[1]!.start_sec).toBeCloseTo(0.5, 5);
-    expect(out[1]!.uid).not.toBe("u0");
+    expect(out[0].uid).toBe("u0");
+    expect(out[0].end_sec).toBeCloseTo(0.5, 5);
+    expect(out[1].start_sec).toBeCloseTo(0.5, 5);
+    expect(out[1].uid).not.toBe("u0");
     expect(primarySegmentIdx(v.state)).toBe(1);
   });
 
@@ -89,9 +89,9 @@ describe("P6 structureCommands", () => {
     expect(mergeWithNextCommand(v, segs, 0)).toBe(true);
     expect(v.state.doc.lines).toBe(2);
     const out = serializeTranscriptEditorState(v.state);
-    expect(out[0]!.uid).toBe("u0");
-    expect(out[0]!.text).toBe("语段0内容较长一些语段1内容较长一些");
-    expect(out[0]!.text).not.toMatch(/[\n\r\u240A]/);
+    expect(out[0].uid).toBe("u0");
+    expect(out[0].text).toBe("语段0内容较长一些语段1内容较长一些");
+    expect(out[0].text).not.toMatch(/[\n\r\u240A]/);
     expect(v.state.doc.line(1).text).not.toMatch(/[\n\r\u240A]/);
     expect(primarySegmentIdx(v.state)).toBe(0);
   });
@@ -130,7 +130,7 @@ describe("P6 structureCommands", () => {
     expect(v.state.doc.lines).toBe(3);
     const out = serializeTranscriptEditorState(v.state);
     expect(out.map((s) => s.uid)).toEqual(["u0", "new", "u1"]);
-    expect(out[1]!.start_sec).toBeCloseTo(0.4, 5);
+    expect(out[1].start_sec).toBeCloseTo(0.4, 5);
     expect(primarySegmentIdx(v.state)).toBe(1);
   });
 
@@ -163,10 +163,10 @@ describe("P6 structureCommands", () => {
       },
     ];
     const merged = mergeProjectedStructureWithBaseline(baseline, projected);
-    expect(merged[0]!.annotation).toBe("备注");
-    expect(merged[0]!.confidence).toBe(0.9);
-    expect(merged[0]!.kind).toBe("speech");
-    expect(merged[1]!.uid).toBe("new-right");
-    expect(merged[2]!.confidence).toBe(0.9);
+    expect(merged[0].annotation).toBe("备注");
+    expect(merged[0].confidence).toBe(0.9);
+    expect(merged[0].kind).toBe("speech");
+    expect(merged[1].uid).toBe("new-right");
+    expect(merged[2].confidence).toBe(0.9);
   });
 });

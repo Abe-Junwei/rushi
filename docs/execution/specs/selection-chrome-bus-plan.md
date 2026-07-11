@@ -71,7 +71,7 @@ React commit 后（慢路径）
 
 ### Phase 0 — Store + 类型（0.5d）
 
-**Step 0.1** 新增 [`selectionChromeStore.ts`](../../../apps/desktop/src/services/selection/selectionChromeStore.ts)
+**Step 0.1** 新增 `apps/desktop/src/services/selection/selectionChromeStore.ts`
 
 ```typescript
 type SelectionChromeSnapshot = {
@@ -93,9 +93,9 @@ type SelectionChromeSnapshot = {
 
 ### Phase 1 — 统一 Imperative Chrome（1.5d）· **SCB-1**
 
-**Step 1.1** 新增 [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts)
+**Step 1.1** 新增 `apps/desktop/src/services/selection/applySelectionChromeImperative.ts`
 
-- 吸收 [`applySelectionChromeImperative.ts`](../../../apps/desktop/src/services/selection/applySelectionChromeImperative.ts)（保留 re-export 兼容 1 PR）。  
+- 吸收 `apps/desktop/src/services/selection/applySelectionChromeImperative.ts`（保留 re-export 兼容 1 PR）。  
 - **列表**：对 `[data-seg-row="${idx}"]` 切换 `seg-row-selected` / `seg-row-in-selection`；同步 `overflow`/`z-index`（与 [`EditorSegmentList.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentList.tsx) L254–255 一致，改 imperative 或 CSS `:is([data-chrome-selected])`）。  
 - **多选**：对 `selectedSet` 内非 primary 行画 `seg-row-in-selection`；prev set diff 清除 removed indices（最多遍历 prev∪next，大 multi-select 仍 O(k)）。  
 - 列表 root：`segmentListRef.current` 或 `.workspace` 下 query。
@@ -123,7 +123,7 @@ selectSegmentAt 内 flushSelectedIdx 块：
 
 ### Phase 2 — 虚拟窗与选中解耦（1d）· **SCB-2**
 
-**Step 2.1** 改 [`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts)
+**Step 2.1** 改 `apps/desktop/src/components/editor/useEditorSegmentListScroll.ts`
 
 | 条件 | 行为 |
 |------|------|
@@ -154,7 +154,7 @@ function useSegmentRowSelection(segmentIdx: number): {
 // useSyncExternalStore(selectionChromeStore.subscribe, () => selector(segmentIdx))
 ```
 
-**Step 3.2** 改 [`SegmentTextListRow.tsx`](../../../apps/desktop/src/components/SegmentTextListRow.tsx)
+**Step 3.2** 改 `apps/desktop/src/components/SegmentTextListRow.tsx`
 
 - 删除 props `selected` / `inSelection`（或保留 fallback 只给测试）。  
 - 内部 `useSegmentRowSelection(i)` 驱动 className。  

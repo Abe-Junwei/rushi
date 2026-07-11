@@ -50,7 +50,7 @@ export function resolveSegmentPlayFrom(
 
   if (
     rawInside &&
-    Math.abs((raw as number) - display) <= epsilon
+    Math.abs((raw) - display) <= epsilon
   ) {
     return { kind: "resumeSkipSeek" };
   }
@@ -61,8 +61,8 @@ export function resolveSegmentPlayFrom(
   if (
     rawInside &&
     displayInside &&
-    display < (raw as number) &&
-    (raw as number) - display <= lagCap
+    display < (raw) &&
+    (raw) - display <= lagCap
   ) {
     return { kind: "resumeSkipSeek" };
   }
@@ -76,7 +76,7 @@ export function resolveSegmentPlayFrom(
     if (
       raw != null &&
       Number.isFinite(raw) &&
-      Math.abs((raw as number) - display) <= epsilon
+      Math.abs((raw) - display) <= epsilon
     ) {
       return { kind: "resumeSkipSeek" };
     }

@@ -61,7 +61,7 @@
 ### P2 — 选区成为唯一真源
 - **落位**：
   - `selectionField.ts`：`StateField<Set<lineIdx>>` 多选 + rangeAnchor；primary = `state.selection.main` 所在行。
-  - `selectionCommands.ts`：`selectSegment / toggle(cmd) / range(shift) / moveUp / moveDown`（吸收 [`resolveSelectionChromePreview.ts`](../../../apps/desktop/src/services/selection/resolveSelectionChromePreview.ts) 语义 + [`useSegmentSelectionController.selectSegmentAt`](../../../apps/desktop/src/pages/useSegmentSelectionController.ts)）。
+  - `selectionCommands.ts`：`selectSegment / toggle(cmd) / range(shift) / moveUp / moveDown`（吸收 `apps/desktop/src/services/selection/resolveSelectionChromePreview.ts` 语义 + `apps/desktop/src/pages/useSegmentSelectionController.ts`）。
   - `selectionDecorations.ts`：primary/inSelection 行 decoration（取代 `.seg-row-selected` imperative）。
   - `transcriptProjection.ts`（新投影 store）：CM6 `updateListener` → `{ primaryIdx, selectedSet, metaVersion }`，`useSyncExternalStore` 暴露。
 - **退出**：flag on 下点击/↑↓/shift/cmd 多选正确；选区**只**来自 CM6；任何波形/快捷键/右键入口只能 dispatch selection command，不能写投影 store 或 `SegmentDto[]`；单测覆盖命令矩阵。

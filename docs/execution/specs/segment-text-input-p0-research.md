@@ -13,7 +13,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 改稿工作台长时间在语段正文 **连续输入中文**；期望光标跟手、无可见延迟；换段时滚动可接受但 **正文区不应跳闪** |
-| **本仓现状** | **编辑模型**：选中行 `textarea`（uncontrolled + `defaultValue`），未选中静态 `<div>` 单行 ellipsis（[`SegmentRowTextField.tsx`](../../../apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx)）。**草稿**：[`segmentDraftStore`](../../../apps/desktop/src/hooks/useSegmentDraftStore.ts) 每 `setDraft` → `emit()` → 全局订阅者重算。**装饰**：有纠错规则时 `text-transparent` + [`CorrectableMatchText`](../../../apps/desktop/src/components/segmentRow/CorrectableMatchText.tsx) 镜像，随 `liveText` 每键重建。**页脚**：[`useTranscriptFooterStats`](../../../apps/desktop/src/hooks/useTranscriptFooterStats.ts) 每 emit 对 **全表** `segmentsWithDraftsApplied` + 计字数。**列表**：[`EditorSegmentWorkbench`](../../../apps/desktop/src/components/editor/EditorSegmentWorkbench.tsx) memo 挡住大部分重渲染；瓶颈在 **选中行 + 页脚** |
+| **本仓现状** | **编辑模型**：选中行 `textarea`（uncontrolled + `defaultValue`），未选中静态 `<div>` 单行 ellipsis（`apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx`）。**草稿**：`apps/desktop/src/hooks/useSegmentDraftStore.ts` 每 `setDraft` → `emit()` → 全局订阅者重算。**装饰**：有纠错规则时 `text-transparent` + `apps/desktop/src/components/segmentRow/CorrectableMatchText.tsx` 镜像，随 `liveText` 每键重建。**页脚**：[`useTranscriptFooterStats`](../../../apps/desktop/src/hooks/useTranscriptFooterStats.ts) 每 emit 对 **全表** `segmentsWithDraftsApplied` + 计字数。**列表**：[`EditorSegmentWorkbench`](../../../apps/desktop/src/components/editor/EditorSegmentWorkbench.tsx) memo 挡住大部分重渲染；瓶颈在 **选中行 + 页脚** |
 | **成功标准** | （1）有纠错规则时长段连续输入 **主观跟手**（手测清单）；（2）页脚字数仍随输入更新，但 **≤10Hz**；（3）自动保存 / 脏检查 / blur 落库行为 **不变**；（4）硬闸门全绿 |
 
 ### 1.1 与相邻议题边界

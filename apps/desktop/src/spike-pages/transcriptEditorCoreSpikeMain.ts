@@ -35,7 +35,7 @@ function percentile(sortedAsc: number[], p: number): number {
     sortedAsc.length - 1,
     Math.max(0, Math.ceil((p / 100) * sortedAsc.length) - 1),
   );
-  return sortedAsc[idx]!;
+  return sortedAsc[idx];
 }
 
 /** Sample visible content lines vs gutter markers for vertical lockstep. */

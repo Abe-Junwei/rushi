@@ -1,7 +1,7 @@
 # 调研：波形高频动态样式性能根因与 CSP 直写回归
 
 > **状态**：调研完成（待 plan/acceptance 定稿 → 实施）
-> **关联**：[`waveform-playhead-single-clock-research.md`](./waveform-playhead-single-clock-research.md)（时钟真源，终态）、[`csp-harden-v1.2-style-src-attr-research.md`](./csp-harden-v1.2-style-src-attr-research.md)（本调研纠正其一处错误断言）、[`../architecture/desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)
+> **关联**：[`waveform-playhead-single-clock-research.md`](./waveform-playhead-single-clock-research.md)（时钟真源，终态）、[`csp-harden-v1.2-style-src-attr-research.md`](./csp-harden-v1.2-style-src-attr-research.md)（本调研纠正其一处错误断言）、[`../architecture/desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)
 > **门禁**：`.cursor/rules/feature-research-gate.mdc`
 
 ## 0. 一句话结论
@@ -12,9 +12,9 @@
 
 - **用户场景**：Editor 波形区，播放时播放头步进不平滑；按空格续播往前卡一小段；点击语段后播放头定位 / 语段渲染 / 一切交互反应慢。
 - **本仓现状（链路透 + 文件路径）**：
-  - 播放头写入：[`WaveformViewportPlayhead.tsx`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) `writePosition` → `setCspLayoutRules(el, { transform })`。
-  - band / ruler：[`WaveformSegmentBandCanvas.tsx`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx)、[`WaveformTimeRulerCanvas.tsx`](../../apps/desktop/src/components/WaveformTimeRulerCanvas.tsx) 的 `left/width/height` → `setCspLayoutRules`。
-  - `setCspLayoutRules`（[`cspElementLayout.ts`](../../apps/desktop/src/utils/cspElementLayout.ts)）→ `upsertCspScopeRules`（[`cspNonceStyleRegistry.ts`](../../apps/desktop/src/utils/cspNonceStyleRegistry.ts)）→ **每次改 `<style>.textContent`**（属性选择器规则 `[data-csp-layout-id="…"] { … }`）。
+  - 播放头写入：[`WaveformViewportPlayhead.tsx`](../../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) `writePosition` → `setCspLayoutRules(el, { transform })`。
+  - band / ruler：[`WaveformSegmentBandCanvas.tsx`](../../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx)、[`WaveformTimeRulerCanvas.tsx`](../../../apps/desktop/src/components/WaveformTimeRulerCanvas.tsx) 的 `left/width/height` → `setCspLayoutRules`。
+  - `setCspLayoutRules`（[`cspElementLayout.ts`](../../../apps/desktop/src/utils/cspElementLayout.ts)）→ `upsertCspScopeRules`（[`cspNonceStyleRegistry.ts`](../../../apps/desktop/src/utils/cspNonceStyleRegistry.ts)）→ **每次改 `<style>.textContent`**（属性选择器规则 `[data-csp-layout-id="…"] { … }`）。
 
 ## 2. 实测证据（本轮亲测）
 
@@ -31,7 +31,7 @@
 
 | 产品 | 播放头/进度写入 | 高频动态样式手段 | 与 Rushi 约束冲突 |
 |---|---|---|---|
-| **WaveSurfer v7**（本仓 `node_modules`，实证真源） | `renderer.js` 每帧 `cursor.style.left` / `cursor.style.transform` / `canvasWrapper.style.clipPath` / `progressWrapper.style.width`（[renderer.js:637-641](../../node_modules/wavesurfer.js/dist/renderer.js)） | **direct `el.style.*`** | 无——且它在 Rushi 生产 CSP 下正常工作（波形能显示/播放），即 direct style 未被拦 |
+| **WaveSurfer v7**（本仓 `node_modules`，实证真源） | `renderer.js` 每帧 `cursor.style.left` / `cursor.style.transform` / `canvasWrapper.style.clipPath` / `progressWrapper.style.width`（`node_modules/wavesurfer.js/dist/renderer.js:637-641`） | **direct `el.style.*`** | 无——且它在 Rushi 生产 CSP 下正常工作（波形能显示/播放），即 direct style 未被拦 |
 | **Peaks.js**（bbc） | rAF 每帧读 `audio.currentTime`，canvas 上更新 playhead x 坐标（issue #205 / PR #206-207） | canvas 重绘 + Konva | 无 |
 | **MDN / W3C CSP WG / morphdom #287** | — | `el.style.prop=` / `setProperty` 恒合法；大规模用 `adoptedStyleSheets` constructable stylesheet | `insertRule`/`cssText` 按 CSP3 2025 draft **gated on `unsafe-eval`** → 应避免 |
 

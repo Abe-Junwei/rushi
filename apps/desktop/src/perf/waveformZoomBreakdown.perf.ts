@@ -152,7 +152,7 @@ describe("waveform zoom frame breakdown", () => {
       detail: `${simulateBarDrawOps(targetCols)} rects`,
     });
 
-    // eslint-disable-next-line no-console -- perf report
+     
     console.info(`\n[waveform-zoom] 10min cross-zoom @ ${pxTo}px/s\n${formatBreakdown(rows)}\n`);
 
     expect(rows[0].ms).toBeGreaterThan(1);
@@ -192,7 +192,7 @@ describe("waveform zoom frame breakdown", () => {
       },
     ];
 
-    // eslint-disable-next-line no-console -- perf report
+     
     console.info(`\n[waveform-zoom] 10min same-LOD stretch 56→64 px/s\n${formatBreakdown(rows)}\n`);
 
     expect(rows[0].ms).toBeLessThan(2);
@@ -214,7 +214,7 @@ describe("waveform zoom frame breakdown", () => {
         detail: `base ${base.length} cols`,
       });
     }
-    // eslint-disable-next-line no-console -- perf report
+     
     console.info(`\n[waveform-zoom] long audio @ ${px}px/s\n${formatBreakdown(rows)}\n`);
     expect(rows[1].ms).toBeGreaterThan(rows[0].ms);
   });

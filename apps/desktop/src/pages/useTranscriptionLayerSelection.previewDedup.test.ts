@@ -97,7 +97,7 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
     document.body.innerHTML = "";
   });
 
-  it("runs CM6 list reveal once across pointerdown preview and pointerup commit", async () => {
+  it("runs CM6 list reveal once across pointerdown preview and pointerup commit", () => {
     const ctx = makeCtx();
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -128,7 +128,7 @@ describe("useTranscriptionLayerSelection preview dedup", () => {
     expect(revealSegmentInView).toHaveBeenCalledTimes(1);
   });
 
-  it("skips duplicate seek/reveal on pointerdown then pointerup gesture", async () => {
+  it("skips duplicate seek/reveal on pointerdown then pointerup gesture", () => {
     const ctx = makeCtx();
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
