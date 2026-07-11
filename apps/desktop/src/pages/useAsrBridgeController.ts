@@ -146,7 +146,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     if (asrHealth !== "error") return asrHealthDetail;
     if (
       isDefaultBundledAsrTarget() &&
-      bundledAsrDiag?.attempted &&
+      bundledAsrDiag &&
       !bundledAsrDiag.success &&
       bundledAsrDiag.detail
     ) {

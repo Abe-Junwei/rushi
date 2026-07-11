@@ -1,7 +1,6 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "entry": [
-    "src/plugins/**/index.ts",
     "tests/e2e/**/*.spec.ts",
     "src/**/*.test.{ts,tsx}"
   ],
@@ -14,7 +13,6 @@
   "ignoreExportsUsedInFile": true,
   "ignoreIssues": {
     "src/tauri/**": ["exports", "types"],
-    "src/plugin-system/**": ["exports", "types"],
     "src/contracts/**": ["exports", "types"],
     "src/services/stt/sttOnlineProviderContract/**": ["exports", "types"],
     "src/services/postprocess/postprocessRuntimeContract.ts": ["exports", "types"],

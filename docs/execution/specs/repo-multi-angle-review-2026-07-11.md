@@ -13,7 +13,7 @@
 |------|--------|------|
 | **P0** | 0 | 0 |
 | **P1** | 3 | **已修** |
-| **P2** | ~15 | **可落地项已修**；stt-read-key / nsis-sign / 架构热点拆分 **延期** |
+| **P2** | ~15 | **可落地项已修**；stt-read-key / nsis-sign **延期**；热点拆分 / plugin 删除 / supervisor 接线 **已做** |
 | **Note** | 多条 | 部分已修（hotwords title、STT preferPersisted、NavBlock 停止文案） |
 
 ---
@@ -47,7 +47,8 @@
 | P2-backfill-startup | SHA256 回填改开池后后台线程 |
 | Note | hotwords `title`；STT save→probe `preferPersistedCredentials`；NavBlock 停止文案对齐 |
 | Note M3 | `onlineTranscribeProviderShortLabel`：busy overlay 短标签；chip ok 仍用 catalog 长 label |
-| Note R-15 | plugin-system 标 v1 unused + CLN-905 DEFER（未删 scaffold） |
+| Note R-15 | plugin-system **已删**（CLN-905 DONE DELETE） |
+| Note I1b | 环境页 health poll / 向导 sidecar 步改读 `asr_supervisor_snapshot`（phase + portStatus）；不再仅依赖 `bundled_launch` 布尔 |
 
 ### 延期
 
@@ -55,11 +56,9 @@
 |----|------|
 | P2-stt-read-key | IPC 明文为有意设计；Rust 侧解析收紧延期 |
 | P2-nsis-sign | 交 win-release-assets 验收薄片 |
-| 架构热点拆分 | `useWaveformSegmentPlaybackControls` / `usePrepareModelController` 独立薄片 |
 | Windows IME W-1 | 发版前手测硬门禁 |
 | 协作/CAT/Sherpa | 故意延期产品化 |
-| Orphan IPC | `waveform_release_probe` / `quality_save_report_from_json` **已从 registration+permissions 移除**（Rust 实现保留；release 探针仍走 `scripts/waveform-release-probe.sh`）；`asr_supervisor_snapshot` **intentional defer**（已注册，待 env 页接线，见 r3h-i1） |
-| R-15 plugin-system | `loadBuiltinPlugins` / `export.format` 仅测试消费；生产导出未接 registry。保留 scaffold，入口已标 v1 unused；接线或删除见 CLN-905 |
+| Orphan IPC | `waveform_release_probe` / `quality_save_report_from_json` **已从 registration+permissions 移除**；`asr_supervisor_snapshot` **已接线**（env health poll + 向导） |
 
 ---
 

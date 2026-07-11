@@ -112,7 +112,7 @@ knip 报告 **310 unused exports**。大量为：
 | CLN-902 | `editorFooterShortcutHints.legacy.ts` | 文案双真源（登记 ⚪） |
 | CLN-903 | `archive/waveform-pre-ws-only-2026-05/` | 决策史 |
 | CLN-904 | R2 `auto_punctuate` 命令与 UI | 路线图明确不废弃 |
-| CLN-905 | `plugin-system/` + `plugins/export-markdown` / `tts-demo` | **DEFER**：v1 内置白名单 scaffold；`loadBuiltinPlugins` 仅测试调用，`useExportController` 未查 `export.format`。入口已标 unused；产品薄片接线或显式 DELETE 前勿删（见 repo-multi-angle-review-2026-07-11） |
+| CLN-905 | `plugin-system/` + `plugins/export-markdown` / `tts-demo` | **DONE** DELETE（2026-07-11）：生产未接 registry；显式删除 scaffold，避免僵尸域 |
 
 ---
 

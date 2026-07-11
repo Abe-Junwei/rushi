@@ -18,6 +18,11 @@ vi.mock("../tauri/projectApi", async (importOriginal) => {
   };
 });
 
+vi.mock("../tauri/asrSetupApi", () => ({
+  asrSetupDiagnose: vi.fn().mockRejectedValue(new Error("no tauri")),
+  asrSupervisorSnapshot: vi.fn().mockRejectedValue(new Error("no tauri")),
+}));
+
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { MIN_VISIBLE_BUSY_MS } from "../services/ui/minVisibleBusy";
 import type { AsrHealthCapabilities } from "../tauri/projectApi";

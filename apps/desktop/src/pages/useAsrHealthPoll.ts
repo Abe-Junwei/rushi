@@ -2,10 +2,12 @@ import { useCallback, useRef, useState, type MutableRefObject } from "react";
 import { asrBaseUrl, asrHealthUrl } from "../config/env";
 import type { AsrHealthCapabilities } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
+import { asrSupervisorSnapshot } from "../tauri/asrSetupApi";
 import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { parseAsrHealthJson } from "../services/asr/asrHealthParse";
 import { isAsrModelPrepareActive, isBundledAsrModelsSeedActive } from "../services/asr/asrPrepareActivityGate";
+import { launchReportFromSupervisor } from "../services/asr/asrSupervisorPresentation";
 import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 
 export type AsrHealthState = "checking" | "ok" | "error";
@@ -70,8 +72,8 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
 
   const refreshBundledAsrDiag = useCallback(async () => {
     try {
-      const r = await p1.bundledAsrLaunchReport();
-      setBundledAsrDiag(r);
+      const snap = await asrSupervisorSnapshot();
+      setBundledAsrDiag(launchReportFromSupervisor(snap));
     } catch {
       setBundledAsrDiag(null);
     }

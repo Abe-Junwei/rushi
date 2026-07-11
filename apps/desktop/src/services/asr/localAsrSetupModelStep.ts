@@ -1,5 +1,5 @@
-import * as projectApi from "../../tauri/projectApi";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
+import { asrSupervisorSnapshot } from "../../tauri/asrSetupApi";
 import { isDefaultBundledAsrTarget } from "../../config/env";
 import {
   packagedOrDev,
@@ -8,6 +8,7 @@ import {
 } from "../packagedUserHints";
 import { usesBundledAsrModelStack } from "./bundledModelJobPresentation";
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
+import { launchReportFromSupervisor } from "./asrSupervisorPresentation";
 import {
   shouldSkipSidecarRestartForSelection,
   isLoopbackTranscribeReadyForSelection,
@@ -95,9 +96,11 @@ async function restartSidecarAndWait(
       message: `侧车已恢复，但仍运行 ${running}。请点「重试内置侧车」后再试。`,
     };
   }
-  const report = await projectApi.bundledAsrLaunchReport().catch(() => null);
+  const report = await asrSupervisorSnapshot()
+    .then(launchReportFromSupervisor)
+    .catch(() => null);
   let message = "侧车重启后未响应 /health。请点「重试内置侧车」，或完全退出应用后再打开。";
-  if (report?.attempted && !report.success && report.detail?.trim()) {
+  if (report && !report.success && report.detail?.trim()) {
     message = `${message} ${report.detail.trim()}`;
   }
   return { ok: false, needsManualSidecarRestart: true, message };

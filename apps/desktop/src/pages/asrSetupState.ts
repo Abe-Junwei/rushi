@@ -5,6 +5,7 @@ import {
   type AsrSetupStep,
   type AsrSetupStepId,
 } from "../services/asr/asrSetupContract";
+import { sidecarStepFromSupervisor } from "../services/asr/asrSupervisorPresentation";
 import { usesBundledAsrModelStack } from "../services/asr/bundledModelJobPresentation";
 import { buildPrepareJobPresentation } from "../services/asr/prepareJobPresentation";
 
@@ -65,23 +66,8 @@ export function stepsFromReport(
     detail: diagnoseStepDetail(report),
   });
 
-  if (report.sidecarIntegrity === "corrupt") {
-    steps = patchStep(steps, "sidecar", { status: "error", detail: "内置侧车包损坏" });
-  } else if (report.portStatus === "foreign") {
-    const recoverable = report.blockingIssue == null;
-    steps = patchStep(steps, "sidecar", {
-      status: recoverable ? "pending" : "error",
-      detail: report.portDetail ?? (recoverable ? "待启动或端口占用" : "8741 端口冲突"),
-    });
-  } else if (report.health.healthReachable) {
-    steps = patchStep(steps, "sidecar", {
-      status: "skipped",
-      detail: report.bundledAvailable ? "侧车进程已连接" : "ASR 服务已连接",
-    });
-  } else if (report.bundledAvailable) {
-    steps = patchStep(steps, "sidecar", { status: "pending", detail: "待启动" });
-  } else {
-    steps = patchStep(steps, "sidecar", { status: "skipped", detail: "无内置侧车包" });
+  {
+    steps = patchStep(steps, "sidecar", sidecarStepFromSupervisor(report));
   }
 
   if (report.health.healthReachable) {

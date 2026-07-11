@@ -102,7 +102,10 @@ export function EnvLocalAsrUtilitiesSection({
               </p>
             }
           >
-            {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
+            {isDefaultBundledAsrTarget() &&
+            bundledAsrDiag &&
+            !bundledAsrDiag.success &&
+            (bundledAsrDiag.attempted || Boolean(bundledAsrDiag.detail)) ? (
               <EnvUtilitiesActionRow>
                 <EnvLocalAsrSmallButton
                   disabled={busy || prepareModelBusy || prepareModelCancelling}
