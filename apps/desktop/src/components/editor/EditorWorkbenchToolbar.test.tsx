@@ -60,7 +60,7 @@ function makeSegmentFilter() {
   };
 }
 
-function makeTx() {
+function makeTx(overrides: Record<string, unknown> = {}) {
   return {
     tierScrollRef: { current: null },
     tierScrollLive: {
@@ -94,6 +94,7 @@ function makeTx() {
     zoomToFitAll: vi.fn(),
     resetZoomForMedia: vi.fn(),
     setPxPerSecFromSlider: vi.fn(),
+    ...overrides,
   } as never;
 }
 
@@ -160,7 +161,7 @@ describe("EditorWorkbenchToolbar", () => {
     );
   });
 
-  it("disables segment play button when no segment is selected", () => {
+  it("keeps global play button enabled when no segment is selected", () => {
     const { container } = render(
       wrapToolbar(
         <EditorWorkbenchToolbar
@@ -174,7 +175,26 @@ describe("EditorWorkbenchToolbar", () => {
     );
 
     expect((container.querySelector(".waveform-playback-btn") as HTMLButtonElement).disabled).toBe(
-      true,
+      false,
     );
+  });
+
+  it("wires global play button to togglePlay", () => {
+    const togglePlay = vi.fn();
+    const handleToggleSelectedWaveformPlay = vi.fn();
+    const { container } = render(
+      wrapToolbar(
+        <EditorWorkbenchToolbar
+          controller={makeController()}
+          tx={makeTx({ togglePlay, handleToggleSelectedWaveformPlay })}
+          hasAudio
+          segmentFilter={makeSegmentFilter()}
+        />,
+      ),
+    );
+
+    (container.querySelector(".waveform-playback-btn") as HTMLButtonElement).click();
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 });

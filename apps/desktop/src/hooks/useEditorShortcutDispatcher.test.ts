@@ -194,47 +194,47 @@ describe("useEditorShortcutDispatcher", () => {
     expect(mergeWithNextAt).not.toHaveBeenCalled();
   });
 
-  it("toggles selected-segment play on Space outside editable fields", () => {
-    const handleToggleSelectedWaveformPlay = vi.fn();
+  it("toggles global play on Space outside editable fields", () => {
+    const togglePlay = vi.fn();
     const ctx = makeCtx();
     const { wfApiRef } = mountDispatcher(ctx);
-    wfApiRef.current.handleToggleSelectedWaveformPlay = handleToggleSelectedWaveformPlay;
+    wfApiRef.current.togglePlay = togglePlay;
 
     act(() => {
       dispatchKey({ key: " " });
     });
 
-    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
-    expect(wfApiRef.current.togglePlay).not.toHaveBeenCalled();
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+    expect(wfApiRef.current.handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
   it("does not toggle play on Space inside segment textarea", () => {
-    const handleToggleSelectedWaveformPlay = vi.fn();
+    const togglePlay = vi.fn();
     const textarea = document.createElement("textarea");
     textarea.setAttribute("aria-label", "语段正文");
     document.body.appendChild(textarea);
     textarea.focus();
     const ctx = makeCtx();
     const { wfApiRef } = mountDispatcher(ctx);
-    wfApiRef.current.handleToggleSelectedWaveformPlay = handleToggleSelectedWaveformPlay;
+    wfApiRef.current.togglePlay = togglePlay;
 
     act(() => {
       textarea.dispatchEvent(new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true }));
     });
 
-    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
+    expect(togglePlay).not.toHaveBeenCalled();
     textarea.remove();
   });
 
   it("does not toggle play on Space inside a generic panel input", () => {
-    const handleToggleSelectedWaveformPlay = vi.fn();
+    const togglePlay = vi.fn();
     const input = document.createElement("input");
     input.type = "text";
     document.body.appendChild(input);
     input.focus();
     const ctx = makeCtx();
     const { wfApiRef } = mountDispatcher(ctx);
-    wfApiRef.current.handleToggleSelectedWaveformPlay = handleToggleSelectedWaveformPlay;
+    wfApiRef.current.togglePlay = togglePlay;
 
     const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
     Object.defineProperty(event, "target", { value: input, configurable: true });
@@ -242,20 +242,20 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
+    expect(togglePlay).not.toHaveBeenCalled();
     expect(event.defaultPrevented).toBe(false);
     input.remove();
   });
 
-  it("toggles selected-segment play on Shift+Cmd+Space inside segment textarea", () => {
-    const handleToggleSelectedWaveformPlay = vi.fn();
+  it("toggles global play on Shift+Cmd+Space inside segment textarea", () => {
+    const togglePlay = vi.fn();
     const textarea = document.createElement("textarea");
     textarea.setAttribute("aria-label", "语段正文");
     document.body.appendChild(textarea);
     textarea.focus();
     const ctx = makeCtx();
     const { wfApiRef } = mountDispatcher(ctx);
-    wfApiRef.current.handleToggleSelectedWaveformPlay = handleToggleSelectedWaveformPlay;
+    wfApiRef.current.togglePlay = togglePlay;
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -270,20 +270,20 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
-    expect(wfApiRef.current.togglePlay).not.toHaveBeenCalled();
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+    expect(wfApiRef.current.handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
     textarea.remove();
   });
 
   it("does not toggle play on Cmd+Space inside segment textarea", () => {
-    const handleToggleSelectedWaveformPlay = vi.fn();
+    const togglePlay = vi.fn();
     const textarea = document.createElement("textarea");
     textarea.setAttribute("aria-label", "语段正文");
     document.body.appendChild(textarea);
     textarea.focus();
     const ctx = makeCtx();
     const { wfApiRef } = mountDispatcher(ctx);
-    wfApiRef.current.handleToggleSelectedWaveformPlay = handleToggleSelectedWaveformPlay;
+    wfApiRef.current.togglePlay = togglePlay;
 
     act(() => {
       const event = new KeyboardEvent("keydown", {
@@ -297,7 +297,7 @@ describe("useEditorShortcutDispatcher", () => {
       window.dispatchEvent(event);
     });
 
-    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
+    expect(togglePlay).not.toHaveBeenCalled();
     textarea.remove();
   });
 

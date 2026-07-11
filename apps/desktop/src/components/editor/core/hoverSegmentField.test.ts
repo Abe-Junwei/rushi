@@ -9,6 +9,7 @@ import {
   setTranscriptHoverSegmentEffect,
   transcriptHoverSegmentField,
 } from "./hoverSegmentField";
+import { setTranscriptPlaybackFocusEffect } from "./playbackFocusField";
 
 function makeSegments(n: number): SegmentDto[] {
   return Array.from({ length: n }, (_, i) => ({
@@ -42,6 +43,19 @@ describe("hoverSegmentField", () => {
     expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeTruthy();
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(null) });
     expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
+    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
+  });
+
+  it("does not apply hover wash on the playback-focus line", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    view.dispatch({ effects: setTranscriptPlaybackFocusEffect.of(1) });
+    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
+    expect(view.state.field(transcriptHoverSegmentField)).toBe(1);
     expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
   });
 });

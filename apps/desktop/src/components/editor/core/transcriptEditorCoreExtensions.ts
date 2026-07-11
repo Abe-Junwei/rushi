@@ -22,6 +22,7 @@ import {
   type TranscriptStageGutterOptions,
 } from "./stageGutter";
 import { transcriptHoverExtensions } from "./hoverSegmentField";
+import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 
 export type TranscriptEditorCoreExtensionsOptions = {
   persistence?: TransactionPersistenceBridgeHandlers;
@@ -50,6 +51,7 @@ export function transcriptEditorCoreExtensions(
     // multi-selection field is installed by buildTranscriptEditorState
     transcriptSelectionDecorations,
     ...transcriptHoverExtensions,
+    ...transcriptPlaybackFocusExtensions,
     transcriptPanelHighlightField,
     transcriptPanelHighlightTheme,
     transcriptFilterVisibilityField,

@@ -92,7 +92,7 @@ describe("executeEditorShortcut", () => {
     document.body.innerHTML = "";
   });
 
-  it("playback.toggle uses selected-segment play, not global togglePlay", () => {
+  it("playback.toggle uses global togglePlay, not selected-segment play", () => {
     const handleToggleSelectedWaveformPlay = vi.fn();
     const togglePlay = vi.fn();
     const deps = makeDeps({
@@ -109,17 +109,18 @@ describe("executeEditorShortcut", () => {
 
     executeEditorShortcut("playback.toggle", deps);
 
-    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
-    expect(togglePlay).not.toHaveBeenCalled();
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
-  it("playback.toggle is a no-op when no segment is selected", () => {
+  it("playback.toggle still works when no segment is selected", () => {
+    const togglePlay = vi.fn();
     const handleToggleSelectedWaveformPlay = vi.fn();
     const deps = makeDeps({
       ctx: makeCtx({ selectedIdx: -1 }),
       wf: {
         getPlayheadTime: () => 0,
-        togglePlay: vi.fn(),
+        togglePlay,
         handleToggleSelectedWaveformPlay,
         seekByDelta: vi.fn(),
         seek: vi.fn(),
@@ -129,10 +130,11 @@ describe("executeEditorShortcut", () => {
     });
 
     expect(executeEditorShortcut("playback.toggle", deps)).toBe(true);
+    expect(togglePlay).toHaveBeenCalledTimes(1);
     expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
-  it("playback.toggle uses CM6 projection when React SC1 still lags (H3)", async () => {
+  it("playback.toggle does not require CM6 projection primary (global play)", async () => {
     const {
       resetTranscriptProjectionForTests,
       seedTranscriptProjectionForTests,
@@ -144,12 +146,13 @@ describe("executeEditorShortcut", () => {
       rangeAnchor: 1,
       lineCount: 2,
     });
+    const togglePlay = vi.fn();
     const handleToggleSelectedWaveformPlay = vi.fn();
     const deps = makeDeps({
       ctx: makeCtx({ selectedIdx: 0 }),
       wf: {
         getPlayheadTime: () => 0.5,
-        togglePlay: vi.fn(),
+        togglePlay,
         handleToggleSelectedWaveformPlay,
         seekByDelta: vi.fn(),
         seek: vi.fn(),
@@ -159,7 +162,8 @@ describe("executeEditorShortcut", () => {
     });
 
     expect(executeEditorShortcut("playback.toggle", deps)).toBe(true);
-    expect(handleToggleSelectedWaveformPlay).toHaveBeenCalledTimes(1);
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+    expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
     resetTranscriptProjectionForTests();
   });
 

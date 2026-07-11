@@ -18,6 +18,8 @@ export type WaveformSegmentPlaybackBoundSyncArgs = {
   segmentBoundStopInFlightRef: React.MutableRefObject<boolean>;
   playStartInFlightGenerationRef: React.MutableRefObject<number | null>;
   unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
+  /** Global continuous play generation — must not auto-arm segment end-bound. */
+  globalPlayGenRef: React.MutableRefObject<number | null>;
   segmentLoopPlaybackRef: React.MutableRefObject<boolean>;
   isSelectedSegmentPlayingRef: React.MutableRefObject<boolean>;
   autoStoppedSegmentIdxRef: React.MutableRefObject<number | null>;
@@ -48,6 +50,7 @@ export function useWaveformSegmentPlaybackBoundSync(
     segmentBoundStopInFlightRef,
     playStartInFlightGenerationRef,
     unboundedSelectedPlayGenRef,
+    globalPlayGenRef,
     segmentLoopPlaybackRef,
     isSelectedSegmentPlayingRef,
     autoStoppedSegmentIdxRef,
@@ -158,6 +161,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       }
       if (!ws.isPlaying()) {
         if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+        if (globalPlayGenRef.current != null) globalPlayGenRef.current = null;
         if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
         return;
       }
@@ -176,6 +180,12 @@ export function useWaveformSegmentPlaybackBoundSync(
           : resolvePlayheadSec();
       const inside = t >= range.start && t < range.end;
       if (inside) {
+        // Global continuous play: never auto-scope to the selected segment end.
+        if (globalPlayGenRef.current === playGenerationRef.current) {
+          if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+          if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+          return;
+        }
         const bound = segmentPlaybackBoundRef.current;
         const boundMatches =
           bound != null &&
@@ -215,6 +225,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
     },
     [
+      globalPlayGenRef,
       isReady,
       isSelectedSegmentPlayingRef,
       playGenerationRef,

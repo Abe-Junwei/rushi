@@ -77,6 +77,8 @@
   /** 语段 fill — accent-action / accent-action-strong；列表 vs 波形 inSelection 分层见 CONTEXT */
   --segment-fill-selected: color-mix(in srgb, var(--accent-action) 14%, transparent);
   --segment-fill-selected-list: color-mix(in srgb, var(--accent-action) 12%, transparent);
+  /** Selected ∩ playback focus — deeper saffron than plain selection. */
+  --segment-fill-selected-playing-list: color-mix(in srgb, var(--accent-action) 24%, transparent);
   --segment-fill-in-selection-list: color-mix(in srgb, var(--accent-action) 3%, transparent);
   --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 8%, transparent);
   --segment-fill-visited: color-mix(in srgb, var(--notion-text) 10%, transparent);
@@ -89,6 +91,11 @@
   /** Progress chrome — accent-action 族（播放头 / minimap / 已播放 peaks tint 基链） */
   --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
   --waveform-minimap-playhead: var(--accent-action-strong);
+  /**
+   * Transcript Playback Focus fill — fixed cool gray wash (≠ selection saffron).
+   * No inset bar; row uses this background while playing.
+   */
+  --transcript-playback-focus-fill: color-mix(in srgb, var(--zen-wf-wave) 11%, var(--notion-bg));
   --waveform-minimap-viewport-border: color-mix(in srgb, var(--accent-action) 30%, transparent);
   --waveform-minimap-viewport-bg: color-mix(in srgb, var(--accent-action) 15%, transparent);
 

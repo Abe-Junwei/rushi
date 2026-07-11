@@ -689,6 +689,61 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.setTime).not.toHaveBeenCalledWith(10);
   });
 
+  it("global play does not auto-scope-stop at selected segment end", async () => {
+    let playhead = 15;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(() => {
+        playing = true;
+        queueMicrotask(() => emit("play"));
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    act(() => {
+      result.current.beginGlobalPlayback();
+    });
+    playing = true;
+    await act(async () => {
+      emit("play");
+      emit("audioprocess");
+      await Promise.resolve();
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(false);
+
+    playhead = 19.99;
+    await act(async () => {
+      emit("audioprocess");
+      schedulePlaybackViewportFrame(playhead);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(ws.pause).not.toHaveBeenCalled();
+    expect(playing).toBe(true);
+    expect(result.current.isSelectedSegmentPlaying).toBe(false);
+  });
+
   it("auto-stops on Rushi playback frame when past end without audioprocess", async () => {
     // WS-2b: audioprocess is sparse; visual clock drives playback frames. Sync must
     // not clear the bound before enforce can pause (overshoot past endSec).

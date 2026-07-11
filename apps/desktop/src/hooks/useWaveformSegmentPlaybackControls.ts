@@ -77,10 +77,13 @@ export function useWaveformSegmentPlaybackControls(args: {
   const playStartInFlightGenerationRef = useRef<number | null>(null);
   /** Play started past selected end (no end-bound); keep Stop chrome until pause. */
   const unboundedSelectedPlayGenRef = useRef<number | null>(null);
+  /** Global continuous play — sync must not auto-arm segment end-bound. */
+  const globalPlayGenRef = useRef<number | null>(null);
 
   const clearSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
+    globalPlayGenRef.current = null;
     autoStoppedSegmentIdxRef.current = null;
     setIsSelectedSegmentPlaying(false);
   }, []);
@@ -89,8 +92,19 @@ export function useWaveformSegmentPlaybackControls(args: {
   const cancelSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
+    globalPlayGenRef.current = null;
     autoStoppedSegmentIdxRef.current = null;
     playGenerationRef.current += 1;
+    setIsSelectedSegmentPlaying(false);
+  }, []);
+
+  /** Mark the next media play as unbounded global (Space / toolbar main button). */
+  const beginGlobalPlayback = useCallback(() => {
+    segmentPlaybackBoundRef.current = null;
+    unboundedSelectedPlayGenRef.current = null;
+    autoStoppedSegmentIdxRef.current = null;
+    const gen = ++playGenerationRef.current;
+    globalPlayGenRef.current = gen;
     setIsSelectedSegmentPlaying(false);
   }, []);
 
@@ -138,6 +152,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     segmentBoundStopInFlightRef,
     playStartInFlightGenerationRef,
     unboundedSelectedPlayGenRef,
+    globalPlayGenRef,
     segmentLoopPlaybackRef,
     isSelectedSegmentPlayingRef,
     autoStoppedSegmentIdxRef,
@@ -194,6 +209,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     toggleSelectedWaveformPlayImpl,
     clearSegmentPlaybackBound,
     clearPausedResumeAnchor,
+    beginGlobalPlayback,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: toggleSelectedWaveformPlayImpl,
   };

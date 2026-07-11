@@ -6,6 +6,10 @@ import {
   transcriptMultiSelectionField,
   transcriptMultiSelectionEqual,
 } from "./selectionField";
+import {
+  setTranscriptPlaybackFocusEffect,
+  transcriptPlaybackFocusField,
+} from "./playbackFocusField";
 
 export const setTranscriptHoverSegmentEffect = StateEffect.define<number | null>();
 
@@ -32,7 +36,15 @@ function buildHoverDecorations(state: import("@codemirror/state").EditorState): 
   if (hoverIdx == null || hoverIdx < 0) return Decoration.none;
   const primary = primarySegmentIdx(state);
   const multi = state.field(transcriptMultiSelectionField);
-  if (hoverIdx === primary || multi.selectedSet.has(hoverIdx)) return Decoration.none;
+  const playbackIdx = state.field(transcriptPlaybackFocusField);
+  // No extra hover wash on selected or playback-focus rows (keep their own fill).
+  if (
+    hoverIdx === primary ||
+    multi.selectedSet.has(hoverIdx) ||
+    (playbackIdx != null && hoverIdx === playbackIdx)
+  ) {
+    return Decoration.none;
+  }
   if (hoverIdx >= state.doc.lines) return Decoration.none;
   const line = state.doc.line(hoverIdx + 1);
   const builder = new RangeSetBuilder<typeof hoverDeco>();
@@ -55,7 +67,11 @@ export const transcriptHoverDecorations = StateField.define<DecorationSet>({
         tr.startState.field(transcriptMultiSelectionField),
         tr.state.field(transcriptMultiSelectionField),
       );
-    if (selectionChanged || hoverChanged || hoverFieldChanged || multiChanged) {
+    const playbackChanged =
+      tr.effects.some((e) => e.is(setTranscriptPlaybackFocusEffect)) ||
+      tr.startState.field(transcriptPlaybackFocusField) !==
+        tr.state.field(transcriptPlaybackFocusField);
+    if (selectionChanged || hoverChanged || hoverFieldChanged || multiChanged || playbackChanged) {
       return buildHoverDecorations(tr.state);
     }
     return tr.docChanged ? value.map(tr.changes) : value;

@@ -10,6 +10,8 @@ import {
   writeStoredWaveformPxPerSec,
   subscribeWaveformPrefs,
   writeStoredTabAdvanceLoopsSegment,
+  readStoredTranscriptPlaybackFollow,
+  writeStoredTranscriptPlaybackFollow,
 } from "./waveformPrefs";
 
 describe("waveformPrefs localStorage", () => {
@@ -82,6 +84,14 @@ describe("waveformPrefs localStorage", () => {
     writeStoredTabAdvanceLoopsSegment(false);
     expect(calls).toBe(1);
     unsub();
+  });
+
+  it("defaults transcript playback follow to on and round-trips off", () => {
+    expect(readStoredTranscriptPlaybackFollow()).toBe(true);
+    writeStoredTranscriptPlaybackFollow(false);
+    expect(readStoredTranscriptPlaybackFollow()).toBe(false);
+    writeStoredTranscriptPlaybackFollow(true);
+    expect(readStoredTranscriptPlaybackFollow()).toBe(true);
   });
 
   it("migrates legacy segment playback rate into global when global is default", () => {

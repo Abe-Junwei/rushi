@@ -11,6 +11,7 @@ const LS_SEGMENT_PLAYBACK_RATE_LEGACY = "rushi.p1.segmentPlaybackRate";
 const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
 const LS_PLAYBACK_SCROLL_FOLLOW = "rushi.p1.waveformPlaybackScrollFollow";
+const LS_TRANSCRIPT_PLAYBACK_FOLLOW = "rushi.p1.transcriptPlaybackFollow";
 
 const waveformPrefListeners = new Set<() => void>();
 
@@ -252,6 +253,27 @@ export function writeStoredWaveformPlaybackScrollFollowMode(
 ): void {
   try {
     localStorage.setItem(LS_PLAYBACK_SCROLL_FOLLOW, mode);
+    notifyAfterWaveformPrefWrite();
+  } catch {
+    /* noop */
+  }
+}
+
+/** 文稿跟播（Playback Focus）：播放时弱高亮并条件滚到当前语段；默认开。 */
+export function readStoredTranscriptPlaybackFollow(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_TRANSCRIPT_PLAYBACK_FOLLOW);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+  } catch {
+    /* noop */
+  }
+  return true;
+}
+
+export function writeStoredTranscriptPlaybackFollow(enabled: boolean): void {
+  try {
+    localStorage.setItem(LS_TRANSCRIPT_PLAYBACK_FOLLOW, enabled ? "1" : "0");
     notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */

@@ -14,8 +14,6 @@ import {
   resolveConfirmAdvanceStartingIdx,
   type ConfirmAdvanceTabQueueRef,
 } from "./confirmAdvanceTabQueue";
-import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
-
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type EditorShortcutExecuteDeps = {
@@ -149,11 +147,8 @@ export function executeEditorShortcut(
     }
     case "playback.toggle": {
       if (!ctx.mediaUrl) return true;
-      // Space / ⇧⌘Space：当前选中语段 scoped 播放（与语段区播放钮同路径），非全局续播。
-      // Prefer SC2 chrome primary — SC1 may lag after select (H3: pause in A, select B, Space).
-      const playIdx = effectiveTranscriptPrimaryIdx(ctx.selectedIdx);
-      if (playIdx < 0 || !ctx.segments[playIdx]) return true;
-      void wf.handleToggleSelectedWaveformPlay();
+      // Space / ⇧⌘Space：全局从 playhead 续播（非语段 scoped；段播见波形浮层）。
+      void wf.togglePlay();
       return true;
     }
     case "edit.undo":

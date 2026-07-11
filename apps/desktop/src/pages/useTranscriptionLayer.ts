@@ -3,6 +3,7 @@ import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useEditorShortcutDispatcher } from "../hooks/useEditorShortcutDispatcher";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
+import { useTranscriptPlaybackFollow } from "../hooks/useTranscriptPlaybackFollow";
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
@@ -38,6 +39,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const showEditorHintRef = useRef(showEditorHint);
   showEditorHintRef.current = showEditorHint;
 
+  const notifyTranscriptPlaybackSelectRef = useRef<(idx: number) => void>(() => {});
+
   const selection = useTranscriptionLayerSelection({
     ctx,
     ctxRef,
@@ -47,6 +50,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     selectedIdxRef: ctx.selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
+    onListLikeSegmentSelect: (idx) => notifyTranscriptPlaybackSelectRef.current(idx),
   });
 
   const selectSegmentRangeRef = useRef<(lo: number, hi: number) => void>((lo, hi) => {
@@ -108,6 +112,15 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     waveformReady: wf.isReady,
   });
+
+  const transcriptPlaybackFollow = useTranscriptPlaybackFollow({
+    isPlaying: wf.isPlaying,
+    isReady: wf.isReady,
+    segments: ctx.segments,
+    selectedIdx: ctx.selectedIdx,
+    subscribePlayheadFrame: timeline.subscribePlayheadFrame,
+  });
+  notifyTranscriptPlaybackSelectRef.current = transcriptPlaybackFollow.notifyUserSegmentSelect;
 
   useWaveformTierWheelForward({
     waveformShellRef,

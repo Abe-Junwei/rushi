@@ -24,6 +24,7 @@ import {
   readStoredWaveformGlobalPlaybackRate,
   readStoredWaveformMinimapEnabled,
   readStoredWaveformPlaybackScrollFollowMode,
+  readStoredTranscriptPlaybackFollow,
   resetStoredEditorLayoutDefaults,
   resolveStoredTranscriptFontPx,
   resolveStoredWaveformHeightPx,
@@ -37,6 +38,7 @@ import {
   writeStoredWaveformHeightPx,
   writeStoredWaveformMinimapEnabled,
   writeStoredWaveformPlaybackScrollFollowMode,
+  writeStoredTranscriptPlaybackFollow,
 } from "../utils/waveformPrefs";
 import { EnvAppearanceSections } from "./EnvAppearanceSections";
 import { EnvPanelSelect } from "./EnvPanelSelect";
@@ -85,6 +87,11 @@ export function EnvPreferencesPanel() {
     subscribeWaveformPrefs,
     readStoredWaveformPlaybackScrollFollowMode,
     readStoredWaveformPlaybackScrollFollowMode,
+  );
+  const transcriptPlaybackFollow = useSyncExternalStore(
+    subscribeWaveformPrefs,
+    readStoredTranscriptPlaybackFollow,
+    readStoredTranscriptPlaybackFollow,
   );
   const globalPlaybackRate = useSyncExternalStore(
     subscribeWaveformPrefs,
@@ -147,6 +154,10 @@ export function EnvPreferencesPanel() {
     writeStoredWaveformPlaybackScrollFollowMode(mode);
   }, []);
 
+  const setTranscriptPlaybackFollow = useCallback((enabled: boolean) => {
+    writeStoredTranscriptPlaybackFollow(enabled);
+  }, []);
+
   const setGlobalPlaybackRate = useCallback((raw: string) => {
     const rate = snapWaveformPlaybackRate(Number(raw));
     writeStoredWaveformGlobalPlaybackRate(rate);
@@ -181,6 +192,14 @@ export function EnvPreferencesPanel() {
             hint="主波形下方的 minimap 缩略导航。"
             checked={minimapEnabled}
             onChange={setMinimapEnabled}
+          />
+
+          <EnvPrefSwitchRow
+            id="pref-transcript-playback-follow"
+            label="文稿跟随播放"
+            hint="播放时弱高亮当前播出语段并自动滚入视口；不改变选中。正在编辑或点选其他语段时暂停跟滚。"
+            checked={transcriptPlaybackFollow}
+            onChange={setTranscriptPlaybackFollow}
           />
 
           <div className={ENV_PANEL_FORM_FIELD_CLASS}>

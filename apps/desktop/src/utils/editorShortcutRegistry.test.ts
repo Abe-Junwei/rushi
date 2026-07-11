@@ -149,6 +149,7 @@ describe("formatEditorShortcutPanelSections", () => {
 
     const playback = sections.find((s) => s.id === "playback");
     expect(playback?.rows[0]?.keys).toBe("Space / ⇧⌘/Ctrl+Shift+Space");
+    expect(playback?.rows[0]?.action).toContain("全局播放");
     expect(playback?.rows[0]?.action).toContain("⇧⌘Space");
 
     const waveform = sections.find((s) => s.id === "waveform");

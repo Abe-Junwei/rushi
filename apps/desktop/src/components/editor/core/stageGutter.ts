@@ -13,6 +13,7 @@ import {
 import { selectSegmentCommand } from "./selectionCommands";
 import type { TranscriptRowSelectionKind } from "./metaGutter";
 import { transcriptHoverSegmentField } from "./hoverSegmentField";
+import { transcriptPlaybackFocusField } from "./playbackFocusField";
 
 /** Compact Lucide-like strokes for stage chips (no React mount in gutter DOM). */
 const STAGE_ICON_SVG: Record<string, string> = {
@@ -32,6 +33,8 @@ export class TranscriptStageMarker extends GutterMarker {
     readonly label: string,
     readonly tooltip: string,
     readonly selectionKind: TranscriptRowSelectionKind = null,
+    /** True when this row is the current playback-focus line (may coexist with primary). */
+    readonly isPlaybackFocus: boolean = false,
   ) {
     super();
   }
@@ -41,20 +44,25 @@ export class TranscriptStageMarker extends GutterMarker {
       this.stageMod === other.stageMod &&
       this.label === other.label &&
       this.tooltip === other.tooltip &&
-      this.selectionKind === other.selectionKind
+      this.selectionKind === other.selectionKind &&
+      this.isPlaybackFocus === other.isPlaybackFocus
     );
   }
 
   toDOM(): HTMLElement {
     const wrap = document.createElement("div");
     const kindClass =
-      this.selectionKind === "primary"
-        ? "cm-transcript-stage-cell--primary"
-        : this.selectionKind === "in"
-          ? "cm-transcript-stage-cell--in-selection"
-          : this.selectionKind === "hover"
-            ? "cm-transcript-stage-cell--hover"
-            : "";
+      this.selectionKind === "primary" && this.isPlaybackFocus
+        ? "cm-transcript-stage-cell--primary-playback"
+        : this.selectionKind === "primary"
+          ? "cm-transcript-stage-cell--primary"
+          : this.selectionKind === "in"
+            ? "cm-transcript-stage-cell--in-selection"
+            : this.selectionKind === "playback"
+              ? "cm-transcript-stage-cell--playback"
+              : this.selectionKind === "hover"
+                ? "cm-transcript-stage-cell--hover"
+                : "";
     wrap.className = ["cm-transcript-stage-cell", kindClass].filter(Boolean).join(" ");
 
     const el = document.createElement("span");
@@ -81,7 +89,7 @@ export class TranscriptStageMarker extends GutterMarker {
 
 export function buildTranscriptStageMarker(
   meta: SegmentMeta | undefined,
-  opts: { selectionKind?: TranscriptRowSelectionKind } = {},
+  opts: { selectionKind?: TranscriptRowSelectionKind; isPlaybackFocus?: boolean } = {},
 ): TranscriptStageMarker | null {
   if (!meta?.stage) return null;
   const labels = resolveSegmentStageLabels(meta.stage, meta.finalizeVia);
@@ -91,6 +99,7 @@ export function buildTranscriptStageMarker(
     labels.category,
     labels.tooltip,
     opts.selectionKind ?? null,
+    opts.isPlaybackFocus === true,
   );
 }
 
@@ -113,16 +122,20 @@ export function createTranscriptStageGutter(
       const primary = primarySegmentIdx(view.state);
       const multi = view.state.field(transcriptMultiSelectionField);
       const hoverIdx = view.state.field(transcriptHoverSegmentField);
+      const playbackIdx = view.state.field(transcriptPlaybackFocusField);
       const selectionKind: TranscriptRowSelectionKind =
         idx === primary
           ? "primary"
           : multi.selectedSet.has(idx)
             ? "in"
-            : hoverIdx === idx
-              ? "hover"
-              : null;
+            : playbackIdx != null && playbackIdx === idx
+              ? "playback"
+              : hoverIdx === idx
+                ? "hover"
+                : null;
       return buildTranscriptStageMarker(view.state.field(segmentMetaField)[idx], {
         selectionKind,
+        isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
       });
     },
     lineMarkerChange(update) {
@@ -138,7 +151,9 @@ export function createTranscriptStageGutter(
           update.state.field(transcriptMultiSelectionField),
         ) ||
         update.startState.field(transcriptHoverSegmentField) !==
-          update.state.field(transcriptHoverSegmentField)
+          update.state.field(transcriptHoverSegmentField) ||
+        update.startState.field(transcriptPlaybackFocusField) !==
+          update.state.field(transcriptPlaybackFocusField)
       );
     },
     initialSpacer: () =>
@@ -186,8 +201,16 @@ export const transcriptStageGutterTheme = EditorView.theme({
     backgroundColor: "var(--segment-fill-selected-list)",
     borderRadius: "0 0.375rem 0.375rem 0",
   },
+  ".cm-transcript-stage-cell--primary-playback": {
+    backgroundColor: "var(--segment-fill-selected-playing-list)",
+    borderRadius: "0 0.375rem 0.375rem 0",
+  },
   ".cm-transcript-stage-cell--in-selection": {
     backgroundColor: "var(--segment-fill-in-selection-list)",
+    borderRadius: "0 0.375rem 0.375rem 0",
+  },
+  ".cm-transcript-stage-cell--playback": {
+    backgroundColor: "var(--transcript-playback-focus-fill)",
     borderRadius: "0 0.375rem 0.375rem 0",
   },
   ".cm-transcript-stage-cell--hover": {

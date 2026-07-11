@@ -9,9 +9,10 @@ import {
 } from "./selectionField";
 import { selectSegmentCommand } from "./selectionCommands";
 import { transcriptHoverSegmentField } from "./hoverSegmentField";
+import { transcriptPlaybackFocusField } from "./playbackFocusField";
 import { transcriptGutterChromeBaseTheme } from "./transcriptGutterChromeTheme";
 
-export type TranscriptRowSelectionKind = "primary" | "in" | "hover" | null;
+export type TranscriptRowSelectionKind = "primary" | "in" | "hover" | "playback" | null;
 
 /** Left meta gutter width — full legacy meta column (stage lives in the after gutter). */
 export function computeTranscriptMetaGutterWidthPx(segmentMetaWidthPx: number): number {
@@ -23,33 +24,40 @@ export class TranscriptMetaMarker extends GutterMarker {
     readonly indexLabel: string,
     readonly timeLabel: string,
     readonly selectionKind: TranscriptRowSelectionKind,
+    /** True when this row is the current playback-focus line (may coexist with primary). */
+    readonly isPlaybackFocus: boolean = false,
   ) {
     super();
   }
 
   /** @deprecated use selectionKind; kept for existing tests */
   get highlighted(): boolean {
-    return this.selectionKind != null;
+    return this.selectionKind != null || this.isPlaybackFocus;
   }
 
   eq(other: TranscriptMetaMarker): boolean {
     return (
       this.indexLabel === other.indexLabel &&
       this.timeLabel === other.timeLabel &&
-      this.selectionKind === other.selectionKind
+      this.selectionKind === other.selectionKind &&
+      this.isPlaybackFocus === other.isPlaybackFocus
     );
   }
 
   toDOM(): HTMLElement {
     const el = document.createElement("div");
     const kindClass =
-      this.selectionKind === "primary"
-        ? "cm-transcript-meta-marker--primary"
-        : this.selectionKind === "in"
-          ? "cm-transcript-meta-marker--in-selection"
-          : this.selectionKind === "hover"
-            ? "cm-transcript-meta-marker--hover"
-            : "";
+      this.selectionKind === "primary" && this.isPlaybackFocus
+        ? "cm-transcript-meta-marker--primary-playback"
+        : this.selectionKind === "primary"
+          ? "cm-transcript-meta-marker--primary"
+          : this.selectionKind === "in"
+            ? "cm-transcript-meta-marker--in-selection"
+            : this.selectionKind === "playback"
+              ? "cm-transcript-meta-marker--playback"
+              : this.selectionKind === "hover"
+                ? "cm-transcript-meta-marker--hover"
+                : "";
     el.className = ["cm-transcript-meta-marker", kindClass].filter(Boolean).join(" ");
     el.title = `${this.indexLabel} ${this.timeLabel}`;
 
@@ -81,7 +89,11 @@ export type TranscriptMetaGutterOptions = {
 export function buildTranscriptMetaMarker(
   meta: SegmentMeta | undefined,
   idx: number,
-  opts: { highlighted?: boolean; selectionKind?: TranscriptRowSelectionKind } = {},
+  opts: {
+    highlighted?: boolean;
+    selectionKind?: TranscriptRowSelectionKind;
+    isPlaybackFocus?: boolean;
+  } = {},
 ): TranscriptMetaMarker | null {
   if (!meta) return null;
   const selectionKind =
@@ -90,6 +102,7 @@ export function buildTranscriptMetaMarker(
     `${idx + 1}.`,
     formatTranscriptTimestamp(meta.startSec),
     selectionKind,
+    opts.isPlaybackFocus === true,
   );
 }
 
@@ -98,9 +111,11 @@ function selectionKindForIdx(
   primary: number,
   selectedSet: ReadonlySet<number>,
   hoverIdx: number | null,
+  playbackIdx: number | null,
 ): TranscriptRowSelectionKind {
   if (idx === primary) return "primary";
   if (selectedSet.has(idx)) return "in";
+  if (playbackIdx != null && playbackIdx === idx) return "playback";
   if (hoverIdx === idx) return "hover";
   return null;
 }
@@ -121,8 +136,16 @@ export function createTranscriptMetaGutter(
       const primary = primarySegmentIdx(view.state);
       const multi = view.state.field(transcriptMultiSelectionField);
       const hoverIdx = view.state.field(transcriptHoverSegmentField);
+      const playbackIdx = view.state.field(transcriptPlaybackFocusField);
       return buildTranscriptMetaMarker(view.state.field(segmentMetaField)[idx], idx, {
-        selectionKind: selectionKindForIdx(idx, primary, multi.selectedSet, hoverIdx),
+        selectionKind: selectionKindForIdx(
+          idx,
+          primary,
+          multi.selectedSet,
+          hoverIdx,
+          playbackIdx,
+        ),
+        isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
       });
     },
     lineMarkerChange(update) {
@@ -138,7 +161,9 @@ export function createTranscriptMetaGutter(
           update.state.field(transcriptMultiSelectionField),
         ) ||
         update.startState.field(transcriptHoverSegmentField) !==
-          update.state.field(transcriptHoverSegmentField)
+          update.state.field(transcriptHoverSegmentField) ||
+        update.startState.field(transcriptPlaybackFocusField) !==
+          update.state.field(transcriptPlaybackFocusField)
       );
     },
     initialSpacer: () => new TranscriptMetaMarker("1.", "00:00:00", null),
@@ -211,9 +236,19 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     backgroundColor: "var(--segment-fill-selected-list)",
     borderRadius: "0.375rem 0 0 0.375rem",
   },
+  ".cm-transcript-meta-marker--primary-playback": {
+    color: "var(--notion-text-muted)",
+    backgroundColor: "var(--segment-fill-selected-playing-list)",
+    borderRadius: "0.375rem 0 0 0.375rem",
+  },
   ".cm-transcript-meta-marker--in-selection": {
     color: "var(--notion-text-muted)",
     backgroundColor: "var(--segment-fill-in-selection-list)",
+    borderRadius: "0.375rem 0 0 0.375rem",
+  },
+  ".cm-transcript-meta-marker--playback": {
+    color: "var(--notion-text-muted)",
+    backgroundColor: "var(--transcript-playback-focus-fill)",
     borderRadius: "0.375rem 0 0 0.375rem",
   },
   ".cm-transcript-meta-marker--hover": {

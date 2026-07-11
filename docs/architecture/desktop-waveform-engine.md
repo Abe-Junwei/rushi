@@ -80,7 +80,8 @@
 - 语段 overlay、框选、播放控件、点击寻位一律经 `timeToTimelinePx`（`waveformSegmentBounds` / `waveformSegmentOverlayGeometry`）。
 - **语段 tap（两段式 seek）：** [`resolveSegmentOverlayTap`](../../apps/desktop/src/utils/waveformSegmentOverlayActions.ts) — 未选中语段 → `selectSegmentAt`（viewport fit + seek 语段头）；已选中语段内再点 → `seekToTime`（钳在语段边界）。pointerup 为主路径（`applyOverlayPointerUpIntent`），click 为兜底。
 - **语段播放起点：** [`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts) / [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — 段内从 playhead；**已过段尾从 playhead 续播**（不回段头）；段前仍跳到段头。
-- **Space / 工具栏播放钮：** [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts) — 当前选中语段 scoped 播放（非全局 `togglePlay` 续播）。语段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
+- **Space / 工具栏主播放钮：** [`togglePlay`](../../apps/desktop/src/hooks/useProjectWaveform.ts)（`beginGlobalPlayback` 后 `ws.play`）— **全局**从 playhead 续播。`syncSelectedSegmentPlayingUi` **不得**在全局 session 下因「播放头在选中语段内」自动挂段尾 bound（见 [`global-vs-segment-playback-ux-research.md`](../execution/specs/global-vs-segment-playback-ux-research.md)）。语段 scoped / loop：波形浮层 [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts)；段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
+- **文稿 Playback Focus：** [`useTranscriptPlaybackFollow`](../../apps/desktop/src/hooks/useTranscriptPlaybackFollow.ts) — 播放中按 `resolveVisitedSegmentIndexAtPlayhead` 更新 CM6 行装饰（**≠ selection**）；条件 `revealSegmentInView`。偏好 `rushi.p1.transcriptPlaybackFollow`。见 [`transcript-playback-follow-research.md`](../execution/specs/transcript-playback-follow-research.md)。
 - **WS-2a sticky 层：** `waveform-timeline-wave-layer` 与 playhead sticky 壳用 **`h-0` + 子层 absolute 铺满**，避免 in-flow `h-full` 把后续 sticky 壳挤出 `peaksPaneHeightPx` 后被 tier `overflow-y-hidden` 裁掉（播放头不可见回归）。
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
@@ -264,7 +265,7 @@
 - **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
 - **Play-from 优先级**（写死）：`fromSec`（钳入段）→ raw≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
 - **选中 seek**：由 CM6 projection primary 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用已删除的 SC2 chrome 匹配推断「已 seek」。
-- **产品入口**：Space / 工具栏 = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped）；无选中 no-op / disabled。全局 `togglePlay` 不作为 Space 路径。起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)（CM6 projection；H3）。
+- **产品入口**：Space / 工具栏主钮 = `togglePlay`（全局续播）。波形浮层 play/loop = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped；无选中 disabled）。语段起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)（CM6 projection；H3，仅段播路径）。
 - **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks。Transport 只消费时间与 seekPolicy，不拥有选区 chrome。
 - **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 
@@ -279,6 +280,7 @@
 | `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并 loop 播放 | **设置 → 偏好设置**（默认开） |
 | `rushi.p1.waveformMinimap` | L0 总览条 | **设置 → 偏好设置**；Zoom 条 |
 | `rushi.p1.waveformPlaybackScrollFollow` | 播放滚屏 center/edge | **设置 → 偏好设置**；工具条 |
+| `rushi.p1.transcriptPlaybackFollow` | 文稿跟播（Playback Focus；默认开） | **设置 → 偏好设置** |
 | `rushi.editor.segmentListFilter.v1` | 语段列表筛选 | 工具条筛选（跨文件记忆） |
 | `rushi.office-shell-theme.v1` / `rushi.office-accent-theme.v1` | 界面主题 / 主题色 | **设置 → 偏好设置** |
 

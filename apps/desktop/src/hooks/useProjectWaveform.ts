@@ -330,7 +330,13 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   );
 
   const togglePlay = useCallback(async () => {
-    segmentPlayback.clearSegmentPlaybackBound();
+    const ws = wsRef.current;
+    // Pause: drop scoped/global session flags. Play: arm global so sync won't re-scope.
+    if (ws?.isPlaying()) {
+      segmentPlayback.clearSegmentPlaybackBound();
+    } else {
+      segmentPlayback.beginGlobalPlayback();
+    }
     await playback.togglePlay();
   }, [playback, segmentPlayback]);
 

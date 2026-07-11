@@ -23,6 +23,8 @@ export function useTranscriptionLayerSelection(opts: {
   selectedIdxRef?: MutableRefObject<number>;
   segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
   transcriptRowHeightPx?: number;
+  /** list / listAdvance / listKeyboard — e.g. suppress transcript playback-follow scroll. */
+  onListLikeSegmentSelect?: (idx: number) => void;
 }) {
   const {
     ctx,
@@ -33,6 +35,7 @@ export function useTranscriptionLayerSelection(opts: {
     selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx = 70,
+    onListLikeSegmentSelect,
   } = opts;
 
   const scrollFitRef = useRef({ timeline });
@@ -94,8 +97,14 @@ export function useTranscriptionLayerSelection(opts: {
     lastSegmentSelectSourceRef,
   });
 
+  const onListLikeSegmentSelectRef = useRef(onListLikeSegmentSelect);
+  onListLikeSegmentSelectRef.current = onListLikeSegmentSelect;
+
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform", opts?: SegmentSelectAtOptions) => {
+      if (source === "list" || source === "listAdvance" || source === "listKeyboard") {
+        onListLikeSegmentSelectRef.current?.(idx);
+      }
       selectSegmentTransport(idx, source, opts, {
         ctxRef,
         scrollFitRef,
