@@ -64,13 +64,13 @@ describe("useTranscriptPlaybackFollow", () => {
     act(() => {
       frameCb?.(5.1);
     });
-    expect(view!.state.field(transcriptPlaybackFocusField)).toBe(0);
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
 
     act(() => {
       frameCb?.(15.1);
     });
-    expect(view!.state.field(transcriptPlaybackFocusField)).toBe(1);
-    expect(view!.contentDOM.querySelector(".cm-transcript-playback-focus")).toBeTruthy();
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(1);
+    expect(view.contentDOM.querySelector(".cm-transcript-playback-focus")).toBeTruthy();
   });
 
   it("clears focus when paused", () => {
@@ -104,9 +104,9 @@ describe("useTranscriptPlaybackFollow", () => {
     act(() => {
       frameCb?.(5.1);
     });
-    expect(view!.state.field(transcriptPlaybackFocusField)).toBe(0);
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
 
     rerender({ playing: false });
-    expect(view!.state.field(transcriptPlaybackFocusField)).toBeNull();
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
   });
 });

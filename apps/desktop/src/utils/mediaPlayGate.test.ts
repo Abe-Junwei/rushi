@@ -27,7 +27,7 @@ describe("mediaPlayGate", () => {
   it("releases the gate when play throws", async () => {
     const host = {};
     await expect(
-      runGatedMediaPlay(host, async () => {
+      runGatedMediaPlay(host, () => {
         throw new Error("play failed");
       }),
     ).rejects.toThrow("play failed");
@@ -47,8 +47,8 @@ describe("mediaPlayGate", () => {
   it("gates are per host object", async () => {
     const a = {};
     const b = {};
-    const playA = vi.fn(async () => undefined);
-    const playB = vi.fn(async () => undefined);
+    const playA = vi.fn(() => undefined);
+    const playB = vi.fn(() => undefined);
     expect(await runGatedMediaPlay(a, playA)).toBe("ok");
     expect(await runGatedMediaPlay(b, playB)).toBe("ok");
     expect(playA).toHaveBeenCalledOnce();
