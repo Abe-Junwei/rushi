@@ -31,12 +31,15 @@ describe("buildAsrEnvPresentation", () => {
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
         transcription_mode: "funasr",
+        funasr_device: "mps",
+        funasr_device_source: "auto",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
     expect(p.chipLabel).toBe("ASR 就绪");
     expect(p.chipOk).toBe(true);
     expect(p.bannerTitle).toBe("本机 ASR · 可直接转写");
+    expect(p.bannerDetail).toContain("Apple 芯片加速（MPS）已启用");
     expect(p.statusRows.find((r) => r.id === "transcribe")?.ok).toBe(true);
   });
 
@@ -274,5 +277,54 @@ describe("buildAsrEnvPresentation", () => {
     });
     expect(disk.chipOk).toBe(true);
     expect(disk.statusRows.find((r) => r.id === "model_memory")).toBeUndefined();
+  });
+
+  it("shows 推理设备 row from /health funasr_device", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+        funasr_device: "mps",
+        funasr_device_source: "auto",
+        funasr_loaded_device: "mps",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    const row = p.statusRows.find((r) => r.id === "device");
+    expect(row?.text).toBe("MPS · 自动");
+    expect(row?.ok).toBe(true);
+  });
+
+  it("warns when loaded device differs from resolved target", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+        funasr_device: "mps",
+        funasr_device_source: "auto",
+        funasr_loaded_device: "cpu",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    const row = p.statusRows.find((r) => r.id === "device");
+    expect(row?.ok).toBe(false);
+    expect(row?.warn).toBe(true);
+    expect(row?.text).toContain("已加载 cpu");
   });
 });

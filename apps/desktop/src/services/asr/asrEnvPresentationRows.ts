@@ -2,12 +2,39 @@ import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
 
 export type AsrEnvStatusRow = {
-  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "inference_queue" | "model_memory";
+  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "device" | "inference_queue" | "model_memory";
   label: string;
   ok: boolean;
   text: string;
   warn?: boolean;
 };
+
+/** Short banner hint for resolved FunASR device (visible without expanding 环境明细). */
+export function funasrDeviceBannerHint(
+  device: string | null | undefined,
+  source: "env" | "auto" | null | undefined,
+): string | null {
+  const raw = device?.trim();
+  if (!raw) return null;
+  const key = raw.toLowerCase();
+  const via = source === "env" ? "（环境变量）" : "";
+  if (key === "mps") return `Apple 芯片加速（MPS）已启用${via}`;
+  if (key === "cuda") return `NVIDIA GPU（CUDA）已启用${via}`;
+  if (key === "cpu") return `当前使用 CPU 推理${via}`;
+  return `推理设备：${formatFunasrDeviceStatusText(raw, source)}`;
+}
+
+/** Display label for FunASR /health device fields. */
+export function formatFunasrDeviceStatusText(
+  device: string,
+  source: "env" | "auto" | null | undefined,
+): string {
+  const key = device.trim().toLowerCase();
+  const pretty =
+    key === "mps" ? "MPS" : key === "cuda" ? "CUDA" : key === "cpu" ? "CPU" : device.trim();
+  const sourceLabel = source === "env" ? "环境变量" : "自动";
+  return `${pretty} · ${sourceLabel}`;
+}
 
 /** 顶栏/转写预检：模型就绪且侧车支持 async 路由 */
 export function effectiveTranscribeReady(input: {
@@ -43,6 +70,20 @@ export function buildAsrEnvStatusRows(input: {
           : "不可用",
     },
   ];
+  const device = input.asrCaps?.funasr_device?.trim();
+  if (input.envOk && device) {
+    const loaded = input.asrCaps?.funasr_loaded_device?.trim() || null;
+    const mismatch = Boolean(loaded && loaded !== device);
+    statusRows.push({
+      id: "device",
+      label: "推理设备",
+      ok: !mismatch,
+      text: mismatch
+        ? `${formatFunasrDeviceStatusText(device, input.asrCaps?.funasr_device_source)}（已加载 ${loaded}，下次推理将重载）`
+        : formatFunasrDeviceStatusText(device, input.asrCaps?.funasr_device_source),
+      warn: mismatch || undefined,
+    });
+  }
   const queuePending = input.asrCaps?.inference_queue_pending ?? 0;
   const queueRunning = input.asrCaps?.inference_queue_running ?? 0;
   if (queuePending + queueRunning > 0) {

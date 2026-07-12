@@ -46,7 +46,7 @@
 | 本机转写超时策略 | 桌面 `post_transcribe_multipart` 超时由固定 600s 改为 **按音频时长推导**（下限 600s，上限如 7200s，可配置常量） |
 | ffmpeg 超时对齐 | `rushi_asr` 规范化超时与时长挂钩或提高到与转写一致 |
 | 失败文案 | 区分：连接断开 / HTTP 超时 / ASR 进程无响应 / payload 内 `funasr_*` 错误 |
-| 环境页提示 | `EnvLocalAsrPanel` 或转写前横幅：>30min 建议分段、关闭占内存应用、`RUSHI_FUNASR_DEVICE=mps`（Apple Silicon） |
+| 环境页提示 | `EnvLocalAsrPanel` 或转写前横幅：>30min 建议分段、关闭占内存应用；Apple Silicon 侧车自动 MPS（见 `/health.funasr_device`；强制 CPU：`RUSHI_FUNASR_DEVICE=cpu`） |
 | 日志 | `desktop.log` 记录音频时长、选用 timeout、ASR 连接错误原文 |
 
 | 不做 | |
@@ -98,7 +98,7 @@
 - 分段合并后语段 `start_sec` / `end_sec` 单调、不重叠（允许间隙）。
 - 单段失败时：整次转写失败并保留已下载 WAV 缓存；**不**写半成品语段进 DB（除非显式产品决策）。
 - 仍遵守 loopback ASR、不上传密钥、不扩大 SSRF 面。
-- Apple Silicon 优先文档化 `RUSHI_FUNASR_DEVICE=mps`；不强制 CUDA。
+- Apple Silicon：侧车未设 env 时自动 `mps`（[`local-asr-gpu-and-windowing-research.md`](./local-asr-gpu-and-windowing-research.md)）；不强制 CUDA。
 
 ## 落位文件（实施时）
 

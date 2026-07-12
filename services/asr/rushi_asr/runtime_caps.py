@@ -17,7 +17,12 @@ from rushi_asr import ffmpeg_audio
 from rushi_asr.defaults import effective_funasr_model_id, funasr_model_explicit_from_env
 from rushi_asr.model_catalog import get_catalog_status
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
-from rushi_asr.funasr_engine import effective_funasr_language, loaded_funasr_model_id
+from rushi_asr.funasr_device import funasr_device_health_fields
+from rushi_asr.funasr_engine import (
+    effective_funasr_language,
+    loaded_funasr_device,
+    loaded_funasr_model_id,
+)
 from rushi_asr.funasr_load_plan import build_funasr_load_plan
 from rushi_asr.inference_queue import inference_queue_stats
 from rushi_asr.model_prepare import (
@@ -94,6 +99,8 @@ def get_runtime_caps() -> dict[str, object]:
         "model_memory_matches_config": model_memory_matches_config,
         "selected_model_ready": selected_model_ready,
         "funasr_language": effective_funasr_language(),
+        **funasr_device_health_fields(),
+        "funasr_loaded_device": loaded_funasr_device(),
         "rushi_models_root": models_root,
         "local_token_required": local_token_required,
         **inference_queue_stats(),

@@ -30,7 +30,7 @@ pub fn long_audio_transcribe_hint(audio_duration_sec: Option<f64>) -> Option<&'s
     audio_duration_sec
         .filter(|d| *d > LONG_AUDIO_HINT_THRESHOLD_SEC)
         .map(|_| {
-            "音频超过 30 分钟：本机转写可能耗时较久。请保持应用开启并避免同时占用大量内存；Apple Silicon 可在启动侧车前设置 RUSHI_FUNASR_DEVICE=mps 以加速。"
+            "音频超过 30 分钟：本机转写可能耗时较久。请保持应用开启并避免同时占用大量内存；Apple Silicon 侧车会在可用时自动使用 MPS（可用 RUSHI_FUNASR_DEVICE=cpu 强制 CPU）。"
         })
 }
 

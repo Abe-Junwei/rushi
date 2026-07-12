@@ -22,6 +22,9 @@ describe("parseAsrHealthJson", () => {
       inference_queue_running: 1,
       inference_requested_workers: 4,
       inference_max_workers: 1,
+      funasr_device: "mps",
+      funasr_device_source: "auto",
+      funasr_loaded_device: "mps",
     });
     expect(caps).not.toBeNull();
     expect(caps!.funasr_default_model_cached).toBe(false);
@@ -31,6 +34,9 @@ describe("parseAsrHealthJson", () => {
     expect(caps!.inference_queue_running).toBe(1);
     expect(caps!.inference_requested_workers).toBe(4);
     expect(caps!.inference_max_workers).toBe(1);
+    expect(caps!.funasr_device).toBe("mps");
+    expect(caps!.funasr_device_source).toBe("auto");
+    expect(caps!.funasr_loaded_device).toBe("mps");
   });
 
   it("parses punc model health fields", () => {

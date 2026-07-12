@@ -56,6 +56,9 @@ def test_health_ok() -> None:
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
     assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")
+    assert isinstance(body.get("funasr_device"), str) and body["funasr_device"]
+    assert body.get("funasr_device_source") in ("env", "auto")
+    assert "funasr_loaded_device" in body
     assert body.get("local_token_required") is False
 
 

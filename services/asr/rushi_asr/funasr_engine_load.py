@@ -37,6 +37,13 @@ def loaded_funasr_model_id() -> str | None:
         return engine._model_loaded_id
 
 
+def loaded_funasr_device() -> str | None:
+    """Device string used when the resident AutoModel was loaded (None if unloaded)."""
+    engine = _engine()
+    with engine._runtime_lock:
+        return getattr(engine, "_model_loaded_device", None)
+
+
 def invalidate_funasr_model_cache() -> None:
     """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
     import gc
@@ -45,6 +52,7 @@ def invalidate_funasr_model_cache() -> None:
     with engine._runtime_lock:
         engine._model_singleton = None
         engine._model_loaded_id = None
+        engine._model_loaded_device = None
     gc.collect()
     try:
         import torch
@@ -105,13 +113,18 @@ def warmup_funasr_model() -> dict[str, Any]:
 def _get_model(model_id: str) -> Any:
     engine = _engine()
     with engine._runtime_lock:
+        from rushi_asr.funasr_device import resolve_funasr_device
+
+        device, device_source = resolve_funasr_device()
         if (
             engine._model_singleton is not None
             and engine._model_loaded_id == model_id
+            and getattr(engine, "_model_loaded_device", None) == device
         ):
             return engine._model_singleton
         engine._model_singleton = None
         engine._model_loaded_id = None
+        engine._model_loaded_device = None
         try:
             from funasr import AutoModel
         except ImportError as e:
@@ -119,7 +132,6 @@ def _get_model(model_id: str) -> Any:
 
         engine.configure_hub_env()
 
-        device = os.getenv("RUSHI_FUNASR_DEVICE", "cpu")
         model_arg = resolve_funasr_automodel_arg(model_id)
         kwargs: dict[str, Any] = {
             "model": model_arg,
@@ -161,12 +173,14 @@ def _get_model(model_id: str) -> Any:
                 _ensure_funasr_nano_registered()
 
         log.info(
-            "loading FunASR model %s device=%s vad=%s punc=%s",
+            "loading FunASR model %s device=%s source=%s vad=%s punc=%s",
             model_arg,
             device,
+            device_source,
             kwargs.get("vad_model") or "-",
             kwargs.get("punc_model") or "-",
         )
         engine._model_singleton = AutoModel(**kwargs)
         engine._model_loaded_id = model_id
+        engine._model_loaded_device = device
         return engine._model_singleton

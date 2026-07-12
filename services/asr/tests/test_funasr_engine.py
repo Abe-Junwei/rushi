@@ -157,9 +157,59 @@ def test_invalidate_funasr_model_cache_clears_singleton(monkeypatch) -> None:
     sentinel = object()
     funasr_engine._model_singleton = sentinel
     funasr_engine._model_loaded_id = "iic/SenseVoiceSmall"
+    funasr_engine._model_loaded_device = "cpu"
     invalidate_funasr_model_cache()
     assert funasr_engine._model_singleton is None
     assert funasr_engine._model_loaded_id is None
+    assert funasr_engine._model_loaded_device is None
+
+
+def test_get_model_reloads_when_resolved_device_changes(monkeypatch) -> None:
+    """Changing RUSHI_FUNASR_DEVICE must not reuse a singleton loaded on another device."""
+    loads: list[str] = []
+
+    class FakeAutoModel:
+        def __init__(self, **kwargs: object) -> None:
+            loads.append(str(kwargs.get("device")))
+
+    monkeypatch.setattr(
+        funasr_engine,
+        "configure_hub_env",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "rushi_asr.funasr_engine_load.resolve_funasr_automodel_arg",
+        lambda model_id, **_kwargs: model_id,
+    )
+    monkeypatch.setattr(
+        funasr_engine,
+        "effective_funasr_vad_model_id",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "rushi_asr.funasr_engine_load.effective_funasr_punc_model_id",
+        lambda _model_id: None,
+    )
+    monkeypatch.setitem(
+        __import__("sys").modules,
+        "funasr",
+        type("funasr", (), {"AutoModel": FakeAutoModel})(),
+    )
+
+    monkeypatch.setenv("RUSHI_FUNASR_DEVICE", "cpu")
+    first = funasr_engine._get_model("iic/SenseVoiceSmall")
+    assert loads == ["cpu"]
+    assert funasr_engine._model_loaded_device == "cpu"
+    assert first is funasr_engine._model_singleton
+
+    monkeypatch.setenv("RUSHI_FUNASR_DEVICE", "mps")
+    second = funasr_engine._get_model("iic/SenseVoiceSmall")
+    assert loads == ["cpu", "mps"]
+    assert funasr_engine._model_loaded_device == "mps"
+    assert second is funasr_engine._model_singleton
+    assert second is not first
+
+    invalidate_funasr_model_cache()
 
 
 def test_invalidate_funasr_model_cache_calls_mps_empty_cache(monkeypatch) -> None:

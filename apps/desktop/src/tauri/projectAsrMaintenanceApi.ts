@@ -29,6 +29,12 @@ export interface AsrHealthCapabilities {
   funasr_loaded_model_id?: string | null;
   /** Sidecar `RUSHI_FUNASR_LANGUAGE` (R3g-C C4). */
   funasr_language?: string | null;
+  /** Resolved FunASR AutoModel device (`cpu` / `mps` / `cuda` / …). */
+  funasr_device?: string | null;
+  /** `env` when `RUSHI_FUNASR_DEVICE` set; else `auto`. */
+  funasr_device_source?: "env" | "auto" | null;
+  /** Device used for the currently resident AutoModel (null when unloaded). */
+  funasr_loaded_device?: string | null;
   funasr_punc_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;

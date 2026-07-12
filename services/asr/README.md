@@ -58,7 +58,7 @@ python -m rushi_asr
 
 可选调参：
 
-- `RUSHI_FUNASR_DEVICE`（默认 `cpu`）
+- `RUSHI_FUNASR_DEVICE`（可选；显式设置则强制该 device。**未设置时自动**：`cuda`（若 `torch.cuda.is_available`）→ `mps`（若 MPS 可用）→ `cpu`。强制 CPU：`RUSHI_FUNASR_DEVICE=cpu`。`GET /health` 上报 `funasr_device` / `funasr_device_source`）
 - `RUSHI_FUNASR_LANGUAGE`（默认 `zh`；allowlist：`zh` / `auto` / `en` / `ja` / `ko` / `yue`；桌面写入 `prefs/funasr_language.txt`）
 - `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：部分 SKU 默认开 ITN；`0`/`false` 关闭）
 - `RUSHI_FUNASR_VAD_MODEL`（默认 `fsmn-vad`；设为空字符串可关闭 VAD 参数传递）

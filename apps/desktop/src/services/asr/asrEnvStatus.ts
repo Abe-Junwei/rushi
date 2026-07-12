@@ -31,6 +31,7 @@ import {
   buildAsrEnvStatusRows,
   chipLabelFor,
   effectiveTranscribeReady,
+  funasrDeviceBannerHint,
   mapBundledModelBusyRows,
   mapPrepareModelBusyRows,
   mapPrepareModelCancelRows,
@@ -95,13 +96,17 @@ function bannerDetailFor(input: {
   runtimeReady: boolean;
   ffmpegOk: boolean;
   connectedGuidance: string | null;
+  funasrDevice?: string | null;
+  funasrDeviceSource?: "env" | "auto" | null;
 }): string {
+  const deviceHint = funasrDeviceBannerHint(input.funasrDevice, input.funasrDeviceSource);
   if (input.asrHealth === "checking") return "正在检测 127.0.0.1:8741…";
   if (input.asrHealth === "error") {
     return input.asrHealthDetail.trim() || "无法连接本机 ASR，请检查侧车是否在运行。";
   }
   if (input.transcribeReady) {
-    return "侧车、FFmpeg 与模型已就绪，可直接转写。";
+    const base = "侧车、FFmpeg 与模型已就绪，可直接转写。";
+    return deviceHint ? `${base} ${deviceHint}` : base;
   }
   if (!input.ffmpegOk) {
     return packagedOrDev(ffmpegBannerDetailDev, ffmpegBannerDetailPackaged);
@@ -111,7 +116,10 @@ function bannerDetailFor(input: {
       ? "FunASR 未就绪，请完成侧车连接或等待内置模型复制完成。"
       : "FunASR 未就绪，请准备模型或一键准备。";
   }
-  return input.connectedGuidance ?? (usesBundledAsrModelStack() ? "内置模型尚未复制完成。" : "所选模型尚未齐备。");
+  const guidance =
+    input.connectedGuidance ?? (usesBundledAsrModelStack() ? "内置模型尚未复制完成。" : "所选模型尚未齐备。");
+  // Still surface MPS/CUDA when connected but model not fully ready (so Apple Silicon is not silent).
+  return deviceHint ? `${guidance} ${deviceHint}` : guidance;
 }
 
 function connectedGuidanceFor(input: {
@@ -355,6 +363,8 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
           runtimeReady,
           ffmpegOk,
           connectedGuidance,
+          funasrDevice: input.asrCaps?.funasr_device,
+          funasrDeviceSource: input.asrCaps?.funasr_device_source,
         }),
         blockReason,
         errorDetail: input.asrHealth === "error" ? input.asrHealthDetail.trim() || null : null,

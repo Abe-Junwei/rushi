@@ -26,6 +26,13 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
       typeof j.funasr_language === "string"
         ? normalizeLocalAsrRecognitionLanguage(j.funasr_language)
         : null,
+    funasr_device: typeof j.funasr_device === "string" ? j.funasr_device : null,
+    funasr_device_source:
+      j.funasr_device_source === "env" || j.funasr_device_source === "auto"
+        ? j.funasr_device_source
+        : null,
+    funasr_loaded_device:
+      typeof j.funasr_loaded_device === "string" ? j.funasr_loaded_device : null,
     funasr_loaded_model_id:
       typeof j.funasr_loaded_model_id === "string" ? j.funasr_loaded_model_id : null,
     model_loaded_in_memory:

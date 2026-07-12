@@ -18,6 +18,7 @@ from rushi_asr.segmentation import funasr_generate_kwargs
 
 _model_singleton: Any = None
 _model_loaded_id: str | None = None
+_model_loaded_device: str | None = None
 _runtime_lock = threading.RLock()
 _ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
@@ -27,6 +28,7 @@ from rushi_asr.funasr_engine_load import (
     effective_funasr_language,
     invalidate_funasr_model_cache,
     loaded_funasr_model_id,
+    loaded_funasr_device,
     runtime_lock,
     warmup_funasr_model,
 )
@@ -39,12 +41,14 @@ __all__ = [
     "funasr_generate_kwargs",
     "generate_and_parse_funasr",
     "invalidate_funasr_model_cache",
+    "loaded_funasr_device",
     "loaded_funasr_model_id",
     "required_models_cached_guess",
     "runtime_lock",
     "transcribe_with_funasr",
     "warmup_funasr_model",
     "_get_model",
+    "_model_loaded_device",
     "_model_loaded_id",
     "_model_singleton",
     "_runtime_lock",
