@@ -39,8 +39,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const showEditorHintRef = useRef(showEditorHint);
   showEditorHintRef.current = showEditorHint;
 
-  const notifyTranscriptPlaybackSelectRef = useRef<(idx: number) => void>(() => {});
-
   const selection = useTranscriptionLayerSelection({
     ctx,
     ctxRef,
@@ -50,7 +48,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     selectedIdxRef: ctx.selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
-    onListLikeSegmentSelect: (idx) => notifyTranscriptPlaybackSelectRef.current(idx),
     beginGlobalPlayback: () => timeline.wf.beginGlobalPlayback(),
   });
 
@@ -114,14 +111,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformReady: wf.isReady,
   });
 
-  const transcriptPlaybackFollow = useTranscriptPlaybackFollow({
+  useTranscriptPlaybackFollow({
     isPlaying: wf.isPlaying,
     isReady: wf.isReady,
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     subscribePlayheadFrame: timeline.subscribePlayheadFrame,
   });
-  notifyTranscriptPlaybackSelectRef.current = transcriptPlaybackFollow.notifyUserSegmentSelect;
 
   useWaveformTierWheelForward({
     waveformShellRef,

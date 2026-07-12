@@ -141,7 +141,8 @@
 - **右键菜单 / lasso 故意不 reveal/seek**（避免右键或批量选择时画面跳动）；其 band canvas（`useLayoutEffect` keyed on `selectedIdx` 同步重绘）与 DOM overlay 在同一 React commit 落帧，无需经选中内核也不会闪。
 - **minimap 是 scrub 控件**：经 `minimapScrubScroll` 直接跳转居中；seek 前 `suppressPlaybackFollowForSelectionSeek`，避免播放中被自动跟随回拽。
 - **时间尺 click（R2）只滚动不 seek**：经 `centerTierAtClientX` 将点击时间居中到 tier 视口。
-- **`listKeyboard` 源**：↑↓ / Tab confirmAdvance 使用；reveal 受 F3 editor focus gate 约束；**不 seek**。
+- **`listKeyboard` 源**：↑↓ / Tab confirmAdvance 使用；reveal 受 F3 editor focus gate 约束；**keyup finalize / 非 burst 时 seek 段首**（与点文听跳一致；burst 中途不 scrub）。
+- **文稿旁侧段播**：选中行 stage gutter play/stop → `playSegmentAtIndex` / toggle；loop 仍在波形浮层。
 - **focus=selected（S2′）**：快捷键锚点读 CM6 primary（过渡期仍桥 `selectedIdx`）；焦点在非选中行时先 `selectSegmentAt(i)`。
 
 ## 语段语义真源：可见 / 可打包语段

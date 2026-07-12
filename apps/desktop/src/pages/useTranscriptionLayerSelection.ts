@@ -23,7 +23,7 @@ export function useTranscriptionLayerSelection(opts: {
   selectedIdxRef?: MutableRefObject<number>;
   segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
   transcriptRowHeightPx?: number;
-  /** listKeyboard only — suppress transcript playback-follow scroll (list click seeks, no divert). */
+  /** @deprecated listKeyboard now seeks (industry); divert unused. Kept for call-site stability. */
   onListLikeSegmentSelect?: (idx: number) => void;
   /** Clear segment end-bound when list listen-jump seeks. */
   beginGlobalPlayback?: () => void;
@@ -37,7 +37,6 @@ export function useTranscriptionLayerSelection(opts: {
     selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx = 70,
-    onListLikeSegmentSelect,
     beginGlobalPlayback,
   } = opts;
 
@@ -90,6 +89,9 @@ export function useTranscriptionLayerSelection(opts: {
     timelineRef: scrollFitRef,
   });
 
+  const beginGlobalPlaybackRef = useRef(beginGlobalPlayback);
+  beginGlobalPlaybackRef.current = beginGlobalPlayback;
+
   const burst = useListKeyboardBurstSelection({
     ctxRef,
     scrollFitRef,
@@ -98,19 +100,12 @@ export function useTranscriptionLayerSelection(opts: {
     waveformShellRef,
     transcriptRowHeightPx,
     lastSegmentSelectSourceRef,
+    beginGlobalPlayback: () => beginGlobalPlaybackRef.current?.(),
   });
-
-  const onListLikeSegmentSelectRef = useRef(onListLikeSegmentSelect);
-  onListLikeSegmentSelectRef.current = onListLikeSegmentSelect;
-  const beginGlobalPlaybackRef = useRef(beginGlobalPlayback);
-  beginGlobalPlaybackRef.current = beginGlobalPlayback;
 
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform", opts?: SegmentSelectAtOptions) => {
-      // List click seeks (listen-jump) — do not divert follow. Keyboard still diverts.
-      if (source === "listKeyboard") {
-        onListLikeSegmentSelectRef.current?.(idx);
-      }
+      // List + keyboard listen-jump seek — do not divert follow (playhead aligns).
       selectSegmentTransport(idx, source, opts, {
         ctxRef,
         scrollFitRef,

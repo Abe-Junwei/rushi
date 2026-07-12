@@ -56,13 +56,11 @@
 
 | 问题 | 推荐结论 |
 |------|----------|
-| **选定方案** | **点句即 seek（含暂停）**：source ∈ `{ list, listAdvance }` 且非 multi（无 shift/toggle）且 `idxChanged` → seek 段首；播放中则续播。`listKeyboard` 永不 seek。 |
-| **不 seek 的源** | `listKeyboard`（↑↓/Tab 仍只 reveal，避免箭头条 scrub）；`contextMenu` / `multiSelect`；`shift`/`toggle` 多选手势。 |
-| **seek 目标** | 语段 `start_sec`（与波形 `selectSegmentTransport` 一致）。不做词内偏移。 |
-| **scoped 段播中点另一句** | seek 到新段首；**解除**语段 end-bound，回到全局续播（与「点句听跳」一致；避免 bound 立刻停在旧段逻辑）。 |
-| **跟播 divert** | 点选触发 seek 后：清除 divert（选中已对齐新 playhead）。若未来加「仅选中不 seek」修饰键，再保留 divert。 |
-| **偏好** | v1 **无新开关**（行为绑在「正在播放」）。若手测争议，再加 `rushi.p1.transcriptClickSeekWhilePlaying`（默认 on）。 |
-| **不做什么** | ❌ 暂停时 list seek；❌ 词级 seek；❌ listKeyboard seek；❌ 旁路 Transport Authority；❌ 改波形点选矩阵；❌ 双击才 seek（增加发现成本）。 |
+| **选定方案** | **点句 / ↑↓ 均 seek**：source ∈ `{ list, listAdvance, listKeyboard }` 且非 multi → seek 段首。`listKeyboard` burst **中途不 seek**，**keyup finalize** 一次 seek（防 scrub）。 |
+| **不 seek 的源** | `contextMenu` / `multiSelect`；`shift`/`toggle` 多选手势。 |
+| **不做什么** | ❌ 词级 seek；❌ 旁路 Transport Authority；❌ 双击才 seek。 |
+
+> **修订（2026-07-12）**：原「listKeyboard 永不 seek」已改为业内对齐；见 [`transcript-segment-play-beside-text-research.md`](./transcript-segment-play-beside-text-research.md)。
 | **与既有 acceptance** | 修订 H1 语义：「**暂停 / 非播放** 时列表点选不 seek」；播放中为例外。须更新 `waveform-selection-reveal-seek-acceptance` 一句交叉引用。 |
 | RISK-04 | CM6 mousedown 先 `selectSegmentCommand` 再 bridge → projection 已是目标 idx，`idxChangedFromAuthority` 假阴性跳过 seek | list seek baseline 改用 `selectedIdxRef` / React selectedIdx（2026-07-12 修复） |
 

@@ -100,6 +100,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
   onSelectSegmentRef: React.MutableRefObject<
     ((idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void) | undefined
   >;
+  onToggleSegmentPlayRef: React.MutableRefObject<((idx: number) => void) | undefined>;
   busyRef: React.MutableRefObject<boolean>;
   onOpenContextMenuRef?: React.MutableRefObject<
     | ((args: {
@@ -123,6 +124,9 @@ export function buildTranscriptEditorCoreExtensions(args: {
       withProjection: true,
       metaGutter: {
         onSelectSegment: (idx, opts) => bridgePrimaryMoved(idx, opts),
+      },
+      stageGutter: {
+        onToggleSegmentPlay: (idx) => args.onToggleSegmentPlayRef.current?.(idx),
       },
     }),
     transcriptLineCountGuard,

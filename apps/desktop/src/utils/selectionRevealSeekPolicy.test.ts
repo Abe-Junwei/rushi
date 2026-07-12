@@ -6,14 +6,33 @@ import {
 } from "./selectionRevealSeekPolicy";
 
 describe("selectionRevealSeekPolicy", () => {
-  it("waveform and list click sources seek; listKeyboard never seeks", () => {
+  it("waveform, list click, and listKeyboard seek; multi/context do not", () => {
     expect(shouldSeekOnSegmentSelect("waveform")).toBe(true);
     expect(shouldSeekOnSegmentSelect("waveformKeyboard")).toBe(true);
     expect(shouldSeekOnSegmentSelect("list")).toBe(true);
     expect(shouldSeekOnSegmentSelect("listAdvance")).toBe(true);
-    expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(true);
     expect(shouldSeekOnSegmentSelect("contextMenu")).toBe(false);
     expect(shouldSeekOnSegmentSelect("multiSelect")).toBe(false);
+  });
+
+  it("listKeyboard seek uses react primary like list clicks", () => {
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "listKeyboard",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 0,
+      }),
+    ).toBe(true);
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "listKeyboard",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 3,
+      }),
+    ).toBe(false);
   });
 
   it("list seek uses react primary when CM6 projection already matches target", () => {

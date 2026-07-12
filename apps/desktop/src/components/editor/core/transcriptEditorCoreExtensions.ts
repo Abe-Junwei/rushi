@@ -23,6 +23,7 @@ import {
 } from "./stageGutter";
 import { transcriptHoverExtensions } from "./hoverSegmentField";
 import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
+import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
 
 export type TranscriptEditorCoreExtensionsOptions = {
   persistence?: TransactionPersistenceBridgeHandlers;
@@ -52,6 +53,7 @@ export function transcriptEditorCoreExtensions(
     transcriptSelectionDecorations,
     ...transcriptHoverExtensions,
     ...transcriptPlaybackFocusExtensions,
+    ...transcriptScopedPlayingExtensions,
     transcriptPanelHighlightField,
     transcriptPanelHighlightTheme,
     transcriptFilterVisibilityField,

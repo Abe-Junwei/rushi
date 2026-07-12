@@ -27,6 +27,7 @@ import { shouldSkipTierRevealForSegment } from "../utils/selectionTierReveal";
 import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
 import { revealSegmentInView } from "../components/editor/core/revealSegment";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import { syncWaveformSegmentSelectSeek } from "../services/waveform/syncWaveformSegmentSelectViewport";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
 
@@ -41,6 +42,8 @@ export type UseListKeyboardBurstSelectionArgs = {
   waveformShellRef: RefObject<HTMLElement | null>;
   transcriptRowHeightPx: number;
   lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
+  /** Clear scoped end-bound when keyboard listen-jump seeks on finalize. */
+  beginGlobalPlayback?: () => void;
 };
 
 export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectionArgs) {
@@ -51,6 +54,7 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     waveformShellRef,
     transcriptRowHeightPx,
     lastSegmentSelectSourceRef,
+    beginGlobalPlayback,
   } = args;
 
   const pendingRevealRafRef = useRef(0);
@@ -139,8 +143,19 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
       selectionProfileTime("viewport", () => {
         revealSegmentAtIndex(idx);
       });
+      const seg = c.segments[idx];
+      if (seg) {
+        beginGlobalPlayback?.();
+        const tl = scrollFitRef.current.timeline;
+        selectionProfileTime("seek", () => {
+          syncWaveformSegmentSelectSeek(tl, seg, {
+            segmentIdx: idx,
+            source: "listKeyboard",
+          });
+        });
+      }
     },
-    [ctxRef, revealSegmentAtIndex, waveformShellRef],
+    [beginGlobalPlayback, ctxRef, revealSegmentAtIndex, scrollFitRef, waveformShellRef],
   );
 
   useEffect(() => {

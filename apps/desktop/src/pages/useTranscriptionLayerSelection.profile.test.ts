@@ -347,7 +347,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("listKeyboard reveals once on burst finalize when editor focus gate open and does not seek", () => {
+  it("listKeyboard reveals once on burst finalize when editor focus gate open and seeks", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -374,15 +374,16 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     act(() => {
       result.current.finalizeListKeyboardViewport(2);
     });
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
     document.body.innerHTML = "";
   });
 
-  it("listKeyboard burst step defers tier reveal until keyup finalize", () => {
+  it("listKeyboard burst step defers tier reveal and seek until keyup finalize", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -405,11 +406,12 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
     act(() => {
       result.current.finalizeListKeyboardViewport(2);
     });
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledTimes(1);
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
     document.body.innerHTML = "";
   });
 
@@ -446,7 +448,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     document.body.innerHTML = "";
   });
 
-  it("non-burst listKeyboard defers reveal until debounce", () => {
+  it("non-burst listKeyboard seeks immediately and defers reveal until debounce", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
     ctx.selectedIdxRef = selectedIdxRef;
@@ -473,7 +475,7 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(selectedIdxRef.current).toBe(2);
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
     document.body.innerHTML = "";
   });
 

@@ -7,22 +7,23 @@ export type SelectionRevealSeekContext = {
 
 /**
  * Seek when selecting a segment.
- * Waveform sources always seek. List click / rapid click also seek (listen-jump,
- * including while paused). Keyboard navigation never seeks (edit without scrub).
+ * Waveform + list click/advance + listKeyboard all seek (industry listen-jump).
+ * Burst mid-steps still skip seek in transport; finalize seeks once.
  */
 export function shouldSeekOnSegmentSelect(source: SegmentSelectSource): boolean {
   return (
     source === "waveform" ||
     source === "waveformKeyboard" ||
     source === "list" ||
-    source === "listAdvance"
+    source === "listAdvance" ||
+    source === "listKeyboard"
   );
 }
 
 /**
  * Whether this select should move the playhead.
- * List clicks often update CM6 projection *before* transport runs, so idx vs
- * projection looks unchanged — use React/ref primary as baseline for list sources.
+ * List clicks / keyboard often update CM6 projection *before* transport runs, so
+ * idx vs projection looks unchanged — use React/ref primary as baseline for list sources.
  */
 export function shouldSeekAfterSegmentSelect(input: {
   source: SegmentSelectSource;
@@ -35,7 +36,9 @@ export function shouldSeekAfterSegmentSelect(input: {
   if (input.shiftKey || input.toggle) return false;
   if (!shouldSeekOnSegmentSelect(input.source)) return false;
   const baseline =
-    input.source === "list" || input.source === "listAdvance"
+    input.source === "list" ||
+    input.source === "listAdvance" ||
+    input.source === "listKeyboard"
       ? input.reactPrimaryIdx
       : input.projectionPrimaryIdx >= 0
         ? input.projectionPrimaryIdx

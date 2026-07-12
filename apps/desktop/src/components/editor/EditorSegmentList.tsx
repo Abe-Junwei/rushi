@@ -118,6 +118,17 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             toggle: opts?.toggle,
           });
         }}
+        isSelectedSegmentPlaying={tx.isSelectedSegmentPlaying}
+        onToggleSegmentPlay={(idx) => {
+          if (tx.isSelectedSegmentPlaying && c.selectedIdx === idx) {
+            void tx.handleToggleSelectedWaveformPlay();
+            return;
+          }
+          if (c.selectedIdx !== idx) {
+            tx.selectSegmentFromList(idx);
+          }
+          void tx.playSegmentAtIndex(idx);
+        }}
       />
     </div>
   );
@@ -147,6 +158,11 @@ function areEditorSegmentListPropsEqual(
   if (prev.appearance.transcriptFontWeight !== next.appearance.transcriptFontWeight) return false;
   if (prev.appearance.transcriptFontItalic !== next.appearance.transcriptFontItalic) return false;
   if (prev.tx.selectSegmentFromList !== next.tx.selectSegmentFromList) return false;
+  if (prev.tx.isSelectedSegmentPlaying !== next.tx.isSelectedSegmentPlaying) return false;
+  if (prev.tx.handleToggleSelectedWaveformPlay !== next.tx.handleToggleSelectedWaveformPlay) {
+    return false;
+  }
+  if (prev.tx.playSegmentAtIndex !== next.tx.playSegmentAtIndex) return false;
   if (prev.appearance !== next.appearance) return false;
   if (prev.onResetSegmentListFilter !== next.onResetSegmentListFilter) return false;
   if (prev.onOpenSegmentContextMenu !== next.onOpenSegmentContextMenu) return false;

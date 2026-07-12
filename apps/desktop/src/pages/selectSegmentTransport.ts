@@ -81,8 +81,10 @@ export function selectSegmentTransport(
   const isWaveformKbBurst = isWaveformKeyboardBurstStep(source, opts);
   const isBurstStep = isListKeyboardBurstStep(source, opts) || isWaveformKbBurst;
   const isWaveformLike = source === "waveform" || isWaveformKeyboard;
-  const isListClickSeek =
-    (source === "list" || source === "listAdvance") && !opts?.shiftKey && !opts?.toggle;
+  const isListListenJump =
+    (source === "list" || source === "listAdvance" || source === "listKeyboard") &&
+    !opts?.shiftKey &&
+    !opts?.toggle;
 
   const authorityPrimary = effectiveTranscriptPrimaryIdx(c.selectedIdx);
   const idxChangedFromAuthority = idx !== authorityPrimary;
@@ -109,7 +111,7 @@ export function selectSegmentTransport(
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
     clearWaveformSegmentPreviewViewportSync();
   }
-  if (shouldSeek && isListClickSeek) {
+  if (shouldSeek && isListListenJump) {
     beginGlobalPlayback?.();
   }
   dispatchTranscriptEditorSelection(idx, {

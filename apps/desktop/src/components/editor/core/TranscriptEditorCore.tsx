@@ -27,6 +27,7 @@ import type { TranscriptPanelHighlight } from "./panelHighlightField";
 import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
+import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
 
 export type TranscriptEditorCoreProps = {
   segments: readonly SegmentDto[];
@@ -41,6 +42,10 @@ export type TranscriptEditorCoreProps = {
   onMetaWidthPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onSelectSegment?: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  /** Primary-row play beside text — scoped segment play/stop. */
+  onToggleSegmentPlay?: (idx: number) => void;
+  /** Syncs play/stop icon on primary stage gutter. */
+  isSelectedSegmentPlaying?: boolean;
   onOpenContextMenu?: (args: {
     x: number;
     y: number;
@@ -76,6 +81,8 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     onMetaWidthPointerDown,
     updateSegmentText,
     onSelectSegment,
+    onToggleSegmentPlay,
+    isSelectedSegmentPlaying = false,
     onOpenContextMenu,
     panelHighlight = null,
     filterActive = false,
@@ -95,6 +102,8 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   updateSegmentTextRef.current = updateSegmentText;
   const onSelectSegmentRef = useRef(onSelectSegment);
   onSelectSegmentRef.current = onSelectSegment;
+  const onToggleSegmentPlayRef = useRef(onToggleSegmentPlay);
+  onToggleSegmentPlayRef.current = onToggleSegmentPlay;
   const onOpenContextMenuRef = useRef(onOpenContextMenu);
   onOpenContextMenuRef.current = onOpenContextMenu;
   const busyRef = useRef(busy);
@@ -118,6 +127,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       applyingFromBridgeRef,
       updateSegmentTextRef,
       onSelectSegmentRef,
+      onToggleSegmentPlayRef,
       busyRef,
       onOpenContextMenuRef,
     });
@@ -242,6 +252,14 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     if (!view) return;
     view.contentDOM.contentEditable = busy ? "false" : "true";
   }, [busy]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: setTranscriptScopedPlayingEffect.of(isSelectedSegmentPlaying),
+    });
+  }, [isSelectedSegmentPlaying]);
 
   useEffect(() => {
     dispatchTranscriptPanelHighlight(panelHighlight);

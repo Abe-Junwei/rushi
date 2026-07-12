@@ -681,7 +681,7 @@ function checkSegmentListRapidSelectGuard() {
   }
   if (/selectSegmentAtRef\.current\([^)]*"list"\)/.test(keyboardSource) || /\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
     errors.push(
-      `${keyboardRel}: ↑↓ 键盘切换须走 listKeyboard 源（F3 reveal gate，无 seek）；禁止 list 源或直接 seek`,
+      `${keyboardRel}: ↑↓ 键盘切换须走 listKeyboard 源（F3 reveal gate；keyup finalize seek）；禁止 list 源或直接 seek`,
     );
   }
   if (!/selectSegmentAtRef\.current\([^)]*"listKeyboard"/.test(keyboardSource)) {
@@ -747,9 +747,9 @@ function checkSegmentListRapidSelectGuard() {
         `${selectionRel}: 语段切换后的波形 reveal 必须即时；listAdvance 只表示不重复 zoom，禁止 150ms coalesce`,
       );
     }
-    if (!/shouldSeekOnSegmentSelect/.test(selectionBundle)) {
+    if (!/shouldSeek(?:On|After)SegmentSelect/.test(selectionBundle)) {
       errors.push(
-        `${selectSegmentAtCoreRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（listKeyboard 禁止 seek）`,
+        `${selectSegmentTransportRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect / shouldSeekAfterSegmentSelect 策略`,
       );
     }
   }
@@ -758,12 +758,12 @@ function checkSegmentListRapidSelectGuard() {
   const policyPath = path.join(ROOT, policyRel);
   if (fs.existsSync(policyPath)) {
     const policySource = fs.readFileSync(policyPath, 'utf-8');
-    // Listen-jump: list + listAdvance seek; listKeyboard must remain non-seeking.
+    // Listen-jump: list + listAdvance + listKeyboard seek (burst finalize once).
     if (!/source === "list"/.test(policySource) || !/source === "listAdvance"/.test(policySource)) {
       errors.push(`${policyRel}: shouldSeekOnSegmentSelect 须允许 list / listAdvance seek（听跳）`);
     }
-    if (!/listKeyboard/.test(policySource)) {
-      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 须显式排除 listKeyboard`);
+    if (!/source === "listKeyboard"/.test(policySource)) {
+      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 须允许 listKeyboard seek（业内对齐）`);
     }
   }
   const rulerRel = 'apps/desktop/src/hooks/useWaveformTimeRulerInteraction.ts';
