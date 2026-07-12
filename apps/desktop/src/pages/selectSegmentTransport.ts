@@ -152,7 +152,7 @@ export function selectSegmentTransport(
       if (isWaveformKbBurst && shouldSeek) {
         const tl = scrollFitRef.current.timeline;
         selectionProfileTime("seek", () => {
-          syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx });
+          syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx, source });
         });
         selectionProfileTime("viewport", () => {
           syncWaveformSegmentSelectReveal(tl, s, { forceBandPaint: false });
@@ -176,7 +176,7 @@ export function selectSegmentTransport(
     const tl = scrollFitRef.current.timeline;
     if (shouldSeek) {
       selectionProfileTime("seek", () => {
-        syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx });
+        syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx, source });
       });
     }
     if (shouldReveal && isWaveformLike) {

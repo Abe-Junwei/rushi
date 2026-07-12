@@ -67,7 +67,7 @@ node scripts/check-architecture-guard.mjs
 | 期望 | 结果 | 备注 |
 |------|------|------|
 | tier 滚到对准该语段 | ☐ PASS ☐ FAIL | |
-| **播放头时间不跳**（不 seek） | ☐ PASS ☐ FAIL | |
+| **播放头跳到该语段段首**（听跳；2026-07 修订，见 [`transcript-click-seek-while-playing-research.md`](./transcript-click-seek-while-playing-research.md)） | ☐ PASS ☐ FAIL | ↑↓ 仍不 seek，见 H2 |
 
 ---
 

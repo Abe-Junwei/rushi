@@ -1,7 +1,7 @@
 # Acceptance：文稿点选 seek（听跳）
 
 > **Research**：[transcript-click-seek-while-playing-research.md](./transcript-click-seek-while-playing-research.md)  
-> **状态**：编码中
+> **状态**：自动化 ✅；手测待签
 
 ## 能力—UI 状态矩阵
 
@@ -15,8 +15,9 @@
 
 ## 自动化
 
-- [x] `selectionRevealSeekPolicy.test.ts`
-- [x] `useTranscriptionLayerSelection.profile.test.ts` — list/listAdvance seek；listKeyboard 不 seek
+- [x] `selectionRevealSeekPolicy.test.ts` — list seek；shift/toggle 不 seek；CM6 投影先更新仍 seek
+- [x] `useTranscriptionLayerSelection.profile.test.ts` — list/listAdvance seek；`beginGlobalPlayback`；shift/toggle 不 seek；listKeyboard 不 seek
+- [x] `syncWaveformSegmentSelectViewport.test.ts` — transport intent 转发 `source: "list"`
 - [x] architecture-guard policy 断言更新
 
 ## 手测

@@ -54,6 +54,27 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(true);
   });
 
+  it("shift/toggle never seek even for list sources", () => {
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "list",
+        idx: 3,
+        projectionPrimaryIdx: 0,
+        reactPrimaryIdx: 0,
+        shiftKey: true,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "listAdvance",
+        idx: 3,
+        projectionPrimaryIdx: 0,
+        reactPrimaryIdx: 0,
+        toggle: true,
+      }),
+    ).toBe(false);
+  });
+
   it("list sources reveal even when CM6 already moved primary", () => {
     expect(
       shouldRevealOnSegmentSelect({

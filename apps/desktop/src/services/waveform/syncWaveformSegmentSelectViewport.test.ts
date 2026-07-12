@@ -72,4 +72,20 @@ describe("syncWaveformSegmentSelectViewport", () => {
     });
     expect(tl.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
+
+  it("forwards list source on selectSegmentTransport intent", () => {
+    const dispatch = vi.fn(async () => {});
+    const tl = {
+      suppressPlaybackFollowForSelectionSeek: vi.fn(),
+      wfApiRef: { current: { seek: vi.fn(), dispatchTransportIntent: dispatch } },
+      viewportFit: { revealSegmentInViewport: vi.fn() },
+    };
+    syncWaveformSegmentSelectSeek(tl, seg, { segmentIdx: 2, source: "list" });
+    expect(dispatch).toHaveBeenCalledWith({
+      kind: "selectSegmentTransport",
+      idx: 2,
+      source: "list",
+      seekPolicy: "segmentStart",
+    });
+  });
 });

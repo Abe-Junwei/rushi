@@ -3,7 +3,7 @@
 > **Research**：[transcript-click-seek-while-playing-research.md](./transcript-click-seek-while-playing-research.md)  
 > **Plan**：[transcript-click-seek-while-playing-plan.md](./transcript-click-seek-while-playing-plan.md)  
 > **Acceptance**：[transcript-click-seek-while-playing-acceptance.md](./transcript-click-seek-while-playing-acceptance.md)  
-> **状态**：编码中（已确认：点句即 seek，含暂停）
+> **状态**：已完成（自动化 ✅；手测待签）
 
 ## 意图
 

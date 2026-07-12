@@ -21,7 +21,7 @@ export type WaveformSegmentSelectViewportTimeline = {
 export function syncWaveformSegmentSelectSeek(
   timeline: WaveformSegmentSelectViewportTimeline,
   segment: SegmentTimeRange,
-  opts?: { segmentIdx?: number },
+  opts?: { segmentIdx?: number; source?: string },
 ): void {
   const idx = opts?.segmentIdx;
   const dispatch = timeline.wfApiRef.current.dispatchTransportIntent;
@@ -30,7 +30,7 @@ export function syncWaveformSegmentSelectSeek(
     void dispatch({
       kind: "selectSegmentTransport",
       idx,
-      source: "waveform",
+      source: opts?.source ?? "waveform",
       seekPolicy: "segmentStart",
     });
     return;

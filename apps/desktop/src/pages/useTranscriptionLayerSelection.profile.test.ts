@@ -178,6 +178,69 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
   });
 
+  it("list listen-jump calls beginGlobalPlayback before seek", () => {
+    const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const beginGlobalPlayback = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+        beginGlobalPlayback,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "list");
+    });
+
+    expect(beginGlobalPlayback).toHaveBeenCalledTimes(1);
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+  });
+
+  it("list shift/toggle does not seek or beginGlobalPlayback", () => {
+    const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const beginGlobalPlayback = vi.fn();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+        beginGlobalPlayback,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "list", { shiftKey: true });
+    });
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(beginGlobalPlayback).not.toHaveBeenCalled();
+
+    act(() => {
+      result.current.selectSegmentAt(3, "list", { toggle: true });
+    });
+    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(beginGlobalPlayback).not.toHaveBeenCalled();
+  });
+
   it("list reveal uses transport idx when React selectedIdx is stale", () => {
     const ctx = makeCtx(5);
     // P9b2: React selectedIdx may lag; transport idx must drive waveform reveal.
