@@ -4,7 +4,10 @@ import type { SegmentDto } from "../../../tauri/projectTypes";
 import { computeSegmentLaneRowPx } from "../../../utils/segmentLayout";
 import { segmentListRowMinHeightPx } from "../../../utils/segmentListVirtualWindowCore";
 import { transcriptEditorCoreExtensions } from "./transcriptEditorCoreExtensions";
-import { selectSegmentCommand } from "./selectionCommands";
+import {
+  selectSegmentCommand,
+  shouldConsumeTranscriptContentMousedown,
+} from "./selectionCommands";
 import { createOnDocChangedBridge, applyProjectedTextDiff } from "./onDocChanged";
 import {
   createTranscriptEditorKeymap,
@@ -177,9 +180,30 @@ export function buildTranscriptEditorCoreExtensions(args: {
         const idx = line.number - 1;
         const toggle = event.metaKey || event.ctrlKey;
         const shiftKey = event.shiftKey;
-        selectSegmentCommand(view, idx, { toggle, shiftKey });
+        const primary = primarySegmentIdx(view.state);
+        // Same-row plain click: let CM place caret / drag-select text.
+        if (
+          !shouldConsumeTranscriptContentMousedown({
+            clickedIdx: idx,
+            primaryIdx: primary,
+            shiftKey,
+            toggle,
+          })
+        ) {
+          return false;
+        }
+        // Switching segment (or multi-select): consume so listen-jump scroll
+        // cannot extend a native drag-select across lines while the button is down.
+        event.preventDefault();
+        selectSegmentCommand(view, idx, {
+          toggle,
+          shiftKey,
+          // Transport / follow own reveal; avoid scrolling mid-mousedown.
+          scrollIntoView: false,
+          caretPos: shiftKey || toggle ? undefined : pos,
+        });
         bridgePrimaryMoved(idx, { toggle, shiftKey });
-        return false;
+        return true;
       },
       contextmenu(event, view) {
         if (args.busyRef.current) return true;

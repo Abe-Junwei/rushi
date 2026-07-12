@@ -17,10 +17,33 @@ export type SelectSegmentOptions = {
   shiftKey?: boolean;
   toggle?: boolean;
   scrollIntoView?: boolean;
+  /** Doc position for caret when selecting a single primary (clamped to the segment line). */
+  caretPos?: number;
 };
 
-function cursorAtSegmentLine(state: EditorState, segmentIdx: number): EditorSelection {
+/**
+ * Whether content-area mousedown should consume the event (block CM drag-select).
+ * Same-segment plain click stays with CM so users can place caret / drag-select text.
+ */
+export function shouldConsumeTranscriptContentMousedown(input: {
+  clickedIdx: number;
+  primaryIdx: number;
+  shiftKey: boolean;
+  toggle: boolean;
+}): boolean {
+  if (input.shiftKey || input.toggle) return true;
+  return input.clickedIdx !== input.primaryIdx;
+}
+
+function cursorAtSegmentLine(
+  state: EditorState,
+  segmentIdx: number,
+  caretPos?: number,
+): EditorSelection {
   const line = state.doc.line(segmentIdx + 1);
+  if (caretPos != null && caretPos >= line.from && caretPos <= line.to) {
+    return EditorSelection.single(caretPos);
+  }
   return EditorSelection.single(line.from);
 }
 
@@ -87,7 +110,7 @@ export function selectSegmentTransaction(
   }
 
   return {
-    selection: cursorAtSegmentLine(state, idx),
+    selection: cursorAtSegmentLine(state, idx, opts.caretPos),
     effects: setTranscriptMultiSelectionEffect.of({
       selectedSet: new Set([idx]),
       rangeAnchor: idx,

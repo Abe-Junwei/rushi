@@ -37,6 +37,7 @@ export {
   movePrimarySegmentTransaction,
   selectSegmentCommand,
   movePrimarySegmentCommand,
+  shouldConsumeTranscriptContentMousedown,
   type SelectSegmentOptions,
 } from "./selectionCommands";
 export { transcriptSelectionDecorations } from "./selectionDecorations";

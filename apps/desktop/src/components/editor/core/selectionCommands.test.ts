@@ -15,6 +15,7 @@ import {
   resetTranscriptProjectionForTests,
   subscribeTranscriptProjection,
   subscribeTranscriptSelectionProjection,
+  shouldConsumeTranscriptContentMousedown,
 } from "./index";
 
 function makeSegments(n: number): SegmentDto[] {
@@ -58,6 +59,16 @@ describe("P2 selection commands + projection", () => {
     expect(primarySegmentIdx(view.state)).toBe(3);
     expect([...getTranscriptMultiSelection(view.state).selectedSet]).toEqual([3]);
     expect(getTranscriptProjectionSnapshot().primaryIdx).toBe(3);
+  });
+
+  it("selectSegment can place caret at click position within the line", () => {
+    view = mountCore(4);
+    const line = view.state.doc.line(3);
+    const caret = Math.min(line.from + 2, line.to);
+    expect(selectSegmentCommand(view, 2, { caretPos: caret, scrollIntoView: false })).toBe(true);
+    expect(primarySegmentIdx(view.state)).toBe(2);
+    expect(view.state.selection.main.head).toBe(caret);
+    expect(view.state.selection.main.empty).toBe(true);
   });
 
   it("toggle adds and removes indices", () => {
@@ -136,5 +147,45 @@ describe("P2 selection commands + projection", () => {
     view = mountCore(5);
     selectSegmentCommand(view, 2);
     expect(view.dom.querySelector(".cm-transcript-primary-line")).toBeTruthy();
+  });
+});
+
+describe("shouldConsumeTranscriptContentMousedown", () => {
+  it("consumes when switching segment or multi-selecting", () => {
+    expect(
+      shouldConsumeTranscriptContentMousedown({
+        clickedIdx: 3,
+        primaryIdx: 0,
+        shiftKey: false,
+        toggle: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldConsumeTranscriptContentMousedown({
+        clickedIdx: 0,
+        primaryIdx: 0,
+        shiftKey: true,
+        toggle: false,
+      }),
+    ).toBe(true);
+    expect(
+      shouldConsumeTranscriptContentMousedown({
+        clickedIdx: 0,
+        primaryIdx: 0,
+        shiftKey: false,
+        toggle: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("does not consume same-segment plain click (allow text drag-select)", () => {
+    expect(
+      shouldConsumeTranscriptContentMousedown({
+        clickedIdx: 2,
+        primaryIdx: 2,
+        shiftKey: false,
+        toggle: false,
+      }),
+    ).toBe(false);
   });
 });
