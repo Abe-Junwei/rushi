@@ -10,7 +10,9 @@
 | 用户动作 | Transport | 期望 |
 |----------|-----------|------|
 | 任意 seek（minimap / blank / seek-within / ←→） | `seek` / `applyPeaksOrderedSeek` | Peaks 序：display sync → `setTime` → commitSeekUi |
-| Space / 工具栏播 | `toggleSegmentPlay` → `playSegment` | 无选中 no-op；有选中按 play-from 优先级 |
+| Space 会话粘性播 | `togglePlay` → `resolveSessionTogglePlay` → `playSegment` / global | playing → pause 保会话；段尾后 Space 重播该句；idle/global + 有选中 → 段播 |
+| 工具栏「全局」 | `toggleGlobalPlay` | 始终全局出口；段播中撕 bound 续通读；全局播中 pause |
+| 语段按钮播 | `toggleSegmentPlay` → `playSegment` | 全局播中切入 scoped；当前 scoped 段播中才停止 |
 | 双击语段 | `playSegment` + `fromSec` | 从点击时刻起播 |
 | 波形首点未选中 | select + seek 段头 | `previewViewport` 或 SC1 `shouldSeek`；**不**因 SC2 跳过 |
 | 已选段内单击 | seek-within | 不以 SC2 当「已选中」 |
@@ -39,7 +41,7 @@
 | H3 | 暂停在 A 中部，选 B，Space | 从 B display/段头起播；raw 滞后不得 resume A；SC1 滞后时仍跟 SC2 chrome | 待复测 |
 | H4 | 已选段内单击 | seek 到点击时刻；playhead≈media | 待测 |
 | H5 | 空白单击 | seek 到该时刻 | 待测 |
-| H6 | 无选中 Space / 工具栏 | no-op / disabled | 待测 |
+| H6 | 无选中 Space / 工具栏 | Space 无选中时全局；工具栏全局始终可播（ready 时） | 待测 |
 | H7 | 双击语段 | `fromSec` 起播 | 待测 |
 
 ---

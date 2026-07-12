@@ -71,4 +71,41 @@ describe("waveformSelectionCommand", () => {
     );
     expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", { previewSessionId: "s1" });
   });
+
+  it("playing-defer select forces seek on pointerup", () => {
+    expect(
+      resolveWaveformSelectionTapCommand({
+        ctx: makeCtx(0),
+        segmentIdx: 1,
+        pointerTimeSec: 3,
+        tapGesture: {
+          selectedIdxAtPointerDown: 0,
+          viewportSyncedOnDown: false,
+          sessionId: "play-s1",
+        },
+      }),
+    ).toEqual({
+      kind: "selectAndSeekStart",
+      segmentIdx: 1,
+      source: "waveform",
+      sessionId: "play-s1",
+      forceSeek: true,
+    });
+
+    const selectSegmentAt = vi.fn();
+    applyWaveformSelectionCommand(
+      {
+        kind: "selectAndSeekStart",
+        segmentIdx: 1,
+        source: "waveform",
+        sessionId: "play-s1",
+        forceSeek: true,
+      },
+      { selectSegmentAt, seekToTime: vi.fn() },
+    );
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "waveform", {
+      previewSessionId: "play-s1",
+      forceSeek: true,
+    });
+  });
 });

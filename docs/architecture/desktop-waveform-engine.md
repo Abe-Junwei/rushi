@@ -80,8 +80,9 @@
 - 语段 overlay、框选、播放控件、点击寻位一律经 `timeToTimelinePx`（`waveformSegmentBounds` / `waveformSegmentOverlayGeometry`）。
 - **语段 tap（两段式 seek）：** [`resolveSegmentOverlayTap`](../../apps/desktop/src/utils/waveformSegmentOverlayActions.ts) — 未选中语段 → `selectSegmentAt`（viewport fit + seek 语段头）；已选中语段内再点 → `seekToTime`（钳在语段边界）。pointerup 为主路径（`applyOverlayPointerUpIntent`），click 为兜底。
 - **语段播放起点：** [`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts) / [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — 段内从 playhead；**已过段尾从 playhead 续播**（不回段头）；段前仍跳到段头。
-- **Space / 工具栏主播放钮：** [`togglePlay`](../../apps/desktop/src/hooks/useProjectWaveform.ts)（`beginGlobalPlayback` 后 `ws.play`）— **全局**从 playhead 续播。`syncSelectedSegmentPlayingUi` **不得**在全局 session 下因「播放头在选中语段内」自动挂段尾 bound（见 [`global-vs-segment-playback-ux-research.md`](../execution/specs/global-vs-segment-playback-ux-research.md)）。语段 scoped / loop：波形浮层 [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts)；段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
-- **文稿 Playback Focus：** [`useTranscriptPlaybackFollow`](../../apps/desktop/src/hooks/useTranscriptPlaybackFollow.ts) — 播放中按 `resolveVisitedSegmentIndexAtPlayhead` 更新 CM6 行装饰（**≠ selection**）；条件 `revealSegmentInView`。偏好 `rushi.p1.transcriptPlaybackFollow`。见 [`transcript-playback-follow-research.md`](../execution/specs/transcript-playback-follow-research.md)。
+- **语段自然结束 → Space 重播：** 段尾 auto-stop 设 `autoStoppedSegmentIdxRef`；Space sticky → `resumeSegment` → Transport `playSegment` 必须经 `resolveSegmentResumeFromSec` / `consumeSegmentResumeFromSec` 注入段头 `fromSec`。若只走 `resolveSegmentPlayFrom(display@end)` 会从段尾 **无 bound 续播**（与设计「重播该句」不符）。浮层 toggle 仍走 controls 内 `playSegmentAtIndex`（同源 helper）。
+- **工具条「全局播放」：** [`toggleGlobalPlay`](../../apps/desktop/src/hooks/useProjectWaveform.ts) — 始终全局；段播中撕 bound 变通读（出口）。语段 scoped / loop：波形浮层 / 旁侧 [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts)；段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
+- **文稿 Playback Focus：** [`useTranscriptPlaybackFollow`](../../apps/desktop/src/hooks/useTranscriptPlaybackFollow.ts) — 播放中按 `resolveVisitedSegmentIndexAtPlayhead` 更新 CM6 行装饰（**≠ selection**）；条件 reveal 使用 [`revealSegmentInScrollDOM`](../../apps/desktop/src/components/editor/core/revealSegment.ts)，只写 CM6 `scrollDOM.scrollTop`，禁止 playback follow 走 `EditorView.scrollIntoView`。播放启动第一帧（focus 从 `-1` 初始化到当前句）只上色、不居中滚动；后续跨句才跟随 reveal。偏好 `rushi.p1.transcriptPlaybackFollow`。见 [`transcript-playback-follow-research.md`](../execution/specs/transcript-playback-follow-research.md)。
 - **WS-2a sticky 层：** `waveform-timeline-wave-layer` 与 playhead sticky 壳用 **`h-0` + 子层 absolute 铺满**，避免 in-flow `h-full` 把后续 sticky 壳挤出 `peaksPaneHeightPx` 后被 tier `overflow-y-hidden` 裁掉（播放头不可见回归）。
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
@@ -142,7 +143,7 @@
 - **minimap 是 scrub 控件**：经 `minimapScrubScroll` 直接跳转居中；seek 前 `suppressPlaybackFollowForSelectionSeek`，避免播放中被自动跟随回拽。
 - **时间尺 click（R2）只滚动不 seek**：经 `centerTierAtClientX` 将点击时间居中到 tier 视口。
 - **`listKeyboard` 源**：↑↓ / Tab confirmAdvance 使用；reveal 受 F3 editor focus gate 约束；**keyup finalize / 非 burst 时 seek 段首**（与点文听跳一致；burst 中途不 scrub）。
-- **文稿旁侧段播**：选中行 stage gutter play/stop → `playSegmentAtIndex` / toggle；loop 仍在波形浮层。
+- **文稿旁侧段播**：stage gutter play/stop — **任意行 hover 显**（移开消失）；scoped 播中常驻 stop；复用 `playSegmentAtIndex` / toggle；loop 仍在波形浮层。
 - **focus=selected（S2′）**：快捷键锚点读 CM6 primary（过渡期仍桥 `selectedIdx`）；焦点在非选中行时先 `selectSegmentAt(i)`。
 
 ## 语段语义真源：可见 / 可打包语段
@@ -198,7 +199,7 @@
       <WaveformSegmentOverlay z=3 />                          ← 仅选中 / drag draft DOM，timeline 坐标
       <WaveformSegmentPlaybackControls z=8 />
       <WaveformSegmentBandCanvas z=2 />                       ← packable 语段色带（timeline-native virtual canvas window）
-      <div ref=waveformStickyShellRef sticky left=0 width=vw> ← viewport chrome
+      <div ref=waveformStickyShellRef absolute+scrollPin width=vw> ← viewport chrome
         <WaveformViewportPlayhead z=10 />
         <WaveformLiveTimeRuler z=20 />                        ← 嵌入时间尺 Canvas（viewport + subscribeTierScrollFrame）
 </div>
@@ -206,6 +207,8 @@
 
 - `timelineWidthPx = pxPerSec × duration`；`peaksStageWidthPx = max(timelineWidthPx, tier.clientWidth)`。
 - viewport chrome 宽 = tier 视口宽（CSS var `--waveform-tier-viewport-width` + imperative `width`）。
+- viewport chrome **不用 `position: sticky`**：改为 `absolute left-0 top-0` + `translate3d(scrollLeft,0,0)`（[`waveformScrollPinnedLayers.ts`](../../apps/desktop/src/utils/waveformScrollPinnedLayers.ts)）。
+- **header「被撑掉」根因与修复**：播放中 transcript follow 若直接 `EditorView.scrollIntoView(..., { y: "center" })`，可能在 WKWebView 中带动外层 flex 视口重算或滚动，视觉上把 `EditorToolbar` 推离可见区、footer 看似变宽。修复分三层：编辑页主容器与 `EditorViewLayout` 根容器必须使用 `h-0 min-h-0 flex-1 overflow-hidden`；`shouldRevealTranscriptPlaybackFocus` 对 `prevFocusIdx < 0` 返回 false，启动第一帧只上色、不滚动；后续跨句 reveal 必须走 `revealSegmentInScrollDOM`，只移动 CM6 内部 scroller。`.toolbar-popover-root { transform: translateZ(0) }` 仅用于稳定 WKWebView compositor repaint，不能替代外层高度锁 / playback follow 内部滚动。
 
 ## Zoom 单轨（路线 A + C：decode 首帧，peaks 热切换）
 
@@ -266,7 +269,7 @@
 - **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
 - **Play-from 优先级**（写死）：`fromSec`（钳入段）→ raw≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
 - **选中 seek**：由 CM6 projection primary 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用已删除的 SC2 chrome 匹配推断「已 seek」。
-- **产品入口**：Space / 工具栏主钮 = `togglePlay`（全局续播）。波形浮层 play/loop = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent（选中语段 scoped；无选中 disabled）。语段起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)（CM6 projection；H3，仅段播路径）。
+- **产品入口**：正文外 Space / 正文内 ⇧Space = `togglePlay`（会话粘性；**有选中语段时起播=段播**，无选中=全局）。工具条「全局播放」= `toggleGlobalPlay`。波形浮层 / 旁侧 play/loop = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent。语段起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)。
 - **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks。Transport 只消费时间与 seekPolicy，不拥有选区 chrome。
 - **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 

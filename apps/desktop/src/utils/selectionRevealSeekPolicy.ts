@@ -32,9 +32,12 @@ export function shouldSeekAfterSegmentSelect(input: {
   reactPrimaryIdx: number;
   shiftKey?: boolean;
   toggle?: boolean;
+  /** Playing-defer: pointerup must seek even when primary already matches. */
+  forceSeek?: boolean;
 }): boolean {
   if (input.shiftKey || input.toggle) return false;
   if (!shouldSeekOnSegmentSelect(input.source)) return false;
+  if (input.forceSeek) return true;
   const baseline =
     input.source === "list" ||
     input.source === "listAdvance" ||
@@ -46,13 +49,19 @@ export function shouldSeekAfterSegmentSelect(input: {
   return input.idx !== baseline;
 }
 
-export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext): boolean {
+export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext & {
+  forceSeek?: boolean;
+}): boolean {
   if (ctx.source === "contextMenu" || ctx.source === "multiSelect") return false;
   // Text/list selection may arrive after CM6 has already updated primary, making
   // idxChanged false. It must still reveal the corresponding waveform segment.
   if (ctx.source === "list" || ctx.source === "listAdvance") return true;
   // ↑↓ / Tab confirm — user-initiated; gate can false-negative when virtual list unmounts textarea.
   if (ctx.source === "listKeyboard") return true;
+  // Playing-defer waveform: primary already matches after pointerdown — still reveal.
+  if (ctx.forceSeek && (ctx.source === "waveform" || ctx.source === "waveformKeyboard")) {
+    return true;
+  }
   if (!ctx.idxChanged) return false;
   if (ctx.source === "waveform" || ctx.source === "waveformKeyboard") return true;
   return false;

@@ -66,6 +66,50 @@ describe("dispatchTransportIntent", () => {
     });
   });
 
+  it("playSegment consumes sticky natural-end resume before resolving play-from", async () => {
+    const runPlaySegment = vi.fn(async () => {});
+    const resolveSegmentResumeFromSec = vi.fn((_idx: number, fromSec?: number) => {
+      void fromSec;
+      return 10;
+    });
+    await dispatchTransportIntent(
+      { kind: "playSegment", idx: 0 },
+      makeDeps({
+        runPlaySegment,
+        resolveSegmentResumeFromSec,
+        resolvePlayFromInput: (_idx, fromSec) => ({
+          segment: { start_sec: 10, end_sec: 20 },
+          // Playhead frozen at segment end — without sticky resume this continues past end.
+          displaySec: 20,
+          rawMediaSec: 20,
+          fromSec,
+        }),
+      }),
+    );
+    expect(resolveSegmentResumeFromSec).toHaveBeenCalledWith(0, undefined);
+    expect(runPlaySegment).toHaveBeenCalledWith({
+      idx: 0,
+      playFrom: { kind: "seek", timeSec: 10 },
+      loop: undefined,
+    });
+  });
+
+  it("selectSegmentTransport does not consume sticky resume", async () => {
+    const applySeek = vi.fn();
+    const resolveSegmentResumeFromSec = vi.fn(() => 10);
+    await dispatchTransportIntent(
+      {
+        kind: "selectSegmentTransport",
+        idx: 0,
+        source: "waveform",
+        seekPolicy: "segmentStart",
+      },
+      makeDeps({ applySeek, resolveSegmentResumeFromSec }),
+    );
+    expect(resolveSegmentResumeFromSec).not.toHaveBeenCalled();
+    expect(applySeek).toHaveBeenCalledWith(10, { suppressFollow: true });
+  });
+
   it("selectSegmentTransport seeks segment start without reading SC2", async () => {
     const applySeek = vi.fn();
     await dispatchTransportIntent(

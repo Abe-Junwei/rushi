@@ -116,7 +116,7 @@ export const EditorToolbar = memo(function EditorToolbar({
   }, [exportBlocked]);
 
   return (
-    <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
+    <div className="toolbar-popover-root relative z-[100] isolate shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
       <div className="flex h-12 w-full min-w-0 flex-nowrap items-center gap-2 overflow-visible">
         <EditorWorkspaceNav
           projectName={projectName}

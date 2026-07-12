@@ -2,6 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { ActiveSegmentPlaybackBound } from "../utils/segmentPlaybackBound";
+import {
+  isSegmentPlaybackSession,
+  type PlaybackSession,
+} from "../utils/playbackSession";
+import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import {
   useWaveformSegmentPlayActions,
@@ -50,11 +55,35 @@ export function useWaveformSegmentPlaybackControls(args: {
   const preserveLoopOnNextSelectRef = useRef(false);
   const pausedResumeAnchorRef = useRef<{ idx: number; timeSec: number } | null>(null);
   const autoStoppedSegmentIdxRef = useRef<number | null>(null);
+  /** Sticky Space session: global vs scoped segment (survives pause / natural segment end). */
+  const playbackSessionRef = useRef<PlaybackSession | null>(null);
 
   const clearPausedResumeAnchor = useCallback(() => {
     pausedResumeAnchorRef.current = null;
     autoStoppedSegmentIdxRef.current = null;
   }, []);
+
+  /**
+   * Consume sticky resume intent for Transport `resolvePlayFromInput`.
+   * Must run before resolveSegmentPlayFrom so Space-after-natural-end seeks to start.
+   */
+  const consumeSegmentResumeFromSec = useCallback(
+    (idx: number, explicitFromSec?: number): number | undefined => {
+      const seg = latestSegmentsRef.current[idx];
+      if (!seg) return explicitFromSec;
+      const fromSec = resolveSegmentResumeFromSec({
+        segment: seg,
+        targetIdx: idx,
+        explicitFromSec,
+        autoStoppedIdx: autoStoppedSegmentIdxRef.current,
+        pausedAnchor: pausedResumeAnchorRef.current,
+      });
+      pausedResumeAnchorRef.current = null;
+      autoStoppedSegmentIdxRef.current = null;
+      return fromSec;
+    },
+    [],
+  );
 
   /** Flag-on: CM6 projection primary (SC1 bridge fallback). */
   const resolveEffectiveSelectedIdx = useCallback(() => {
@@ -88,7 +117,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     setIsSelectedSegmentPlaying(false);
   }, []);
 
-  /** Drop bound and invalidate queued end-stop microtasks (user pause / stop). */
+  /** Drop bound and invalidate queued end-stop microtasks (user pause / stop). Keeps sticky session. */
   const cancelSegmentPlaybackBound = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
@@ -98,15 +127,79 @@ export function useWaveformSegmentPlaybackControls(args: {
     setIsSelectedSegmentPlaying(false);
   }, []);
 
-  /** Mark the next media play as unbounded global (Space / toolbar main button). */
+  const armSegmentPlaybackSession = useCallback((idx: number) => {
+    playbackSessionRef.current = { kind: "segment", idx };
+  }, []);
+
+  /** Mark the next media play as unbounded global (toolbar「全局播放」/ idle Space). */
   const beginGlobalPlayback = useCallback(() => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
     autoStoppedSegmentIdxRef.current = null;
+    pausedResumeAnchorRef.current = null;
     const gen = ++playGenerationRef.current;
     globalPlayGenRef.current = gen;
+    playbackSessionRef.current = { kind: "global" };
     setIsSelectedSegmentPlaying(false);
   }, []);
+
+  /** Space / global pause: stop media but keep sticky session for resume. */
+  const pauseMediaKeepingSession = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    const session = playbackSessionRef.current;
+    if (isSegmentPlaybackSession(session)) {
+      const seg = latestSegmentsRef.current[session.idx];
+      const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
+      const freezeSec =
+        typeof rawFreezeSec === "number" && Number.isFinite(rawFreezeSec)
+          ? rawFreezeSec
+          : getPlayheadTime();
+      const normalizedFreezeSec = Number.isFinite(freezeSec) ? freezeSec : 0;
+      const anchorInsideSession =
+        seg != null &&
+        normalizedFreezeSec >= Math.min(seg.start_sec, seg.end_sec) &&
+        normalizedFreezeSec < Math.max(seg.start_sec, seg.end_sec);
+      pausedResumeAnchorRef.current = anchorInsideSession
+        ? {
+            idx: session.idx,
+            timeSec: normalizedFreezeSec,
+          }
+        : null;
+      autoStoppedSegmentIdxRef.current = null;
+      segmentPlaybackBoundRef.current = null;
+      unboundedSelectedPlayGenRef.current = null;
+      globalPlayGenRef.current = null;
+      playGenerationRef.current += 1;
+      setIsSelectedSegmentPlaying(false);
+      ws.pause();
+      syncDisplayPlayheadAfterSeekRef?.current?.(normalizedFreezeSec);
+      return;
+    }
+    playbackSessionRef.current = { kind: "global" };
+    clearSegmentPlaybackBound();
+    ws.pause();
+  }, [
+    clearSegmentPlaybackBound,
+    getPlayheadTime,
+    getRawMediaPlayheadTimeSec,
+    syncDisplayPlayheadAfterSeekRef,
+    wsRef,
+  ]);
+
+  const isSegmentPlaybackSessionActive = useCallback(() => {
+    return isSegmentPlaybackSession(playbackSessionRef.current);
+  }, []);
+
+  const getPlaybackSession = useCallback((): PlaybackSession | null => {
+    return playbackSessionRef.current;
+  }, []);
+
+  const resolveNaturalEndReplayIdx = useCallback(() => {
+    const session = playbackSessionRef.current;
+    if (isSegmentPlaybackSession(session)) return session.idx;
+    return resolveEffectiveSelectedIdx();
+  }, [resolveEffectiveSelectedIdx]);
 
   const resolvePlayheadSec = useCallback(() => {
     const t = getPlayheadTime();
@@ -129,6 +222,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     resolveEffectiveSelectedIdx,
     resolveSelectedPlaybackRange,
     playGenerationRef,
+    segmentBoundStopInFlightRef,
     playStartInFlightGenerationRef,
     segmentPlaybackBoundRef,
     unboundedSelectedPlayGenRef,
@@ -139,6 +233,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     cancelSegmentPlaybackBound,
     setSegmentLoopPlayback,
     setIsSelectedSegmentPlaying,
+    armSegmentPlaybackSession,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
@@ -160,6 +255,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     resolvePlayheadSec,
     resolveSelectedPlaybackRange,
     resolveEffectiveSelectedIdx,
+    resolveNaturalEndReplayIdx,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
@@ -209,7 +305,11 @@ export function useWaveformSegmentPlaybackControls(args: {
     toggleSelectedWaveformPlayImpl,
     clearSegmentPlaybackBound,
     clearPausedResumeAnchor,
+    consumeSegmentResumeFromSec,
     beginGlobalPlayback,
+    pauseMediaKeepingSession,
+    isSegmentPlaybackSession: isSegmentPlaybackSessionActive,
+    getPlaybackSession,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: toggleSelectedWaveformPlayImpl,
   };

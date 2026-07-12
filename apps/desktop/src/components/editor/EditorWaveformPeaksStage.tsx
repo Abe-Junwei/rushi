@@ -1,4 +1,4 @@
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { CspLayout } from "../CspLayout";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
@@ -13,6 +13,7 @@ import {
   WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS,
   WAVEFORM_TIER_VIEWPORT_WIDTH_VAR,
 } from "../../utils/waveformViewport";
+import { useWaveformScrollPinnedLayers } from "../../utils/waveformScrollPinnedLayers";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { editorWaveformPanePropsEqual } from "./editorShellRenderCompare";
@@ -60,6 +61,18 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
     setOverlayDraftIdx(idx);
   }, []);
 
+  const waveLayerPinRef = useRef<HTMLDivElement | null>(null);
+  const scrollPinLayerRefs = useMemo(
+    () => [waveLayerPinRef, tx.waveformStickyShellRef],
+    [tx.waveformStickyShellRef],
+  );
+  useWaveformScrollPinnedLayers({
+    layerRefs: scrollPinLayerRefs,
+    tierScrollRef: tierScrollProps.tierScrollRef,
+    tierScrollLive: tierScrollProps.tierScrollLive,
+    layoutScrollLeftPx: tierScrollProps.tierScrollLayout.scrollLeftPx,
+  });
+
   return (
     <CspLayout
       layout={{ height: peaksPaneHeightPx }}
@@ -96,12 +109,13 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
         >
           <CspLayout ref={tx.waveformTimelineShellRef} className="relative" layout={{ height: peaksPaneHeightPx }}>
             {/*
-              Sticky + viewport width for WS-2a virtualization, but h-0 so the layer
-              does not consume in-flow height (otherwise the playhead sticky shell is
-              pushed below the pane and clipped by tier overflow-y-hidden).
+              Viewport-pinned wave host (WS-2a width). Use absolute + scroll translate —
+              NOT `position: sticky`: WKWebView can promote sticky onto a compositor
+              layer that paints over EditorToolbar (header「消失」).
             */}
             <CspLayout
-              className={`waveform-timeline-wave-layer sticky left-0 top-0 z-[1] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
+              ref={waveLayerPinRef}
+              className={`waveform-timeline-wave-layer absolute left-0 top-0 z-[1] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
               layout={{
                 [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]:
                   viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,
@@ -255,12 +269,12 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
               onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
             />
             {/*
-              Same zero-height sticky pattern as the wave layer: stay viewport-pinned
-              without stacking below in-flow siblings inside the fixed-height shell.
+              Same zero-height absolute + scroll-pin pattern as the wave layer.
+              h-0 avoids consuming in-flow height inside the fixed-height shell.
             */}
             <CspLayout
               ref={tx.waveformStickyShellRef}
-              className={`pointer-events-none sticky left-0 top-0 z-[10] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
+              className={`pointer-events-none absolute left-0 top-0 z-[10] h-0 overflow-visible ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
               layout={{
                 [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]:
                   viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,

@@ -22,6 +22,11 @@ import {
   type TransportIntent,
 } from "../services/waveform/transport";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import {
+  resolveGlobalTogglePlay,
+  resolveSessionTogglePlay,
+} from "../utils/playbackSessionToggle";
+import { resolveStickySegmentSpaceFromSec } from "../utils/segmentResumeFromSec";
 import { reconcileSegmentsRefWithState } from "../pages/segmentSegmentsRefSync";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
@@ -179,6 +184,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
             rawMediaSec: playback.getRawMediaPlayheadTimeSec(),
           };
         },
+        resolveSegmentResumeFromSec: (idx, fromSec) =>
+          segmentPlayback.consumeSegmentResumeFromSec(idx, fromSec),
       });
     },
     [commitSeekUi, isReady, layoutDurationSecRef, playback, segmentPlayback, suppressPlaybackFollow],
@@ -329,17 +336,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     [isReady],
   );
 
-  const togglePlay = useCallback(async () => {
-    const ws = wsRef.current;
-    // Pause: drop scoped/global session flags. Play: arm global so sync won't re-scope.
-    if (ws?.isPlaying()) {
-      segmentPlayback.clearSegmentPlaybackBound();
-    } else {
-      segmentPlayback.beginGlobalPlayback();
-    }
-    await playback.togglePlay();
-  }, [playback, segmentPlayback]);
-
   const seek = useCallback(
     (timeSec: number) => {
       void dispatchTransport({ kind: "seek", timeSec, source: "segmentSelect" });
@@ -371,6 +367,71 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     [dispatchTransport],
   );
 
+  const togglePlay = useCallback(async () => {
+    const ws = wsRef.current;
+    const selectedSegmentIdx = effectiveTranscriptPrimaryIdx(
+      selectedIdxForTransportRef.current,
+    );
+    const decision = resolveSessionTogglePlay({
+      isPlaying: Boolean(ws?.isPlaying()),
+      session: segmentPlayback.getPlaybackSession(),
+      segmentStillExists: (() => {
+        const session = segmentPlayback.getPlaybackSession();
+        return session?.kind === "segment"
+          ? Boolean(segmentsRef.current[session.idx])
+          : undefined;
+      })(),
+      selectedSegmentIdx:
+        selectedSegmentIdx >= 0 && segmentsRef.current[selectedSegmentIdx]
+          ? selectedSegmentIdx
+          : undefined,
+    });
+    if (decision.action === "pauseKeepingSession") {
+      segmentPlayback.pauseMediaKeepingSession();
+      return;
+    }
+    if (decision.action === "resumeSegment") {
+      const seg = segmentsRef.current[decision.idx];
+      if (!seg) {
+        segmentPlayback.beginGlobalPlayback();
+        await playback.togglePlay();
+        return;
+      }
+      // Natural end freezes playhead at endSec. autoStopped can be cleared by an
+      // intervening seek/sync; still force restart from segment start for Space.
+      const stickyFromSec = resolveStickySegmentSpaceFromSec({
+        segment: seg,
+        displaySec: playback.getPlayheadTime(),
+      });
+      await playSegmentAtIndex(
+        decision.idx,
+        stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
+      );
+      return;
+    }
+    segmentPlayback.beginGlobalPlayback();
+    await playback.togglePlay();
+  }, [playback, playSegmentAtIndex, segmentPlayback]);
+
+  /** Toolbar「全局播放」: always global; exit hatch from segment play without Space sticky. */
+  const toggleGlobalPlay = useCallback(async () => {
+    const ws = wsRef.current;
+    const decision = resolveGlobalTogglePlay({
+      isPlaying: Boolean(ws?.isPlaying()),
+      session: segmentPlayback.getPlaybackSession(),
+    });
+    if (decision.action === "exitSegmentToGlobal") {
+      segmentPlayback.beginGlobalPlayback();
+      return;
+    }
+    if (decision.action === "pauseKeepingSession") {
+      segmentPlayback.pauseMediaKeepingSession();
+      return;
+    }
+    segmentPlayback.beginGlobalPlayback();
+    await playback.togglePlay();
+  }, [playback, segmentPlayback]);
+
   const handleToggleSelectedWaveformPlay = useCallback(async () => {
     const idx = effectiveTranscriptPrimaryIdx(selectedIdxForTransportRef.current);
     if (idx < 0 || !segmentsRef.current[idx]) return;
@@ -400,11 +461,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     preserveLoopForNextSegmentSelect: segmentPlayback.preserveLoopForNextSegmentSelect,
     clearSegmentPlaybackBound: segmentPlayback.clearSegmentPlaybackBound,
     beginGlobalPlayback: segmentPlayback.beginGlobalPlayback,
+    isSegmentPlaybackSession: segmentPlayback.isSegmentPlaybackSession,
+    getPlaybackSession: segmentPlayback.getPlaybackSession,
     handleToggleSelectedWaveformLoop: segmentPlayback.handleToggleSelectedWaveformLoop,
     playSegmentAtIndex,
     handleToggleSelectedWaveformPlay,
     dispatchTransportIntent: dispatchTransport,
     togglePlay,
+    toggleGlobalPlay,
     formatMediaTime,
     destroyWave,
     cancelInFlightZoom,

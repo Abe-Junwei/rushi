@@ -92,7 +92,7 @@ describe("executeEditorShortcut", () => {
     document.body.innerHTML = "";
   });
 
-  it("playback.toggle uses global togglePlay, not selected-segment play", () => {
+  it("playback.toggle uses sticky togglePlay (Space), not selected-segment play", () => {
     const handleToggleSelectedWaveformPlay = vi.fn();
     const togglePlay = vi.fn();
     const deps = makeDeps({

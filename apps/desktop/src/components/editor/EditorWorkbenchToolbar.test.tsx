@@ -83,6 +83,7 @@ function makeTx(overrides: Record<string, unknown> = {}) {
     pxPerSec: 50,
     layoutIntent: undefined,
     togglePlay: vi.fn(),
+    toggleGlobalPlay: vi.fn(),
     handleToggleSelectedWaveformPlay: vi.fn(),
     getDisplayPlayheadTimeSec: () => 0,
     subscribePlayheadFrame: undefined,
@@ -179,22 +180,43 @@ describe("EditorWorkbenchToolbar", () => {
     );
   });
 
-  it("wires global play button to togglePlay", () => {
+  it("wires global play button to toggleGlobalPlay", () => {
     const togglePlay = vi.fn();
+    const toggleGlobalPlay = vi.fn();
     const handleToggleSelectedWaveformPlay = vi.fn();
     const { container } = render(
       wrapToolbar(
         <EditorWorkbenchToolbar
           controller={makeController()}
-          tx={makeTx({ togglePlay, handleToggleSelectedWaveformPlay })}
+          tx={makeTx({ togglePlay, toggleGlobalPlay, handleToggleSelectedWaveformPlay })}
           hasAudio
           segmentFilter={makeSegmentFilter()}
         />,
       ),
     );
 
-    (container.querySelector(".waveform-playback-btn") as HTMLButtonElement).click();
-    expect(togglePlay).toHaveBeenCalledTimes(1);
+    const btn = container.querySelector(".waveform-playback-btn") as HTMLButtonElement;
+    expect(btn.getAttribute("aria-label")).toBe("全局播放");
+    expect(container.querySelector(".waveform-playback-btn-label")?.textContent).toBe("全局");
+    btn.click();
+    expect(toggleGlobalPlay).toHaveBeenCalledTimes(1);
+    expect(togglePlay).not.toHaveBeenCalled();
     expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
+  });
+
+  it("while segment playing, toolbar shows global exit chrome not pause", () => {
+    const { container } = render(
+      wrapToolbar(
+        <EditorWorkbenchToolbar
+          controller={makeController()}
+          tx={makeTx({ isPlaying: true, isSelectedSegmentPlaying: true })}
+          hasAudio
+          segmentFilter={makeSegmentFilter()}
+        />,
+      ),
+    );
+    const btn = container.querySelector(".waveform-playback-btn") as HTMLButtonElement;
+    expect(btn.getAttribute("aria-label")).toBe("改为全局通读");
+    expect(btn.querySelector(".waveform-playback-btn-label")?.textContent).toBe("全局");
   });
 });

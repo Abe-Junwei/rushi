@@ -89,6 +89,15 @@
   position: relative;
   z-index: 60;
   overflow: visible;
+  /*
+    Force the editor header onto its own compositor layer. WKWebView promotes the
+    waveform playhead (translate3d) onto a compositor layer at playback start; a
+    non-composited header — even with a higher z-index — then loses its repaint and
+    visually「消失」. Its own backing store keeps it painted above per z-order.
+    This also creates a containing block for fixed descendants; keep toolbar
+    popovers portaled to document.body.
+  */
+  transform: translateZ(0);
 }
 
 /* 顶栏 import/export 等 <summary>：WebKit 默认白底，须与 ghost 按钮一致 */
@@ -499,7 +508,8 @@
   gap: 0.5rem;
   height: 30px;
   flex-shrink: 0;
-  padding: 0 0.625rem;
+  /* 与 EditorToolbar `px-page-margin` 对齐，避免底栏贴窗缘显得「过宽」 */
+  padding: 0 var(--spacing-page-margin, 2rem);
   border-top: 1px solid var(--main-shell-border);
   background: var(--main-shell-bg);
   font-size: var(--text-label);

@@ -21,6 +21,21 @@ describe("transcriptPlaybackFocus", () => {
     ).toBe(true);
   });
 
+  it("does not reveal on the first playback focus frame", () => {
+    expect(
+      shouldRevealTranscriptPlaybackFocus({
+        enabled: true,
+        isPlaying: true,
+        focusIdx: 2,
+        prevFocusIdx: -1,
+        editorFocused: false,
+        userScrollSuppressUntilMs: 0,
+        nowMs: 100,
+        selectionDiverted: false,
+      }),
+    ).toBe(false);
+  });
+
   it("does not reveal when scrolling, diverted, or unchanged (focus alone does not block)", () => {
     const base = {
       enabled: true,

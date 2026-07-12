@@ -17,6 +17,11 @@ export type SegmentSelectAtOptions = {
   toggle?: boolean;
   /** Waveform pointerdown session that already handled preview seek/reveal. */
   previewSessionId?: string;
+  /**
+   * Playing-defer path: pointerdown already updated CM6 primary, so chrome-match
+   * would skip seek/reveal — force both on pointerup (Transport Authority).
+   */
+  forceSeek?: boolean;
   /** listKeyboard burst: SC2 + scroll only; SC1 commit on keyup. */
   burst?: boolean;
   /** Caller focuses segment textarea; skip waveform shell focus (e.g. after drag-create). */

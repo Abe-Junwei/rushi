@@ -47,7 +47,7 @@ export const EditorWaveformPane = memo(function EditorWaveformPane({
   });
 
   return (
-    <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
+    <div className="relative z-10 flex w-full shrink-0 flex-col overflow-hidden bg-notion-sidebar">
       <CspLayout
         ref={tx.tierScrollRef}
         layout={{ "--waveform-stage-height": `${waveformStageHeightPx}px` }}

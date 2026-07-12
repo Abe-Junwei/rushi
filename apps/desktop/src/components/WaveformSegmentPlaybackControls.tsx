@@ -218,8 +218,8 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
         type="button"
         className="region-action-btn"
         disabled={disabled}
-        aria-label={isPlaying ? "停止语段播放" : "播放选中语段"}
-        title={isPlaying ? "停止语段播放" : "播放选中语段"}
+        aria-label={isPlaying ? "停止语段播放" : "播本语段（至段尾）"}
+        title={isPlaying ? "停止语段播放" : "播本语段（至段尾）"}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();

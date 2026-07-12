@@ -43,7 +43,7 @@ export type UseListKeyboardBurstSelectionArgs = {
   transcriptRowHeightPx: number;
   lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
   /** Clear scoped end-bound when keyboard listen-jump seeks on finalize. */
-  beginGlobalPlayback?: () => void;
+  beginGlobalPlayback?: (idx?: number) => void;
 };
 
 export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectionArgs) {
@@ -145,7 +145,7 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
       });
       const seg = c.segments[idx];
       if (seg) {
-        beginGlobalPlayback?.();
+        beginGlobalPlayback?.(idx);
         const tl = scrollFitRef.current.timeline;
         selectionProfileTime("seek", () => {
           syncWaveformSegmentSelectSeek(tl, seg, {

@@ -46,8 +46,8 @@ export type SelectSegmentTransportDeps = {
   scheduleRevealSelectedSegment: (source: SegmentSelectSource, idx: number) => void;
   cancelPendingSelectionReveal: () => void;
   focusWaveformShell: () => void;
-  /** Clear segment end-bound so list listen-jump continues globally when media is playing. */
-  beginGlobalPlayback?: () => void;
+  /** List listen-jump: tear segment bound for global, or open segment play when sticky segment session. */
+  beginGlobalPlayback?: (idx?: number) => void;
 };
 
 /**
@@ -99,6 +99,7 @@ export function selectSegmentTransport(
   const shouldReveal = shouldRevealOnSegmentSelect({
     source,
     idxChanged: idxChangedFromAuthority,
+    forceSeek: opts?.forceSeek,
   });
   const shouldSeek = shouldSeekAfterSegmentSelect({
     source,
@@ -107,12 +108,13 @@ export function selectSegmentTransport(
     reactPrimaryIdx,
     shiftKey: opts?.shiftKey,
     toggle: opts?.toggle,
+    forceSeek: opts?.forceSeek,
   });
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
     clearWaveformSegmentPreviewViewportSync();
   }
   if (shouldSeek && isListListenJump) {
-    beginGlobalPlayback?.();
+    beginGlobalPlayback?.(idx);
   }
   dispatchTranscriptEditorSelection(idx, {
     shiftKey: opts?.shiftKey,

@@ -147,7 +147,7 @@ export function executeEditorShortcut(
     }
     case "playback.toggle": {
       if (!ctx.mediaUrl) return true;
-      // Space / ⇧⌘Space：全局从 playhead 续播（非语段 scoped；段播见波形浮层）。
+      // Space（正文外）/ ⇧Space（正文内）：会话粘性 togglePlay（非语段 scoped 钮；段播见波形浮层）。
       void wf.togglePlay();
       return true;
     }

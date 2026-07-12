@@ -5,7 +5,7 @@ import {
   transcriptPlaybackFocusField,
 } from "../components/editor/core/playbackFocusField";
 import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
-import { revealSegmentInView } from "../components/editor/core/revealSegment";
+import { revealSegmentInScrollDOM } from "../components/editor/core/revealSegment";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { resolveVisitedSegmentIndexAtPlayhead } from "../utils/segmentChrome";
 import {
@@ -22,7 +22,7 @@ import {
 const PLAYHEAD_FRAME_PRIORITY_TRANSCRIPT = 2;
 
 const USER_SCROLL_SUPPRESS_MS = 1800;
-/** Ignore scroll events caused by our own revealSegmentInView. */
+/** Ignore scroll events caused by our own playback-follow reveal. */
 const PROGRAMMATIC_SCROLL_GUARD_MS = 120;
 
 export function useTranscriptPlaybackFollow(args: {
@@ -135,7 +135,7 @@ export function useTranscriptPlaybackFollow(args: {
       ) {
         if (view) {
           programmaticScrollUntilRef.current = performance.now() + PROGRAMMATIC_SCROLL_GUARD_MS;
-          revealSegmentInView(view, nextIdx, { y: "center" });
+          revealSegmentInScrollDOM(view, nextIdx, { y: "center" });
         }
       }
     },

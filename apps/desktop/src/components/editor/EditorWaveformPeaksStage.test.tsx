@@ -147,7 +147,8 @@ describe("EditorWaveformPeaksStage", () => {
 
     expect(waveLayer).toBeInstanceOf(HTMLElement);
     expect(overlayLayer).toBeInstanceOf(HTMLElement);
-    expect((waveLayer as HTMLElement).className).toContain("sticky");
+    expect((waveLayer as HTMLElement).className).toContain("absolute");
+    expect((waveLayer as HTMLElement).className).not.toContain("sticky");
     expect((waveLayer as HTMLElement).className).toContain("h-0");
     expect(readCspLayoutRulesForElement(waveLayer as HTMLElement)).toContain("width: 800px");
     expect(readCspLayoutRulesForElement(overlayLayer as HTMLElement)).toContain("width: 2400px");
@@ -164,11 +165,12 @@ describe("EditorWaveformPeaksStage", () => {
     expect(readCspLayoutRulesForElement(waveSurferPreview as HTMLElement)).toContain("width: 1px");
     expect(readCspLayoutRulesForElement(waveSurferPreview as HTMLElement)).toContain("height: 1px");
 
-    const stickyShell = container.querySelector(".waveform-viewport-playhead")?.parentElement?.parentElement;
-    expect(stickyShell).toBeInstanceOf(HTMLElement);
-    expect((stickyShell as HTMLElement).className).toContain("h-0");
-    expect((stickyShell as HTMLElement).className).toContain("sticky");
-    expect(readCspLayoutRulesForElement(stickyShell as HTMLElement)).toContain("width: 800px");
+    const pinShell = container.querySelector(".waveform-viewport-playhead")?.parentElement?.parentElement;
+    expect(pinShell).toBeInstanceOf(HTMLElement);
+    expect((pinShell as HTMLElement).className).toContain("h-0");
+    expect((pinShell as HTMLElement).className).toContain("absolute");
+    expect((pinShell as HTMLElement).className).not.toContain("sticky");
+    expect(readCspLayoutRulesForElement(pinShell as HTMLElement)).toContain("width: 800px");
   });
 
   it("positions playback controls from CM6 projection before React selectedIdx catches up", () => {

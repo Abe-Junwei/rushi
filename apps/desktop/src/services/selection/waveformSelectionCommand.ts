@@ -9,6 +9,8 @@ export type WaveformSelectionCommand =
       segmentIdx: number;
       source: Extract<SegmentSelectSource, "waveform">;
       sessionId?: string;
+      /** Playing-defer: seek was skipped on pointerdown — pointerup must force it. */
+      forceSeek?: boolean;
     }
   | { kind: "seekWithinSegment"; timeSec: number }
   | {
@@ -46,6 +48,8 @@ export function resolveWaveformSelectionTapCommand(input: {
     segmentIdx: resolved.segmentIdx,
     source: "waveform",
     sessionId: input.tapGesture.sessionId,
+    // Playing-defer: down already moved CM6 primary without seek — up must not chrome-match-skip.
+    ...(input.tapGesture.viewportSyncedOnDown !== true ? { forceSeek: true as const } : {}),
   };
 }
 
@@ -62,13 +66,17 @@ export function applyWaveformSelectionCommand(
   },
 ): void {
   switch (command.kind) {
-    case "selectAndSeekStart":
-      deps.selectSegmentAt(
-        command.segmentIdx,
-        command.source,
-        command.sessionId ? { previewSessionId: command.sessionId } : undefined,
-      );
+    case "selectAndSeekStart": {
+      const opts: SegmentSelectAtOptions | undefined =
+        command.sessionId || command.forceSeek
+          ? {
+              ...(command.sessionId ? { previewSessionId: command.sessionId } : {}),
+              ...(command.forceSeek ? { forceSeek: true } : {}),
+            }
+          : undefined;
+      deps.selectSegmentAt(command.segmentIdx, command.source, opts);
       break;
+    }
     case "selectOnly":
       deps.selectSegmentAt(command.segmentIdx, command.source, command.opts);
       break;

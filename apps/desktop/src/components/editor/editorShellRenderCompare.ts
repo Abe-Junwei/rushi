@@ -84,6 +84,7 @@ export function transcriptionLayerWorkbenchToolbarRenderEqual(
   if (prev.tierScrollLayout.scrollLeftPx !== next.tierScrollLayout.scrollLeftPx) return false;
   if (prev.tierScrollLayout.clientWidthPx !== next.tierScrollLayout.clientWidthPx) return false;
   if (prev.togglePlay !== next.togglePlay) return false;
+  if (prev.toggleGlobalPlay !== next.toggleGlobalPlay) return false;
   if (prev.setGlobalPlaybackRate !== next.setGlobalPlaybackRate) return false;
   if (prev.setPlaybackScrollFollowMode !== next.setPlaybackScrollFollowMode) return false;
   if (prev.setMinimapEnabled !== next.setMinimapEnabled) return false;

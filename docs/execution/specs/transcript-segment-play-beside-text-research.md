@@ -45,7 +45,7 @@
 | listKeyboard seek | **是**；burst **中途不 seek**，**keyup finalize** 与非 burst 立即 seek（防箭头条 scrub） |
 | beginGlobalPlayback | listKeyboard seek 时同 list 听跳，解除 scoped end-bound |
 | 跟播 divert | listKeyboard **不再** mark divert（seek 后 playhead 已对齐） |
-| 段播落位 | CM6 `stageGutter`（文本右侧）primary 行 play/stop |
+| 段播落位 | CM6 `stageGutter`（文本右侧）；**任意行 hover 显 play**，移开消失；scoped 播中常驻 stop；按钮加大命中 |
 | loop | 仍仅波形浮层 |
 
 ---

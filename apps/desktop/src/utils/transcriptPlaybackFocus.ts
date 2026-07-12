@@ -17,12 +17,16 @@ export type TranscriptPlaybackRevealInput = {
   selectionDiverted: boolean;
 };
 
-/** Whether to call revealSegmentInView for the new focus line. */
+/** Whether to call revealSegmentInScrollDOM for the new focus line. */
 export function shouldRevealTranscriptPlaybackFocus(
   input: TranscriptPlaybackRevealInput,
 ): boolean {
   if (!input.enabled || !input.isPlaying) return false;
   if (input.focusIdx < 0) return false;
+  // Playback start sets focus from "none" to the current line. Skip center-scroll on
+  // that first frame so starting play only paints focus chrome; subsequent segment
+  // changes still reveal via revealSegmentInScrollDOM.
+  if (input.prevFocusIdx < 0) return false;
   if (input.focusIdx === input.prevFocusIdx) return false;
   // Otter/Descript: playhead auto-scroll continues even when the editor has focus;
   // only user diversion / manual scroll suppresses. (editorFocused kept for callers/tests.)

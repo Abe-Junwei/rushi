@@ -25,8 +25,8 @@ export function useTranscriptionLayerSelection(opts: {
   transcriptRowHeightPx?: number;
   /** @deprecated listKeyboard now seeks (industry); divert unused. Kept for call-site stability. */
   onListLikeSegmentSelect?: (idx: number) => void;
-  /** Clear segment end-bound when list listen-jump seeks. */
-  beginGlobalPlayback?: () => void;
+  /** List listen-jump: tear segment bound for global, or open segment play when sticky segment session. */
+  beginGlobalPlayback?: (idx?: number) => void;
 }) {
   const {
     ctx,
@@ -100,7 +100,7 @@ export function useTranscriptionLayerSelection(opts: {
     waveformShellRef,
     transcriptRowHeightPx,
     lastSegmentSelectSourceRef,
-    beginGlobalPlayback: () => beginGlobalPlaybackRef.current?.(),
+    beginGlobalPlayback: (idx?: number) => beginGlobalPlaybackRef.current?.(idx),
   });
 
   const selectSegmentAt = useCallback(
@@ -115,7 +115,7 @@ export function useTranscriptionLayerSelection(opts: {
         scheduleRevealSelectedSegment: burst.scheduleRevealSelectedSegment,
         cancelPendingSelectionReveal: burst.cancelPendingSelectionReveal,
         focusWaveformShell,
-        beginGlobalPlayback: () => beginGlobalPlaybackRef.current?.(),
+        beginGlobalPlayback: (seekIdx?: number) => beginGlobalPlaybackRef.current?.(seekIdx),
       });
     },
     [

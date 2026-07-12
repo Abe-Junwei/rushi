@@ -48,7 +48,19 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     selectedIdxRef: ctx.selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
-    beginGlobalPlayback: () => timeline.wf.beginGlobalPlayback(),
+    beginGlobalPlayback: (idx?: number) => {
+      if (
+        typeof idx === "number" &&
+        timeline.wf.isSegmentPlaybackSession?.()
+      ) {
+        // Sticky segment session + listen-jump → open segment play for the new sentence.
+        queueMicrotask(() => {
+          void timeline.wf.playSegmentAtIndex(idx);
+        });
+        return;
+      }
+      timeline.wf.beginGlobalPlayback();
+    },
   });
 
   const selectSegmentRangeRef = useRef<(lo: number, hi: number) => void>((lo, hi) => {
@@ -279,6 +291,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     isPlaying: wf.isPlaying,
     seek,
     togglePlay: wf.togglePlay,
+    toggleGlobalPlay: wf.toggleGlobalPlay,
     getPlayheadTime: wf.getPlayheadTime,
     getDisplayPlayheadTimeSec: timeline.getDisplayPlayheadTimeSec,
     subscribePlayheadFrame: timeline.subscribePlayheadFrame,

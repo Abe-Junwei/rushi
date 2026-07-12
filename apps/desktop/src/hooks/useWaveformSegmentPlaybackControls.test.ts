@@ -443,6 +443,155 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(sync).toHaveBeenCalledWith(31);
   });
 
+  it("segment play button cuts from global playback into scoped segment play", async () => {
+    let playing = true;
+    let playhead = 5;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    act(() => {
+      result.current.beginGlobalPlayback();
+    });
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.pause).toHaveBeenCalled();
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.play).toHaveBeenCalled();
+    expect(playing).toBe(true);
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+  });
+
+  it("segment play button cuts from global playback at/past segment end back to segment start", async () => {
+    let playing = true;
+    let playhead = 25;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    act(() => {
+      result.current.beginGlobalPlayback();
+    });
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.setTime).not.toHaveBeenCalledWith(25);
+    expect(ws.play).toHaveBeenCalled();
+    expect(playing).toBe(true);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+  });
+
+  it("does not store a pause anchor when freeze time is outside the selected segment", async () => {
+    let playing = false;
+    let playhead = 30;
+    const segs = [
+      { idx: 0, start_sec: 10, end_sec: 20, text: "a" },
+      { idx: 1, start_sec: 30, end_sec: 40, text: "b" },
+    ];
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segs],
+        selectedIdx: 1,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+    expect(playing).toBe(true);
+
+    playhead = 19.5;
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+    expect(playing).toBe(false);
+
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(30);
+    expect(ws.setTime).not.toHaveBeenCalledWith(19.5);
+    expect(playing).toBe(true);
+  });
+
   it("resumes from the captured pause anchor when raw and display clocks fall backward", async () => {
     let playing = true;
     let rawMediaSec = 15.8;
@@ -855,6 +1004,79 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.setTime).toHaveBeenCalledWith(10);
     expect(ws.setTime).not.toHaveBeenCalledWith(20);
     expect(playing).toBe(true);
+  });
+
+  it("Space sticky path after natural end: session kept and playSegmentAtIndex seeks to start", async () => {
+    const { resolveSessionTogglePlay } = await import("../utils/playbackSessionToggle");
+    let playhead = 10;
+    let playing = false;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+
+    playhead = 15;
+    act(() => {
+      schedulePlaybackViewportFrame(15);
+      flushTierScrollFrameForTests();
+    });
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(playing).toBe(false);
+    expect(result.current.isSelectedSegmentPlaying).toBe(false);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+    expect(ws.setTime).toHaveBeenCalledWith(20);
+
+    const decision = resolveSessionTogglePlay({
+      isPlaying: false,
+      session: result.current.getPlaybackSession(),
+      segmentStillExists: true,
+    });
+    expect(decision).toEqual({ action: "resumeSegment", idx: 0 });
+
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    playhead = 20;
+    await act(async () => {
+      if (decision.action === "resumeSegment") {
+        await result.current.playSegmentAtIndex(decision.idx);
+      }
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.setTime).not.toHaveBeenCalledWith(20);
+    expect(playing).toBe(true);
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
   });
 
   it("does not replay from segment start after seek clears auto-stop replay intent", async () => {

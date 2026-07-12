@@ -33,6 +33,11 @@ export type TransportDispatchDeps = {
   }) => Promise<void>;
   runToggleSegmentPlay: () => Promise<void>;
   resolvePlayFromInput: (idx: number, fromSec?: number) => ResolveSegmentPlayFromInput | null;
+  /**
+   * Optional sticky resume (natural segment-end → start; mid pause → freeze).
+   * Only consulted for `playSegment` — never for select seek.
+   */
+  resolveSegmentResumeFromSec?: (idx: number, fromSec?: number) => number | undefined;
 };
 
 /**
@@ -61,7 +66,11 @@ export async function dispatchTransportIntent(
       return;
     }
     case "playSegment": {
-      const input = deps.resolvePlayFromInput(intent.idx, intent.fromSec);
+      // Space sticky natural-end must inject segment start here. Plain
+      // resolvePlayFromInput + display-at-end continues unbounded past the segment.
+      const resumeFromSec =
+        deps.resolveSegmentResumeFromSec?.(intent.idx, intent.fromSec) ?? intent.fromSec;
+      const input = deps.resolvePlayFromInput(intent.idx, resumeFromSec);
       if (!input) return;
       const playFrom = resolveSegmentPlayFrom(input);
       await deps.runPlaySegment({

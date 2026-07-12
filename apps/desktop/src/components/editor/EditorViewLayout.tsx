@@ -91,7 +91,7 @@ export function EditorViewLayout({
       filterActive={segmentFilter.isActive}
       filteredIndices={segmentFilter.filteredIndices}
     >
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
+    <div className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-notion-bg" data-purpose="editor-workspace">
       <EditorToolbar
         controller={c}
         exportKey={exportKey}

@@ -38,7 +38,7 @@ function assertBindingsWithinKeyLimit(definitions: EditorShortcutDefinition[]): 
 
 /**
  * 默认绑定（优先 2 键）：
- * - 合并 ⌘J/K · 拆分 ⌘D · 播放 Space / 正文 ⇧⌘Space（避开 macOS ⌘Space）
+ * - 合并 ⌘J/K · 拆分 ⌘D · 播放：正文外 Space；正文内 ⇧Space（裸 Space 输入空格）
  * - 语段正文切换 ↑↓（见 legacy hints）；波形区 ←→
  * - 波形区专用键 scope=waveform
  */
@@ -101,11 +101,17 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
   },
   {
     id: "playback.toggle",
-    bindings: [BINDING.plain(" "), BINDING.mod(" ", { shift: true, allowInTextarea: true })],
-    keysLabel: "Space / ⇧⌘/Ctrl+Shift+Space",
+    // Dual binding (global-vs-segment UX research): bare Space outside transcript
+    // edit targets; Shift+Space inside so Space still types a space in CM6/textarea.
+    bindings: [
+      BINDING.plain(" ", { allowInTextarea: false }),
+      BINDING.plain(" ", { shift: true, allowInTextarea: true }),
+    ],
+    keysLabel: "Space / Shift + Space",
     footerAction: "播放/暂停",
-    panelAction: "全局播放或暂停（从播放头连续播）；语段正文内请用 ⇧⌘Space（Space 会输入空格；勿用 ⌘Space，与 macOS 冲突）。语段 scoped 播放见波形浮层",
-    allowInTextarea: false,
+    panelAction:
+      "会话粘性播放或暂停（正文外 Space；正文内 ⇧Space）。有选中语段时起播=段播；无选中=全局通读。语段会话=续播/重播该句。工具条「全局播放」可退出语段会话。旁侧/浮层亦可开段播",
+    allowInTextarea: true,
   },
   {
     id: "edit.undo",

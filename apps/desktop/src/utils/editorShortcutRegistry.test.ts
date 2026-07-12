@@ -49,20 +49,22 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "d", metaKey: true }))).toBe("segment.splitPlayhead");
   });
 
-  it("matches Shift+Cmd+Space for playback in transcript textarea", () => {
+  it("matches bare Space for playback outside transcript edit, Shift+Space everywhere", () => {
+    expect(matchEditorShortcut(keyEvent({ key: " " }))).toBe("playback.toggle");
+    expect(matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }))).toBe("playback.toggle");
     expect(
-      matchEditorShortcut(keyEvent({ key: " ", metaKey: true, shiftKey: true }), { inTextarea: true }),
+      matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), { inTextarea: true }),
     ).toBe("playback.toggle");
   });
 
-  it("ignores bare Cmd+Space in transcript textarea (macOS Spotlight conflict)", () => {
-    expect(
-      matchEditorShortcut(keyEvent({ key: " ", metaKey: true }), { inTextarea: true }),
-    ).toBeNull();
+  it("ignores bare Space inside transcript edit (Space inputs text)", () => {
+    expect(matchEditorShortcut(keyEvent({ key: " " }), { inTextarea: true })).toBeNull();
   });
 
-  it("ignores bare Space in transcript textarea", () => {
-    expect(matchEditorShortcut(keyEvent({ key: " " }), { inTextarea: true })).toBeNull();
+  it("ignores Shift+Cmd+Space for playback (legacy chord removed)", () => {
+    expect(
+      matchEditorShortcut(keyEvent({ key: " ", metaKey: true, shiftKey: true }), { inTextarea: true }),
+    ).toBeNull();
   });
 
   it("ignores plain Cmd+M (macOS minimize)", () => {
@@ -148,9 +150,8 @@ describe("formatEditorShortcutPanelSections", () => {
     expect(transcript?.rows.some((r) => r.id === "segment.mergeNext")).toBe(true);
 
     const playback = sections.find((s) => s.id === "playback");
-    expect(playback?.rows[0]?.keys).toBe("Space / ⇧⌘/Ctrl+Shift+Space");
-    expect(playback?.rows[0]?.action).toContain("全局播放");
-    expect(playback?.rows[0]?.action).toContain("⇧⌘Space");
+    expect(playback?.rows[0]?.keys).toBe("Space / Shift + Space");
+    expect(playback?.rows[0]?.action).toMatch(/会话粘性|全局/);
 
     const waveform = sections.find((s) => s.id === "waveform");
     expect(waveform?.rows.some((r) => r.id === "waveform.clearSelection")).toBe(true);

@@ -204,6 +204,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(beginGlobalPlayback).toHaveBeenCalledTimes(1);
+    expect(beginGlobalPlayback).toHaveBeenCalledWith(2);
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
   });
 
@@ -816,6 +817,15 @@ describe("useTranscriptionLayerSelection profile", () => {
       expect(synced).toBe(false);
     });
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+
+    // Production: pointerdown already moved CM6 primary — transport must not chrome-match-skip.
+    seedTranscriptProjectionForTests({
+      primaryIdx: 3,
+      selectedSet: new Set([3]),
+      rangeAnchor: 3,
+      lineCount: 5,
+    });
+    selectedIdxRef.current = 3;
 
     act(() => {
       result.current.dispatchWaveformSelectionGesture({

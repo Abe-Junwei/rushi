@@ -43,9 +43,14 @@ export class TranscriptStageMarker extends GutterMarker {
     readonly selectionKind: TranscriptRowSelectionKind = null,
     /** True when this row is the current playback-focus line (may coexist with primary). */
     readonly isPlaybackFocus: boolean = false,
-    /** Primary row: show play/stop beside text (Trint-style). */
+    /**
+     * Mount play control (opacity-gated). Visible on row hover / content hover /
+     * scoped playing — not primary-only.
+     */
     readonly showSegmentPlay: boolean = false,
     readonly segmentPlayActive: boolean = false,
+    /** Content-hover force-visible (gutter :hover also reveals via CSS). */
+    readonly segmentPlayForced: boolean = false,
   ) {
     super();
   }
@@ -58,7 +63,8 @@ export class TranscriptStageMarker extends GutterMarker {
       this.selectionKind === other.selectionKind &&
       this.isPlaybackFocus === other.isPlaybackFocus &&
       this.showSegmentPlay === other.showSegmentPlay &&
-      this.segmentPlayActive === other.segmentPlayActive
+      this.segmentPlayActive === other.segmentPlayActive &&
+      this.segmentPlayForced === other.segmentPlayForced
     );
   }
 
@@ -83,16 +89,18 @@ export class TranscriptStageMarker extends GutterMarker {
       playBtn.type = "button";
       playBtn.className = [
         "cm-transcript-segment-play",
+        this.segmentPlayForced ? "cm-transcript-segment-play--forced" : "",
         this.segmentPlayActive ? "cm-transcript-segment-play--active" : "",
       ]
         .filter(Boolean)
         .join(" ");
       playBtn.setAttribute(CM_SEGMENT_PLAY_ATTR, "1");
-      playBtn.title = this.segmentPlayActive ? "停止语段播放" : "播放本语段";
-      playBtn.setAttribute(
-        "aria-label",
-        this.segmentPlayActive ? "停止语段播放" : "播放本语段",
-      );
+      playBtn.tabIndex = this.segmentPlayForced || this.segmentPlayActive ? 0 : -1;
+      const playLabel = this.segmentPlayActive
+        ? "停止语段播放"
+        : "播本语段（至段尾）";
+      playBtn.title = playLabel;
+      playBtn.setAttribute("aria-label", playLabel);
       playBtn.innerHTML = this.segmentPlayActive ? STOP_ICON_SVG : PLAY_ICON_SVG;
       wrap.append(playBtn);
     }
@@ -126,6 +134,7 @@ export function buildTranscriptStageMarker(
     isPlaybackFocus?: boolean;
     showSegmentPlay?: boolean;
     segmentPlayActive?: boolean;
+    segmentPlayForced?: boolean;
   } = {},
 ): TranscriptStageMarker | null {
   if (!meta?.stage) return null;
@@ -139,6 +148,7 @@ export function buildTranscriptStageMarker(
     opts.isPlaybackFocus === true,
     opts.showSegmentPlay === true,
     opts.segmentPlayActive === true,
+    opts.segmentPlayForced === true,
   );
 }
 
@@ -149,7 +159,7 @@ export type TranscriptStageGutterOptions = {
 
 /**
  * Trailing stage chip gutter (legacy SegmentRowStageBadge column parity).
- * Primary row also hosts a segment play control beside the text.
+ * Segment play sits beside text: hover-reveal on any row; stop stays while scoped playing.
  */
 export function createTranscriptStageGutter(
   opts: TranscriptStageGutterOptions = {},
@@ -176,11 +186,14 @@ export function createTranscriptStageGutter(
                 ? "hover"
                 : null;
       const isPrimary = selectionKind === "primary";
+      const segmentPlayActive = isPrimary && scopedPlaying;
       return buildTranscriptStageMarker(view.state.field(segmentMetaField)[idx], {
         selectionKind,
         isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
-        showSegmentPlay: isPrimary,
-        segmentPlayActive: isPrimary && scopedPlaying,
+        // Always mount to reserve hit target; visibility via CSS + forced/active.
+        showSegmentPlay: true,
+        segmentPlayActive,
+        segmentPlayForced: hoverIdx === idx,
       });
     },
     lineMarkerChange(update) {
@@ -229,7 +242,7 @@ export function createTranscriptStageGutter(
 export const transcriptStageGutterTheme = EditorView.theme({
   // Flush against content — avoid a blank seam between text highlight and stage chip.
   ".cm-transcript-stage-gutter": {
-    minWidth: "8.25rem",
+    minWidth: "8.75rem",
     paddingLeft: "0",
     paddingRight: "0.35rem",
     borderLeft: "none",
@@ -242,9 +255,10 @@ export const transcriptStageGutterTheme = EditorView.theme({
   },
   ".cm-transcript-stage-cell": {
     display: "flex",
-    alignItems: "flex-start",
+    // Keep play + stage chip on one baseline band (same as chip height).
+    alignItems: "center",
     justifyContent: "flex-start",
-    gap: "0.35rem",
+    gap: "0.25rem",
     boxSizing: "border-box",
     minHeight: "100%",
     width: "100%",
@@ -277,20 +291,45 @@ export const transcriptStageGutterTheme = EditorView.theme({
     flexShrink: "0",
     alignItems: "center",
     justifyContent: "center",
-    width: "1.375rem",
+    boxSizing: "border-box",
+    // Match stage chip height (1.375rem); wider hit target when revealed.
+    width: "0",
     height: "1.375rem",
+    minHeight: "1.375rem",
     margin: "0",
     padding: "0",
-    border: "1px solid color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
+    overflow: "hidden",
+    border: "1px solid transparent",
     borderRadius: "0.375rem",
-    background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+    background: "transparent",
     color: "var(--accent-action)",
     cursor: "pointer",
+    opacity: "0",
+    pointerEvents: "none",
+    transition: "opacity 80ms ease-out, width 80ms ease-out, background-color 80ms ease-out",
+  },
+  // Gutter cell hover keeps the button clickable (mouse can leave the text).
+  ".cm-transcript-stage-cell:hover .cm-transcript-segment-play": {
+    width: "1.75rem",
+    opacity: "1",
+    pointerEvents: "auto",
+    borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
+    background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+  },
+  ".cm-transcript-segment-play--forced": {
+    width: "1.75rem",
+    opacity: "1",
+    pointerEvents: "auto",
+    borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
+    background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
   },
   ".cm-transcript-segment-play:hover": {
-    background: "color-mix(in srgb, var(--accent-action) 20%, var(--notion-bg))",
+    background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
   },
   ".cm-transcript-segment-play--active": {
+    width: "1.75rem",
+    opacity: "1",
+    pointerEvents: "auto",
     background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
     borderColor: "color-mix(in srgb, var(--accent-action) 42%, var(--notion-divider))",
   },
@@ -299,6 +338,7 @@ export const transcriptStageGutterTheme = EditorView.theme({
     height: "0.75rem",
     display: "block",
     pointerEvents: "none",
+    flexShrink: "0",
   },
   // Match legacy `.seg-row-stage-chip` (Notion pill + icon).
   ".cm-transcript-stage-chip": {

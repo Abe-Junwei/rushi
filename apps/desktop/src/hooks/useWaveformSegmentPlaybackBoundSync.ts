@@ -27,6 +27,8 @@ export type WaveformSegmentPlaybackBoundSyncArgs = {
   resolvePlayheadSec: () => number;
   resolveSelectedPlaybackRange: () => { start: number; end: number } | null;
   resolveEffectiveSelectedIdx: () => number;
+  /** Prefer sticky session idx over selection when marking natural-end replay. */
+  resolveNaturalEndReplayIdx?: () => number;
   layoutDurationSecRef?: React.MutableRefObject<number>;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   commitSeekUi?: (timeSec: number) => void;
@@ -58,6 +60,7 @@ export function useWaveformSegmentPlaybackBoundSync(
     resolvePlayheadSec,
     resolveSelectedPlaybackRange,
     resolveEffectiveSelectedIdx,
+    resolveNaturalEndReplayIdx,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
@@ -117,7 +120,8 @@ export function useWaveformSegmentPlaybackBoundSync(
             atomicMediaSeek(clampedEnd);
           }
         } else {
-          autoStoppedSegmentIdxRef.current = resolveEffectiveSelectedIdx();
+          autoStoppedSegmentIdxRef.current =
+            resolveNaturalEndReplayIdx?.() ?? resolveEffectiveSelectedIdx();
           segmentPlaybackBoundRef.current = null;
           setIsSelectedSegmentPlaying(false);
           // Freeze at segment end — never seek back to start on auto-stop.
@@ -135,6 +139,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       isReady,
       playGenerationRef,
       resolveEffectiveSelectedIdx,
+      resolveNaturalEndReplayIdx,
       resolvePlayheadSec,
       segmentBoundStopInFlightRef,
       segmentLoopPlaybackRef,

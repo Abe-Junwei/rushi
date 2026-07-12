@@ -95,7 +95,9 @@ export const transcriptHoverTheme = EditorView.theme({
 export function createTranscriptHoverPointerHandlers(): Extension {
   return EditorView.domEventHandlers({
     mousemove(event, view) {
-      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      // precise=false: map gutter / padding coords to nearest line so hover-play
+      // stays when the pointer moves from text onto the stage play control.
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
       const next = pos == null ? null : view.state.doc.lineAt(pos).number - 1;
       if (next === view.state.field(transcriptHoverSegmentField)) return false;
       view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(next) });

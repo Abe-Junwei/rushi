@@ -173,7 +173,7 @@ export function ProjectPanel() {
               />
             }
           >
-            <main className={`relative flex min-h-[12rem] min-w-0 flex-1 flex-col ${MAIN_SHELL_SURFACE_CLASS.pageBg} lg:min-h-0`}>
+            <main className={`relative flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${MAIN_SHELL_SURFACE_CLASS.pageBg}`}>
               {transcribeBanners}
               <EditorView
                 controller={c}

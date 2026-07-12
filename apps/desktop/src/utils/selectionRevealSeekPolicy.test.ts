@@ -73,6 +73,28 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(true);
   });
 
+  it("forceSeek seeks waveform even when projection already matches", () => {
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "waveform",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 3,
+        forceSeek: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("forceSeek still reveals waveform when idxChanged is false", () => {
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "waveform",
+        idxChanged: false,
+        forceSeek: true,
+      }),
+    ).toBe(true);
+  });
+
   it("shift/toggle never seek even for list sources", () => {
     expect(
       shouldSeekAfterSegmentSelect({

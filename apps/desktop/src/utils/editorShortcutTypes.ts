@@ -37,7 +37,7 @@ export type ShortcutBinding = {
   /** Option / Alt */
   alt?: boolean;
   shift?: boolean;
-  /** 覆盖 definition 级 allowInTextarea（如 Space 仅全局、⇧⌘Space 含正文） */
+  /** 覆盖 definition 级 allowInTextarea（如个别 binding 仅正文内生效） */
   allowInTextarea?: boolean;
   /** 仅语段正文 textarea 内生效（如 Tab 跳下一段） */
   textareaOnly?: boolean;

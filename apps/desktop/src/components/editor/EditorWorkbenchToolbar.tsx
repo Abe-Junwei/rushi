@@ -75,6 +75,8 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   const { viewportWidthPx } = tierViewport;
   const mediaDurationSec = tx.mediaDurationSec;
   const stripDisabled = c.busy || !tx.isReady;
+  // 段播中工具条是「全局出口」（撕 bound 续通读），不是暂停 — 勿显示暂停图标/文案。
+  const globalTransportShowsPause = tx.isPlaying && !tx.isSelectedSegmentPlaying;
 
   return (
     <div className="waveform-bottom-toolbar editor-workbench-toolbar">
@@ -83,16 +85,30 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
           <div className="workbench-toolbar-group waveform-toolbar-zone waveform-toolbar-transport">
               <button
                 type="button"
-                className="waveform-playback-btn"
+                className="waveform-playback-btn waveform-playback-btn--global"
                 disabled={stripDisabled}
-                onClick={() => void tx.togglePlay()}
-                aria-label={tx.isPlaying ? "暂停播放" : "播放"}
+                onClick={() => void tx.toggleGlobalPlay()}
+                title={
+                  globalTransportShowsPause
+                    ? "暂停全局播放"
+                    : tx.isSelectedSegmentPlaying
+                      ? "改为全局通读"
+                      : "全局播放"
+                }
+                aria-label={
+                  globalTransportShowsPause
+                    ? "暂停全局播放"
+                    : tx.isSelectedSegmentPlaying
+                      ? "改为全局通读"
+                      : "全局播放"
+                }
               >
-                {tx.isPlaying ? (
+                {globalTransportShowsPause ? (
                   <PRODUCT_ICON.pauseAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 ) : (
                   <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 )}
+                <span className="waveform-playback-btn-label">全局</span>
               </button>
               <WaveformPlaybackTime
                 className="waveform-toolbar-time"
