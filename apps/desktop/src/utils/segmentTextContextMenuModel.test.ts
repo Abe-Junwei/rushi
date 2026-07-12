@@ -31,6 +31,9 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
+      "copyText",
+      "cutText",
+      "pasteText",
       "editAnnotation",
       "addCorrectionMemory",
       "markFinalized",
@@ -51,6 +54,9 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
+      "copyText",
+      "cutText",
+      "pasteText",
       "editAnnotation",
       "markFinalized",
       "delete",
@@ -73,6 +79,7 @@ describe("buildSegmentRowContextMenuItems", () => {
     expect(items.map((i) => i.key)).toContain("splitAtPointer");
     expect(items.map((i) => i.key)).not.toContain("appearance");
     expect(items.map((i) => i.key)).not.toContain("editAnnotation");
+    expect(items.map((i) => i.key)).not.toContain("copyText");
   });
 
   it("shows shortcut hints on annotation and correction memory items", () => {
@@ -85,8 +92,11 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "错词",
       appearance: appearanceArgs,
     });
-    expect(items[0]?.shortcutHint).toBe("Ctrl+N");
-    expect(items[1]?.shortcutHint).toBe("Ctrl+L");
+    expect(items.find((i) => i.key === "copyText")?.shortcutHint).toBe("Ctrl+C");
+    expect(items.find((i) => i.key === "cutText")?.shortcutHint).toBe("Ctrl+X");
+    expect(items.find((i) => i.key === "pasteText")?.shortcutHint).toBe("Ctrl+V");
+    expect(items.find((i) => i.key === "editAnnotation")?.shortcutHint).toBe("Ctrl+N");
+    expect(items.find((i) => i.key === "addCorrectionMemory")?.shortcutHint).toBe("Ctrl+L");
     expect(items.find((i) => i.key === "mergeNext")?.shortcutHint).toBe("Ctrl+J");
   });
 
@@ -100,7 +110,22 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "",
       appearance: appearanceArgs,
     });
-    expect(items[0]?.label).toBe("编辑备注…");
+    expect(items.find((i) => i.key === "editAnnotation")?.label).toBe("编辑备注…");
+  });
+
+  it("disables copy and cut when there is no text selection", () => {
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [seg(0, 10)],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "",
+      appearance: appearanceArgs,
+    });
+    expect(items.find((i) => i.key === "copyText")?.disabled).toBe(true);
+    expect(items.find((i) => i.key === "cutText")?.disabled).toBe(true);
+    expect(items.find((i) => i.key === "pasteText")?.disabled).toBe(false);
   });
 });
 

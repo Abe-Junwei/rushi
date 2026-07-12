@@ -51,18 +51,8 @@ export const transcriptPlaybackFocusDecorations = StateField.define<DecorationSe
   provide: (f) => EditorView.decorations.from(f),
 });
 
-/** Playback Focus fill: cool gray wash; selected∩playing → deeper saffron. */
-export const transcriptPlaybackFocusTheme = EditorView.theme({
-  ".cm-transcript-playback-focus": {
-    backgroundColor: "var(--transcript-playback-focus-fill)",
-  },
-  ".cm-transcript-primary-line.cm-transcript-playback-focus": {
-    backgroundColor: "var(--segment-fill-selected-playing-list)",
-  },
-});
-
+/** Row chrome for playback / selected∩playback lives in `buildTranscriptAppearanceTheme`. */
 export const transcriptPlaybackFocusExtensions: Extension[] = [
   transcriptPlaybackFocusField,
   transcriptPlaybackFocusDecorations,
-  transcriptPlaybackFocusTheme,
 ];

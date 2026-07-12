@@ -14,6 +14,13 @@ import {
   resolveConfirmAdvanceStartingIdx,
   type ConfirmAdvanceTabQueueRef,
 } from "./confirmAdvanceTabQueue";
+import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
+import {
+  copyTranscriptSelection,
+  cutTranscriptSelection,
+  pasteTranscriptClipboard,
+} from "../components/editor/core/transcriptClipboard";
+
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type EditorShortcutExecuteDeps = {
@@ -157,6 +164,21 @@ export function executeEditorShortcut(
     case "edit.redo":
       ctx.redo();
       return true;
+    case "edit.copy": {
+      const view = getTranscriptEditorView();
+      if (view) void copyTranscriptSelection(view);
+      return true;
+    }
+    case "edit.cut": {
+      const view = getTranscriptEditorView();
+      if (view) void cutTranscriptSelection(view);
+      return true;
+    }
+    case "edit.paste": {
+      const view = getTranscriptEditorView();
+      if (view) void pasteTranscriptClipboard(view);
+      return true;
+    }
     case "workflow.save":
       void ctx.saveSegments();
       return true;

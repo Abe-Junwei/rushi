@@ -23,7 +23,7 @@ export function useTranscriptionLayerSelection(opts: {
   selectedIdxRef?: MutableRefObject<number>;
   segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
   transcriptRowHeightPx?: number;
-  /** @deprecated listKeyboard now seeks (industry); divert unused. Kept for call-site stability. */
+  /** List/listKeyboard listen-jump: clear stale playback focus until seek catches up. */
   onListLikeSegmentSelect?: (idx: number) => void;
   /** List listen-jump: tear segment bound for global, or open segment play when sticky segment session. */
   beginGlobalPlayback?: (idx?: number) => void;
@@ -37,6 +37,7 @@ export function useTranscriptionLayerSelection(opts: {
     selectedIdxRef,
     segmentListFilterNavRef,
     transcriptRowHeightPx = 70,
+    onListLikeSegmentSelect,
     beginGlobalPlayback,
   } = opts;
 
@@ -113,8 +114,10 @@ export function useTranscriptionLayerSelection(opts: {
         selectedIdxRef,
         lastSegmentSelectSourceRef,
         scheduleRevealSelectedSegment: burst.scheduleRevealSelectedSegment,
+        revealSelectedSegmentNow: burst.revealSelectedSegmentNow,
         cancelPendingSelectionReveal: burst.cancelPendingSelectionReveal,
         focusWaveformShell,
+        notifyPlaybackFollowSegmentSelect: onListLikeSegmentSelect,
         beginGlobalPlayback: (seekIdx?: number) => beginGlobalPlaybackRef.current?.(seekIdx),
         clearBlankGlobalSpaceArm: () => {
           scrollFitRef.current.timeline.wf?.clearBlankGlobalSpaceArm?.();
@@ -123,9 +126,11 @@ export function useTranscriptionLayerSelection(opts: {
     },
     [
       burst.cancelPendingSelectionReveal,
+      burst.revealSelectedSegmentNow,
       burst.scheduleRevealSelectedSegment,
       ctxRef,
       focusWaveformShell,
+      onListLikeSegmentSelect,
       segmentListRef,
       selectedIdxRef,
     ],

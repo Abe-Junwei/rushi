@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -151,6 +153,36 @@ describe("useTranscriptionLayerSelection profile", () => {
     const dataLines = lines.filter((line) => line.includes("list idx=2") && line.includes("total="));
     expect(dataLines.length).toBeGreaterThan(0);
     expect(dataLines[0]).toMatch(/flushSelectedIdx=/);
+  });
+
+  it("reveals list selection synchronously without waiting for requestAnimationFrame", () => {
+    vi.mocked(window.requestAnimationFrame).mockImplementation(() => 1);
+    const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "list");
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: 4,
+      end_sec: 5.5,
+    });
   });
 
   it("listAdvance seeks to segment start (listen-jump)", () => {
@@ -388,6 +420,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
+    const onListLikeSegmentSelect = vi.fn();
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
@@ -399,6 +432,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         timeline: timeline as never,
         waveformShellRef: { current: null },
         segmentListRef,
+        onListLikeSegmentSelect,
       }),
     );
 
@@ -408,6 +442,7 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(onListLikeSegmentSelect).toHaveBeenCalledWith(2);
     act(() => {
       result.current.finalizeListKeyboardViewport(2);
     });
@@ -449,12 +484,13 @@ describe("useTranscriptionLayerSelection profile", () => {
     document.body.innerHTML = "";
   });
 
-  it("non-burst listKeyboard seeks immediately and defers reveal until debounce", () => {
+  it("non-burst listKeyboard seeks and reveals immediately in the same selection turn", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
     ctx.selectedIdxRef = selectedIdxRef;
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
+    const onListLikeSegmentSelect = vi.fn();
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
@@ -467,6 +503,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         waveformShellRef: { current: null },
         segmentListRef,
         selectedIdxRef,
+        onListLikeSegmentSelect,
       }),
     );
 
@@ -475,7 +512,11 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(selectedIdxRef.current).toBe(2);
-    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: 4,
+      end_sec: 5.5,
+    });
+    expect(onListLikeSegmentSelect).toHaveBeenCalledWith(2);
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
     document.body.innerHTML = "";
   });

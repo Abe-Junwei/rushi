@@ -45,6 +45,8 @@ export function useTierScrollSync(args: {
   const tierScrollMetrics = useTierScrollLayout(args.tierScrollRef, {
     shouldCommitScrollLayout: () =>
       performance.now() >= programmaticWrites.deferredLayoutCommitUntilRef.current,
+    // Pane mounts when media appears; re-attach listeners/layout after late DOM.
+    attachKey: args.mediaUrl,
   });
 
   /* eslint-disable react-hooks/exhaustive-deps -- tierScrollMetrics is a stable hook-returned object; we list its granular callbacks/refs below */

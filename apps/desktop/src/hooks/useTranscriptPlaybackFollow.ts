@@ -58,6 +58,9 @@ export function useTranscriptPlaybackFollow(args: {
   const userScrollSuppressUntilRef = useRef(0);
   const programmaticScrollUntilRef = useRef(0);
   const selectionDivertedRef = useRef(false);
+  const selectionDivertAnchorIdxRef = useRef<number | null>(null);
+  const selectionDivertTargetIdxRef = useRef<number | null>(null);
+  const pendingSelectedIdxRef = useRef<number | null>(null);
   const scrollListenCleanupRef = useRef<(() => void) | null>(null);
 
   const ensureScrollListener = useCallback(() => {
@@ -83,8 +86,10 @@ export function useTranscriptPlaybackFollow(args: {
       const prev = focusIdxRef.current;
       const normalized = nextIdx < 0 ? null : nextIdx;
       const prevStored = prev < 0 ? null : prev;
-      if (normalized === prevStored) {
-        const primary = effectiveTranscriptPrimaryIdx(selectedIdxRef.current);
+      const curField = view?.state.field(transcriptPlaybackFocusField) ?? null;
+      if (normalized === prevStored && curField === normalized) {
+        const primary =
+          pendingSelectedIdxRef.current ?? effectiveTranscriptPrimaryIdx(selectedIdxRef.current);
         if (
           shouldClearPlaybackSelectionDivert({
             isPlaying: isPlayingRef.current,
@@ -94,14 +99,44 @@ export function useTranscriptPlaybackFollow(args: {
           })
         ) {
           selectionDivertedRef.current = false;
+          selectionDivertAnchorIdxRef.current = null;
+          selectionDivertTargetIdxRef.current = null;
+          pendingSelectedIdxRef.current = null;
         }
         return;
       }
 
       focusIdxRef.current = nextIdx;
+      const primary =
+        pendingSelectedIdxRef.current ?? effectiveTranscriptPrimaryIdx(selectedIdxRef.current);
 
       if (view) {
         const cur = view.state.field(transcriptPlaybackFocusField);
+        if (
+          selectionDivertedRef.current &&
+          isPlayingRef.current &&
+          primary >= 0 &&
+          nextIdx !== primary
+        ) {
+          const anchor = selectionDivertAnchorIdxRef.current;
+          const target = selectionDivertTargetIdxRef.current ?? primary;
+          // anchor !== target is guaranteed by shouldMarkPlaybackSelectionDivert.
+          const crossedTarget =
+            anchor != null &&
+            ((anchor < target && nextIdx > target) || (anchor > target && nextIdx < target));
+          if (!crossedTarget) {
+            if (cur != null) {
+              view.dispatch({
+                effects: setTranscriptPlaybackFocusEffect.of(null),
+              });
+            }
+            return;
+          }
+          selectionDivertedRef.current = false;
+          selectionDivertAnchorIdxRef.current = null;
+          selectionDivertTargetIdxRef.current = null;
+          pendingSelectedIdxRef.current = null;
+        }
         if (cur !== normalized) {
           view.dispatch({
             effects: setTranscriptPlaybackFocusEffect.of(normalized),
@@ -109,7 +144,6 @@ export function useTranscriptPlaybackFollow(args: {
         }
       }
 
-      const primary = effectiveTranscriptPrimaryIdx(selectedIdxRef.current);
       if (
         shouldClearPlaybackSelectionDivert({
           isPlaying: isPlayingRef.current,
@@ -119,6 +153,9 @@ export function useTranscriptPlaybackFollow(args: {
         })
       ) {
         selectionDivertedRef.current = false;
+        selectionDivertAnchorIdxRef.current = null;
+        selectionDivertTargetIdxRef.current = null;
+        pendingSelectedIdxRef.current = null;
       }
 
       if (
@@ -145,6 +182,9 @@ export function useTranscriptPlaybackFollow(args: {
   const clearFocus = useCallback(() => {
     focusIdxRef.current = -1;
     selectionDivertedRef.current = false;
+    selectionDivertAnchorIdxRef.current = null;
+    selectionDivertTargetIdxRef.current = null;
+    pendingSelectedIdxRef.current = null;
     scrollListenCleanupRef.current?.();
     const view = getTranscriptEditorView();
     if (!view) return;
@@ -161,6 +201,13 @@ export function useTranscriptPlaybackFollow(args: {
       })
     ) {
       selectionDivertedRef.current = true;
+      selectionDivertAnchorIdxRef.current = focusIdxRef.current;
+      selectionDivertTargetIdxRef.current = idx;
+      pendingSelectedIdxRef.current = idx;
+      const view = getTranscriptEditorView();
+      if (view?.state.field(transcriptPlaybackFocusField) != null) {
+        view.dispatch({ effects: setTranscriptPlaybackFocusEffect.of(null) });
+      }
     }
   }, []);
 

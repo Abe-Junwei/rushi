@@ -40,6 +40,8 @@ export function buildTranscriptAppearanceTheme(args: {
       color: "var(--notion-text)",
       backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
+      // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
+      "--cm-stage-gutter-width": "9.5rem",
       "--cm-transcript-line-pad": `${linePad}px`,
     },
     ".cm-scroller": {
@@ -47,6 +49,7 @@ export function buildTranscriptAppearanceTheme(args: {
       fontFamily: "inherit",
       padding: "0.75rem",
       boxSizing: "border-box",
+      backgroundColor: "transparent",
     },
     // !important: CM6 `&light .cm-gutters` is more specific than plain theme selectors.
     ".cm-gutters": {
@@ -66,6 +69,8 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-content": {
       padding: "0.15rem 0 0.5rem 0",
       caretColor: "var(--accent-action-strong)",
+      // Same compositing base as gutters — avoid white plate under translucent fills.
+      backgroundColor: "transparent",
     },
     ".cm-line": {
       paddingTop: `${linePad}px`,
@@ -78,11 +83,40 @@ export function buildTranscriptAppearanceTheme(args: {
       boxSizing: "border-box",
       borderRadius: "0",
     },
+    // Single paint source for the row: line fill + shadows under transparent gutters.
+    // Do not also paint gutters via :has(marker) — that lagged one frame behind line
+    // decorations on ↑↓ and left the previous row's caps lit (visible jitter).
+    ".cm-transcript-primary-line, .cm-transcript-in-selection-line, .cm-transcript-playback-focus": {
+      transition: "none",
+    },
     ".cm-transcript-primary-line": {
       backgroundColor: "var(--segment-fill-selected-list)",
+      boxShadow: [
+        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-selected-list)",
+      ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
+      boxShadow: [
+        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
+        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-in-selection-list)",
+      ].join(", "),
+    },
+    // Same fill as primary — playback-focus only drives icon/class, not a second wash.
+    ".cm-transcript-primary-line.cm-transcript-playback-focus": {
+      backgroundColor: "var(--segment-fill-selected-list)",
+      boxShadow: [
+        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-selected-list)",
+      ].join(", "),
+    },
+    ".cm-transcript-playback-focus": {
+      backgroundColor: "var(--transcript-playback-focus-fill)",
+      boxShadow: [
+        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
+        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--transcript-playback-focus-fill)",
+      ].join(", "),
     },
   });
 }

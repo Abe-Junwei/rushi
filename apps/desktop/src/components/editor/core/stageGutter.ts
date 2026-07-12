@@ -79,9 +79,7 @@ export class TranscriptStageMarker extends GutterMarker {
             ? "cm-transcript-stage-cell--in-selection"
             : this.selectionKind === "playback"
               ? "cm-transcript-stage-cell--playback"
-              : this.selectionKind === "hover"
-                ? "cm-transcript-stage-cell--hover"
-                : "";
+              : "";
     wrap.className = ["cm-transcript-stage-cell", kindClass].filter(Boolean).join(" ");
 
     if (this.showSegmentPlay) {
@@ -182,9 +180,7 @@ export function createTranscriptStageGutter(
             ? "in"
             : playbackIdx != null && playbackIdx === idx
               ? "playback"
-              : hoverIdx === idx
-                ? "hover"
-                : null;
+              : null;
       const isPrimary = selectionKind === "primary";
       const segmentPlayActive = isPrimary && scopedPlaying;
       return buildTranscriptStageMarker(view.state.field(segmentMetaField)[idx], {
@@ -238,7 +234,7 @@ export function createTranscriptStageGutter(
         }
         const toggle = mouse.metaKey || mouse.ctrlKey;
         const shiftKey = mouse.shiftKey;
-        selectSegmentCommand(view, idx, { toggle, shiftKey });
+        selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
         opts.onSelectSegment?.(idx, { toggle, shiftKey });
         return true;
       },
@@ -260,6 +256,12 @@ export const transcriptStageGutterTheme = EditorView.theme({
   ".cm-transcript-stage-gutter .cm-gutterElement": {
     padding: "0",
     margin: "0",
+    display: "flex",
+    alignItems: "stretch",
+    boxSizing: "border-box",
+    // Same as meta: selection wash is .cm-line box-shadow only (no lagged :has fill).
+    backgroundColor: "transparent",
+    transition: "none",
   },
   ".cm-transcript-stage-cell": {
     display: "flex",
@@ -268,31 +270,15 @@ export const transcriptStageGutterTheme = EditorView.theme({
     justifyContent: "flex-start",
     gap: "0.25rem",
     boxSizing: "border-box",
+    alignSelf: "stretch",
+    height: "100%",
     minHeight: "100%",
     width: "100%",
     padding:
       "var(--cm-transcript-line-pad, 1rem) 0.5rem var(--cm-transcript-line-pad, 1rem) 0.35rem",
     borderRadius: "0",
-  },
-  ".cm-transcript-stage-cell--primary": {
-    backgroundColor: "var(--segment-fill-selected-list)",
-    borderRadius: "0 0.375rem 0.375rem 0",
-  },
-  ".cm-transcript-stage-cell--primary-playback": {
-    backgroundColor: "var(--segment-fill-selected-playing-list)",
-    borderRadius: "0 0.375rem 0.375rem 0",
-  },
-  ".cm-transcript-stage-cell--in-selection": {
-    backgroundColor: "var(--segment-fill-in-selection-list)",
-    borderRadius: "0 0.375rem 0.375rem 0",
-  },
-  ".cm-transcript-stage-cell--playback": {
-    backgroundColor: "var(--transcript-playback-focus-fill)",
-    borderRadius: "0 0.375rem 0.375rem 0",
-  },
-  ".cm-transcript-stage-cell--hover": {
-    backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-    borderRadius: "0 0.375rem 0.375rem 0",
+    backgroundColor: "transparent",
+    transition: "none",
   },
   ".cm-transcript-segment-play": {
     display: "inline-flex",

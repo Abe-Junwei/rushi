@@ -9,7 +9,11 @@ import {
   setTranscriptHoverSegmentEffect,
   transcriptHoverSegmentField,
 } from "./hoverSegmentField";
-import { setTranscriptPlaybackFocusEffect } from "./playbackFocusField";
+import { selectSegmentCommand } from "./selectionCommands";
+import {
+  setTranscriptPlaybackFocusEffect,
+  transcriptPlaybackFocusField,
+} from "./playbackFocusField";
 
 function makeSegments(n: number): SegmentDto[] {
   return Array.from({ length: n }, (_, i) => ({
@@ -31,7 +35,7 @@ describe("hoverSegmentField", () => {
     view = null;
   });
 
-  it("applies hover line class and clears on null", () => {
+  it("tracks hover idx without painting a row wash class", () => {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
     const state = buildTranscriptEditorState(makeSegments(3), {
@@ -40,22 +44,38 @@ describe("hoverSegmentField", () => {
     view = new EditorView({ state, parent });
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
     expect(view.state.field(transcriptHoverSegmentField)).toBe(1);
-    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeTruthy();
+    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(null) });
+    expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
+  });
+
+  it("clears hover in the same select transaction", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(2) });
+    expect(view.state.field(transcriptHoverSegmentField)).toBe(2);
+    selectSegmentCommand(view, 1);
     expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
     expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
   });
 
-  it("does not apply hover wash on the playback-focus line", () => {
+  it("clears playback-focus wash in the same ↑↓ / select transaction", () => {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
     const state = buildTranscriptEditorState(makeSegments(3), {
       extensions: transcriptEditorCoreExtensions({ withProjection: false }),
     });
     view = new EditorView({ state, parent });
-    view.dispatch({ effects: setTranscriptPlaybackFocusEffect.of(1) });
-    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
-    expect(view.state.field(transcriptHoverSegmentField)).toBe(1);
-    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
+    view.dispatch({ effects: setTranscriptPlaybackFocusEffect.of(0) });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
+    expect(view.contentDOM.querySelector(".cm-transcript-playback-focus")).toBeTruthy();
+    selectSegmentCommand(view, 1, { scrollIntoView: false });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+    expect(view.contentDOM.querySelector(".cm-transcript-playback-focus")).toBeNull();
+    expect(view.contentDOM.querySelector(".cm-transcript-primary-line")).toBeTruthy();
   });
 });

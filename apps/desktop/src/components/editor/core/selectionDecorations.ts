@@ -32,12 +32,16 @@ function buildSelectionDecorations(state: EditorState): DecorationSet {
 /**
  * Line decorations for primary / in-selection rows.
  * Driven only by CM6 selection + multi-select field — no React selectedIdx.
+ *
+ * Rebuild on doc changes: zero-length line decorations at `line.from` are not
+ * reliable under `RangeSet.map` (typing at line start can drop the class while
+ * gutters still show primary from live `primarySegmentIdx`).
  */
 export const transcriptSelectionDecorations = StateField.define<DecorationSet>({
   create(state) {
     return buildSelectionDecorations(state);
   },
-  update(value, tr) {
+  update(_value, tr) {
     const selectionChanged =
       primarySegmentIdx(tr.startState) !== primarySegmentIdx(tr.state);
     const multiChanged =
@@ -45,8 +49,10 @@ export const transcriptSelectionDecorations = StateField.define<DecorationSet>({
         tr.startState.field(transcriptMultiSelectionField),
         tr.state.field(transcriptMultiSelectionField),
       );
-    if (selectionChanged || multiChanged) return buildSelectionDecorations(tr.state);
-    return tr.docChanged ? value.map(tr.changes) : value;
+    if (selectionChanged || multiChanged || tr.docChanged) {
+      return buildSelectionDecorations(tr.state);
+    }
+    return _value;
   },
   provide: (f) => EditorView.decorations.from(f),
 });

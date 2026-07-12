@@ -24,6 +24,7 @@ import {
 import { transcriptHoverExtensions } from "./hoverSegmentField";
 import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
+import { transcriptClipboardFilters } from "./transcriptClipboard";
 
 export type TranscriptEditorCoreExtensionsOptions = {
   persistence?: TransactionPersistenceBridgeHandlers;
@@ -51,6 +52,7 @@ export function transcriptEditorCoreExtensions(
   return [
     // multi-selection field is installed by buildTranscriptEditorState
     transcriptSelectionDecorations,
+    ...transcriptClipboardFilters,
     ...transcriptHoverExtensions,
     ...transcriptPlaybackFocusExtensions,
     ...transcriptScopedPlayingExtensions,

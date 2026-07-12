@@ -89,6 +89,34 @@ describe("useTierScrollLayout", () => {
     expect(result.current.clientWidthPx).toBe(900);
   });
 
+  it("re-attaches when attachKey changes after late DOM mount (import → audioSrc)", () => {
+    const tierScrollRef: { current: HTMLDivElement | null } = { current: null };
+
+    const { result, rerender } = renderHook(
+      ({ attachKey }: { attachKey: string | null }) =>
+        useTierScrollLayout(tierScrollRef, { attachKey }),
+      { initialProps: { attachKey: null as string | null } },
+    );
+
+    expect(result.current.clientWidthPx).toBe(0);
+
+    const el = document.createElement("div");
+    Object.defineProperty(el, "scrollLeft", { value: 0, writable: true, configurable: true });
+    Object.defineProperty(el, "clientWidth", { value: 720, configurable: true });
+    tierScrollRef.current = el;
+
+    // Without attachKey change, refresh stays a no-op (first effect saw null el).
+    act(() => {
+      result.current.refreshLayout();
+    });
+    expect(result.current.clientWidthPx).toBe(0);
+
+    rerender({ attachKey: "asset://audio.wav" });
+
+    expect(result.current.clientWidthPx).toBe(720);
+    expect(result.current.liveClientWidthRef.current).toBe(720);
+  });
+
   it("updates clientWidth when ResizeObserver reports tier growth", () => {
     const el = document.createElement("div");
     Object.defineProperty(el, "scrollLeft", { value: 0, writable: true, configurable: true });

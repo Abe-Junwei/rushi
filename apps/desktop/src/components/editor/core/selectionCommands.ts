@@ -1,5 +1,5 @@
 import { EditorSelection } from "@codemirror/state";
-import type { EditorState, TransactionSpec } from "@codemirror/state";
+import type { EditorState, StateEffect, TransactionSpec } from "@codemirror/state";
 import {
   normalizeSegmentIndexRange,
   rangeIndices,
@@ -7,11 +7,37 @@ import {
   toggleSegmentIndex,
 } from "../../../utils/segmentSelection";
 import {
+  setTranscriptHoverSegmentEffect,
+  transcriptHoverSegmentField,
+} from "./hoverSegmentField";
+import {
+  setTranscriptPlaybackFocusEffect,
+  transcriptPlaybackFocusField,
+} from "./playbackFocusField";
+import {
   primarySegmentIdx,
   setTranscriptMultiSelectionEffect,
   transcriptMultiSelectionField,
 } from "./selectionField";
 import { resolveNextVisibleSegmentIdx } from "./filterLineVisibility";
+
+/**
+ * Drop transient row washes in the same transaction as selection so ↑↓ never
+ * paints stale playback-focus (or hover) on the previous line before seek.
+ */
+function effectsWithSelectionChromeReset(
+  state: EditorState,
+  effects: StateEffect<unknown> | StateEffect<unknown>[],
+): StateEffect<unknown>[] {
+  const list = Array.isArray(effects) ? [...effects] : [effects];
+  if (state.field(transcriptHoverSegmentField) != null) {
+    list.push(setTranscriptHoverSegmentEffect.of(null));
+  }
+  if (state.field(transcriptPlaybackFocusField) != null) {
+    list.push(setTranscriptPlaybackFocusEffect.of(null));
+  }
+  return list;
+}
 
 export type SelectSegmentOptions = {
   shiftKey?: boolean;
@@ -68,20 +94,26 @@ export function selectSegmentTransaction(
     if (!toggled) {
       return {
         selection: cursorAtSegmentLine(state, 0),
-        effects: setTranscriptMultiSelectionEffect.of({
-          selectedSet: new Set([0]),
-          rangeAnchor: 0,
-        }),
+        effects: effectsWithSelectionChromeReset(
+          state,
+          setTranscriptMultiSelectionEffect.of({
+            selectedSet: new Set([0]),
+            rangeAnchor: 0,
+          }),
+        ),
         scrollIntoView,
       };
     }
     return {
       selection: cursorAtSegmentLine(state, toggled.primaryIdx),
-      effects: setTranscriptMultiSelectionEffect.of({
-        selectedSet: toggled.indices,
-        rangeAnchor:
-          toggled.indices.size === 1 ? toggled.primaryIdx : multi.rangeAnchor,
-      }),
+      effects: effectsWithSelectionChromeReset(
+        state,
+        setTranscriptMultiSelectionEffect.of({
+          selectedSet: toggled.indices,
+          rangeAnchor:
+            toggled.indices.size === 1 ? toggled.primaryIdx : multi.rangeAnchor,
+        }),
+      ),
       scrollIntoView,
     };
   }
@@ -92,29 +124,38 @@ export function selectSegmentTransaction(
     if (!normalized) {
       return {
         selection: cursorAtSegmentLine(state, idx),
-        effects: setTranscriptMultiSelectionEffect.of({
-          selectedSet: new Set([idx]),
-          rangeAnchor: idx,
-        }),
+        effects: effectsWithSelectionChromeReset(
+          state,
+          setTranscriptMultiSelectionEffect.of({
+            selectedSet: new Set([idx]),
+            rangeAnchor: idx,
+          }),
+        ),
         scrollIntoView,
       };
     }
     return {
       selection: cursorAtSegmentLine(state, idx),
-      effects: setTranscriptMultiSelectionEffect.of({
-        selectedSet: rangeIndices(normalized.lo, normalized.hi),
-        rangeAnchor: anchor,
-      }),
+      effects: effectsWithSelectionChromeReset(
+        state,
+        setTranscriptMultiSelectionEffect.of({
+          selectedSet: rangeIndices(normalized.lo, normalized.hi),
+          rangeAnchor: anchor,
+        }),
+      ),
       scrollIntoView,
     };
   }
 
   return {
     selection: cursorAtSegmentLine(state, idx, opts.caretPos),
-    effects: setTranscriptMultiSelectionEffect.of({
-      selectedSet: new Set([idx]),
-      rangeAnchor: idx,
-    }),
+    effects: effectsWithSelectionChromeReset(
+      state,
+      setTranscriptMultiSelectionEffect.of({
+        selectedSet: new Set([idx]),
+        rangeAnchor: idx,
+      }),
+    ),
     scrollIntoView,
   };
 }
@@ -132,7 +173,9 @@ export function movePrimarySegmentTransaction(
   if (next === primary && !opts.shiftKey) return null;
   return selectSegmentTransaction(state, next, {
     shiftKey: opts.shiftKey,
-    scrollIntoView: opts.scrollIntoView,
+    // Match content-click: transport / reveal own scrolling. CM6 scrollIntoView
+    // here forces a paint before seek and flashes stale playback-focus chrome.
+    scrollIntoView: opts.scrollIntoView === true,
   });
 }
 
@@ -165,10 +208,13 @@ export function selectSegmentIndicesTransaction(
   const scrollIntoView = opts.scrollIntoView !== false;
   return {
     selection: cursorAtSegmentLine(state, primary),
-    effects: setTranscriptMultiSelectionEffect.of({
-      selectedSet: next,
-      rangeAnchor: Math.min(...next),
-    }),
+    effects: effectsWithSelectionChromeReset(
+      state,
+      setTranscriptMultiSelectionEffect.of({
+        selectedSet: next,
+        rangeAnchor: Math.min(...next),
+      }),
+    ),
     scrollIntoView,
   };
 }

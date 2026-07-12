@@ -10,8 +10,11 @@ import { segmentCanFinalize } from "../services/segmentConfirmEligible";
 import { segmentAnnotationMenuLabel } from "./segmentAnnotation";
 import { editorShortcutMenuHint } from "./editorShortcutMenuHint";
 
-/** 正文选区内右键：记忆 + 文本外观（字体/字号/加粗/斜体）；删/并/拆见 segmentContextMenuModel。 */
+/** 正文选区内右键：剪贴板 + 记忆 + 文本外观（字体/字号/加粗/斜体）；删/并/拆见 segmentContextMenuModel。 */
 export type SegmentTextContextMenuKey =
+  | "copyText"
+  | "cutText"
+  | "pasteText"
   | "addCorrectionMemory"
   | "toggleBold"
   | "toggleItalic"
@@ -97,9 +100,8 @@ export type SegmentRowContextMenuBuildArgs = {
 
 /**
  * 语段列表 / 波形区统一菜单构建。
- * - 列表 + 有刻意选区：纳入更正记忆 + 删/并/定稿（无文本外观）
- * - 列表 + 无选区：删/并/定稿 + 文本外观
- * - 波形：删/并/拆（无文本外观）
+ * - 列表：复制/剪切/粘贴 +（有选区时）更正记忆 + 删/并/定稿；（无选区时）文本外观
+ * - 波形：删/并/拆（无剪贴板 / 文本外观）
  */
 export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuildArgs): ContextMenuItem[] {
   const hasSelection = args.selectionText.trim().length > 0;
@@ -129,12 +131,34 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     shortcutHint: editorShortcutMenuHint("workflow.segmentAnnotation"),
   };
 
+  const clipboardItems: ContextMenuItem[] = [
+    {
+      key: "copyText",
+      label: "复制",
+      disabled: args.busy || !hasSelection,
+      shortcutHint: editorShortcutMenuHint("edit.copy"),
+    },
+    {
+      key: "cutText",
+      label: "剪切",
+      disabled: args.busy || !hasSelection,
+      shortcutHint: editorShortcutMenuHint("edit.cut"),
+    },
+    {
+      key: "pasteText",
+      label: "粘贴",
+      disabled: args.busy,
+      shortcutHint: editorShortcutMenuHint("edit.paste"),
+    },
+  ];
+
   if ((args.selectionCount ?? 1) > 1) {
     return [annotationItem, ...segmentItems];
   }
 
   if (hasSelection) {
     return [
+      ...clipboardItems,
       annotationItem,
       {
         key: "addCorrectionMemory",
@@ -146,11 +170,19 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     ];
   }
 
-  return [annotationItem, ...segmentItems, buildSegmentTextAppearanceMenuItem(args.appearance)];
+  return [
+    ...clipboardItems,
+    annotationItem,
+    ...segmentItems,
+    buildSegmentTextAppearanceMenuItem(args.appearance),
+  ];
 }
 
 export function isSegmentTextContextMenuKey(key: string): key is SegmentTextContextMenuKey {
   return (
+    key === "copyText" ||
+    key === "cutText" ||
+    key === "pasteText" ||
     key === "addCorrectionMemory" ||
     key === "toggleBold" ||
     key === "toggleItalic" ||

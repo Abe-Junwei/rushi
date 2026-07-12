@@ -109,4 +109,137 @@ describe("useTranscriptPlaybackFollow", () => {
     rerender({ playing: false });
     expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
   });
+
+  it("does not repaint stale playback focus while a selected seek is catching up", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const segments = makeSegments(4);
+    const state = buildTranscriptEditorState(segments, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    registerTranscriptEditorView(view);
+
+    const subscribePlayheadFrame = (cb: (t: number) => void) => {
+      frameCb = cb;
+      return () => {
+        frameCb = null;
+      };
+    };
+
+    const { result } = renderHook(() =>
+      useTranscriptPlaybackFollow({
+        isPlaying: true,
+        isReady: true,
+        segments,
+        selectedIdx: 0,
+        subscribePlayheadFrame,
+      }),
+    );
+
+    act(() => {
+      frameCb?.(5.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
+
+    act(() => {
+      result.current.notifyUserSegmentSelect(2);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+
+    act(() => {
+      frameCb?.(5.2);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+
+    act(() => {
+      frameCb?.(25.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(2);
+  });
+
+  it("releases selection divert if playback skips past the selected segment", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const segments = makeSegments(4);
+    const state = buildTranscriptEditorState(segments, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    registerTranscriptEditorView(view);
+
+    const subscribePlayheadFrame = (cb: (t: number) => void) => {
+      frameCb = cb;
+      return () => {
+        frameCb = null;
+      };
+    };
+
+    const { result } = renderHook(() =>
+      useTranscriptPlaybackFollow({
+        isPlaying: true,
+        isReady: true,
+        segments,
+        selectedIdx: 0,
+        subscribePlayheadFrame,
+      }),
+    );
+
+    act(() => {
+      frameCb?.(5.1);
+    });
+    act(() => {
+      result.current.notifyUserSegmentSelect(2);
+    });
+    act(() => {
+      frameCb?.(35.1);
+    });
+
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(3);
+  });
+
+  it("retargets pending selection divert during rapid keyboard selection", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const segments = makeSegments(4);
+    const state = buildTranscriptEditorState(segments, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    registerTranscriptEditorView(view);
+
+    const subscribePlayheadFrame = (cb: (t: number) => void) => {
+      frameCb = cb;
+      return () => {
+        frameCb = null;
+      };
+    };
+
+    const { result } = renderHook(() =>
+      useTranscriptPlaybackFollow({
+        isPlaying: true,
+        isReady: true,
+        segments,
+        selectedIdx: 0,
+        subscribePlayheadFrame,
+      }),
+    );
+
+    act(() => {
+      frameCb?.(5.1);
+    });
+    act(() => {
+      result.current.notifyUserSegmentSelect(2);
+      result.current.notifyUserSegmentSelect(3);
+    });
+    act(() => {
+      frameCb?.(25.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+
+    act(() => {
+      frameCb?.(35.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(3);
+  });
 });

@@ -107,6 +107,31 @@ describe("P2 selection commands + projection", () => {
     expect(set.has(2) && set.has(3)).toBe(true);
   });
 
+  it("movePrimary does not scrollIntoView by default (avoids ↑↓ chrome flash)", async () => {
+    const { movePrimarySegmentTransaction } = await import("./selectionCommands");
+    view = mountCore(8);
+    selectSegmentCommand(view, 2, { scrollIntoView: false });
+    const tr = movePrimarySegmentTransaction(view.state, 1);
+    expect(tr?.scrollIntoView).toBe(false);
+    const trForced = movePrimarySegmentTransaction(view.state, 1, { scrollIntoView: true });
+    expect(trForced?.scrollIntoView).toBe(true);
+  });
+
+  it("movePrimary swaps primary line class in one transaction (no dual-row chrome)", () => {
+    view = mountCore(6);
+    selectSegmentCommand(view, 2, { scrollIntoView: false });
+    expect(view.contentDOM.querySelectorAll(".cm-transcript-primary-line")).toHaveLength(1);
+    expect(primarySegmentIdx(view.state)).toBe(2);
+
+    movePrimarySegmentCommand(view, 1);
+    expect(primarySegmentIdx(view.state)).toBe(3);
+    const primaries = view.contentDOM.querySelectorAll(".cm-transcript-primary-line");
+    expect(primaries).toHaveLength(1);
+    expect(view.state.doc.lineAt(view.state.selection.main.head).number).toBe(4);
+    // Decoration attach to the new primary line only.
+    expect(primaries[0]?.textContent ?? "").toContain("语段 3");
+  });
+
   it("projection notifies subscribers unidirectionally", () => {
     view = mountCore(5);
     let ticks = 0;
@@ -146,6 +171,15 @@ describe("P2 selection commands + projection", () => {
   it("paints primary decoration class on selected line", () => {
     view = mountCore(5);
     selectSegmentCommand(view, 2);
+    expect(view.dom.querySelector(".cm-transcript-primary-line")).toBeTruthy();
+  });
+
+  it("keeps primary line class after typing at line start (no map drop)", () => {
+    view = mountCore(5);
+    selectSegmentCommand(view, 2);
+    const line = view.state.doc.line(3);
+    view.dispatch({ changes: { from: line.from, insert: "前" } });
+    expect(primarySegmentIdx(view.state)).toBe(2);
     expect(view.dom.querySelector(".cm-transcript-primary-line")).toBeTruthy();
   });
 });

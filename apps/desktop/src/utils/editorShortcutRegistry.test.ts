@@ -78,6 +78,21 @@ describe("editorShortcutRegistry", () => {
     );
   });
 
+  it("matches copy/cut/paste only inside transcript text edit", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "c", metaKey: true }))).toBeNull();
+    expect(matchEditorShortcut(keyEvent({ key: "x", metaKey: true }))).toBeNull();
+    expect(matchEditorShortcut(keyEvent({ key: "v", metaKey: true }))).toBeNull();
+    expect(matchEditorShortcut(keyEvent({ key: "c", metaKey: true }), { inTextarea: true })).toBe(
+      "edit.copy",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "x", metaKey: true }), { inTextarea: true })).toBe(
+      "edit.cut",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "v", metaKey: true }), { inTextarea: true })).toBe(
+      "edit.paste",
+    );
+  });
+
   it("matches workflow save on Cmd+S", () => {
     expect(matchEditorShortcut(keyEvent({ key: "s", metaKey: true }))).toBe("workflow.save");
   });

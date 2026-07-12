@@ -76,10 +76,14 @@
 
   /** 语段 fill — accent-action / accent-action-strong；列表 vs 波形 inSelection 分层见 CONTEXT */
   --segment-fill-selected: color-mix(in srgb, var(--accent-action) 14%, transparent);
-  --segment-fill-selected-list: color-mix(in srgb, var(--accent-action) 12%, transparent);
+  /**
+   * List / CM6 row chrome — mix onto notion-bg (opaque), not transparent.
+   * Transparent washes composite differently on sticky gutters vs .cm-line and look like seams.
+   */
+  --segment-fill-selected-list: color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg));
   /** Selected ∩ playback focus — deeper saffron than plain selection. */
-  --segment-fill-selected-playing-list: color-mix(in srgb, var(--accent-action) 24%, transparent);
-  --segment-fill-in-selection-list: color-mix(in srgb, var(--accent-action) 3%, transparent);
+  --segment-fill-selected-playing-list: color-mix(in srgb, var(--accent-action) 24%, var(--notion-bg));
+  --segment-fill-in-selection-list: color-mix(in srgb, var(--accent-action) 3%, var(--notion-bg));
   --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 8%, transparent);
   --segment-fill-visited: color-mix(in srgb, var(--notion-text) 10%, transparent);
   --segment-fill-idle: color-mix(in srgb, var(--notion-text) 5%, transparent);

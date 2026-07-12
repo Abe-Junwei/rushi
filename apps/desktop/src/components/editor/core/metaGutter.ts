@@ -8,11 +8,10 @@ import {
   transcriptMultiSelectionEqual,
 } from "./selectionField";
 import { selectSegmentCommand } from "./selectionCommands";
-import { transcriptHoverSegmentField } from "./hoverSegmentField";
 import { transcriptPlaybackFocusField } from "./playbackFocusField";
 import { transcriptGutterChromeBaseTheme } from "./transcriptGutterChromeTheme";
 
-export type TranscriptRowSelectionKind = "primary" | "in" | "hover" | "playback" | null;
+export type TranscriptRowSelectionKind = "primary" | "in" | "playback" | null;
 
 /** Left meta gutter width — full legacy meta column (stage lives in the after gutter). */
 export function computeTranscriptMetaGutterWidthPx(segmentMetaWidthPx: number): number {
@@ -55,9 +54,7 @@ export class TranscriptMetaMarker extends GutterMarker {
             ? "cm-transcript-meta-marker--in-selection"
             : this.selectionKind === "playback"
               ? "cm-transcript-meta-marker--playback"
-              : this.selectionKind === "hover"
-                ? "cm-transcript-meta-marker--hover"
-                : "";
+              : "";
     el.className = ["cm-transcript-meta-marker", kindClass].filter(Boolean).join(" ");
     el.title = `${this.indexLabel} ${this.timeLabel}`;
 
@@ -110,13 +107,11 @@ function selectionKindForIdx(
   idx: number,
   primary: number,
   selectedSet: ReadonlySet<number>,
-  hoverIdx: number | null,
   playbackIdx: number | null,
 ): TranscriptRowSelectionKind {
   if (idx === primary) return "primary";
   if (selectedSet.has(idx)) return "in";
   if (playbackIdx != null && playbackIdx === idx) return "playback";
-  if (hoverIdx === idx) return "hover";
   return null;
 }
 
@@ -135,14 +130,12 @@ export function createTranscriptMetaGutter(
       const idx = lineNo - 1;
       const primary = primarySegmentIdx(view.state);
       const multi = view.state.field(transcriptMultiSelectionField);
-      const hoverIdx = view.state.field(transcriptHoverSegmentField);
       const playbackIdx = view.state.field(transcriptPlaybackFocusField);
       return buildTranscriptMetaMarker(view.state.field(segmentMetaField)[idx], idx, {
         selectionKind: selectionKindForIdx(
           idx,
           primary,
           multi.selectedSet,
-          hoverIdx,
           playbackIdx,
         ),
         isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
@@ -160,8 +153,6 @@ export function createTranscriptMetaGutter(
           update.startState.field(transcriptMultiSelectionField),
           update.state.field(transcriptMultiSelectionField),
         ) ||
-        update.startState.field(transcriptHoverSegmentField) !==
-          update.state.field(transcriptHoverSegmentField) ||
         update.startState.field(transcriptPlaybackFocusField) !==
           update.state.field(transcriptPlaybackFocusField)
       );
@@ -173,7 +164,7 @@ export function createTranscriptMetaGutter(
         const idx = view.state.doc.lineAt(line.from).number - 1;
         const toggle = mouse.metaKey || mouse.ctrlKey;
         const shiftKey = mouse.shiftKey;
-        selectSegmentCommand(view, idx, { toggle, shiftKey });
+        selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
         opts.onSelectSegment?.(idx, { toggle, shiftKey });
         return true;
       },
@@ -201,6 +192,12 @@ export const transcriptMetaGutterTheme = EditorView.theme({
   ".cm-transcript-meta-gutter .cm-gutterElement": {
     padding: "0",
     display: "flex",
+    alignItems: "stretch",
+    boxSizing: "border-box",
+    // Selection wash lives only on .cm-line (+ box-shadow). Gutter caps used to
+    // paint via :has(marker) and lagged one frame behind ↑↓ selection moves.
+    backgroundColor: "transparent",
+    transition: "none",
   },
   ".cm-transcript-meta-marker": {
     position: "relative",
@@ -211,7 +208,9 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     gap: "0.25rem",
     boxSizing: "border-box",
     flex: "1 1 auto",
+    alignSelf: "stretch",
     width: "100%",
+    height: "100%",
     minHeight: "100%",
     // Accent bar 4px + 5px gap before index/time.
     padding:
@@ -220,6 +219,8 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     cursor: "cell",
     color: "var(--notion-text-light)",
     borderRadius: "0",
+    backgroundColor: "transparent",
+    transition: "none",
   },
   ".cm-transcript-meta-accent": {
     position: "absolute",
@@ -233,27 +234,15 @@ export const transcriptMetaGutterTheme = EditorView.theme({
   },
   ".cm-transcript-meta-marker--primary": {
     color: "var(--notion-text-muted)",
-    backgroundColor: "var(--segment-fill-selected-list)",
-    borderRadius: "0.375rem 0 0 0.375rem",
   },
   ".cm-transcript-meta-marker--primary-playback": {
     color: "var(--notion-text-muted)",
-    backgroundColor: "var(--segment-fill-selected-playing-list)",
-    borderRadius: "0.375rem 0 0 0.375rem",
   },
   ".cm-transcript-meta-marker--in-selection": {
     color: "var(--notion-text-muted)",
-    backgroundColor: "var(--segment-fill-in-selection-list)",
-    borderRadius: "0.375rem 0 0 0.375rem",
   },
   ".cm-transcript-meta-marker--playback": {
     color: "var(--notion-text-muted)",
-    backgroundColor: "var(--transcript-playback-focus-fill)",
-    borderRadius: "0.375rem 0 0 0.375rem",
-  },
-  ".cm-transcript-meta-marker--hover": {
-    backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-    borderRadius: "0.375rem 0 0 0.375rem",
   },
   ".cm-transcript-meta-index, .cm-transcript-meta-time": {
     fontWeight: "500",

@@ -20,6 +20,13 @@ export type UseTierScrollLayoutResult = TierScrollLayout & {
 export type UseTierScrollLayoutOptions = {
   burstMs?: number;
   shouldCommitScrollLayout?: () => boolean;
+  /**
+   * Re-run attach when the tier DOM appears after being absent.
+   * EditorWaveformPane mounts only when `audioSrc` is set; the ref object is
+   * stable, so without this key the first (null) attach sticks forever and
+   * viewport width stays 0 → blank peaks until editor remount.
+   */
+  attachKey?: string | null;
 };
 
 const DEFAULT_BURST_MS = 120;
@@ -30,6 +37,7 @@ export function useTierScrollLayout(
   options?: UseTierScrollLayoutOptions,
 ): UseTierScrollLayoutResult {
   const burstMs = options?.burstMs ?? DEFAULT_BURST_MS;
+  const attachKey = options?.attachKey ?? null;
   const liveScrollLeftRef = useRef(0);
   const liveClientWidthRef = useRef(0);
   const shouldCommitScrollLayoutRef = useRef(options?.shouldCommitScrollLayout);
@@ -121,7 +129,7 @@ export function useTierScrollLayout(
       readLayoutRef.current = () => {};
       notifyScrollActivityRef.current = () => {};
     };
-  }, [tierScrollRef, burstMs]);
+  }, [tierScrollRef, burstMs, attachKey]);
 
   const refreshLayout = useCallback(() => {
     readLayoutRef.current();

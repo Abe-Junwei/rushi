@@ -128,6 +128,31 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
+    id: "edit.copy",
+    // textareaOnly: only transcript body — do not steal ⌘C from other inputs.
+    bindings: [BINDING.mod("c", { allowInTextarea: true, textareaOnly: true })],
+    keysLabel: "⌘/Ctrl + C",
+    footerAction: "复制",
+    panelAction: "复制语段正文选区（无选区时复制当前行）",
+    allowInTextarea: true,
+  },
+  {
+    id: "edit.cut",
+    bindings: [BINDING.mod("x", { allowInTextarea: true, textareaOnly: true })],
+    keysLabel: "⌘/Ctrl + X",
+    footerAction: "剪切",
+    panelAction: "剪切语段正文选区（无选区时剪切当前行文本，不拆段）",
+    allowInTextarea: true,
+  },
+  {
+    id: "edit.paste",
+    bindings: [BINDING.mod("v", { allowInTextarea: true, textareaOnly: true })],
+    keysLabel: "⌘/Ctrl + V",
+    footerAction: "粘贴",
+    panelAction: "粘贴到语段正文（多行保留为段内换行，不拆段）",
+    allowInTextarea: true,
+  },
+  {
     id: "workflow.save",
     bindings: [BINDING.mod("s")],
     keysLabel: "⌘/Ctrl + S",

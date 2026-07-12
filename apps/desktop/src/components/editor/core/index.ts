@@ -111,6 +111,13 @@ export {
   focusFindMatchCommand,
   readTranscriptEditorSelectionText,
 } from "./textEditCommands";
+export {
+  transcriptClipboardFilters,
+  copyTranscriptSelection,
+  cutTranscriptSelection,
+  pasteTranscriptClipboard,
+  readTranscriptClipboardSelectionText,
+} from "./transcriptClipboard";
 export { segmentCharRangeToDocRange } from "./segmentCharRangeToDoc";
 export {
   waveformSelectionViewFromProjection,

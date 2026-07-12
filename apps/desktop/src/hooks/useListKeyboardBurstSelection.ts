@@ -198,6 +198,15 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     [revealSegmentAtIndex],
   );
 
+  const revealSelectedSegmentNow = useCallback(
+    (idx: number, options?: { force?: boolean }) => {
+      selectionProfileTime("viewport", () => {
+        revealSegmentAtIndex(idx, options);
+      });
+    },
+    [revealSegmentAtIndex],
+  );
+
   const runListKeyboardBurstListScroll = useCallback((idx: number) => {
     const view = getTranscriptEditorView();
     if (!view) return;
@@ -255,5 +264,6 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     finalizeListKeyboardViewport,
     cancelPendingSelectionReveal,
     scheduleRevealSelectedSegment,
+    revealSelectedSegmentNow,
   };
 }

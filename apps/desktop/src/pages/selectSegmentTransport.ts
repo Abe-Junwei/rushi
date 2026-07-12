@@ -44,8 +44,10 @@ export type SelectSegmentTransportDeps = {
   selectedIdxRef?: MutableRefObject<number>;
   lastSegmentSelectSourceRef: MutableRefObject<SegmentSelectSource>;
   scheduleRevealSelectedSegment: (source: SegmentSelectSource, idx: number) => void;
+  revealSelectedSegmentNow: (idx: number, options?: { force?: boolean }) => void;
   cancelPendingSelectionReveal: () => void;
   focusWaveformShell: () => void;
+  notifyPlaybackFollowSegmentSelect?: (idx: number) => void;
   /** List listen-jump: tear segment bound for global, or open segment play when sticky segment session. */
   beginGlobalPlayback?: (idx?: number) => void;
   /** Any segment select exits blank-seek global Space lock. */
@@ -69,8 +71,10 @@ export function selectSegmentTransport(
     selectedIdxRef,
     lastSegmentSelectSourceRef,
     scheduleRevealSelectedSegment,
+    revealSelectedSegmentNow,
     cancelPendingSelectionReveal,
     focusWaveformShell,
+    notifyPlaybackFollowSegmentSelect,
     beginGlobalPlayback,
     clearBlankGlobalSpaceArm,
   } = deps;
@@ -118,6 +122,9 @@ export function selectSegmentTransport(
   });
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
     clearWaveformSegmentPreviewViewportSync();
+  }
+  if (isListListenJump) {
+    notifyPlaybackFollowSegmentSelect?.(idx);
   }
   if (shouldSeek && isListListenJump) {
     beginGlobalPlayback?.(idx);
@@ -199,14 +206,18 @@ export function selectSegmentTransport(
         );
       });
     }
+    if (shouldReveal && !isWaveformLike) {
+      cancelPendingSelectionReveal();
+      // Keep list/listKeyboard reveal in the same JS turn as selection + seek.
+      // Deferring this by rAF/timeout paints the new highlight once in the old
+      // viewport, then again after centering, which is the visible ↑↓ jitter.
+      revealSelectedSegmentNow(idx);
+    }
     if (source === "waveform") {
       flushTierScrollFrame({ force: true });
     }
   });
 
-  if (shouldReveal && !isWaveformLike) {
-    scheduleRevealSelectedSegment(source, idx);
-  }
   if (isSelectionLatencyProfileEnabled()) {
     const listOwnsFlush =
       segmentListRef.current != null && shouldMarkSelectionProfileListCommit(source);

@@ -14,6 +14,12 @@ import {
 } from "../../utils/segmentTextContextMenuModel";
 import type { ContextMenuItem } from "../SegmentContextMenu";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
+import { getTranscriptEditorView } from "./core/transcriptEditorViewHandle";
+import {
+  copyTranscriptSelection,
+  cutTranscriptSelection,
+  pasteTranscriptClipboard,
+} from "./core/transcriptClipboard";
 
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
 
@@ -109,6 +115,20 @@ export function useEditorViewContextMenu({
 
       if (isSegmentTextContextMenuKey(key)) {
         const actionKey: SegmentTextContextMenuKey = key;
+        if (
+          actionKey === "copyText" ||
+          actionKey === "cutText" ||
+          actionKey === "pasteText"
+        ) {
+          const view = getTranscriptEditorView();
+          if (!view || c.busy) return;
+          void (async () => {
+            if (actionKey === "copyText") await copyTranscriptSelection(view);
+            else if (actionKey === "cutText") await cutTranscriptSelection(view);
+            else await pasteTranscriptClipboard(view);
+          })();
+          return;
+        }
         if (actionKey === "addCorrectionMemory") {
           c.openManualCorrectionMemoryDialog(segmentCtxMenu.selectionText);
           return;
