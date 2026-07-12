@@ -10,7 +10,7 @@
 
 | 用户动作 | 列表 | 波形 tier | 播放头 | 切片 |
 |----------|------|-----------|--------|------|
-| Hub 点语段 / ↑↓ / Tab | 见 grill 矩阵 | F3/L1 | **列表导航不 seek** | S0–S2 |
+| Hub 点语段 / ↑↓ / Tab | 见 grill 矩阵 | F3/L1 | **↑↓/Tab 不 seek**；**单击文稿 seek 段首**（听跳，见 [`transcript-click-seek-while-playing-research.md`](./transcript-click-seek-while-playing-research.md)） | S0–S2 |
 | 同一行再点 | focus | **不滚** | 不动 | S3 |
 | 时间尺单击 | — | 滚 | **不动** | S3 |
 | 选远处后立刻手动滚列表 | 跟手 | — | — | S5 |

@@ -64,9 +64,9 @@
 | **不改选中** | 跟播 **禁止** 写 `dispatchTranscriptEditorSelection` / 改 primary。选中高亮与跟播高亮可并存；跟播 class 弱于 selected。 |
 | **自动 reveal 抑制（对齐 Descript「播放中可独立编辑」）** | 下列任一成立则 **只更新装饰、不强制滚文稿**：① 用户正在滚文稿（短 suppress）；② 用户刚点选了与跟播索引不同的语段（divert，至暂停或再次与 playhead 对齐）。**不**因 CM6 focus 抑制跟滚（Otter/Descript：编辑光标可独立，playhead 仍可跟视口）。暂停后清除跟播装饰。 |
 | **跟播视觉 vs 选中** | 跟播 alone = 高级灰铺底（正文 + 左 meta + 右 stage）。选中 alone = saffron fill。**选中 ∩ 跟播** = 更深主题色 `--segment-fill-selected-playing-list`（三列同步）。无 inset 灰条。 |
-| **点远处文本** | 仍不 seek、不打断全局播；进入「用户选中偏离」suppress，文稿可留在远处改稿；跟播装饰可继续在「当前播出行」更新（若该行在视口外可不滚）。 |
+| **点远处文本** | **已修订（2026-07-12）**：单击/连点 → seek 段首（听跳）；↑↓ 仍不 seek。见 [`transcript-click-seek-while-playing-research.md`](./transcript-click-seek-while-playing-research.md)。 |
 | **语段 scoped 播放** | 跟播仍可开（当前段本就在视口）；loop 时索引不变，无额外 reveal 抖动。 |
-| **不做什么** | ❌ 词级 karaoke；❌ 播放中点文稿改 seek；❌ 跟播改 selection；❌ 第二套 playhead 时钟；❌ 跟播驱动波形 seek；❌ 默认把 list 矩阵改成 Otter「点词跳播」。 |
+| **不做什么** | ❌ 词级 karaoke；❌ 跟播改 selection；❌ 第二套 playhead 时钟；❌ 跟播驱动波形 seek；❌ listKeyboard 默认 seek（改稿保书签）。点文稿 seek 见听跳薄片。 |
 | **与 ADR / architecture** | 扩展 `desktop-waveform-engine` 或 desktop-capability 短节：「Playback Focus vs Selection」。Transport Authority 不变。 |
 | **风险** | RISK-01：reveal 与用户滚抢滚动 — suppress 必测；RISK-02：500+ 段每帧 reveal — 仅索引变化时 reveal，装饰用 CM6 effect 合并；RISK-03：visited 算法在 gap 内指向上一段 — 可接受（与波形 visited 一致）。 |
 

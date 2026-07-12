@@ -123,7 +123,7 @@
 
 | 入口 | 选中 | reveal/居中 | seek | suppress 跟随 | 焦点 | 走 `selectSegmentAt`? |
 |------|------|------------|------|---------------|------|----------------------|
-| CM6 行点击（未选中） | ✓ | ✓ CM6 scrollIntoView | ✗ | — | CM6 | ✓（`list`） |
+| CM6 行点击（未选中） | ✓ | ✓ CM6 scrollIntoView | **语段头**（听跳；含暂停） | ✓ | CM6 | ✓（`list`） |
 | CM6 行再点击（已选中） | — | ✗ | ✗ | — | CM6 caret | 否（仅 focus） |
 | 波形语段首点 | ✓ | ✓ immediate | 语段头 | ✓ | waveform shell | ✓（`waveform`） |
 | 波形语段再点（已选中） | — | — | 钳在语段内点击点 | ✓ | waveform shell | 否（`seek-within`） |

@@ -144,16 +144,16 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(selectedIdxRef.current).toBe(2);
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+    expect(timeline.suppressPlaybackFollowForSelectionSeek).toHaveBeenCalled();
 
     const lines = readRecentSelectionLatencyProfileLines();
     const dataLines = lines.filter((line) => line.includes("list idx=2") && line.includes("total="));
     expect(dataLines.length).toBeGreaterThan(0);
     expect(dataLines[0]).toMatch(/flushSelectedIdx=/);
-    expect(dataLines[0]).toMatch(/viewport=/);
   });
 
-  it("listAdvance reveals without seek", () => {
+  it("listAdvance seeks to segment start (listen-jump)", () => {
     const ctx = makeCtx(5);
     const ctxRef = { current: ctx };
     const timeline = makeTimeline();
@@ -175,7 +175,7 @@ describe("useTranscriptionLayerSelection profile", () => {
 
     expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
-    expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
   });
 
   it("list reveal uses transport idx when React selectedIdx is stale", () => {
@@ -209,9 +209,10 @@ describe("useTranscriptionLayerSelection profile", () => {
       start_sec: ctx.segments[3].start_sec,
       end_sec: ctx.segments[3].end_sec,
     });
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
   });
 
-  it("list reveal still runs when CM6 projection already moved primary", () => {
+  it("list seeks when CM6 projection already moved primary (mousedown order)", () => {
     const ctx = makeCtx(5);
     ctx.selectedIdx = 0;
     seedTranscriptProjectionForTests({
@@ -246,6 +247,40 @@ describe("useTranscriptionLayerSelection profile", () => {
       start_sec: ctx.segments[3].start_sec,
       end_sec: ctx.segments[3].end_sec,
     });
+    // Real CM6 path: projection updates before transport; must still listen-jump.
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+  });
+
+  it("list does not re-seek when React selection already on target idx", () => {
+    const ctx = makeCtx(5);
+    ctx.selectedIdx = 3;
+    seedTranscriptProjectionForTests({
+      primaryIdx: 3,
+      selectedSet: new Set([3]),
+      rangeAnchor: 3,
+      lineCount: 5,
+    });
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const segmentListRef = { current: null as HTMLDivElement | null };
+    const selectedIdxRef = { current: 3 };
+    ctx.selectedIdxRef = selectedIdxRef;
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef,
+        selectedIdxRef,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "list");
+    });
+
     expect(timeline.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 

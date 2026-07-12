@@ -399,6 +399,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isSelectedSegmentPlaying: segmentPlayback.isSelectedSegmentPlaying,
     preserveLoopForNextSegmentSelect: segmentPlayback.preserveLoopForNextSegmentSelect,
     clearSegmentPlaybackBound: segmentPlayback.clearSegmentPlaybackBound,
+    beginGlobalPlayback: segmentPlayback.beginGlobalPlayback,
     handleToggleSelectedWaveformLoop: segmentPlayback.handleToggleSelectedWaveformLoop,
     playSegmentAtIndex,
     handleToggleSelectedWaveformPlay,

@@ -31,7 +31,7 @@ import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/project
 import { flushTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   shouldRevealOnSegmentSelect,
-  shouldSeekOnSegmentSelect,
+  shouldSeekAfterSegmentSelect,
 } from "../utils/selectionRevealSeekPolicy";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
@@ -46,6 +46,8 @@ export type SelectSegmentTransportDeps = {
   scheduleRevealSelectedSegment: (source: SegmentSelectSource, idx: number) => void;
   cancelPendingSelectionReveal: () => void;
   focusWaveformShell: () => void;
+  /** Clear segment end-bound so list listen-jump continues globally when media is playing. */
+  beginGlobalPlayback?: () => void;
 };
 
 /**
@@ -67,6 +69,7 @@ export function selectSegmentTransport(
     scheduleRevealSelectedSegment,
     cancelPendingSelectionReveal,
     focusWaveformShell,
+    beginGlobalPlayback,
   } = deps;
 
   const c = ctxRef.current;
@@ -78,9 +81,13 @@ export function selectSegmentTransport(
   const isWaveformKbBurst = isWaveformKeyboardBurstStep(source, opts);
   const isBurstStep = isListKeyboardBurstStep(source, opts) || isWaveformKbBurst;
   const isWaveformLike = source === "waveform" || isWaveformKeyboard;
+  const isListClickSeek =
+    (source === "list" || source === "listAdvance") && !opts?.shiftKey && !opts?.toggle;
 
   const authorityPrimary = effectiveTranscriptPrimaryIdx(c.selectedIdx);
   const idxChangedFromAuthority = idx !== authorityPrimary;
+  // CM6 mousedown updates projection before transport — list seek must use React/ref baseline.
+  const reactPrimaryIdx = selectedIdxRef?.current ?? c.selectedIdxRef?.current ?? c.selectedIdx;
   const previewViewportAlreadySynced =
     source === "waveform" &&
     idxChangedFromAuthority &&
@@ -91,11 +98,20 @@ export function selectSegmentTransport(
     source,
     idxChanged: idxChangedFromAuthority,
   });
-  const shouldSeek = shouldSeekOnSegmentSelect(source) && idxChangedFromAuthority;
+  const shouldSeek = shouldSeekAfterSegmentSelect({
+    source,
+    idx,
+    projectionPrimaryIdx: authorityPrimary,
+    reactPrimaryIdx,
+    shiftKey: opts?.shiftKey,
+    toggle: opts?.toggle,
+  });
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
     clearWaveformSegmentPreviewViewportSync();
   }
-
+  if (shouldSeek && isListClickSeek) {
+    beginGlobalPlayback?.();
+  }
   dispatchTranscriptEditorSelection(idx, {
     shiftKey: opts?.shiftKey,
     toggle: opts?.toggle,

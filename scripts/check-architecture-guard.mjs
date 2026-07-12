@@ -749,7 +749,7 @@ function checkSegmentListRapidSelectGuard() {
     }
     if (!/shouldSeekOnSegmentSelect/.test(selectionBundle)) {
       errors.push(
-        `${selectSegmentAtCoreRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（list/listKeyboard 禁止 seek）`,
+        `${selectSegmentAtCoreRel}: 语段选中 seek 须经 shouldSeekOnSegmentSelect 策略（listKeyboard 禁止 seek）`,
       );
     }
   }
@@ -758,11 +758,14 @@ function checkSegmentListRapidSelectGuard() {
   const policyPath = path.join(ROOT, policyRel);
   if (fs.existsSync(policyPath)) {
     const policySource = fs.readFileSync(policyPath, 'utf-8');
-    if (!/return source === "waveform"/.test(policySource)) {
-      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 仅 waveform 源可 seek`);
+    // Listen-jump: list + listAdvance seek; listKeyboard must remain non-seeking.
+    if (!/source === "list"/.test(policySource) || !/source === "listAdvance"/.test(policySource)) {
+      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 须允许 list / listAdvance seek（听跳）`);
+    }
+    if (!/listKeyboard/.test(policySource)) {
+      errors.push(`${policyRel}: shouldSeekOnSegmentSelect 须显式排除 listKeyboard`);
     }
   }
-
   const rulerRel = 'apps/desktop/src/hooks/useWaveformTimeRulerInteraction.ts';
   const rulerPath = path.join(ROOT, rulerRel);
   if (fs.existsSync(rulerPath)) {

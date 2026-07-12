@@ -51,6 +51,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
     onListLikeSegmentSelect: (idx) => notifyTranscriptPlaybackSelectRef.current(idx),
+    beginGlobalPlayback: () => timeline.wf.beginGlobalPlayback(),
   });
 
   const selectSegmentRangeRef = useRef<(lo: number, hi: number) => void>((lo, hi) => {

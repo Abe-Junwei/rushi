@@ -1,13 +1,57 @@
 import { describe, expect, it } from "vitest";
-import { shouldRevealOnSegmentSelect, shouldSeekOnSegmentSelect } from "./selectionRevealSeekPolicy";
+import {
+  shouldRevealOnSegmentSelect,
+  shouldSeekAfterSegmentSelect,
+  shouldSeekOnSegmentSelect,
+} from "./selectionRevealSeekPolicy";
 
 describe("selectionRevealSeekPolicy", () => {
-  it("waveform sources seek on segment select", () => {
+  it("waveform and list click sources seek; listKeyboard never seeks", () => {
     expect(shouldSeekOnSegmentSelect("waveform")).toBe(true);
     expect(shouldSeekOnSegmentSelect("waveformKeyboard")).toBe(true);
-    expect(shouldSeekOnSegmentSelect("list")).toBe(false);
-    expect(shouldSeekOnSegmentSelect("listAdvance")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("list")).toBe(true);
+    expect(shouldSeekOnSegmentSelect("listAdvance")).toBe(true);
     expect(shouldSeekOnSegmentSelect("listKeyboard")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("contextMenu")).toBe(false);
+    expect(shouldSeekOnSegmentSelect("multiSelect")).toBe(false);
+  });
+
+  it("list seek uses react primary when CM6 projection already matches target", () => {
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "list",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 0,
+      }),
+    ).toBe(true);
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "list",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 3,
+      }),
+    ).toBe(false);
+  });
+
+  it("waveform seek still keys off projection primary", () => {
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "waveform",
+        idx: 3,
+        projectionPrimaryIdx: 3,
+        reactPrimaryIdx: 0,
+      }),
+    ).toBe(false);
+    expect(
+      shouldSeekAfterSegmentSelect({
+        source: "waveform",
+        idx: 3,
+        projectionPrimaryIdx: 1,
+        reactPrimaryIdx: 1,
+      }),
+    ).toBe(true);
   });
 
   it("list sources reveal even when CM6 already moved primary", () => {

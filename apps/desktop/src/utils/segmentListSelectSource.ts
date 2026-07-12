@@ -1,6 +1,6 @@
 import type { SegmentSelectSource } from "./waveformViewMode";
 
-/** 列表连点间隔内用 listAdvance（仍 reveal、不 seek；source 供分析/快捷键区分）。 */
+/** 列表连点间隔内用 listAdvance（仍 seek；source 供分析/快捷键区分）。 */
 export const LIST_RAPID_SELECT_MS = 400;
 
 /** 列表内切语段（点击 / 连点 / ↑↓）— 优先即时 scroll + chrome，不走 waveform 重路径。 */

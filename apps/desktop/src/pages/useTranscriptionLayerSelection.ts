@@ -23,8 +23,10 @@ export function useTranscriptionLayerSelection(opts: {
   selectedIdxRef?: MutableRefObject<number>;
   segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
   transcriptRowHeightPx?: number;
-  /** list / listAdvance / listKeyboard — e.g. suppress transcript playback-follow scroll. */
+  /** listKeyboard only — suppress transcript playback-follow scroll (list click seeks, no divert). */
   onListLikeSegmentSelect?: (idx: number) => void;
+  /** Clear segment end-bound when list listen-jump seeks. */
+  beginGlobalPlayback?: () => void;
 }) {
   const {
     ctx,
@@ -36,6 +38,7 @@ export function useTranscriptionLayerSelection(opts: {
     segmentListFilterNavRef,
     transcriptRowHeightPx = 70,
     onListLikeSegmentSelect,
+    beginGlobalPlayback,
   } = opts;
 
   const scrollFitRef = useRef({ timeline });
@@ -99,10 +102,13 @@ export function useTranscriptionLayerSelection(opts: {
 
   const onListLikeSegmentSelectRef = useRef(onListLikeSegmentSelect);
   onListLikeSegmentSelectRef.current = onListLikeSegmentSelect;
+  const beginGlobalPlaybackRef = useRef(beginGlobalPlayback);
+  beginGlobalPlaybackRef.current = beginGlobalPlayback;
 
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform", opts?: SegmentSelectAtOptions) => {
-      if (source === "list" || source === "listAdvance" || source === "listKeyboard") {
+      // List click seeks (listen-jump) — do not divert follow. Keyboard still diverts.
+      if (source === "listKeyboard") {
         onListLikeSegmentSelectRef.current?.(idx);
       }
       selectSegmentTransport(idx, source, opts, {
@@ -114,6 +120,7 @@ export function useTranscriptionLayerSelection(opts: {
         scheduleRevealSelectedSegment: burst.scheduleRevealSelectedSegment,
         cancelPendingSelectionReveal: burst.cancelPendingSelectionReveal,
         focusWaveformShell,
+        beginGlobalPlayback: () => beginGlobalPlaybackRef.current?.(),
       });
     },
     [
