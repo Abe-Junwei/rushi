@@ -2,7 +2,7 @@
 
 > **Research**：[global-vs-segment-playback-ux-research.md](./global-vs-segment-playback-ux-research.md)  
 > **Plan**：[global-vs-segment-playback-ux-plan.md](./global-vs-segment-playback-ux-plan.md)  
-> **状态**：自动化 ✅；手测待签
+> **状态**：自动化 ✅；手测 ✅（2026-07-12）
 
 ## 能力—UI 状态矩阵
 
@@ -24,7 +24,7 @@
 
 ## 手测
 
-1. [ ] 打开有音频文件、不选语段：Space 从播放头连续播
-2. [ ] 选中语段：浮层 play 段尾停；Space 仍为全局（可越过段尾）
-3. [ ] 全局播放中点浮层 play：进入 scoped；再 Space：恢复全局续播
-4. [ ] 正文焦点：⇧⌘Space 全局播；裸 Space 输入空格
+1. [x] 打开有音频文件、不选语段：Space 从播放头连续播
+2. [x] 选中语段：浮层 play 段尾停；Space 仍为全局（可越过段尾）
+3. [x] 全局播放中点浮层 play：进入 scoped；再 Space：恢复全局续播
+4. [x] 正文焦点：⇧⌘Space 全局播；裸 Space 输入空格

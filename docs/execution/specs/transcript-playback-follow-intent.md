@@ -3,7 +3,7 @@
 > **Research**：[transcript-playback-follow-research.md](./transcript-playback-follow-research.md)  
 > **Plan**：[transcript-playback-follow-plan.md](./transcript-playback-follow-plan.md)  
 > **Acceptance**：[transcript-playback-follow-acceptance.md](./transcript-playback-follow-acceptance.md)  
-> **状态**：编码完成（待手测）
+> **状态**：已完成（手测 ✅ 2026-07-12）
 
 ## 意图
 

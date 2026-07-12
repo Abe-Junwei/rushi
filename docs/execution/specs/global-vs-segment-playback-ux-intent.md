@@ -3,7 +3,7 @@
 > **Research**：[global-vs-segment-playback-ux-research.md](./global-vs-segment-playback-ux-research.md)  
 > **Plan**：[global-vs-segment-playback-ux-plan.md](./global-vs-segment-playback-ux-plan.md)  
 > **Acceptance**：[global-vs-segment-playback-ux-acceptance.md](./global-vs-segment-playback-ux-acceptance.md)  
-> **状态**：编码完成（待手测）
+> **状态**：已完成（手测 ✅ 2026-07-12）
 
 ## 意图
 
