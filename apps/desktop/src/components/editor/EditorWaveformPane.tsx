@@ -104,8 +104,9 @@ export const EditorWaveformPane = memo(function EditorWaveformPane({
           getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
           subscribePlayheadFrame={tx.subscribePlayheadFrame}
           isPlaying={tx.isPlaying}
-          onSeek={tx.seek}
+          onSeek={tx.seekBlankToTime}
           onSetScrollLeftPx={tx.minimapScrubScroll}
+          playheadChromeMode={tx.playheadChromeMode}
         />
       ) : null}
     </div>

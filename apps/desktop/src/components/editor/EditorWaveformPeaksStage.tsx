@@ -234,6 +234,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                 }}
                 onPlaySegment={(idx, fromSec) => void tx.playSegmentAtIndex(idx, { fromSec })}
                 seekToTime={tx.seek}
+                seekBlankToTime={tx.seekBlankToTime}
                 suppressPlaybackFollowForSelectionSeek={tx.suppressPlaybackFollowForSelectionSeek}
               />
               <WaveformLiveTimeRuler
@@ -292,6 +293,7 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                   getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
                   subscribePlayheadFrame={tx.subscribePlayheadFrame}
                   playbackFollowMode={tx.playbackScrollFollowMode}
+                  playheadChromeMode={tx.playheadChromeMode}
                 />
               </CspLayout>
             </CspLayout>

@@ -23,6 +23,8 @@ type WaveformViewportPlayheadProps = {
   /** Single playback tick bus; playhead transform runs here instead of its own rAF. */
   subscribePlayheadFrame: (cb: (timeSec: number) => void, priority?: number) => () => void;
   playbackFollowMode: WaveformPlaybackScrollFollowMode;
+  /** Segment = accent playhead; global = fixed cool slate. */
+  playheadChromeMode?: "segment" | "global";
 };
 
 /**
@@ -42,6 +44,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   getDisplayPlayheadTimeSec,
   subscribePlayheadFrame,
   playbackFollowMode,
+  playheadChromeMode = "segment",
 }: WaveformViewportPlayheadProps) {
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const lastTransformRef = useRef("");
@@ -113,5 +116,15 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     return null;
   }
 
-  return <div ref={playheadRef} className="waveform-viewport-playhead" aria-hidden />;
+  return (
+    <div
+      ref={playheadRef}
+      className={
+        playheadChromeMode === "global"
+          ? "waveform-viewport-playhead is-global-playhead"
+          : "waveform-viewport-playhead"
+      }
+      aria-hidden
+    />
+  );
 });

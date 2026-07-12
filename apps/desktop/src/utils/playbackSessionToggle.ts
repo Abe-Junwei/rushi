@@ -21,6 +21,11 @@ export function resolveSessionTogglePlay(args: {
    * play on this selected transcript primary if valid (≥0).
    */
   selectedSegmentIdx?: number;
+  /**
+   * Blank waveform seek armed a sticky global Space intent. Keep chrome selection,
+   * but do not jump back into the previously selected segment on Space.
+   */
+  preferGlobalSpace?: boolean;
 }): SessionTogglePlayDecision {
   if (args.isPlaying) return { action: "pauseKeepingSession" };
   const selected = args.selectedSegmentIdx;
@@ -34,6 +39,10 @@ export function resolveSessionTogglePlay(args: {
     } else {
       return { action: "resumeSegment", idx: args.session.idx };
     }
+  }
+  // Blank seek (and similar) locks Space to global until the next segment select/play.
+  if (args.preferGlobalSpace) {
+    return { action: "startGlobal" };
   }
   if (selected != null && selected >= 0) {
     return { action: "resumeSegment", idx: selected };

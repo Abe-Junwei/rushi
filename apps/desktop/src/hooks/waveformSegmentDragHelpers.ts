@@ -46,9 +46,13 @@ function overlayPointerActions(
     onCreateRange: a.onCreateRange,
     onSelectTimeRange: a.onSelectTimeRange,
     onFocusWaveformShell: a.onFocusWaveformShell,
-    seekToTime: a.seekToTime,
+    seekToTime: a.seekBlankToTime ?? a.seekToTime,
     suppressPlaybackFollowForSelectionSeek: a.suppressPlaybackFollowForSelectionSeek,
   };
+}
+
+function seekBlankToTime(a: WaveformSegmentDragArgs, timeSec: number): void {
+  (a.seekBlankToTime ?? a.seekToTime)(timeSec);
 }
 
 function snapTargetsForOverlay(
@@ -129,8 +133,9 @@ export function finishWaveformLassoDrag(input: {
     }
     if (a.isMultiSegmentSelection?.()) {
       a.onClearMultiSelection?.();
-    } else {
-      a.seekToTime(drag.anchorTimeSec);
+    } else if (!drag.blankSeekedOnDown) {
+      // pointerdown already seekBlankToTime for non-modifier lasso — avoid double gen/seek.
+      seekBlankToTime(a, drag.anchorTimeSec);
     }
     return true;
   }
@@ -175,7 +180,7 @@ export function finishWaveformLassoDrag(input: {
   if (a.isMultiSegmentSelection?.()) {
     a.onClearMultiSelection?.();
   } else {
-    a.seekToTime(timeSec);
+    seekBlankToTime(a, timeSec);
   }
   return true;
 }

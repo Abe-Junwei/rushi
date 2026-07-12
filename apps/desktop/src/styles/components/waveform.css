@@ -726,6 +726,10 @@
   background: var(--waveform-minimap-playhead);
 }
 
+.waveform-minimap-playhead.is-global-playhead {
+  background: var(--waveform-minimap-playhead-global);
+}
+
 /** Sticky viewport playhead — dev/release parity (not Tailwind stroke; not WS shadow cursor). */
 .waveform-viewport-playhead {
   pointer-events: none;
@@ -737,6 +741,10 @@
   width: 1px;
   background: var(--waveform-playhead);
   will-change: transform;
+}
+
+.waveform-viewport-playhead.is-global-playhead {
+  background: var(--waveform-playhead-global);
 }
 
 /**
@@ -863,13 +871,13 @@
 }
 
 .waveform-segment-region-selected {
-  border-left-color: var(--segment-fill-selected-border);
-  border-right-color: var(--segment-fill-selected-border);
+  border-left-color: transparent;
+  border-right-color: transparent;
 }
 
 .waveform-segment-region-in-selection {
-  border-left-color: var(--segment-fill-in-selection-border);
-  border-right-color: var(--segment-fill-in-selection-border);
+  border-left-color: transparent;
+  border-right-color: transparent;
 }
 
 .waveform-segment-handle {

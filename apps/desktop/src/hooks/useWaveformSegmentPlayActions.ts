@@ -17,6 +17,7 @@ import {
   resolveSegmentResumeFromSec,
   resolveStickySegmentSpaceFromSec,
 } from "../utils/segmentResumeFromSec";
+import { endMediaPlay, tryBeginMediaPlay } from "../utils/mediaPlayGate";
 
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
@@ -115,6 +116,8 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
       if (!ws || !isReady) return;
       const seg = latestSegmentsRef.current[playArgs.idx];
       if (!seg) return;
+      // Hold the play gate across seek+play so Space/toggle cannot nest play().
+      if (!tryBeginMediaPlay(ws)) return;
       const gen = ++playGenerationRef.current;
       playStartInFlightGenerationRef.current = gen;
       clearSegmentPlaybackBound();
@@ -143,6 +146,8 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         if (gen !== playGenerationRef.current) return;
         clearSegmentPlaybackBound();
         return;
+      } finally {
+        endMediaPlay(ws);
       }
       if (gen !== playGenerationRef.current) {
         if (playStartInFlightGenerationRef.current === gen) {

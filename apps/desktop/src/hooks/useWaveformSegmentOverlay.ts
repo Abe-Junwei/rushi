@@ -58,6 +58,7 @@ export function useWaveformSegmentOverlay(
     onSelectTimeRange?: (startSec: number, endSec: number) => void;
     onPlaySegment?: (idx: number, fromSec?: number) => void;
     seekToTime: (timeSec: number) => void;
+    seekBlankToTime?: (timeSec: number) => void;
     suppressPlaybackFollowForSelectionSeek?: () => void;
     onDraftIdxChange?: (idx: number | null) => void;
     onClearMultiSelection?: () => void;

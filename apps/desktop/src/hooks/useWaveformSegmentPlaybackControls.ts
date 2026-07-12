@@ -44,6 +44,11 @@ export function useWaveformSegmentPlaybackControls(args: {
   } = args;
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const [isSelectedSegmentPlaying, setIsSelectedSegmentPlaying] = useState(false);
+  /** Bumps when sticky session / blank-global arm changes so playhead chrome re-renders. */
+  const [playbackChromeEpoch, setPlaybackChromeEpoch] = useState(0);
+  const bumpPlaybackChrome = useCallback(() => {
+    setPlaybackChromeEpoch((n) => n + 1);
+  }, []);
   const latestSegmentsRef = useRef(segments);
   latestSegmentsRef.current = segments;
   const selectedIdxRef = useRef(selectedIdx);
@@ -57,6 +62,11 @@ export function useWaveformSegmentPlaybackControls(args: {
   const autoStoppedSegmentIdxRef = useRef<number | null>(null);
   /** Sticky Space session: global vs scoped segment (survives pause / natural segment end). */
   const playbackSessionRef = useRef<PlaybackSession | null>(null);
+  /**
+   * Blank waveform seek: keep transcript selection chrome, but force Space to
+   * resume global from the blank playhead until the next segment select/play.
+   */
+  const blankGlobalSpaceArmedRef = useRef(false);
 
   const clearPausedResumeAnchor = useCallback(() => {
     pausedResumeAnchorRef.current = null;
@@ -128,8 +138,18 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, []);
 
   const armSegmentPlaybackSession = useCallback((idx: number) => {
+    const clearedArm = blankGlobalSpaceArmedRef.current;
+    blankGlobalSpaceArmedRef.current = false;
+    const prev = playbackSessionRef.current;
     playbackSessionRef.current = { kind: "segment", idx };
-  }, []);
+    if (
+      clearedArm ||
+      prev?.kind !== "segment" ||
+      (prev.kind === "segment" && prev.idx !== idx)
+    ) {
+      bumpPlaybackChrome();
+    }
+  }, [bumpPlaybackChrome]);
 
   /** Mark the next media play as unbounded global (toolbar「全局播放」/ idle Space). */
   const beginGlobalPlayback = useCallback(() => {
@@ -139,9 +159,32 @@ export function useWaveformSegmentPlaybackControls(args: {
     pausedResumeAnchorRef.current = null;
     const gen = ++playGenerationRef.current;
     globalPlayGenRef.current = gen;
+    const prev = playbackSessionRef.current;
     playbackSessionRef.current = { kind: "global" };
     setIsSelectedSegmentPlaying(false);
-  }, []);
+    if (prev?.kind !== "global") {
+      bumpPlaybackChrome();
+    }
+  }, [bumpPlaybackChrome]);
+
+  /** Blank overlay seek: Space should play global from the seek point. */
+  const armBlankGlobalSpace = useCallback(() => {
+    if (blankGlobalSpaceArmedRef.current) return;
+    blankGlobalSpaceArmedRef.current = true;
+    bumpPlaybackChrome();
+  }, [bumpPlaybackChrome]);
+
+  /** Segment select / listen-jump: restore Space → selected-segment rule. */
+  const clearBlankGlobalSpaceArm = useCallback(() => {
+    if (!blankGlobalSpaceArmedRef.current) return;
+    blankGlobalSpaceArmedRef.current = false;
+    bumpPlaybackChrome();
+  }, [bumpPlaybackChrome]);
+
+  const isBlankGlobalSpaceArmed = useCallback(
+    () => blankGlobalSpaceArmedRef.current,
+    [],
+  );
 
   /** Space / global pause: stop media but keep sticky session for resume. */
   const pauseMediaKeepingSession = useCallback(() => {
@@ -299,6 +342,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   return {
     segmentLoopPlayback,
     isSelectedSegmentPlaying,
+    playbackChromeEpoch,
     preserveLoopForNextSegmentSelect,
     playSegmentAtIndex,
     runPlaySegmentResolved,
@@ -307,6 +351,9 @@ export function useWaveformSegmentPlaybackControls(args: {
     clearPausedResumeAnchor,
     consumeSegmentResumeFromSec,
     beginGlobalPlayback,
+    armBlankGlobalSpace,
+    clearBlankGlobalSpaceArm,
+    isBlankGlobalSpaceArmed,
     pauseMediaKeepingSession,
     isSegmentPlaybackSession: isSegmentPlaybackSessionActive,
     getPlaybackSession,

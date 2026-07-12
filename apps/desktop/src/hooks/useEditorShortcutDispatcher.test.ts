@@ -208,6 +208,21 @@ describe("useEditorShortcutDispatcher", () => {
     expect(wfApiRef.current.handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
+  it("ignores key-repeat Space so concurrent play() cannot deadlock WebKit", () => {
+    const togglePlay = vi.fn();
+    const ctx = makeCtx();
+    const { wfApiRef } = mountDispatcher(ctx);
+    wfApiRef.current.togglePlay = togglePlay;
+
+    act(() => {
+      dispatchKey({ key: " " });
+      dispatchKey({ key: " ", repeat: true });
+      dispatchKey({ key: " ", repeat: true });
+    });
+
+    expect(togglePlay).toHaveBeenCalledTimes(1);
+  });
+
   it("toggles global play on Shift+Space outside editable fields", () => {
     const togglePlay = vi.fn();
     const ctx = makeCtx();

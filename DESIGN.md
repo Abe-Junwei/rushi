@@ -125,7 +125,9 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 | 未播放 peaks | 偏深中性灰 | `--zen-wf-wave` | 主波形柱、minimap、WaveSurfer（壳层不另盖） |
 | 已播放 peaks 淡化 | 中性浅灰 | `--zen-wf-progress-played` | WS progress 层（不锁 accent） |
 | 已播放 wash | 表面淡化 | `--zen-wf-played-wash` | 播放头左侧淡化罩 |
-| 播放头 | action | `--waveform-playhead` | 视口全高 playhead |
+| 播放头（语段） | action | `--waveform-playhead` | 视口全高 playhead（scoped / 默认 idle） |
+| 播放头（全局） | 固定黑 `#000000` | `--waveform-playhead-global` | 全局通读；**不**随 Office accent remap；粗度与语段一致（视口 1px），仅以色区分 |
+| Minimap 播放头（全局） | 同上 | `--waveform-minimap-playhead-global` | minimap 线与视口一致（2px） |
 | Minimap 视口 | action | `--waveform-minimap-viewport-*` | 总览视口框 |
 | 语段选中 | action | `--segment-fill-selected` | 波形 overlay 14%；列表另用 selected-list |
 | 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 8% |
@@ -232,9 +234,9 @@ Hierarchy through **background tone shifts** and **fine borders**—**no drop sh
 ### Waveform stage
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
 - **Peaks:** 白底 + 偏深中性灰柱（`--zen-wf-wave`，往黑靠、壳层不另盖）；已播放区用 `--zen-wf-played-wash` 淡化（中性，不锁 accent，无斜纹）。语段选中仍走 `--segment-fill-*` / `--accent-action*`。
-- **Playhead / minimap:** `--waveform-playhead`、`--waveform-minimap-*`（`accent-action` 族）；WS 内置 cursor 隐藏。
+- **Playhead / minimap:** 语段 `--waveform-playhead` / `--waveform-minimap-playhead`（`accent-action` 族）；全局通读 `--waveform-playhead-global` / `--waveform-minimap-playhead-global`（固定黑 `#000000`，粗度与语段相同，仅以色区分，不随 Office 主题色）；WS 内置 cursor 隐藏。
 - **语段 overlay:** `--segment-fill-*`；单选 / 列表主选 28%，多选波形 12% / 列表 8%；手动 stage chip 固定 `--zen-status-warn*`；左右 **8px handle** 拖拽边界。
-- **Minimap（可选）:** `--main-shell-minimap-bg`；`accent-action` 视口框 + playhead。
+- **Minimap（可选）:** `--main-shell-minimap-bg`；`accent-action` 视口框；播放头随语段/全局 chrome 双色。
 - **工作条（波形与语段之间）:** **40px**（`h-8` 触控）；有音频时三栏 transport / 编辑 / zoom；无音频时单行居中仅编辑。视口 `<1024px` 时中间收进「编辑 ▾」、右区保留 ±。
 - **底栏（语段列表下）:** 30px 三列 grid；无状态 hint 时每 8s 轮换快捷键提示（与设置页共用真源）。
 - **语段点击（波形 overlay）：** 首次点击未选中语段 → 选中并 seek 到语段头；已在该语段内再次点击 → seek 到点击位置（钳在语段内）；语段播放从当前 playhead 起（若在语段内）。

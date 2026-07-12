@@ -82,6 +82,7 @@
 | 工具条「全局」 | 任意 | 强制全局会话；**段播中撕 bound 续通读**（出口；UI 显示「改为全局通读」而非暂停） |
 | Idle / 全局会话 → Space | 有选中语段 | `playSegmentAtIndex(selected)`（段播） |
 | Idle / 全局会话 → Space | 无选中 | `beginGlobalPlayback` + play |
+| 空白区 seek 后 → Space | 可仍有选中 chrome | **全局**从当前 playhead（`preferGlobalSpace`；点语段/听跳后恢复「有选中→段播」） |
 
 ---
 

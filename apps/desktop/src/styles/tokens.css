@@ -88,9 +88,15 @@
   --segment-fill-selected-border: color-mix(in srgb, var(--accent-action-strong) 48%, transparent);
   --segment-fill-in-selection-border: color-mix(in srgb, var(--accent-action) 34%, transparent);
 
-  /** Progress chrome — accent-action 族（播放头 / minimap / 已播放 peaks tint 基链） */
+  /** Progress chrome — accent-action 族（语段播放头 / minimap / 已播放 peaks tint 基链） */
   --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
   --waveform-minimap-playhead: var(--accent-action-strong);
+  /**
+   * Global playback playhead — fixed black (≠ accent-action / Office remap).
+   * Same stroke width as segment chrome; distinguish by color only.
+   */
+  --waveform-playhead-global: #000000;
+  --waveform-minimap-playhead-global: #000000;
   /**
    * Transcript Playback Focus fill — fixed cool gray wash (≠ selection saffron).
    * No inset bar; row uses this background while playing.
@@ -211,6 +217,9 @@
   --zen-wf-progress-played: #7a7a80;
   --zen-wf-played-wash: color-mix(in srgb, var(--zen-wf-surface) 48%, transparent);
   --zen-wf-cursor: #d4d4d8;
+  /** Global playhead: fixed black (same stroke as segment; color-only distinction) */
+  --waveform-playhead-global: #000000;
+  --waveform-minimap-playhead-global: #000000;
 }
 
 /** 壳层主题 — 设置 → 外观（浅色） */

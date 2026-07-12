@@ -97,6 +97,38 @@ describe("finishWaveformLassoDrag", () => {
     expect(seekToTime).toHaveBeenCalledWith(12.5);
   });
 
+  it("short tap without modifier uses blank seek hook when provided", () => {
+    const seekToTime = vi.fn();
+    const seekBlankToTime = vi.fn();
+    const args = makeArgs({ seekToTime, seekBlankToTime });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag(),
+      timeSec: 12.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(seekBlankToTime).toHaveBeenCalledWith(12.5);
+    expect(seekToTime).not.toHaveBeenCalled();
+  });
+
+  it("short tap skips blank seek when pointerdown already sought", () => {
+    const seekToTime = vi.fn();
+    const seekBlankToTime = vi.fn();
+    const args = makeArgs({ seekToTime, seekBlankToTime });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag({ blankSeekedOnDown: true }),
+      timeSec: 12.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(seekBlankToTime).not.toHaveBeenCalled();
+    expect(seekToTime).not.toHaveBeenCalled();
+  });
+
   it("blank lasso creates when drag stays in a gap with no segment hits", () => {
     const onCreateRange = vi.fn();
     const onSelectSegmentIndices = vi.fn();

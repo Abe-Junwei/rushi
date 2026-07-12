@@ -140,4 +140,54 @@ describe("useWaveformPlayback", () => {
 
     expect(result.current.getPlayheadTime()).toBe(11.25);
   });
+
+  it("ignores a second togglePlay while media play() is still pending", async () => {
+    let resolvePlay!: () => void;
+    const play = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvePlay = resolve;
+        }),
+    );
+    const pause = vi.fn();
+    const ws = {
+      setTime: vi.fn(),
+      getCurrentTime: () => 0,
+      isPlaying: () => false,
+      play,
+      pause,
+    };
+    const wsRef = { current: ws as unknown as import("wavesurfer.js").default };
+    const applyGlobalPlaybackRateRef = { current: vi.fn() };
+
+    const { result } = renderHook(() =>
+      useWaveformPlayback(
+        wsRef,
+        { current: null },
+        true,
+        { current: 60 },
+        { current: 1000 },
+        applyGlobalPlaybackRateRef,
+      ),
+    );
+
+    let first!: Promise<void>;
+    let second!: Promise<void>;
+    act(() => {
+      first = result.current.togglePlay();
+      second = result.current.togglePlay();
+    });
+
+    await act(async () => {
+      await second;
+    });
+    expect(play).toHaveBeenCalledTimes(1);
+
+    resolvePlay();
+    await act(async () => {
+      await first;
+    });
+    expect(play).toHaveBeenCalledTimes(1);
+    expect(applyGlobalPlaybackRateRef.current).toHaveBeenCalledTimes(1);
+  });
 });

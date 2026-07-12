@@ -59,6 +59,8 @@ export function useWaveformSelectionGestureDispatcher(args: {
       dispatchWaveformSelectionGestureUp(c, gesture, {
         selectSegmentAt: args.selectSegmentAt,
         seekToTime: (timeSec) => {
+          // Seek-within a segment also exits blank-seek global Space lock.
+          tl.wf?.clearBlankGlobalSpaceArm?.();
           tl.suppressPlaybackFollowForSelectionSeek();
           waveformAtomicSeek(tl, timeSec);
         },

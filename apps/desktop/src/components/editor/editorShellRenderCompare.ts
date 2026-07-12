@@ -27,6 +27,7 @@ export function transcriptionLayerWaveformShellRenderEqual(
   if (prev.peaksError !== next.peaksError) return false;
   if (prev.isPlaying !== next.isPlaying) return false;
   if (prev.isSelectedSegmentPlaying !== next.isSelectedSegmentPlaying) return false;
+  if (prev.playheadChromeMode !== next.playheadChromeMode) return false;
   if (prev.segmentLoopPlayback !== next.segmentLoopPlayback) return false;
   if (prev.mediaDurationSec !== next.mediaDurationSec) return false;
   if (prev.timelineWidthPx !== next.timelineWidthPx) return false;
@@ -53,6 +54,7 @@ export function transcriptionLayerWaveformShellRenderEqual(
   if (prev.dispatchWaveformSelectionGesture !== next.dispatchWaveformSelectionGesture) return false;
   if (prev.selectSegmentIndices !== next.selectSegmentIndices) return false;
   if (prev.seek !== next.seek) return false;
+  if (prev.seekBlankToTime !== next.seekBlankToTime) return false;
   if (prev.playSegmentAtIndex !== next.playSegmentAtIndex) return false;
   if (prev.handleToggleSelectedWaveformLoop !== next.handleToggleSelectedWaveformLoop) return false;
   if (prev.handleToggleSelectedWaveformPlay !== next.handleToggleSelectedWaveformPlay) return false;

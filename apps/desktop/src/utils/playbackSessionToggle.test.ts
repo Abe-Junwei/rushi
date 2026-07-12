@@ -93,6 +93,39 @@ describe("resolveSessionTogglePlay (Space sticky)", () => {
     ).toEqual({ action: "resumeSegment", idx: 1 });
   });
 
+  it("blank seek arms preferGlobalSpace → start global even with selection", () => {
+    expect(
+      resolveSessionTogglePlay({
+        isPlaying: false,
+        session: { kind: "global" },
+        selectedSegmentIdx: 1,
+        preferGlobalSpace: true,
+      }),
+    ).toEqual({ action: "startGlobal" });
+  });
+
+  it("after clearing preferGlobalSpace, selection resumes segment play", () => {
+    expect(
+      resolveSessionTogglePlay({
+        isPlaying: false,
+        session: { kind: "global" },
+        selectedSegmentIdx: 1,
+        preferGlobalSpace: false,
+      }),
+    ).toEqual({ action: "resumeSegment", idx: 1 });
+  });
+
+  it("preferGlobalSpace does not override sticky segment session", () => {
+    expect(
+      resolveSessionTogglePlay({
+        isPlaying: false,
+        session: { kind: "segment", idx: 4 },
+        selectedSegmentIdx: 4,
+        preferGlobalSpace: true,
+      }),
+    ).toEqual({ action: "resumeSegment", idx: 4 });
+  });
+
   it("idle / global session without selection → start global", () => {
     expect(
       resolveSessionTogglePlay({ isPlaying: false, session: null }),

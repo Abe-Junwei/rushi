@@ -48,6 +48,8 @@ export type SelectSegmentTransportDeps = {
   focusWaveformShell: () => void;
   /** List listen-jump: tear segment bound for global, or open segment play when sticky segment session. */
   beginGlobalPlayback?: (idx?: number) => void;
+  /** Any segment select exits blank-seek global Space lock. */
+  clearBlankGlobalSpaceArm?: () => void;
 };
 
 /**
@@ -70,12 +72,16 @@ export function selectSegmentTransport(
     cancelPendingSelectionReveal,
     focusWaveformShell,
     beginGlobalPlayback,
+    clearBlankGlobalSpaceArm,
   } = deps;
 
   const c = ctxRef.current;
   if (c.busy) return;
   const s = c.segments[idx];
   if (!s) return;
+
+  // Selecting a segment restores Space → scoped-on-selection (exits blank-seek global lock).
+  clearBlankGlobalSpaceArm?.();
 
   const isWaveformKeyboard = source === "waveformKeyboard";
   const isWaveformKbBurst = isWaveformKeyboardBurstStep(source, opts);

@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import { applyPeaksOrderedSeek } from "../services/waveform/transport";
+import { runGatedMediaPlay } from "../utils/mediaPlayGate";
 import {
   clientXToTimelinePx,
   resolveWaveformPointerTimeSecFromClientX,
@@ -61,11 +62,16 @@ export function useWaveformPlayback(
   const togglePlay = useCallback(async () => {
     const ws = wsRef.current;
     if (!ws || !isReady) return;
-    if (ws.isPlaying()) ws.pause();
-    else {
-      applyGlobalPlaybackRateRef.current();
-      await ws.play();
+    if (ws.isPlaying()) {
+      ws.pause();
+      return;
     }
+    // Gate play(): concurrent Space/button can nest HTMLMediaElement.play and
+    // deadlock WebKit MediaSession sync IPC on the WebContent main thread.
+    await runGatedMediaPlay(ws, () => {
+      applyGlobalPlaybackRateRef.current();
+      return ws.play();
+    });
   }, [applyGlobalPlaybackRateRef, isReady, wsRef]);
 
   const getPlayheadTime = useCallback((): number => {

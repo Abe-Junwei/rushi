@@ -53,6 +53,7 @@ export type WaveformSegmentDragArgs = {
   ) => void;
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   seekToTime: (timeSec: number) => void;
+  seekBlankToTime?: (timeSec: number) => void;
   suppressPlaybackFollowForSelectionSeek?: () => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
@@ -219,7 +220,8 @@ export function useWaveformSegmentDrag(
         if (!modifiers.shiftKey && !modifiers.toggleKey) {
           a.onFocusWaveformShell?.();
           a.suppressPlaybackFollowForSelectionSeek?.();
-          a.seekToTime(timeSec);
+          (a.seekBlankToTime ?? a.seekToTime)(timeSec);
+          interaction.drag.blankSeekedOnDown = true;
         }
         ev.currentTarget.setPointerCapture(ev.pointerId);
         return;
@@ -227,7 +229,7 @@ export function useWaveformSegmentDrag(
 
       a.onFocusWaveformShell?.();
       a.suppressPlaybackFollowForSelectionSeek?.();
-      a.seekToTime(timeSec);
+      (a.seekBlankToTime ?? a.seekToTime)(timeSec);
     },
     [argsRef, onSegmentPointerDown],
   );

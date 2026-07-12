@@ -490,6 +490,45 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
   });
 
+  it("blank global Space arm survives beginGlobalPlayback until explicitly cleared", () => {
+    const ws = makeWs();
+    const wsRef = { current: ws };
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => 0,
+      }),
+    );
+
+    act(() => {
+      result.current.beginGlobalPlayback();
+      result.current.armBlankGlobalSpace();
+    });
+    expect(result.current.isBlankGlobalSpaceArmed()).toBe(true);
+
+    act(() => {
+      result.current.beginGlobalPlayback();
+    });
+    expect(result.current.isBlankGlobalSpaceArmed()).toBe(true);
+
+    act(() => {
+      result.current.clearBlankGlobalSpaceArm();
+    });
+    expect(result.current.isBlankGlobalSpaceArmed()).toBe(false);
+
+    // Idempotent clear/arm must not throw or flip unexpectedly.
+    act(() => {
+      result.current.clearBlankGlobalSpaceArm();
+      result.current.armBlankGlobalSpace();
+      result.current.armBlankGlobalSpace();
+    });
+    expect(result.current.isBlankGlobalSpaceArmed()).toBe(true);
+  });
+
   it("segment play button cuts from global playback at/past segment end back to segment start", async () => {
     let playing = true;
     let playhead = 25;

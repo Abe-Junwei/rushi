@@ -96,6 +96,14 @@ describe("WaveformViewportPlayhead", () => {
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     expect(playheadTransform(line)).toContain("400.000px");
   });
+
+  it("applies global playhead chrome class", () => {
+    const { container } = render(
+      <WaveformViewportPlayhead {...makePlayheadProps({ playheadChromeMode: "global" })} />,
+    );
+    const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
+    expect(line.classList.contains("is-global-playhead")).toBe(true);
+  });
 });
 
 describe("tailwind production parity — stroke opacity scale", () => {

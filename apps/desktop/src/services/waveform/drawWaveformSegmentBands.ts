@@ -185,7 +185,7 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
   };
 
   const paintBandSeparators = (geom: BandGeom) => {
-    const { idx, leftViewportPx, bandWidthPx, selected, inSelection } = geom;
+    const { idx, leftViewportPx, bandWidthPx } = geom;
     if (!canPaintCanvasBand(idx)) return;
 
     // Canvas separators stay structural and solid; low-confidence styling is a
@@ -194,11 +194,8 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
     // Use integer-pixel fills instead of stroke: segment boundaries often land
     // on fractional timeline pixels, where a stroked 1px line gets antialiased
     // enough to disappear against same-color adjacent fills.
-    const color = selected
-      ? palette.selectedBorder
-      : inSelection
-        ? palette.inSelectionBorder
-        : palette.border;
+    // Trial: no selected/in-selection border chrome — structural border only.
+    const color = palette.border;
 
     if (idx > 0 && !canPaintCanvasBand(idx - 1)) {
       paintSeparatorAt(leftViewportPx, color);

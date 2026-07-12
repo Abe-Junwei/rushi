@@ -27,7 +27,9 @@ import {
   resolveSessionTogglePlay,
 } from "../utils/playbackSessionToggle";
 import { resolveStickySegmentSpaceFromSec } from "../utils/segmentResumeFromSec";
+import { resolveWaveformPlayheadChromeMode } from "../utils/waveformPlayheadChrome";
 import { reconcileSegmentsRefWithState } from "../pages/segmentSegmentsRefSync";
+import { runGatedMediaPlay } from "../utils/mediaPlayGate";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -160,7 +162,10 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         suppressPlaybackFollow,
         media: {
           setTime: (t) => ws?.setTime(t),
-          play: () => ws?.play(),
+          play: () => {
+            if (!ws) return;
+            return runGatedMediaPlay(ws, () => ws.play()).then(() => undefined);
+          },
           pause: () => ws?.pause(),
           isPlaying: () => ws?.isPlaying() ?? false,
         },
@@ -328,6 +333,11 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     ws.toggleInteraction(!disabled);
   }, [disabled, isReady]);
 
+  // Blank-seek Space lock must not leak across media loads.
+  useEffect(() => {
+    segmentPlayback.clearBlankGlobalSpaceArm();
+  }, [mediaUrl, segmentPlayback.clearBlankGlobalSpaceArm]);
+
   const exportMinimapPeaks = useCallback(
     (overviewWidthPx: number) => {
       if (!isReady) return null;
@@ -341,6 +351,20 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       void dispatchTransport({ kind: "seek", timeSec, source: "segmentSelect" });
     },
     [dispatchTransport],
+  );
+
+  const seekBlankToTime = useCallback(
+    (timeSec: number) => {
+      segmentPlayback.beginGlobalPlayback();
+      segmentPlayback.armBlankGlobalSpace();
+      void dispatchTransport({
+        kind: "seek",
+        timeSec,
+        source: "blankTap",
+        suppressFollow: true,
+      });
+    },
+    [dispatchTransport, segmentPlayback],
   );
 
   const seekByDelta = useCallback(
@@ -367,69 +391,83 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     [dispatchTransport],
   );
 
+  const sessionToggleInFlightRef = useRef(false);
   const togglePlay = useCallback(async () => {
-    const ws = wsRef.current;
-    const selectedSegmentIdx = effectiveTranscriptPrimaryIdx(
-      selectedIdxForTransportRef.current,
-    );
-    const decision = resolveSessionTogglePlay({
-      isPlaying: Boolean(ws?.isPlaying()),
-      session: segmentPlayback.getPlaybackSession(),
-      segmentStillExists: (() => {
-        const session = segmentPlayback.getPlaybackSession();
-        return session?.kind === "segment"
-          ? Boolean(segmentsRef.current[session.idx])
-          : undefined;
-      })(),
-      selectedSegmentIdx:
-        selectedSegmentIdx >= 0 && segmentsRef.current[selectedSegmentIdx]
-          ? selectedSegmentIdx
-          : undefined,
-    });
-    if (decision.action === "pauseKeepingSession") {
-      segmentPlayback.pauseMediaKeepingSession();
-      return;
-    }
-    if (decision.action === "resumeSegment") {
-      const seg = segmentsRef.current[decision.idx];
-      if (!seg) {
-        segmentPlayback.beginGlobalPlayback();
-        await playback.togglePlay();
+    if (sessionToggleInFlightRef.current) return;
+    sessionToggleInFlightRef.current = true;
+    try {
+      const ws = wsRef.current;
+      const selectedSegmentIdx = effectiveTranscriptPrimaryIdx(
+        selectedIdxForTransportRef.current,
+      );
+      const decision = resolveSessionTogglePlay({
+        isPlaying: Boolean(ws?.isPlaying()),
+        session: segmentPlayback.getPlaybackSession(),
+        segmentStillExists: (() => {
+          const session = segmentPlayback.getPlaybackSession();
+          return session?.kind === "segment"
+            ? Boolean(segmentsRef.current[session.idx])
+            : undefined;
+        })(),
+        selectedSegmentIdx:
+          selectedSegmentIdx >= 0 && segmentsRef.current[selectedSegmentIdx]
+            ? selectedSegmentIdx
+            : undefined,
+        preferGlobalSpace: segmentPlayback.isBlankGlobalSpaceArmed(),
+      });
+      if (decision.action === "pauseKeepingSession") {
+        segmentPlayback.pauseMediaKeepingSession();
         return;
       }
-      // Natural end freezes playhead at endSec. autoStopped can be cleared by an
-      // intervening seek/sync; still force restart from segment start for Space.
-      const stickyFromSec = resolveStickySegmentSpaceFromSec({
-        segment: seg,
-        displaySec: playback.getPlayheadTime(),
-      });
-      await playSegmentAtIndex(
-        decision.idx,
-        stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
-      );
-      return;
+      if (decision.action === "resumeSegment") {
+        const seg = segmentsRef.current[decision.idx];
+        if (!seg) {
+          segmentPlayback.beginGlobalPlayback();
+          await playback.togglePlay();
+          return;
+        }
+        // Natural end freezes playhead at endSec. autoStopped can be cleared by an
+        // intervening seek/sync; still force restart from segment start for Space.
+        const stickyFromSec = resolveStickySegmentSpaceFromSec({
+          segment: seg,
+          displaySec: playback.getPlayheadTime(),
+        });
+        await playSegmentAtIndex(
+          decision.idx,
+          stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
+        );
+        return;
+      }
+      segmentPlayback.beginGlobalPlayback();
+      await playback.togglePlay();
+    } finally {
+      sessionToggleInFlightRef.current = false;
     }
-    segmentPlayback.beginGlobalPlayback();
-    await playback.togglePlay();
   }, [playback, playSegmentAtIndex, segmentPlayback]);
 
   /** Toolbar「全局播放」: always global; exit hatch from segment play without Space sticky. */
   const toggleGlobalPlay = useCallback(async () => {
-    const ws = wsRef.current;
-    const decision = resolveGlobalTogglePlay({
-      isPlaying: Boolean(ws?.isPlaying()),
-      session: segmentPlayback.getPlaybackSession(),
-    });
-    if (decision.action === "exitSegmentToGlobal") {
+    if (sessionToggleInFlightRef.current) return;
+    sessionToggleInFlightRef.current = true;
+    try {
+      const ws = wsRef.current;
+      const decision = resolveGlobalTogglePlay({
+        isPlaying: Boolean(ws?.isPlaying()),
+        session: segmentPlayback.getPlaybackSession(),
+      });
+      if (decision.action === "exitSegmentToGlobal") {
+        segmentPlayback.beginGlobalPlayback();
+        return;
+      }
+      if (decision.action === "pauseKeepingSession") {
+        segmentPlayback.pauseMediaKeepingSession();
+        return;
+      }
       segmentPlayback.beginGlobalPlayback();
-      return;
+      await playback.togglePlay();
+    } finally {
+      sessionToggleInFlightRef.current = false;
     }
-    if (decision.action === "pauseKeepingSession") {
-      segmentPlayback.pauseMediaKeepingSession();
-      return;
-    }
-    segmentPlayback.beginGlobalPlayback();
-    await playback.togglePlay();
   }, [playback, segmentPlayback]);
 
   const handleToggleSelectedWaveformPlay = useCallback(async () => {
@@ -437,6 +475,23 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     if (idx < 0 || !segmentsRef.current[idx]) return;
     await dispatchTransport({ kind: "toggleSegmentPlay" });
   }, [dispatchTransport]);
+
+  const playheadChromeMode = useMemo(
+    () =>
+      resolveWaveformPlayheadChromeMode({
+        session: segmentPlayback.getPlaybackSession(),
+        isPlaying,
+        isSelectedSegmentPlaying: segmentPlayback.isSelectedSegmentPlaying,
+        preferGlobalSpace: segmentPlayback.isBlankGlobalSpaceArmed(),
+      }),
+    [
+      isPlaying,
+      segmentPlayback.getPlaybackSession,
+      segmentPlayback.isBlankGlobalSpaceArmed,
+      segmentPlayback.isSelectedSegmentPlaying,
+      segmentPlayback.playbackChromeEpoch,
+    ],
+  );
 
   return {
     containerRef,
@@ -454,13 +509,18 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     flushDeferredPeaksLoad: () => flushDeferredPeaksLoadRef.current?.(),
     ...playback,
     seek,
+    seekBlankToTime,
     seekByDelta,
     ...globalPlayback,
     segmentLoopPlayback: segmentPlayback.segmentLoopPlayback,
     isSelectedSegmentPlaying: segmentPlayback.isSelectedSegmentPlaying,
+    playheadChromeMode,
     preserveLoopForNextSegmentSelect: segmentPlayback.preserveLoopForNextSegmentSelect,
     clearSegmentPlaybackBound: segmentPlayback.clearSegmentPlaybackBound,
     beginGlobalPlayback: segmentPlayback.beginGlobalPlayback,
+    armBlankGlobalSpace: segmentPlayback.armBlankGlobalSpace,
+    clearBlankGlobalSpaceArm: segmentPlayback.clearBlankGlobalSpaceArm,
+    isBlankGlobalSpaceArmed: segmentPlayback.isBlankGlobalSpaceArmed,
     isSegmentPlaybackSession: segmentPlayback.isSegmentPlaybackSession,
     getPlaybackSession: segmentPlayback.getPlaybackSession,
     handleToggleSelectedWaveformLoop: segmentPlayback.handleToggleSelectedWaveformLoop,

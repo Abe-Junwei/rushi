@@ -217,7 +217,14 @@ export function createTranscriptStageGutter(
       );
     },
     initialSpacer: () =>
-      new TranscriptStageMarker("auto_transcribe", "自动转写", "自动转写", null),
+      new TranscriptStageMarker(
+        "auto_transcribe",
+        "自动转写",
+        "自动转写",
+        null,
+        false,
+        true,
+      ),
     domEventHandlers: {
       mousedown(view, line, event) {
         const mouse = event as MouseEvent;
@@ -242,7 +249,8 @@ export function createTranscriptStageGutter(
 export const transcriptStageGutterTheme = EditorView.theme({
   // Flush against content — avoid a blank seam between text highlight and stage chip.
   ".cm-transcript-stage-gutter": {
-    minWidth: "8.75rem",
+    // play slot (1.75) + gap (0.25) + chip max (6.5) + cell padding ≈ 9.35
+    minWidth: "9.5rem",
     paddingLeft: "0",
     paddingRight: "0.35rem",
     borderLeft: "none",
@@ -292,8 +300,8 @@ export const transcriptStageGutterTheme = EditorView.theme({
     alignItems: "center",
     justifyContent: "center",
     boxSizing: "border-box",
-    // Match stage chip height (1.375rem); wider hit target when revealed.
-    width: "0",
+    // Always reserve hit target so stage chip never shifts when play appears.
+    width: "1.75rem",
     height: "1.375rem",
     minHeight: "1.375rem",
     margin: "0",
@@ -306,18 +314,16 @@ export const transcriptStageGutterTheme = EditorView.theme({
     cursor: "pointer",
     opacity: "0",
     pointerEvents: "none",
-    transition: "opacity 80ms ease-out, width 80ms ease-out, background-color 80ms ease-out",
+    transition: "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
   },
   // Gutter cell hover keeps the button clickable (mouse can leave the text).
   ".cm-transcript-stage-cell:hover .cm-transcript-segment-play": {
-    width: "1.75rem",
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
     background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
   },
   ".cm-transcript-segment-play--forced": {
-    width: "1.75rem",
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
@@ -327,7 +333,6 @@ export const transcriptStageGutterTheme = EditorView.theme({
     background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
   },
   ".cm-transcript-segment-play--active": {
-    width: "1.75rem",
     opacity: "1",
     pointerEvents: "auto",
     background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",

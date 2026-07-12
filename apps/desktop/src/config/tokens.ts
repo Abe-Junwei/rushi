@@ -78,4 +78,6 @@ export const COLORS = {
    */
   waveformProgressPlayed: "#a8a8ad",
   waveformCursor: "#6a6a6f",
+  /** Global playback playhead — fixed black; CSS `--waveform-playhead-global`. */
+  waveformPlayheadGlobal: "#000000",
 } as const;

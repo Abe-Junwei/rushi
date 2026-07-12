@@ -49,6 +49,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segmentListFilterNavRef,
     transcriptRowHeightPx: timeline.display.transcriptRowHeightPx,
     beginGlobalPlayback: (idx?: number) => {
+      timeline.wf.clearBlankGlobalSpaceArm();
       if (
         typeof idx === "number" &&
         timeline.wf.isSegmentPlaybackSession?.()
@@ -143,6 +144,10 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     wf.seek(timeSec);
   }, [wf.seek]);
 
+  const seekBlankToTime = useCallback((timeSec: number) => {
+    wf.seekBlankToTime(timeSec);
+  }, [wf.seekBlankToTime]);
+
   useLayoutEffect(() => {
     clearWaveformSegmentPreviewViewportSync();
   }, [ctx.fileId, ctx.segments.length]);
@@ -161,18 +166,20 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const selectSegmentIndicesWithChrome = useCallback(
     (indices: number[], primaryIdx: number) => {
+      timeline.wf.clearBlankGlobalSpaceArm();
       selection.lastSegmentSelectSourceRef.current = "multiSelect";
       ctxRef.current.selectSegmentIndices(indices, primaryIdx);
     },
-    [selection.lastSegmentSelectSourceRef],
+    [selection.lastSegmentSelectSourceRef, timeline.wf],
   );
 
   const selectSegmentRangeWithChrome = useCallback(
     (lo: number, hi: number) => {
+      timeline.wf.clearBlankGlobalSpaceArm();
       selection.lastSegmentSelectSourceRef.current = "multiSelect";
       ctxRef.current.selectSegmentRange(lo, hi);
     },
-    [selection.lastSegmentSelectSourceRef],
+    [selection.lastSegmentSelectSourceRef, timeline.wf],
   );
 
   selectSegmentRangeRef.current = selectSegmentRangeWithChrome;
@@ -191,11 +198,12 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   /* eslint-enable react-hooks/exhaustive-deps */
 
   const focusSegmentAfterWaveformCreate = useCallback((idx: number) => {
+    timeline.wf.clearBlankGlobalSpaceArm();
     selection.lastSegmentSelectSourceRef.current = "waveform";
     window.requestAnimationFrame(() => {
       keyboard.focusSegmentTextarea(idx);
     });
-  }, [keyboard.focusSegmentTextarea, selection.lastSegmentSelectSourceRef]);
+  }, [keyboard.focusSegmentTextarea, selection.lastSegmentSelectSourceRef, timeline.wf]);
 
   return {
     tierScrollRef: timeline.tierScrollRef,
@@ -290,6 +298,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     loadError: wf.loadError,
     isPlaying: wf.isPlaying,
     seek,
+    seekBlankToTime,
     togglePlay: wf.togglePlay,
     toggleGlobalPlay: wf.toggleGlobalPlay,
     getPlayheadTime: wf.getPlayheadTime,
@@ -301,6 +310,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     setGlobalPlaybackRate: wf.setGlobalPlaybackRate,
     segmentLoopPlayback: wf.segmentLoopPlayback,
     isSelectedSegmentPlaying: wf.isSelectedSegmentPlaying,
+    playheadChromeMode: wf.playheadChromeMode,
     handleToggleSelectedWaveformLoop: wf.handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,

@@ -49,6 +49,8 @@ type WaveformMinimapStripProps = {
   onSetScrollLeftPx: (scrollLeftPx: number) => void;
   /** Pause playback-follow so a scrub during playback isn't yanked back by auto-scroll. */
   suppressPlaybackFollowForSelectionSeek?: () => void;
+  /** Segment = accent playhead; global = fixed cool slate. */
+  playheadChromeMode?: "segment" | "global";
 };
 
 export function WaveformMinimapStrip({
@@ -71,6 +73,7 @@ export function WaveformMinimapStrip({
   onSeek,
   onSetScrollLeftPx,
   suppressPlaybackFollowForSelectionSeek,
+  playheadChromeMode = "segment",
 }: WaveformMinimapStripProps) {
   void _pxPerSec;
   const wellRef = useRef<HTMLDivElement | null>(null);
@@ -330,7 +333,11 @@ export function WaveformMinimapStrip({
         {durationSec > 0 ? (
           <CspLayout
             ref={playheadRef}
-            className="waveform-minimap-playhead"
+            className={
+              playheadChromeMode === "global"
+                ? "waveform-minimap-playhead is-global-playhead"
+                : "waveform-minimap-playhead"
+            }
             layout={{ left: playheadLeftPx }}
           />
         ) : null}

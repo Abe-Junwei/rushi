@@ -166,7 +166,8 @@ export function useWaveformSegmentPlaybackBoundSync(
       }
       if (!ws.isPlaying()) {
         if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
-        if (globalPlayGenRef.current != null) globalPlayGenRef.current = null;
+        // Keep globalPlayGenRef across the arm-before-play window (beginGlobalPlayback
+        // then React re-render before ws.play). Cleared by segment arm / clear/cancel.
         if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
         return;
       }

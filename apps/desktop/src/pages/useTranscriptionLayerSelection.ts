@@ -116,6 +116,9 @@ export function useTranscriptionLayerSelection(opts: {
         cancelPendingSelectionReveal: burst.cancelPendingSelectionReveal,
         focusWaveformShell,
         beginGlobalPlayback: (seekIdx?: number) => beginGlobalPlaybackRef.current?.(seekIdx),
+        clearBlankGlobalSpaceArm: () => {
+          scrollFitRef.current.timeline.wf?.clearBlankGlobalSpaceArm?.();
+        },
       });
     },
     [

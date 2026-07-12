@@ -31,6 +31,8 @@ export type OverlayDragState = {
   sessionId?: string;
   /** Blank overlay shell lasso — user intent is create unless Shift extends selection. */
   blankLasso?: boolean;
+  /** pointerdown already ran seekBlankToTime — pointerup short tap must not re-seek. */
+  blankSeekedOnDown?: boolean;
   baseIndices?: Set<number>;
   lastFinalizedBounds?: { startSec: number; endSec: number };
 };

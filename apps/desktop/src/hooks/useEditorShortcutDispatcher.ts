@@ -103,6 +103,9 @@ export function useEditorShortcutDispatcher(args: {
       const shortcutId = matchEditorShortcut(e, { inTextarea });
       if (!shortcutId) return;
 
+      // Key-repeat Space floods concurrent play() and can deadlock WebKit MediaSession.
+      if (e.repeat && shortcutId === "playback.toggle") return;
+
       if (shortcutId === "waveform.clearSelection" && hasOpenDialogEscapeHandler()) return;
 
       if (isFloatingEditorPanelOpen() && shortcutId !== "workflow.find" && shortcutId !== "workflow.openSettings" && shortcutId !== "workflow.openActivityInbox") {

@@ -48,6 +48,7 @@ export type WaveformSegmentOverlayProps = {
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onPlaySegment?: (idx: number, fromSec?: number) => void;
   seekToTime: (timeSec: number) => void;
+  seekBlankToTime?: (timeSec: number) => void;
   suppressPlaybackFollowForSelectionSeek?: () => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
