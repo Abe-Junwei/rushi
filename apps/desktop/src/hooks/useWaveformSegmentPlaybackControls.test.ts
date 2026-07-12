@@ -828,16 +828,22 @@ describe("useWaveformSegmentPlaybackControls", () => {
     resetTranscriptProjectionForTests();
   });
 
-  it("auto-stops at segment end without seeking back to segment start", async () => {
+  it("auto-stops at segment end with pause only (no seek, no visual rewind)", async () => {
     let playhead = 10;
     let playing = false;
     const { on, emit } = makeWsEventBag();
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
       play: vi.fn(() => {
         playing = true;
         return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
       }),
       on,
     });
@@ -852,6 +858,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
         getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
       }),
     );
 
@@ -860,6 +867,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
     expect(playing).toBe(true);
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    commitSeekUi.mockClear();
 
     // Arm the bound while still inside the segment, then cross the end.
     playhead = 15;
@@ -873,8 +881,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(ws.pause).toHaveBeenCalled();
-    expect(ws.setTime).toHaveBeenCalledWith(20);
-    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+    // Pause only — no media setTime and no visual rewind (WebKit AudioSession safe).
+    expect(ws.setTime).not.toHaveBeenCalled();
+    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(playhead).toBe(19.99);
   });
 
   it("global play does not auto-scope-stop at selected segment end", async () => {
@@ -937,6 +947,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     // not clear the bound before enforce can pause (overshoot past endSec).
     let playhead = 10;
     let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
@@ -959,6 +972,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
         getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
       }),
     );
 
@@ -967,6 +981,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
     expect(playing).toBe(true);
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    commitSeekUi.mockClear();
 
     playhead = 15;
     act(() => {
@@ -983,13 +998,17 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.pause).toHaveBeenCalled();
     expect(playing).toBe(false);
-    expect(ws.setTime).toHaveBeenCalledWith(20);
-    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+    expect(ws.setTime).not.toHaveBeenCalled();
+    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(playhead).toBe(22);
   });
 
   it("replays from segment start after auto-stopping at segment end", async () => {
     let playhead = 10;
     let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
@@ -1012,12 +1031,14 @@ describe("useWaveformSegmentPlaybackControls", () => {
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
         getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
       }),
     );
 
     await act(async () => {
       await result.current.playSegmentAtIndex(0, { fromSec: 10 });
     });
+    commitSeekUi.mockClear();
 
     playhead = 15;
     act(() => {
@@ -1033,7 +1054,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(playing).toBe(false);
-    expect(ws.setTime).toHaveBeenCalledWith(20);
+    // Pause only at end — no visual rewind; playhead stays at the segment end.
+    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(playhead).toBe(20);
 
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
     await act(async () => {
@@ -1045,10 +1068,101 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(true);
   });
 
+  it("one press replays when playhead is left at the segment end (media at end)", async () => {
+    // Pause-only natural end: display and media both stay at end. A single play
+    // click must seek to segment start and play, not resume from the tail.
+    let playhead = 10;
+    let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10 });
+    });
+    commitSeekUi.mockClear();
+
+    playhead = 15;
+    act(() => {
+      schedulePlaybackViewportFrame(15);
+      flushTierScrollFrameForTests();
+    });
+
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(playing).toBe(false);
+    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(playhead).toBe(20);
+
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    (ws.play as ReturnType<typeof vi.fn>).mockClear();
+    await act(async () => {
+      await result.current.handleToggleSelectedWaveformPlay();
+    });
+
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(ws.play).toHaveBeenCalled();
+    expect(playing).toBe(true);
+    expect(playhead).toBe(10);
+
+    // Stale end-time frame (pre-seek clock) must not immediately re-stop.
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+    expect(playing).toBe(true);
+
+    playhead = 10.2;
+    await act(async () => {
+      schedulePlaybackViewportFrame(10.2);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+    expect(playing).toBe(true);
+  });
+
   it("Space sticky path after natural end: session kept and playSegmentAtIndex seeks to start", async () => {
     const { resolveSessionTogglePlay } = await import("../utils/playbackSessionToggle");
     let playhead = 10;
     let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
@@ -1071,6 +1185,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
         getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
       }),
     );
 
@@ -1078,6 +1193,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       await result.current.playSegmentAtIndex(0, { fromSec: 10 });
     });
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+    commitSeekUi.mockClear();
 
     playhead = 15;
     act(() => {
@@ -1094,7 +1210,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(false);
     expect(result.current.isSelectedSegmentPlaying).toBe(false);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
-    expect(ws.setTime).toHaveBeenCalledWith(20);
+    // Pause only — playhead stays at end; replay-from-start resolved on next play.
+    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(playhead).toBe(20);
 
     const decision = resolveSessionTogglePlay({
       isPlaying: false,
@@ -1104,7 +1222,6 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(decision).toEqual({ action: "resumeSegment", idx: 0 });
 
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
-    playhead = 20;
     await act(async () => {
       if (decision.action === "resumeSegment") {
         await result.current.playSegmentAtIndex(decision.idx);
@@ -1116,6 +1233,105 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(true);
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+  });
+
+  it("mid-segment sticky pause/resume (Shift+Space path) still auto-stops at end", async () => {
+    const { resolveSessionTogglePlay } = await import("../utils/playbackSessionToggle");
+    const { resolveStickySegmentSpaceFromSec } = await import("../utils/segmentResumeFromSec");
+    let playhead = 12;
+    let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getRawMediaPlayheadTimeSec: () => playhead,
+        commitSeekUi,
+      }),
+    );
+
+    const stickyToggle = async () => {
+      const decision = resolveSessionTogglePlay({
+        isPlaying: playing,
+        session: result.current.getPlaybackSession(),
+        segmentStillExists: true,
+        selectedSegmentIdx: 0,
+      });
+      if (decision.action === "pauseKeepingSession") {
+        result.current.pauseMediaKeepingSession();
+        return;
+      }
+      if (decision.action === "resumeSegment") {
+        const seg = segments[decision.idx]!;
+        const stickyFromSec = resolveStickySegmentSpaceFromSec({
+          segment: seg,
+          displaySec: playhead,
+        });
+        await result.current.playSegmentAtIndex(
+          decision.idx,
+          stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
+        );
+      }
+    };
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 12 });
+    });
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+
+    // Repeated mid-segment Shift+Space pause ↔ resume.
+    for (const freezeAt of [13, 14, 16, 17]) {
+      playhead = freezeAt;
+      await act(async () => {
+        await stickyToggle();
+      });
+      expect(playing).toBe(false);
+      expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+
+      await act(async () => {
+        await stickyToggle();
+      });
+      expect(playing).toBe(true);
+      expect(result.current.isSelectedSegmentPlaying).toBe(true);
+      expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+    }
+
+    playhead = 20;
+    await act(async () => {
+      schedulePlaybackViewportFrame(20);
+      flushTierScrollFrameForTests();
+      await Promise.resolve();
+    });
+
+    expect(playing).toBe(false);
+    expect(result.current.isSelectedSegmentPlaying).toBe(false);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
+    // Pause only at end — no rewind to segment start; playhead stays at end.
+    expect(commitSeekUi).not.toHaveBeenCalledWith(10);
+    expect(playhead).toBe(20);
   });
 
   it("does not replay from segment start after seek clears auto-stop replay intent", async () => {

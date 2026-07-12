@@ -1,5 +1,6 @@
 import { ProjectPanel } from "./components/ProjectPanel";
 import { ToastHost } from "./components/ToastHost";
+import { AudioKeepAlive } from "./components/AudioKeepAlive";
 import { BundledAsrModelsSeedOverlay } from "./components/BundledAsrModelsSeedOverlay";
 import { AppUpdateConfirmDialog } from "./components/AppUpdateConfirmDialog";
 import { useBundledAsrModelsSeed } from "./hooks/useBundledAsrModelsSeed";
@@ -12,6 +13,7 @@ export default function App() {
 
   return (
     <>
+      <AudioKeepAlive />
       {!bundledSeed.blocking ? (
         <main className="shell">
           <div className="shell-body">

@@ -166,11 +166,17 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
       const insideAtStart = startAtSec >= range.start && startAtSec < range.end;
       if (insideAtStart) {
         unboundedSelectedPlayGenRef.current = null;
+        // Mid-segment resume near the tail: arm immediately so a sparse first frame
+        // past end still stops. Restart-from-start (natural-end replay): stay unarmed
+        // until a frame is near start / inside — a stale end-time frame must not
+        // immediately re-stop (display rewound, media still at end for one tick).
+        const clearOfEnd = startAtSec < range.end - 0.05;
+        const startingNearSegmentStart = startAtSec <= range.start + 0.05;
         segmentPlaybackBoundRef.current = {
           startSec: range.start,
           endSec: range.end,
           generation: gen,
-          armed: false,
+          armed: clearOfEnd && !startingNearSegmentStart,
         };
       } else {
         segmentPlaybackBoundRef.current = null;
@@ -201,6 +207,9 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     async (idx: number, options?: PlaySegmentAtIndexOptions) => {
       const seg = latestSegmentsRef.current[idx];
       if (!seg) return;
+      // Natural-end auto-stop marks this segment (autoStoppedIdx) so a single play
+      // click restarts it from the segment start. A manual seek clears the marker,
+      // so playback then resumes from the sought position instead of snapping back.
       const resumeFromSec = resolveSegmentResumeFromSec({
         segment: seg,
         targetIdx: idx,
@@ -273,6 +282,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         const stickyFromSec = resolveStickySegmentSpaceFromSec({
           segment: seg,
           displaySec: resolvePlayheadSec(),
+          rawMediaSec: getRawMediaPlayheadTimeSec?.(),
         });
         await playSegmentAtIndex(
           idx,

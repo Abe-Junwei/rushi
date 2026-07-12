@@ -431,6 +431,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         const stickyFromSec = resolveStickySegmentSpaceFromSec({
           segment: seg,
           displaySec: playback.getPlayheadTime(),
+          rawMediaSec: playback.getRawMediaPlayheadTimeSec(),
         });
         await playSegmentAtIndex(
           decision.idx,

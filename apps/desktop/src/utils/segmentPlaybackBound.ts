@@ -25,7 +25,7 @@ export function isActiveSegmentPlaybackBound(
   return bound != null && bound.generation === generation;
 }
 
-/** 语段尾停住后重播时，播放头可能仍短暂停在 end；armed 前忽略误触发。 */
+/** 语段尾停住后回段首重播时，armed 前忽略误触发。 */
 export function armSegmentPlaybackSession(
   session: ActiveSegmentPlaybackBound,
   currentSec: number,
@@ -35,6 +35,12 @@ export function armSegmentPlaybackSession(
   const nearStart = currentSec <= session.startSec + epsilonSec;
   const beforeEnd = currentSec < session.endSec - 0.05;
   if (nearStart || beforeEnd) {
+    session.armed = true;
+    return true;
+  }
+  // Sparse frames: first sample after mid-segment resume can already be past end.
+  // Treat clear overshoot as armed so enforce can stop (still ignore exact-end freeze).
+  if (currentSec > session.endSec + epsilonSec) {
     session.armed = true;
     return true;
   }

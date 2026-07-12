@@ -30,14 +30,27 @@ export function resolveSegmentResumeFromSec(args: {
 /**
  * Space sticky segment resume: when playhead is already at/past segment end
  * (natural stop), force replay from start even if autoStopped marker was cleared.
+ *
+ * Also covers visual-only natural end: display rewound to segment start while
+ * raw media is still at/past end (no ws.setTime on stop — WebKit freeze avoid).
  */
 export function resolveStickySegmentSpaceFromSec(args: {
   segment: { start_sec: number; end_sec: number };
   displaySec: number;
+  rawMediaSec?: number;
 }): number | undefined {
   const start = Math.min(args.segment.start_sec, args.segment.end_sec);
   const end = Math.max(args.segment.start_sec, args.segment.end_sec);
   if (!Number.isFinite(args.displaySec)) return undefined;
   if (segmentPlaybackReachedEnd(args.displaySec, end)) return start;
+  const raw = args.rawMediaSec;
+  if (
+    raw != null &&
+    Number.isFinite(raw) &&
+    segmentPlaybackReachedEnd(raw, end) &&
+    args.displaySec <= start + 0.05
+  ) {
+    return start;
+  }
   return undefined;
 }

@@ -120,16 +120,15 @@ export function useWaveformSegmentPlaybackBoundSync(
             atomicMediaSeek(clampedEnd);
           }
         } else {
+          // Segment natural end: pause only. No media seek and no visual rewind —
+          // any pause-adjacent media state churn nests WebKit RemoteAudioSession
+          // sync IPC and freezes WebContent. Playhead stays at the segment end.
+          // Mark the ended segment (invisible) so a single play click restarts it
+          // from the segment start; a manual seek clears the marker (free play).
           autoStoppedSegmentIdxRef.current =
             resolveNaturalEndReplayIdx?.() ?? resolveEffectiveSelectedIdx();
           segmentPlaybackBoundRef.current = null;
           setIsSelectedSegmentPlaying(false);
-          // Freeze at segment end — never seek back to start on auto-stop.
-          // The next selected-segment play is explicitly routed back to segment start.
-          const clampedEnd = Math.max(0, Math.min(endSec, live.getDuration()));
-          if (Number.isFinite(clampedEnd)) {
-            atomicMediaSeek(clampedEnd);
-          }
         }
       });
     },
@@ -201,11 +200,13 @@ export function useWaveformSegmentPlaybackBoundSync(
         if (!boundMatches) {
           const inFlightGen = playStartInFlightGenerationRef.current;
           const gen = inFlightGen ?? ++playGenerationRef.current;
+          // Same arm rule as runPlaySegmentResolved — avoid unarmed overshoot miss.
+          const clearOfEnd = t < range.end - 0.05;
           segmentPlaybackBoundRef.current = {
             startSec: range.start,
             endSec: range.end,
             generation: gen,
-            armed: false,
+            armed: clearOfEnd,
           };
         }
         if (!isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(true);

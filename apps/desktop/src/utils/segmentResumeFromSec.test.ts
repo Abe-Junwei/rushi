@@ -64,4 +64,31 @@ describe("resolveStickySegmentSpaceFromSec", () => {
     expect(resolveStickySegmentSpaceFromSec({ segment: seg, displaySec: 15 })).toBeUndefined();
     expect(resolveStickySegmentSpaceFromSec({ segment: seg, displaySec: 10 })).toBeUndefined();
   });
+
+  it("forces start when display was visually rewound but media is still at end", () => {
+    expect(
+      resolveStickySegmentSpaceFromSec({
+        segment: seg,
+        displaySec: 10,
+        rawMediaSec: 20,
+      }),
+    ).toBe(10);
+    expect(
+      resolveStickySegmentSpaceFromSec({
+        segment: seg,
+        displaySec: 10,
+        rawMediaSec: 19.99,
+      }),
+    ).toBe(10);
+  });
+
+  it("does not force start when display and media are both inside", () => {
+    expect(
+      resolveStickySegmentSpaceFromSec({
+        segment: seg,
+        displaySec: 10,
+        rawMediaSec: 10,
+      }),
+    ).toBeUndefined();
+  });
 });

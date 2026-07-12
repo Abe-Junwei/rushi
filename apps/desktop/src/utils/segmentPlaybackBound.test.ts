@@ -26,4 +26,10 @@ describe("segmentPlaybackBound", () => {
     expect(armSegmentPlaybackSession(session, 4)).toBe(true);
     expect(session.armed).toBe(true);
   });
+
+  it("arms on clear overshoot so sparse frames still stop", () => {
+    const session = { startSec: 4, endSec: 10, generation: 1, armed: false };
+    expect(armSegmentPlaybackSession(session, 10.05)).toBe(true);
+    expect(session.armed).toBe(true);
+  });
 });
