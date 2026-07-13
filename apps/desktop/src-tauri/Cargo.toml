@@ -59,7 +59,7 @@ docx-rs = "0.4"
 zip = { version = "8.6", default-features = false, features = ["deflate"] }
 serde_yaml = "0.9.34"
 futures-util = "0.3"
-ed25519-dalek = "2.2.0"
+ed25519-dalek = "3.0.0"
 symphonia = { version = "0.6", default-features = false, features = [
   "aac",
   "flac",
