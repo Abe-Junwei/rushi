@@ -66,7 +66,7 @@
 | 问题 | 结论 |
 |------|------|
 | **选定方案** | **B′**：双入口 + **Space 会话粘性**；工具条 = 明示「全局播放」出口。 |
-| **Space** | 暂停/续播**当前会话**：全局会话 ↔ 全局；语段会话 ↔ 该句（含自然段尾后 **重播该句**）。Idle / 全局会话且**有选中语段** → **开该句段播**；无选中 → 开全局会话。 |
+| **Space** | 暂停/续播**当前会话**：全局会话 ↔ 从停点续通读；语段会话 ↔ 该句（含自然段尾后 **重播该句**）。**仅** idle（无 sticky session）且有选中语段 → 开该句段播；无选中 → 开全局会话。 |
 | **听跳（列表/↑↓）** | 在**语段会话**中 seek 到新句 → **开该句段播**；否则 `beginGlobalPlayback`（通读听跳）。 |
 | **工具条** | 始终 `toggleGlobalPlay`：暂停时开全局；段播中 = 撕 bound **不停**变通读（出口）；全局播中 = 暂停。按钮文案/aria：**全局播放**。 |
 | **不做什么** | ❌ 第二套播放引擎；❌ 段播中 Space=立刻全局续播（出口走工具条）。 |
@@ -80,8 +80,9 @@
 | 语段播中 → Space | scoped playing | Pause；**保持语段会话**；再 Space = 续播/重播 |
 | 语段会话中 → 听跳新句 | list/↑↓ seek | **开新句段播** |
 | 工具条「全局」 | 任意 | 强制全局会话；**段播中撕 bound 续通读**（出口；UI 显示「改为全局通读」而非暂停） |
-| Idle / 全局会话 → Space | 有选中语段 | `playSegmentAtIndex(selected)`（段播） |
-| Idle / 全局会话 → Space | 无选中 | `beginGlobalPlayback` + play |
+| Idle（无 sticky session）→ Space | 有选中语段 | `playSegmentAtIndex(selected)`（段播） |
+| Idle（无 sticky session）→ Space | 无选中 | `beginGlobalPlayback` + play |
+| 全局会话暂停 → Space | 可仍有选中 chrome | **续通读**（`startGlobal` 从停点）；不因选中切入段播 |
 | 空白区 seek 后 → Space | 可仍有选中 chrome | **全局**从当前 playhead（`preferGlobalSpace`；点语段/听跳后恢复「有选中→段播」） |
 
 ---
@@ -110,4 +111,4 @@
 |------|------|
 | 2026-07-12 | 初版：交叉切换业内对照；签收维持 B + tooltip |
 | 2026-07-12 | **改签**：B′ 会话粘性 Space + 工具条「全局播放」 |
-| 2026-07-12 | **改签**：Idle/全局会话下有选中语段时 Space = 段播（无选中仍全局） |
+| 2026-07-13 | **改签**：全局会话暂停后再 Space = 从停点续通读（不再因有选中切入段播）；仅 null session + 选中 → 段播 |

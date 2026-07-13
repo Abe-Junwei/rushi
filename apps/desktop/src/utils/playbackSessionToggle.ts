@@ -3,7 +3,7 @@
  * Spec: docs/execution/specs/global-segment-playback-cross-switch-research.md §4
  */
 import type { PlaybackSession } from "./playbackSession";
-import { isSegmentPlaybackSession } from "./playbackSession";
+import { isGlobalPlaybackSession, isSegmentPlaybackSession } from "./playbackSession";
 
 export type SessionTogglePlayDecision =
   | { action: "pauseKeepingSession" }
@@ -17,8 +17,8 @@ export function resolveSessionTogglePlay(args: {
   /** False when session.idx is deleted / OOB. */
   segmentStillExists?: boolean;
   /**
-   * When idle / global session (no sticky segment session), Space starts scoped
-   * play on this selected transcript primary if valid (≥0).
+   * When idle with no sticky session, Space starts scoped play on this selected
+   * transcript primary if valid (≥0). Sticky global session resumes global instead.
    */
   selectedSegmentIdx?: number;
   /**
@@ -40,8 +40,8 @@ export function resolveSessionTogglePlay(args: {
       return { action: "resumeSegment", idx: args.session.idx };
     }
   }
-  // Blank seek (and similar) locks Space to global until the next segment select/play.
-  if (args.preferGlobalSpace) {
+  // Sticky global (toolbar / prior Space 通读 / blank seek) resumes from playhead.
+  if (isGlobalPlaybackSession(args.session) || args.preferGlobalSpace) {
     return { action: "startGlobal" };
   }
   if (selected != null && selected >= 0) {

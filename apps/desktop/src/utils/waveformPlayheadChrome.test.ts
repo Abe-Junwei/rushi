@@ -32,14 +32,14 @@ describe("resolveWaveformPlayheadChromeMode", () => {
     ).toBe("segment");
   });
 
-  it("idle global session → segment chrome (Space will honor selection)", () => {
+  it("idle global session → global chrome (Space resumes 通读)", () => {
     expect(
       resolveWaveformPlayheadChromeMode({
         session: { kind: "global" },
         isPlaying: false,
         isSelectedSegmentPlaying: false,
       }),
-    ).toBe("segment");
+    ).toBe("global");
   });
 
   it("blank seek preferGlobalSpace → global", () => {

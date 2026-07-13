@@ -110,7 +110,7 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     keysLabel: "Space / Shift + Space",
     footerAction: "播放/暂停",
     panelAction:
-      "会话粘性播放或暂停（正文外 Space；正文内 ⇧Space）。有选中语段时起播=段播；无选中=全局通读。语段会话=续播/重播该句。工具条「全局播放」可退出语段会话。旁侧/浮层亦可开段播",
+      "会话粘性播放或暂停（正文外 Space；正文内 ⇧Space）。无会话且有选中语段时起播=段播；已在全局通读会话中则暂停后再 Space 从停点续通读。语段会话=续播/重播该句。工具条「全局播放」可进入/退出语段会话。旁侧/浮层亦可开段播",
     allowInTextarea: true,
   },
   {
