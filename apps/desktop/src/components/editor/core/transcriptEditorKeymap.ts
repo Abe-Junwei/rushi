@@ -52,7 +52,7 @@ export function createTranscriptEditorKeymap(
   const onPrimaryMoved = opts.onPrimaryMoved;
   return keymap.of([
     // Enter must not insert a newline (would break line↔segment invariant).
-    // Forward-to-next-segment semantics can be added later if product wants parity.
+    // Confirm-advance is handled by the capture-phase editor shortcut dispatcher.
     { key: "Enter", run: () => true },
     { key: "Shift-Enter", run: () => true },
     { key: "Mod-Enter", run: () => true },

@@ -9,7 +9,7 @@ import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/project
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type ConfirmAdvanceStep = {
-  /** Cmd+Enter / 右键定稿路径为 true；Tab 跳段为 false。 */
+  /** Enter / 右键定稿路径为 true；Tab 跳段为 false。 */
   finalize: boolean;
 };
 

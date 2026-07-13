@@ -87,8 +87,16 @@ export function buildTranscriptAppearanceTheme(args: {
     // Single paint source for the row: line fill + shadows under transparent gutters.
     // Do not also paint gutters via :has(marker) — that lagged one frame behind line
     // decorations on ↑↓ and left the previous row's caps lit (visible jitter).
-    ".cm-transcript-primary-line, .cm-transcript-in-selection-line, .cm-transcript-playback-focus": {
+    ".cm-transcript-primary-line, .cm-transcript-in-selection-line, .cm-transcript-playback-focus, .cm-transcript-hover-line": {
       transition: "none",
+    },
+    ".cm-transcript-hover-line": {
+      // Match legacy `hover:bg-notion-sidebar/35` on `.seg-row-shell`.
+      backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+      boxShadow: [
+        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+      ].join(", "),
     },
     ".cm-transcript-primary-line": {
       backgroundColor: "var(--segment-fill-selected-list)",

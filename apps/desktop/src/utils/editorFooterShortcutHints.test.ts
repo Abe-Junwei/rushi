@@ -15,7 +15,7 @@ describe("editorFooterShortcutHints", () => {
     const keys = EDITOR_FOOTER_SHORTCUT_HINTS.map((h) => h.keys);
     expect(keys).toContain("⌘/Ctrl + S");
     expect(keys).toContain("Tab");
-    expect(keys).toContain("⌘/Ctrl + Enter");
+    expect(keys).toContain("Enter");
     expect(keys).toContain("⌘/Ctrl + F");
   });
 

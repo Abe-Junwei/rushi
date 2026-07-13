@@ -96,7 +96,7 @@ describe("confirmAdvanceTabQueue", () => {
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledWith(2, { loop: true });
   });
 
-  it("Cmd+Enter finalize path still confirms then advances", async () => {
+  it("Enter finalize path still confirms then advances", async () => {
     let selectedIdx = 0;
     const ctx = makeCtx();
     const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));

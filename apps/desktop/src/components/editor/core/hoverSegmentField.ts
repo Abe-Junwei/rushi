@@ -1,10 +1,20 @@
-import { StateEffect, StateField, type Extension } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import { RangeSetBuilder, StateEffect, StateField, type Extension } from "@codemirror/state";
+import { Decoration, EditorView } from "@codemirror/view";
+import type { DecorationSet } from "@codemirror/view";
+import {
+  primarySegmentIdx,
+  transcriptMultiSelectionField,
+  transcriptMultiSelectionEqual,
+} from "./selectionField";
+import {
+  setTranscriptPlaybackFocusEffect,
+  transcriptPlaybackFocusField,
+} from "./playbackFocusField";
 
 /**
  * Tracks which segment line the pointer is over.
- * Used only to force-reveal the stage play control — no row wash
- * (wash competed with selection / playback fills and caused switch flicker).
+ * Drives a light row wash (skipped on selected / playback-focus rows) and
+ * force-reveals the stage play control.
  */
 export const setTranscriptHoverSegmentEffect = StateEffect.define<number | null>();
 
@@ -20,6 +30,65 @@ export const transcriptHoverSegmentField = StateField.define<number | null>({
     if (lineCount <= 0) return null;
     return Math.max(0, Math.min(value, lineCount - 1));
   },
+});
+
+const hoverDeco = Decoration.line({
+  attributes: { class: "cm-transcript-hover-line" },
+});
+
+function buildHoverDecorations(state: import("@codemirror/state").EditorState): DecorationSet {
+  const hoverIdx = state.field(transcriptHoverSegmentField);
+  if (hoverIdx == null || hoverIdx < 0) return Decoration.none;
+  const primary = primarySegmentIdx(state);
+  const multi = state.field(transcriptMultiSelectionField);
+  const playbackIdx = state.field(transcriptPlaybackFocusField);
+  // No extra hover wash on selected or playback-focus rows (keep their own fill).
+  if (
+    hoverIdx === primary ||
+    multi.selectedSet.has(hoverIdx) ||
+    (playbackIdx != null && hoverIdx === playbackIdx)
+  ) {
+    return Decoration.none;
+  }
+  if (hoverIdx >= state.doc.lines) return Decoration.none;
+  const line = state.doc.line(hoverIdx + 1);
+  const builder = new RangeSetBuilder<typeof hoverDeco>();
+  builder.add(line.from, line.from, hoverDeco);
+  return builder.finish();
+}
+
+export const transcriptHoverDecorations = StateField.define<DecorationSet>({
+  create(state) {
+    return buildHoverDecorations(state);
+  },
+  update(value, tr) {
+    const hoverChanged = tr.effects.some((e) => e.is(setTranscriptHoverSegmentEffect));
+    const hoverFieldChanged =
+      tr.startState.field(transcriptHoverSegmentField) !==
+      tr.state.field(transcriptHoverSegmentField);
+    const selectionChanged =
+      primarySegmentIdx(tr.startState) !== primarySegmentIdx(tr.state);
+    const multiChanged = !transcriptMultiSelectionEqual(
+      tr.startState.field(transcriptMultiSelectionField),
+      tr.state.field(transcriptMultiSelectionField),
+    );
+    const playbackChanged =
+      tr.effects.some((e) => e.is(setTranscriptPlaybackFocusEffect)) ||
+      tr.startState.field(transcriptPlaybackFocusField) !==
+        tr.state.field(transcriptPlaybackFocusField);
+    if (
+      selectionChanged ||
+      hoverChanged ||
+      hoverFieldChanged ||
+      multiChanged ||
+      playbackChanged ||
+      tr.docChanged
+    ) {
+      return buildHoverDecorations(tr.state);
+    }
+    return value;
+  },
+  provide: (f) => EditorView.decorations.from(f),
 });
 
 export function createTranscriptHoverPointerHandlers(): Extension {
@@ -43,5 +112,6 @@ export function createTranscriptHoverPointerHandlers(): Extension {
 
 export const transcriptHoverExtensions: Extension[] = [
   transcriptHoverSegmentField,
+  transcriptHoverDecorations,
   createTranscriptHoverPointerHandlers(),
 ];

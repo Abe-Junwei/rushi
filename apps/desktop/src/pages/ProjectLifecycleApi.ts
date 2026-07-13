@@ -68,7 +68,7 @@ export interface ProjectLifecycleApi {
     countHits?: boolean;
     explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
   }) => Promise<boolean>;
-  /** Cmd/Ctrl+Enter：落笔保存未提交正文并选中下一语段。 */
+  /** Enter：落笔保存未提交正文并选中下一语段。 */
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
   markSegmentFinalized: (segmentIdx: number) => Promise<boolean>;
   manualCorrectionMemoryDialog: import("./useManualCorrectionMemoryDialog").ManualCorrectionMemoryDialogState;

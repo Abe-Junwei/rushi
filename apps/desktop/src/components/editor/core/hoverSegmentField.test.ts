@@ -35,18 +35,34 @@ describe("hoverSegmentField", () => {
     view = null;
   });
 
-  it("tracks hover idx without painting a row wash class", () => {
+  it("paints hover wash on non-selected rows", () => {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
     const state = buildTranscriptEditorState(makeSegments(3), {
       extensions: transcriptEditorCoreExtensions({ withProjection: false }),
     });
     view = new EditorView({ state, parent });
+    selectSegmentCommand(view, 0, { scrollIntoView: false });
+    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
+    expect(view.state.field(transcriptHoverSegmentField)).toBe(1);
+    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeTruthy();
+    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(null) });
+    expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
+    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
+  });
+
+  it("skips hover wash on the primary selected row", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    selectSegmentCommand(view, 1, { scrollIntoView: false });
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
     expect(view.state.field(transcriptHoverSegmentField)).toBe(1);
     expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
-    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(null) });
-    expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
+    expect(view.contentDOM.querySelector(".cm-transcript-primary-line")).toBeTruthy();
   });
 
   it("clears hover in the same select transaction", () => {
@@ -56,8 +72,10 @@ describe("hoverSegmentField", () => {
       extensions: transcriptEditorCoreExtensions({ withProjection: false }),
     });
     view = new EditorView({ state, parent });
+    selectSegmentCommand(view, 0, { scrollIntoView: false });
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(2) });
     expect(view.state.field(transcriptHoverSegmentField)).toBe(2);
+    expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeTruthy();
     selectSegmentCommand(view, 1);
     expect(view.state.field(transcriptHoverSegmentField)).toBeNull();
     expect(view.contentDOM.querySelector(".cm-transcript-hover-line")).toBeNull();
