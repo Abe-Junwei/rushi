@@ -173,11 +173,141 @@ describe("nativeAudioPlaybackTransport", () => {
     expect(pauses).toEqual([]);
 
     deferred.resolve?.();
-    await playPromise;
     emitEngine({ event: "playing" });
+    await playPromise;
     expect(t.isPlaying()).toBe(true);
     expect(plays).toEqual([1]);
     expect(pauses).toEqual([]);
+    await t.dispose();
+  });
+
+  it("awaits Playing before play() resolves", async () => {
+    vi.mocked(nativeAudioPlay).mockImplementationOnce(() => Promise.resolve());
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    const playPromise = t.play();
+    await new Promise((r) => setTimeout(r, 10));
+    expect(t.isPlaying()).toBe(false);
+    emitEngine({ event: "playing" });
+    await playPromise;
+    expect(t.isPlaying()).toBe(true);
+    await t.dispose();
+  });
+
+  it("interpolates display time while playing and latches on pause", async () => {
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    await t.play();
+    emitEngine({ event: "timeUpdate", data: { sec: 1.0 } });
+    const base = t.getDisplayTime();
+    expect(base).toBeCloseTo(1.0, 3);
+
+    now += 200;
+    const advanced = t.getDisplayTime();
+    expect(advanced).toBeGreaterThan(base + 0.15);
+
+    await t.pause();
+    // Pause freezes at display high-water, not the lagging TimeUpdate latch.
+    expect(t.getDisplayTime()).toBeCloseTo(advanced, 3);
+    expect(t.getCurrentTime()).toBeCloseTo(advanced, 3);
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
+  it("does not rewind playhead when resuming after pause", async () => {
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    await t.play();
+    emitEngine({ event: "timeUpdate", data: { sec: 2.0 } });
+    now += 250;
+    const pausedAt = t.getDisplayTime();
+    expect(pausedAt).toBeGreaterThan(2.2);
+
+    await t.pause();
+    expect(t.getDisplayTime()).toBeCloseTo(pausedAt, 3);
+
+    now += 500;
+    await t.play();
+    expect(t.getDisplayTime()).toBeGreaterThanOrEqual(pausedAt - 0.001);
+    expect(t.getCurrentTime()).toBeGreaterThanOrEqual(pausedAt - 0.001);
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
+  it("does not feed interpolated display time into authoritative current time on rate change", async () => {
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    await t.play();
+    emitEngine({ event: "timeUpdate", data: { sec: 1.0 } });
+    now += 500;
+    expect(t.getDisplayTime()).toBeGreaterThan(1.4);
+    await t.setRate(1.5);
+    expect(t.getCurrentTime()).toBe(1.0);
+    expect(t.getDisplayTime()).toBeGreaterThanOrEqual(1.5);
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
+  it("does not resolve seek from ordinary timeUpdate events", async () => {
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+
+    let resolved = false;
+    const seekPromise = t.seek(4).then(() => {
+      resolved = true;
+    });
+    emitEngine({ event: "timeUpdate", data: { sec: 4 } });
+    await Promise.resolve();
+    expect(resolved).toBe(false);
+
+    emitEngine({ event: "seeked", data: { sec: 4 } });
+    await seekPromise;
+    expect(resolved).toBe(true);
+    await t.dispose();
+  });
+
+  it("cancels pending ACK waiter when native invoke rejects", async () => {
+    vi.useFakeTimers();
+    vi.mocked(nativeAudioSeek).mockRejectedValueOnce(new Error("ipc failed"));
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    const errors: string[] = [];
+    t.subscribe({ onError: (message) => errors.push(message) });
+
+    await expect(t.seek(4)).rejects.toThrow("ipc failed");
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(errors).toEqual([]);
+
+    await t.dispose();
+    vi.useRealTimers();
+  });
+
+  it("maps deviceChanged / underrun without treating as fatal error", async () => {
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 5 });
+    const devices: string[] = [];
+    const underruns: number[] = [];
+    const errors: string[] = [];
+    t.subscribe({
+      onDeviceChanged: (m) => devices.push(m),
+      onUnderrun: (n) => underruns.push(n),
+      onError: (m) => errors.push(m),
+    });
+    emitEngine({ event: "deviceChanged", data: { message: "rerouted" } });
+    emitEngine({ event: "underrun", data: { consecutive: 3 } });
+    expect(devices).toEqual(["rerouted"]);
+    expect(underruns).toEqual([3]);
+    expect(errors).toEqual([]);
     await t.dispose();
   });
 
@@ -200,14 +330,10 @@ describe("nativeAudioPlaybackTransport", () => {
     const sink = transportAsMediaSink(t);
     await sink.play();
     expect(t.isPlaying()).toBe(true);
-    sink.setTime(2);
-    await vi.waitFor(() => {
-      expect(nativeAudioSeek).toHaveBeenCalledWith(2);
-    });
-    sink.pause();
-    await vi.waitFor(() => {
-      expect(t.isPlaying()).toBe(false);
-    });
+    await sink.setTime(2);
+    expect(nativeAudioSeek).toHaveBeenCalledWith(2);
+    await sink.pause();
+    expect(t.isPlaying()).toBe(false);
   });
 });
 

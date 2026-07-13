@@ -5,7 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 
 describe("useWaveformPlayback", () => {
-  it("syncs imperative playhead before ws.setTime (Peaks order)", () => {
+  it("syncs imperative playhead before ws.setTime (Peaks order)", async () => {
     const ws = {
       setTime: vi.fn(),
       getCurrentTime: () => 0,
@@ -42,6 +42,9 @@ describe("useWaveformPlayback", () => {
     act(() => {
       result.current.seek(12.5);
     });
+    await act(async () => {
+      await Promise.resolve();
+    });
 
     expect(syncDisplayPlayheadAfterSeek).toHaveBeenCalledWith(12.5);
     expect(ws.setTime).toHaveBeenCalledWith(12.5);
@@ -49,7 +52,7 @@ describe("useWaveformPlayback", () => {
     expect(commitSeekUi).toHaveBeenCalledWith(12.5);
   });
 
-  it("seekByDelta uses display playhead as base when ref is wired", () => {
+  it("seekByDelta uses display playhead as base when ref is wired", async () => {
     const ws = {
       setTime: vi.fn(),
       getCurrentTime: () => 10,
@@ -81,6 +84,9 @@ describe("useWaveformPlayback", () => {
 
     act(() => {
       result.current.seekByDelta(2);
+    });
+    await act(async () => {
+      await Promise.resolve();
     });
 
     expect(ws.setTime).toHaveBeenCalledWith(10);

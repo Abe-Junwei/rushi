@@ -11,11 +11,16 @@ export type MediaPlaybackHost = {
   pause: () => void | Promise<void>;
   /** Native seek is async IPC — callers in play paths must await when Promise. */
   setTime: (timeSec: number) => void | Promise<void>;
+  /** Authoritative latch (seek/pause authority). */
   getCurrentTime: () => number;
+  /** Display playhead; may interpolate. Never use as seek authority. */
+  getDisplayTime: () => number;
   isPlaying: () => boolean;
   setPlaybackRate: (rate: number) => void | Promise<void>;
   /** Key for {@link mediaPlayGate} WeakMap. */
   gateHost: object;
+  /** True when host is native transport (skip WK pause→play gap). */
+  isNative: boolean;
 };
 
 export type ResolveMediaPlaybackHostOptions = {
@@ -26,6 +31,10 @@ export type ResolveMediaPlaybackHostOptions = {
   requireTransport?: boolean;
 };
 
+/**
+ * Single host resolver for all playback entry points.
+ * Prefer this over ad-hoc ws/transport branching.
+ */
 export function resolveMediaPlaybackHost(
   ws: WaveSurfer | null | undefined,
   transport: PlaybackTransport | null | undefined,
@@ -37,9 +46,11 @@ export function resolveMediaPlaybackHost(
       pause: () => transport.pause(),
       setTime: (timeSec) => transport.seek(timeSec),
       getCurrentTime: () => transport.getCurrentTime(),
+      getDisplayTime: () => transport.getDisplayTime(),
       isPlaying: () => transport.isPlaying(),
       setPlaybackRate: (rate) => transport.setRate(rate),
       gateHost: transport,
+      isNative: transport.kind === "native",
     };
   }
   if (options?.requireTransport) return null;
@@ -53,10 +64,12 @@ export function resolveMediaPlaybackHost(
       ws.setTime(timeSec);
     },
     getCurrentTime: () => ws.getCurrentTime(),
+    getDisplayTime: () => ws.getCurrentTime(),
     isPlaying: () => ws.isPlaying(),
     setPlaybackRate: (rate) => {
       ws.setPlaybackRate(rate);
     },
     gateHost: ws,
+    isNative: false,
   };
 }

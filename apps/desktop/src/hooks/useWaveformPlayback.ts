@@ -46,6 +46,13 @@ export function useWaveformPlayback(
     return host?.getCurrentTime() ?? 0;
   }, [requireTransport, transportRef, wsRef]);
 
+  const getDisplayMediaPlayheadTimeSec = useCallback((): number => {
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    return host?.getDisplayTime() ?? 0;
+  }, [requireTransport, transportRef, wsRef]);
+
   const getRawMediaIsPlaying = useCallback((): boolean => {
     const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
       requireTransport,
@@ -60,12 +67,17 @@ export function useWaveformPlayback(
       });
       if (!host || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
-      applyPeaksOrderedSeek({
+      void applyPeaksOrderedSeek({
         timeSec,
         durationSec: d,
         syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-        setTime: (t) => host.setTime(t),
+        setTime: (t) => {
+          return host.setTime(t);
+        },
         commitSeekUi,
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logDesktopUi("ERROR", `[s4] seek failed: ${msg}`);
       });
     },
     [
@@ -84,21 +96,22 @@ export function useWaveformPlayback(
       requireTransport,
     });
     if (!isReady) {
-      logDesktopUi("WARN", "[s4] play ignored: waveform not ready");
+      logDesktopUi("WARN", "[s4] play ignored: waveform visual not ready");
       return;
     }
     if (!host) {
       logDesktopUi(
         "WARN",
         requireTransport
-          ? "[s4] play ignored: native transport not ready"
+          ? "[s4] audio engine loading — play ignored until native transport ready"
           : "[s4] play ignored: no media host",
       );
       return;
     }
+    const gateOpts = host.isNative ? { pauseToPlayGapMs: 0 } : undefined;
     if (host.isPlaying()) {
       try {
-        await runGatedMediaPause(host.gateHost, () => host.pause());
+        await runGatedMediaPause(host.gateHost, () => host.pause(), gateOpts);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         logDesktopUi("ERROR", `[s4] pause failed: ${msg}`);
@@ -107,11 +120,16 @@ export function useWaveformPlayback(
     }
     // Gate play(): concurrent Space/button can nest HTMLMediaElement.play and
     // deadlock WebKit MediaSession sync IPC on the WebContent main thread.
+    // Native CPAL uses gap=0 (serial queue only).
     try {
-      const result = await runGatedMediaPlay(host.gateHost, () => {
-        applyGlobalPlaybackRateRef.current();
-        return host.play();
-      });
+      const result = await runGatedMediaPlay(
+        host.gateHost,
+        () => {
+          applyGlobalPlaybackRateRef.current();
+          return host.play();
+        },
+        gateOpts,
+      );
       if (result === "busy") {
         logDesktopUi("WARN", "[s4] play ignored: media gate busy");
       }
@@ -133,12 +151,17 @@ export function useWaveformPlayback(
       if (!host || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
       const base = resolvePlayheadSec();
-      applyPeaksOrderedSeek({
+      void applyPeaksOrderedSeek({
         timeSec: base + deltaSec,
         durationSec: d,
         syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-        setTime: (t) => host.setTime(t),
+        setTime: (t) => {
+          return host.setTime(t);
+        },
         commitSeekUi,
+      }).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logDesktopUi("ERROR", `[s4] seek failed: ${msg}`);
       });
     },
     [
@@ -194,6 +217,7 @@ export function useWaveformPlayback(
     togglePlay,
     getPlayheadTime,
     getRawMediaPlayheadTimeSec,
+    getDisplayMediaPlayheadTimeSec,
     getRawMediaIsPlaying,
     seekByDelta,
     clientXToTimeSec,

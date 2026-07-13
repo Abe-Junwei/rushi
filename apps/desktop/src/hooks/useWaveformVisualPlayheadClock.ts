@@ -16,10 +16,16 @@ export const PLAYHEAD_FRAME_PRIORITY_SCROLL = 0;
 export const PLAYHEAD_FRAME_PRIORITY_PLAYHEAD = 1;
 
 /**
- * Single-source playhead clock — media.currentTime is the truth; no extrapolation.
- * While playing, a local rAF loop polls {@link getRawMediaPlayheadTimeSec} so visual
- * updates are not capped by sparse WaveSurfer `audioprocess` (WKWebView often 13–17Hz).
- * Media time is never advanced by wall-clock * rate (single-clock contract).
+ * Single-source playhead clock — engine TimeUpdate/Seeked is the authority.
+ *
+ * While playing, a local rAF loop polls {@link getRawMediaPlayheadTimeSec}.
+ * For native transport that getter may return a *display-only* interpolation
+ * between authoritative Channel anchors (last event + wall-clock × rate).
+ * Rules (ADR-0008 clock contract):
+ * 1. Every TimeUpdate/Seeked re-anchors; interpolation only fills event gaps.
+ * 2. Monotonic clamp: discard display values that jump backwards.
+ * 3. Interpolated values must never feed seek/pause authority.
+ * 4. Pause/seek latches immediately to the authoritative value.
  * {@link schedulePlaybackViewportFrame} merges playback UI with tier scroll chrome.
  */
 export function useWaveformVisualPlayheadClock(input: {

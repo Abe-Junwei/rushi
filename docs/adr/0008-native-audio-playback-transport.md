@@ -24,10 +24,23 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 2. 前端保留 **Transport Authority**（`dispatchTransportIntent`）；经 `PlaybackTransport` 适配器调用 native。
 3. **桌面端禁止** WaveSurfer 加载 `url` / 调用 `play()`，避免双真源与 WK AudioSession（`requireTransport` 恒真）。
 4. 路径经 `resolve_audio_path_under_root`（或等价 scoped resolve）；禁止任意路径播放。
-5. **引擎 → 前端** 使用 `tauri::ipc::Channel<NativeAudioEvent>` 有序事件流（Ready/Playing/Paused/Seeked/TimeUpdate/Ended/Error）；不再依赖 snapshot 轮询与 grace window。
+5. **引擎 → 前端** 使用 `tauri::ipc::Channel<NativeAudioEvent>` 有序事件流（Ready/Playing/Paused/Seeked/TimeUpdate/Ended/Underrun/DeviceChanged/Error）；不再依赖 snapshot 轮询与 grace window。
 6. **时长真源** = 引擎 probe / Ready 事件；layout/peaks 时长仅为 hint。
 7. **第一版不做**：不变调变速、输出设备选择 UI、WebAudio 默认、HTML keepalive、私有 WKPreference。
 8. Legacy MediaElement 播放回退已移除；`rushi.p1.nativeAudioPlayback` pref 不再开关真源（读侧恒为开启）。
+9. **CPAL 0.18+**：依赖 CoreAudio 默认设备自动重路由与 `ErrorKind::DeviceChanged` / `StreamInvalidated`；失效流在引擎线程重建（decode producer 交接）。
+
+## 时钟契约
+
+| 层 | 角色 | 规则 |
+|----|------|------|
+| 权威 | Rust `SharedClock.position_us` → Channel `TimeUpdate`/`Seeked` | 唯一真源；命令 ACK = 状态事件（Playing/Paused/Seeked） |
+| 显示 | `getDisplayTime()` 插值 | 最后一次权威锚点 + `performance.now()` × rate；仅填事件间隙 |
+| 单调 | visual / display | 新值 < 上一帧则丢弃，避免 underrun/暂停回跳 |
+| Latch | pause | 冻结为当时 display（`max(权威, 插值高水位)`），禁止回跳到滞后 TimeUpdate |
+| Latch | seek | 落到 Seeked 权威值并停止插值；**用户 seek 输入**不得使用插值时间 |
+
+`useWaveformVisualPlayheadClock` 通过 `getRawMediaPlayheadTimeSec` 读显示时间（native 为插值）；seek 路径仍用权威 latch。
 
 ## 后果
 
@@ -37,13 +50,14 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 - 长音频内存可控（ring buffer，非整轨 PCM）
 - 显示与播放解耦，与 WS-2b 一致
 - 控制面 ACK + 事件流，避免乐观 UI / 轮询竞态
+- 设备热插拔 / 采样率变更可上屏并尝试重建
 
 ### 负面
 
-- CPAL/采样率/设备热插拔复杂度
+- CPAL/采样率/设备热插拔复杂度（0.18 升级破坏面已收敛到 `native_audio/`）
 - 需维护 adapter + ACL permissions
 - seek 精度依赖容器关键点
 
 ## 状态
 
-**accepted** — 2026-07-12（S1 击穿后进入实现；2026-07-12 maturity：Channel 事件流 + 移除桌面 MediaElement 回退）
+**accepted** — 2026-07-12（S1 击穿后进入实现；2026-07-12 maturity：Channel 事件流 + 移除桌面 MediaElement 回退；2026-07-13 hardening：受控显示插值、cpal 0.18、状态 ACK、native gate gap=0）

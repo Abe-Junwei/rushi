@@ -11,8 +11,13 @@ export type PlaybackTransportEvents = {
   onPause?: () => void;
   onFinish?: () => void;
   onTimeUpdate?: (timeSec: number) => void;
+  onSeeked?: (timeSec: number) => void;
   onReady?: (durationSec: number) => void;
   onError?: (message: string) => void;
+  /** Soft device route change / rebuild (non-fatal). */
+  onDeviceChanged?: (message: string) => void;
+  /** Soft underrun telemetry (non-fatal). */
+  onUnderrun?: (consecutive: number) => void;
 };
 
 export type PlaybackTransportLoadInput = {
@@ -28,7 +33,13 @@ export type PlaybackTransport = {
   pause(): Promise<void>;
   seek(timeSec: number): Promise<void>;
   setRate(rate: number): Promise<void>;
+  /** Authoritative latch from last engine Seeked/TimeUpdate. */
   getCurrentTime(): number;
+  /**
+   * Display-only playhead. Native may interpolate between TimeUpdate anchors;
+   * never use this value as seek/pause authority.
+   */
+  getDisplayTime(): number;
   isPlaying(): boolean;
   getDuration(): number;
   subscribe(handlers: PlaybackTransportEvents): () => void;
@@ -37,19 +48,15 @@ export type PlaybackTransport = {
 
 /** Narrow sink for {@link dispatchTransportIntent}. */
 export function transportAsMediaSink(transport: PlaybackTransport): {
-  setTime: (timeSec: number) => void;
+  setTime: (timeSec: number) => Promise<void>;
   play: () => Promise<void>;
-  pause: () => void;
+  pause: () => Promise<void>;
   isPlaying: () => boolean;
 } {
   return {
-    setTime: (timeSec) => {
-      void transport.seek(timeSec);
-    },
+    setTime: (timeSec) => transport.seek(timeSec),
     play: () => transport.play(),
-    pause: () => {
-      void transport.pause();
-    },
+    pause: () => transport.pause(),
     isPlaying: () => transport.isPlaying(),
   };
 }

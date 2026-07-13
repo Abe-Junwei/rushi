@@ -7,9 +7,9 @@ import {
 } from "./resolveTransportTargetTime";
 
 export type TransportMediaSink = {
-  setTime: (timeSec: number) => void;
+  setTime: (timeSec: number) => void | Promise<void>;
   play: () => Promise<void> | void;
-  pause: () => void;
+  pause: () => void | Promise<void>;
   isPlaying: () => boolean;
 };
 
@@ -21,7 +21,7 @@ export type TransportDispatchDeps = {
   suppressPlaybackFollow?: () => void;
   media: TransportMediaSink;
   /** Apply Peaks-ordered seek (sync display → setTime → commit). */
-  applySeek: (timeSec: number, opts?: { suppressFollow?: boolean }) => void;
+  applySeek: (timeSec: number, opts?: { suppressFollow?: boolean }) => void | Promise<void>;
   /**
    * Segment play with play-from already resolved by {@link resolveSegmentPlayFrom}.
    * Hook owns bound arm / rate / generation.
@@ -58,11 +58,11 @@ export async function dispatchTransportIntent(
         timeSec: intent.timeSec,
         durationSec: deps.getDurationSec(),
       });
-      deps.applySeek(clamped, { suppressFollow: intent.suppressFollow });
+      await deps.applySeek(clamped, { suppressFollow: intent.suppressFollow });
       return;
     }
     case "pause": {
-      if (deps.media.isPlaying()) deps.media.pause();
+      if (deps.media.isPlaying()) await deps.media.pause();
       return;
     }
     case "playSegment": {
@@ -93,7 +93,7 @@ export async function dispatchTransportIntent(
         pointerTimeSec: intent.pointerTimeSec,
       });
       if (seekTimeSec != null) {
-        deps.applySeek(seekTimeSec, { suppressFollow: true });
+        await deps.applySeek(seekTimeSec, { suppressFollow: true });
       }
       return;
     }
@@ -105,22 +105,22 @@ export async function dispatchTransportIntent(
 }
 
 /** Convenience: Peaks-ordered seek without full intent object. */
-export function applyPeaksOrderedSeek(args: {
+export async function applyPeaksOrderedSeek(args: {
   timeSec: number;
   durationSec: number;
   syncDisplayPlayheadAfterSeek: (t: number) => void;
-  setTime: (t: number) => void;
+  setTime: (t: number) => void | Promise<void>;
   commitSeekUi?: (t: number) => void;
   suppressFollow?: boolean;
   suppressPlaybackFollow?: () => void;
-}): number {
+}): Promise<number> {
   const clamped = resolveSeekTargetTime({
     timeSec: args.timeSec,
     durationSec: args.durationSec,
   });
   if (args.suppressFollow) args.suppressPlaybackFollow?.();
   args.syncDisplayPlayheadAfterSeek(clamped);
-  args.setTime(clamped);
+  await args.setTime(clamped);
   args.commitSeekUi?.(clamped);
   return clamped;
 }

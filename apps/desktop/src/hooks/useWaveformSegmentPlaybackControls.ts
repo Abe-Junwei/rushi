@@ -229,14 +229,14 @@ export function useWaveformSegmentPlaybackControls(args: {
       globalPlayGenRef.current = null;
       playGenerationRef.current += 1;
       setIsSelectedSegmentPlaying(false);
-      host.pause();
+      void Promise.resolve(host.pause());
       noteMediaPaused(host.gateHost);
       syncDisplayPlayheadAfterSeekRef?.current?.(normalizedFreezeSec);
       return;
     }
     playbackSessionRef.current = { kind: "global" };
     clearSegmentPlaybackBound();
-    host.pause();
+    void Promise.resolve(host.pause());
     noteMediaPaused(host.gateHost);
   }, [
     clearSegmentPlaybackBound,

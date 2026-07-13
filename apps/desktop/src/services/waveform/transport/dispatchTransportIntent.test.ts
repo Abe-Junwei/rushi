@@ -146,11 +146,11 @@ describe("dispatchTransportIntent", () => {
 });
 
 describe("applyPeaksOrderedSeek", () => {
-  it("syncs display before setTime", () => {
+  it("syncs display before setTime and commits after setTime", async () => {
     const sync = vi.fn();
     const setTime = vi.fn();
     const commit = vi.fn();
-    const t = applyPeaksOrderedSeek({
+    const t = await applyPeaksOrderedSeek({
       timeSec: 12,
       durationSec: 100,
       syncDisplayPlayheadAfterSeek: sync,
@@ -162,5 +162,6 @@ describe("applyPeaksOrderedSeek", () => {
     expect(setTime).toHaveBeenCalledWith(12);
     expect(commit).toHaveBeenCalledWith(12);
     expect(sync.mock.invocationCallOrder[0]).toBeLessThan(setTime.mock.invocationCallOrder[0]);
+    expect(setTime.mock.invocationCallOrder[0]).toBeLessThan(commit.mock.invocationCallOrder[0]);
   });
 });

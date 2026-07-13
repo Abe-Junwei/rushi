@@ -16,6 +16,8 @@ export type NativeAudioEvent =
   | { event: "seeked"; data: { sec: number } }
   | { event: "timeUpdate"; data: { sec: number } }
   | { event: "ended" }
+  | { event: "underrun"; data: { consecutive: number } }
+  | { event: "deviceChanged"; data: { message: string } }
   | { event: "error"; data: { message: string } };
 
 export async function nativeAudioLoad(

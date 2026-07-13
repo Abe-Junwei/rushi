@@ -134,6 +134,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         requireTransport,
       });
       if (!host || !isReady) return;
+      const gateOpts = host.isNative ? { pauseToPlayGapMs: 0 } : undefined;
       const seg = latestSegmentsRef.current[playArgs.idx];
       if (!seg) return;
       // Hold the play gate across seek+play so Space/toggle cannot nest play().
@@ -165,18 +166,18 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
           if (seekToSec != null) {
             await enqueueMediaOp(host.gateHost, "seek", async () => {
               await atomicMediaSeek(seekToSec);
-            });
+            }, gateOpts);
           }
         } else {
           if (seekToSec != null) {
             await enqueueMediaOp(host.gateHost, "seek", async () => {
               await atomicMediaSeek(seekToSec);
-            });
+            }, gateOpts);
           }
           try {
             await enqueueMediaOp(host.gateHost, "play", async () => {
               await host.play();
-            });
+            }, gateOpts);
           } catch {
             if (playStartInFlightGenerationRef.current === gen) {
               playStartInFlightGenerationRef.current = null;
@@ -193,8 +194,8 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
           }
           if (host.isPlaying()) {
             await enqueueMediaOp(host.gateHost, "pause", () => {
-              host.pause();
-            });
+              void Promise.resolve(host.pause());
+            }, gateOpts);
           }
           return;
         }
@@ -358,9 +359,14 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         armSegmentPlaybackSession(idx);
       }
       cancelSegmentPlaybackBound();
-      await enqueueMediaOp(host.gateHost, "pause", () => {
-        host.pause();
-      });
+      await enqueueMediaOp(
+        host.gateHost,
+        "pause",
+        () => {
+          void Promise.resolve(host.pause());
+        },
+        host.isNative ? { pauseToPlayGapMs: 0 } : undefined,
+      );
       syncDisplayPlayheadAfterSeekRef?.current?.(freezeSec);
       return;
     }
@@ -396,9 +402,14 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
       segmentLoopPlaybackRef.current = false;
       setSegmentLoopPlayback(false);
       cancelSegmentPlaybackBound();
-      await enqueueMediaOp(host.gateHost, "pause", () => {
-        host.pause();
-      });
+      await enqueueMediaOp(
+        host.gateHost,
+        "pause",
+        () => {
+          void Promise.resolve(host.pause());
+        },
+        host.isNative ? { pauseToPlayGapMs: 0 } : undefined,
+      );
       return;
     }
     const range = resolveSelectedPlaybackRange();

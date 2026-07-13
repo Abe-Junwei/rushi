@@ -103,6 +103,15 @@ describe("mediaPlayGate", () => {
     expect(play).toHaveBeenCalledOnce();
   });
 
+  it("native gap=0 skips pause→play delay", async () => {
+    const host = {};
+    noteMediaPaused(host);
+    const play = vi.fn(() => undefined);
+    const playP = runGatedMediaPlay(host, play, { pauseToPlayGapMs: 0 });
+    await playP;
+    expect(play).toHaveBeenCalledOnce();
+  });
+
   it("seek does not wait for the pause→play gap", async () => {
     const host = {};
     noteMediaPaused(host);

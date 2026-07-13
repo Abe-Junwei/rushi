@@ -41,13 +41,11 @@ export async function atomicWaveformSegmentSeek(args: {
   const d = layoutDurationSecRef
     ? resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current })
     : transport?.getDuration() || ws.getDuration() || 0;
-  const clamped = applyPeaksOrderedSeek({
+  await applyPeaksOrderedSeek({
     timeSec,
     durationSec: d,
     syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-    // Visual-first; media seek awaited below so native IPC cannot race play().
-    setTime: () => undefined,
+    setTime: (t) => host.setTime(t),
     commitSeekUi,
   });
-  await Promise.resolve(host.setTime(clamped));
 }

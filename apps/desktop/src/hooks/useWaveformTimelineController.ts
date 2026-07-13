@@ -156,7 +156,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     durationSec: timelineMetrics.mediaDurationSec,
     currentTimeSec: wf.currentTime,
     playbackRate: wf.globalPlaybackRate,
-    getRawMediaPlayheadTimeSec: wf.getRawMediaPlayheadTimeSec,
+    getRawMediaPlayheadTimeSec: wf.getDisplayMediaPlayheadTimeSec,
     getRawMediaIsPlaying: wf.getRawMediaIsPlaying,
   });
 

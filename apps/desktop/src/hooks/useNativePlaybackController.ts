@@ -10,6 +10,7 @@ import type { PeakCache } from "../services/waveform/PeakCache";
 /**
  * Owns native {@link PlaybackTransport} lifecycle independent of WaveSurfer visual mount.
  * Duration comes from engine Ready events (hint from layout/peaks is optional).
+ * Distinguishes audioReady (transport loaded) from visualReady (WaveSurfer peaks).
  */
 export function useNativePlaybackController(args: {
   enabled: boolean;
@@ -23,6 +24,8 @@ export function useNativePlaybackController(args: {
   setIsPlaying: (playing: boolean) => void;
   setCurrentTime: (timeSec: number) => void;
   setLoadError: (message: string | null) => void;
+  /** Optional: mirror audioReady for toolbar disable / UX. */
+  setAudioReady?: (ready: boolean) => void;
   /** Bump after transport assigned or cleared so subscribers re-bind. */
   onTransportEpoch?: () => void;
 }): void {
@@ -38,11 +41,15 @@ export function useNativePlaybackController(args: {
     setIsPlaying,
     setCurrentTime,
     setLoadError,
+    setAudioReady,
     onTransportEpoch,
   } = args;
 
   useEffect(() => {
-    if (!enabled || !mediaDiskPath) return;
+    if (!enabled || !mediaDiskPath) {
+      setAudioReady?.(false);
+      return;
+    }
 
     // Hint only — engine Ready / probe is the duration authority.
     const durationHintSec = resolveLayoutDurationSec({
@@ -51,6 +58,7 @@ export function useNativePlaybackController(args: {
     });
 
     let cancelled = false;
+    setAudioReady?.(false);
     const transport = createNativeAudioPlaybackTransport();
     const unsub = transport.subscribe({
       onPlay: () => {
@@ -77,6 +85,14 @@ export function useNativePlaybackController(args: {
           setCurrentTime(timeSec);
         }
       },
+      onDeviceChanged: (message) => {
+        if (cancelled) return;
+        logDesktopUi("WARN", `[s4] audio device changed: ${message}`);
+      },
+      onUnderrun: (consecutive) => {
+        if (cancelled) return;
+        logDesktopUi("WARN", `[s4] audio underrun consecutive=${consecutive}`);
+      },
       onError: (message) => {
         if (cancelled) return;
         logDesktopUi("ERROR", `native audio: ${message}`);
@@ -90,6 +106,7 @@ export function useNativePlaybackController(args: {
         if (cancelled) return;
         transportRef.current = transport;
         applyGlobalPlaybackRate();
+        setAudioReady?.(true);
         onTransportEpoch?.();
         logDesktopUi("INFO", "[s4] native audio loaded");
       })
@@ -97,6 +114,7 @@ export function useNativePlaybackController(args: {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : String(err);
         logDesktopUi("ERROR", `native audio load failed: ${msg}`);
+        setAudioReady?.(false);
         setLoadError(msg || "原生音频引擎加载失败");
       });
 
@@ -107,6 +125,7 @@ export function useNativePlaybackController(args: {
       if (wasAssigned) {
         transportRef.current = null;
       }
+      setAudioReady?.(false);
       void transport.dispose();
       if (wasAssigned) {
         onTransportEpoch?.();
@@ -121,6 +140,7 @@ export function useNativePlaybackController(args: {
     onTransportEpoch,
     onWsAudioprocessRef,
     peakCacheRef,
+    setAudioReady,
     setCurrentTime,
     setIsPlaying,
     setLoadError,

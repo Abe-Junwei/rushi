@@ -35,9 +35,11 @@ export function useWaveformGlobalPlayback(
     return subscribeWaveformPrefs(() => {
       const next = readStoredWaveformGlobalPlaybackRate();
       setGlobalPlaybackRateState(next);
-      resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
-        requireTransport,
-      })?.setPlaybackRate(next);
+      void Promise.resolve(
+        resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+          requireTransport,
+        })?.setPlaybackRate(next),
+      );
     });
   }, [requireTransport, transportRef, wsRef]);
 
@@ -46,13 +48,15 @@ export function useWaveformGlobalPlayback(
       requireTransport,
     });
     if (!host || !isReady) return;
-    host.setPlaybackRate(globalPlaybackRateRef.current);
+    void Promise.resolve(host.setPlaybackRate(globalPlaybackRateRef.current));
   }, [globalPlaybackRate, isReady, requireTransport, transportRef, wsRef]);
 
   const applyGlobalPlaybackRate = useCallback(() => {
-    resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
-      requireTransport,
-    })?.setPlaybackRate(globalPlaybackRateRef.current);
+    void Promise.resolve(
+      resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      })?.setPlaybackRate(globalPlaybackRateRef.current),
+    );
   }, [requireTransport, transportRef, wsRef]);
 
   const setGlobalPlaybackRate = useCallback(
@@ -60,9 +64,11 @@ export function useWaveformGlobalPlayback(
       const next = clampWaveformPlaybackRate(rate);
       setGlobalPlaybackRateState(next);
       writeStoredWaveformGlobalPlaybackRate(next);
-      resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
-        requireTransport,
-      })?.setPlaybackRate(next);
+      void Promise.resolve(
+        resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+          requireTransport,
+        })?.setPlaybackRate(next),
+      );
     },
     [requireTransport, transportRef, wsRef],
   );
