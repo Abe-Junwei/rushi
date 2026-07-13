@@ -16,6 +16,7 @@ import {
 import { segmentMetaField } from "./segmentMetaField";
 import { primarySegmentIdx } from "./selectionField";
 import { readTranscriptEditorSelectionText } from "./textEditCommands";
+import { createTranscriptTextDragClamp } from "./transcriptTextDragClamp";
 
 export function buildTranscriptAppearanceTheme(args: {
   fontPx: number;
@@ -209,6 +210,8 @@ export function buildTranscriptEditorCoreExtensions(args: {
       spellcheck: "false",
     }),
     EditorView.lineWrapping,
+    // Clamp same-segment text drag to the mousedown doc line (blocks cross-segment spill).
+    ...createTranscriptTextDragClamp(),
     EditorView.domEventHandlers({
       mousedown(event, view) {
         if (args.busyRef.current) return true;

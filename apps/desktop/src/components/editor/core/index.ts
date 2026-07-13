@@ -165,5 +165,13 @@ export {
   isTranscriptEditorCoreTarget,
   isTranscriptEditorCoreFocused,
 } from "./transcriptEditorDom";
+export {
+  clampEditorSelectionToDocLine,
+  selectionCrossesDocLine,
+  createTranscriptTextDragClamp,
+  setTranscriptTextDragLineEffect,
+  transcriptTextDragLineField,
+  filterTransactionForTextDragClamp,
+} from "./transcriptTextDragClamp";
 export { TranscriptEditorCore } from "./TranscriptEditorCore";
 export type { TranscriptEditorCoreProps } from "./TranscriptEditorCore";
