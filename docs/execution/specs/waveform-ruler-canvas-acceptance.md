@@ -2,7 +2,7 @@
 
 > **Research**：[`waveform-ruler-canvas-research.md`](./waveform-ruler-canvas-research.md)  
 > **Plan**：[`waveform-ruler-canvas-plan.md`](./waveform-ruler-canvas-plan.md)  
-> **状态**：待实施（2026-06-20）
+> **状态**：已落地（Canvas 嵌入标尺）；2026-07-13 清理 DOM 遗留 `WaveformTimeRuler` / `TickLayer` / `useWaveformTimeRulerMetrics` / `useWaveformRulerScrollTrack`
 
 ---
 
@@ -25,20 +25,21 @@
 
 ### 必须新增
 
-- [ ] `drawWaveformTimeRuler.test.ts` — viewport x 映射、`paddedVisibleTimeWindow` 集成、label stride
-- [ ] `waveformRulerCanvasColors.test.ts` — palette resolve 非空
-- [ ] `WaveformTimeRulerCanvas.test.tsx` — mount + `flushTierScrollFrameForTests` 触发 paint
-- [ ] `drawWaveformTimeRuler` 禁止 DOM / `document` 查询（结构守卫或 test 约定）
+- [x] `drawWaveformTimeRuler.test.ts` — viewport x 映射、`paddedVisibleTimeWindow` 集成、label stride
+- [x] `waveformRulerCanvasColors.test.ts` — palette resolve 非空（或等价颜色断言）
+- [x] `WaveformTimeRulerCanvas.test.tsx` — mount + `flushTierScrollFrameForTests` 触发 paint
+- [x] `drawWaveformTimeRuler` 禁止 DOM / `document` 查询（结构守卫或 test 约定）
 
 ### 必须更新
 
-- [ ] `WaveformTimeRuler.test.tsx` — 改为 ink/light 或删除 embedded 用例（若 embedded 改 Canvas）
-- [ ] `useWaveformTimeRulerMetrics.test.ts` — 删除或迁移为 draw 单测
+- [x] `WaveformTimeRuler.test.tsx` — embedded DOM 用例已随组件删除
+- [x] `useWaveformTimeRulerMetrics.test.ts` — 已删除（metrics 仅服务旧 DOM 标尺）
 
 ### 必须删除或降级
 
-- [ ] embedded overlay 生产路径不再使用 `translate3d` delta on tick layer
-- [ ] 生产代码不再 import `useWaveformRulerScrollTrack`（测试可保留）
+- [x] embedded overlay 生产路径不再使用 `translate3d` delta on tick layer
+- [x] 删除未引用的 `WaveformTimeRuler.tsx` / `WaveformTimeRulerTickLayer.tsx` / `useWaveformTimeRulerMetrics.ts`
+- [x] 生产与测试均不再引用 `useWaveformRulerScrollTrack`（文件已删）
 
 ### 项目闸门
 

@@ -7,6 +7,9 @@
   "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx,js}"],
   "ignore": [
     "src/services/waveform/PeakCache.bench.ts",
+    "src/assets/brand/markPaths.ts",
+    "src/spike-pages/**",
+    "src/components/editor/core/__spike__/**",
     "tests/e2e/support/**"
   ],
   "ignoreDependencies": ["lint-staged", "prettier"],

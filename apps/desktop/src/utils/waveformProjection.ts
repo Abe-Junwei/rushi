@@ -93,20 +93,6 @@ export function paddedVisibleTimeWindow(
   };
 }
 
-/** Tier scrollLeft that places `timeSec` on the viewport left edge. */
-export function scrollPxAlignTimeToViewportLeft(input: {
-  timeSec: number;
-  timelineWidthPx: number;
-  durationSec: number;
-  viewportWidthPx: number;
-}): number {
-  const vw = Math.max(1, input.viewportWidthPx);
-  const tw = Math.max(input.timelineWidthPx, 0);
-  const maxSl = Math.max(0, tw - vw);
-  const target = timeToTimelinePx(input.timeSec, tw, input.durationSec);
-  return Math.max(0, Math.min(maxSl, target));
-}
-
 /** Tier scrollLeft that centers `timeSec` in the viewport. */
 export function scrollPxCenterTimeInViewport(input: {
   timeSec: number;
@@ -170,7 +156,7 @@ function timelinePxToViewportPx(timelinePx: number, scrollLeftPx: number): numbe
   return timelinePx - Math.max(0, scrollLeftPx);
 }
 
-/** Embedded overlay viewport ruler: viewport coords + imperative delta translate (see WaveformTimeRuler). */
+/** Embedded overlay viewport ruler: viewport coords + imperative delta translate (see WaveformTimeRulerCanvas). */
 export function embeddedRulerPlayheadUsesTimelineCoords(input: {
   appearance?: "ink" | "light" | "embedded";
   coordinateSpace?: "timeline" | "viewport";

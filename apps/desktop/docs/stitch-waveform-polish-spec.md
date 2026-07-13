@@ -217,7 +217,7 @@ Reference tokens in uploaded 01-DESIGN.md. Match layout proportions in uploaded 
 |-------------|----------|
 | 波形色 / playhead | `tokens.ts`, `tailwind.config.js`, `useProjectWaveformMount.ts` |
 | 语段 overlay / handle | `waveform.css`, `segmentChrome.ts` |
-| Minimap / 标尺 | `WaveformMinimapStrip.tsx`, `WaveformTimeRulerTickLayer.tsx`, `waveform.css` |
+| Minimap / 标尺 | `WaveformMinimapStrip.tsx`, `WaveformTimeRulerCanvas.tsx`, `waveform.css` |
 | 底栏控件 | `waveform.css`, `EditorWaveformPane.tsx`, `WaveformZoomBar.tsx` |
 | 设计真源 | 仓库根 `DESIGN.md` → `prepare-stitch-upload.sh` |
 

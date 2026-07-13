@@ -149,14 +149,7 @@ function checkTsFile(fullPath) {
         errors.push(`${rel}: unified scroll stage 禁止旧 waveform/overlay mirror 符号 ${name}`);
       }
     }
-    const viewportChromeTransformAllowlist = new Set([
-      "apps/desktop/src/components/WaveformTimeRuler.tsx",
-      "apps/desktop/src/hooks/useWaveformRulerScrollTrack.ts",
-    ]);
-    if (
-      !viewportChromeTransformAllowlist.has(rel) &&
-      (/translate3d\(\s*\$\{\s*-scrollLeft/.test(source) || /translate3d\(\s*-scrollLeft/.test(source))
-    ) {
+    if (/translate3d\(\s*\$\{\s*-scrollLeft/.test(source) || /translate3d\(\s*-scrollLeft/.test(source)) {
       errors.push(`${rel}: unified scroll stage 禁止 waveform/overlay scrollLeft mirror transform`);
     }
     const tierScrollWriteAllowlist = new Set([

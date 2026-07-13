@@ -199,26 +199,6 @@ export class PeakCache {
     );
   }
 
-  async ensureViewportWindowPeaks(input: {
-    pxPerSec: number;
-    durationSec: number;
-    timelineWidthPx: number;
-    windowLeftPx: number;
-    windowWidthPx: number;
-  }): Promise<Float32Array> {
-    const px = resolveViewportPeaksPxPerSec(
-      input.timelineWidthPx,
-      input.durationSec,
-      input.pxPerSec,
-    );
-    await this.ensureLevelForPxPerSec(px);
-    const peaks = this.getViewportWindowPeaks(input);
-    if (!peaks) {
-      throw new Error("PeakCache 无可用 LOD");
-    }
-    return peaks;
-  }
-
   private buildWaveSurferPeaksBundleSync(
     pxPerSec: number,
     layoutMediaDurationSec?: number,

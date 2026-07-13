@@ -10,8 +10,6 @@ export type SegmentSelectSource =
   /** 列表 range / 波形 lasso 多选：不 reveal/seek；列表 scroll + pin。 */
   | "multiSelect";
 
-export type SegmentDragMode = "resize-start" | "resize-end" | "move" | "create";
-
 export type SegmentSelectAtOptions = {
   shiftKey?: boolean;
   toggle?: boolean;
@@ -41,10 +39,6 @@ export function isWaveformKeyboardBurstStep(
   opts?: SegmentSelectAtOptions,
 ): boolean {
   return source === "waveformKeyboard" && !opts?.shiftKey && !opts?.toggle;
-}
-
-export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean {
-  return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }
 
 /** 列表/文本编辑选中时不抢 textarea 焦点。 */

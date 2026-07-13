@@ -29,7 +29,7 @@ function notionTextCanvasColor(pct: number, alphaFallback: number): string {
   return resolved;
 }
 
-/** Canvas tick/label colors — aligned with embedded WaveformTimeRulerTickLayer token opacities. */
+/** Canvas tick/label colors — aligned with former WaveformTimeRulerTickLayer token opacities. */
 export function readWaveformRulerCanvasPalette(
   palette: WaveformRulerCanvasPalette = defaultWaveformRulerCanvasPalette(),
 ): WaveformRulerCanvasPalette {
