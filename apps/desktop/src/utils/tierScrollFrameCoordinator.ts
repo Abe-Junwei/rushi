@@ -170,14 +170,9 @@ export function schedulePlaybackViewportFrame(timeSec: number): void {
   scheduleTierScrollFrame();
 }
 
-/** Playhead time for the current viewport frame (while subscribers run). */
+/** Playback time for the current viewport frame (while subscribers run). */
 export function readPlaybackTimeDuringViewportFrame(): number | null {
   return playbackTimeDuringFrame;
-}
-
-/** @deprecated Prefer {@link subscribeTierScrollFrame}. */
-export function registerWaveformSegmentBandPaintScheduler(fn: TierScrollFrameSubscriber): () => void {
-  return subscribeTierScrollFrame(fn);
 }
 
 export type WaveformSegmentBandPaintOptions = {

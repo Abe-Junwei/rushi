@@ -23,18 +23,6 @@ export function querySegmentListScrollRoot(): HTMLElement | null {
   return el instanceof HTMLElement ? el : null;
 }
 
-/** True when a mounted row intersects the list scrollport (virtual pin can sit off-screen). */
-export function isSelectedSegmentRowIntersectingListViewport(
-  scrollRoot: HTMLElement,
-  selectedIdx: number,
-): boolean {
-  const row = scrollRoot.querySelector(`[data-seg-row="${selectedIdx}"]`);
-  if (!(row instanceof HTMLElement)) return false;
-  const rowRect = row.getBoundingClientRect();
-  const rootRect = scrollRoot.getBoundingClientRect();
-  return rowRect.bottom > rootRect.top + 1 && rowRect.top < rootRect.bottom - 1;
-}
-
 export function writeSegmentListFilterIndices(
   root: HTMLElement,
   filteredIndices: readonly number[],

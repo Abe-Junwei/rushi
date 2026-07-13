@@ -1,8 +1,5 @@
 import { splitGraphemes } from "./text/grapheme";
 
-/** 与缓存指纹绑定； hygiene 规则变更时递增以失效旧预览。 */
-export const EXPORT_POLISH_HYGIENE_REV = "h1";
-
 const ORAL_FILLER_RE = /([啊呃嗯喔噢呜哇鹅])\1+/gu;
 
 /** 连续 3+ 相同汉字压成 1 字（喔喔喔、鹅鹅鹅）。 */

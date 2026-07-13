@@ -65,14 +65,7 @@ export function formatWelcomeFileMatchLabel(matchedField: string): string {
   return MATCHED_FIELD_LABELS[matchedField] ?? "匹配";
 }
 
-export type WelcomeSearchEditorHighlight = {
-  segmentIdx: number;
-  charStart: number;
-  charEnd: number;
-};
-
 let pendingHubFileId: string | null = null;
-let pendingEditorHighlight: WelcomeSearchEditorHighlight | null = null;
 
 export function setWelcomeSearchHubFileTarget(fileId: string): void {
   pendingHubFileId = fileId;
@@ -82,21 +75,4 @@ export function consumeWelcomeSearchHubFileTarget(): string | null {
   const id = pendingHubFileId;
   pendingHubFileId = null;
   return id;
-}
-
-export function setWelcomeSearchEditorHighlight(highlight: WelcomeSearchEditorHighlight): void {
-  pendingEditorHighlight = highlight;
-}
-
-export function peekWelcomeSearchEditorHighlight(
-  segmentIdx: number,
-): WelcomeSearchEditorHighlight | null {
-  if (!pendingEditorHighlight || pendingEditorHighlight.segmentIdx !== segmentIdx) {
-    return null;
-  }
-  return pendingEditorHighlight;
-}
-
-export function clearWelcomeSearchEditorHighlight(): void {
-  pendingEditorHighlight = null;
 }

@@ -8,7 +8,7 @@ type Props = {
   charEnd: number;
   /** 浮窗单行预览：与左侧元信息同一行，超长截断。 */
   variant?: "block" | "inline";
-  /** 语段列表等高亮镜像：与 `useSegmentRowTextStyle` 对齐，避免 text-sm 缩小正文。 */
+  /** 语段列表等高亮镜像：与 `segmentTextTypographyLayout` 对齐，避免 text-sm 缩小正文。 */
   textStyle?: SegmentRowTextStyle;
   className?: string;
 };

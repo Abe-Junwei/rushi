@@ -19,20 +19,6 @@ function deliverKeyupReveal(idx: number): void {
   keyupRevealHandler?.(idx);
 }
 
-/** @deprecated Virtual-list layout skip removed in P9b1; kept as no-op for burst call sites. */
-export function markListKeyboardImperativeScrollKey(_scrollKey: string): void {
-  void _scrollKey;
-}
-
-export function clearListKeyboardImperativeScrollKey(): void {}
-
-/** @deprecated Virtual-list pin removed in P9b1; kept as no-op for burst call sites. */
-export function pinListKeyboardVirtualDisplayIndex(_index: number): void {
-  void _index;
-}
-
-export function clearListKeyboardVirtualDisplayPin(): void {}
-
 export function registerListKeyboardKeyupRevealHandler(handler: ((idx: number) => void) | null): void {
   keyupRevealHandler = handler;
 }

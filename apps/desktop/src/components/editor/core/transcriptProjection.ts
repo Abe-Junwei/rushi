@@ -1,6 +1,5 @@
 import type { EditorView } from "@codemirror/view";
 import { EditorView as EditorViewNs } from "@codemirror/view";
-import { useSyncExternalStore } from "react";
 import { segmentMetaField } from "./segmentMetaField";
 import {
   primarySegmentIdx,
@@ -138,20 +137,4 @@ export function createTranscriptProjectionPublisher() {
 /** Seed projection after EditorView construction. */
 export function syncTranscriptProjectionFromView(view: EditorView): void {
   publishFromView(view, { bumpMeta: true, bumpSelection: true });
-}
-
-export function useTranscriptProjection(): TranscriptProjectionSnapshot {
-  return useSyncExternalStore(
-    subscribeTranscriptProjection,
-    getTranscriptProjectionSnapshot,
-    getTranscriptProjectionSnapshot,
-  );
-}
-
-export function useTranscriptProjectionPrimaryIdx(): number {
-  return useSyncExternalStore(
-    subscribeTranscriptProjection,
-    () => getTranscriptProjectionSnapshot().primaryIdx,
-    () => getTranscriptProjectionSnapshot().primaryIdx,
-  );
 }

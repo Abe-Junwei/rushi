@@ -49,8 +49,6 @@ export {
   subscribeTranscriptSelectionProjection,
   resetTranscriptProjectionForTests,
   seedTranscriptProjectionForTests,
-  useTranscriptProjection,
-  useTranscriptProjectionPrimaryIdx,
   type TranscriptProjectionSnapshot,
 } from "./transcriptProjection";
 export {

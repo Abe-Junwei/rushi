@@ -33,26 +33,3 @@ export function logReleaseFrontendProbe(): void {
   );
   logRuntimeParity("startup", `bundle=${scriptSrc}`);
 }
-
-/** After editor mounts, log whether static segment-row layout rules are active. */
-export function logSegmentRowLayoutProbe(): void {
-  if (!isTauriRuntime()) return;
-
-  const row = document.querySelector<HTMLElement>("[data-seg-row].seg-row-shell");
-  if (!row) return;
-
-  const style = getComputedStyle(row);
-  logRuntimeParity(
-    "editor",
-    `seg_row display=${style.display} align=${style.alignItems} minHeight=${style.minHeight}`,
-  );
-
-  const textBody = row.querySelector<HTMLElement>(".segment-row-text-body");
-  if (textBody) {
-    const bodyStyle = getComputedStyle(textBody);
-    logRuntimeParity(
-      "editor",
-      `seg_text_body flex=${bodyStyle.flex} minWidth=${bodyStyle.minWidth}`,
-    );
-  }
-}

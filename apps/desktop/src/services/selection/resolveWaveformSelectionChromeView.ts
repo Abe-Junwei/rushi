@@ -1,7 +1,3 @@
-import {
-  isContiguousIndexSelection,
-  selectionEnvelope,
-} from "../../utils/segmentSelection";
 import { getTranscriptProjectionSnapshot } from "../../components/editor/core/transcriptProjection";
 import { waveformSelectionViewFromProjection } from "../../components/editor/core/projectionWaveformBridge";
 
@@ -60,22 +56,4 @@ export function resolveWaveformSelectionChromeView(
   );
   if (fromProj) return fromProj;
   return fromReact(input);
-}
-
-/** @deprecated Prefer resolveWaveformSelectionChromeView; kept for envelope helpers in tests. */
-export function waveformSelectionViewFromIndices(
-  primaryIdx: number,
-  selectedSet: ReadonlySet<number>,
-): WaveformSelectionChromeView | null {
-  if (primaryIdx < 0) return null;
-  const env = selectionEnvelope(selectedSet);
-  if (!env) return null;
-  return {
-    selectedIdx: primaryIdx,
-    selectedIndices: selectedSet,
-    selectionLo: env.lo,
-    selectionHi: env.hi,
-    selectionCount: env.count,
-    isContiguousSelection: isContiguousIndexSelection(selectedSet),
-  };
 }

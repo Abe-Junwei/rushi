@@ -12,16 +12,6 @@ export const SELECTION_PROFILE_HAND_CHROME_MAX_MS = 50;
 /** 193 段级 profile 基准语段数（与手测素材对齐）。 */
 export const SELECTION_PROFILE_BASELINE_SEGMENT_COUNT = 193;
 
-/** 计入 syncPathTotal 的 span（不含 listCommit / listScroll / firstPaint 等 transition 成本）。 */
-export const SELECTION_PROFILE_SYNC_PATH_SPANS: readonly SelectionLatencyProfileSpan[] = [
-  "flushSelectedIdx",
-  "listChrome",
-  "resolvePlan",
-  "viewport",
-  "seek",
-  "focus",
-] as const;
-
 export type ParsedSelectionProfileLine = {
   seq: number;
   label: string;

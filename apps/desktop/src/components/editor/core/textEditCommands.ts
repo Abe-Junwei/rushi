@@ -1,6 +1,5 @@
 import type { EditorView } from "@codemirror/view";
 import { EditorSelection } from "@codemirror/state";
-import type { SegmentDto } from "../../../tauri/projectTypes";
 import {
   decodeDocLineToSegmentText,
   encodeSegmentTextForDocLine,
@@ -97,17 +96,4 @@ export function readTranscriptEditorSelectionText(view: EditorView): string {
   if (from === to) return "";
   const raw = view.state.doc.sliceString(from, to);
   return decodeDocLineToSegmentText(raw).trim();
-}
-
-/** Snapshot segments after a text-only CM6 edit (same length as baseline). */
-export function projectTextsOntoBaseline(
-  baseline: readonly SegmentDto[],
-  view: EditorView,
-): SegmentDto[] {
-  const n = Math.min(baseline.length, view.state.doc.lines);
-  return baseline.map((s, i) => {
-    if (i >= n) return s;
-    const line = view.state.doc.line(i + 1);
-    return { ...s, text: decodeDocLineToSegmentText(line.text) };
-  });
 }

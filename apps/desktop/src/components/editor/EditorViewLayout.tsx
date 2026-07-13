@@ -12,7 +12,6 @@ import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { useSegmentListFilter } from "../../hooks/useSegmentListFilter";
 import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
-import { EditorSelectionProvider } from "../../hooks/EditorSelectionContext";
 
 type EditHistory = ReturnType<typeof useEditorEditHistory>;
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -85,7 +84,6 @@ export function EditorViewLayout({
   );
 
   return (
-    <EditorSelectionProvider controller={c}>
     <WaveformSelectionChromeViewProvider
       input={chromeViewInput}
       filterActive={segmentFilter.isActive}
@@ -156,6 +154,5 @@ export function EditorViewLayout({
       {editorDialogs}
     </div>
     </WaveformSelectionChromeViewProvider>
-    </EditorSelectionProvider>
   );
 }

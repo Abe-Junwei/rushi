@@ -1,5 +1,4 @@
 import type { CorrectionRuleRow } from "../tauri/correctionApi";
-import { extractSingleTextDiffParts } from "../utils/textDiff";
 import { applyStableRulesToPolishLines } from "./exportPolishFinalize";
 import { joinExportPolishLines } from "./exportDocxPolish.helpers";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -238,22 +237,6 @@ export function buildExportPolishLineChanges(
     });
   }
   return rows;
-}
-
-function excerptLine(text: string, max = 72): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max)}…`;
-}
-
-export function summarizeLineChange(row: ExportPolishLineChange): string {
-  const parts = extractSingleTextDiffParts(row.before, row.after);
-  if (!parts) return "（有改动）";
-  const tag = row.punctuationOnly ? "标点" : "错字/用词";
-  const removed = parts.removed ? `删「${excerptLine(parts.removed, 24)}」` : "";
-  const inserted = parts.inserted ? `增「${excerptLine(parts.inserted, 24)}」` : "";
-  const trackNote = row.hasTrackChange ? "" : "（不进 Word 修订轨）";
-  return [tag, removed, inserted, trackNote].filter(Boolean).join(" · ");
 }
 
 export function joinLinesForLlmBody(lines: string[]): string {

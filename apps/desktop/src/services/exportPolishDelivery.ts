@@ -5,7 +5,6 @@ import {
   type ExportPolishResult,
   resolveExportPolishBlockReason,
 } from "./exportDocxPolish";
-import type { ExportPolishLineChange, ReconcileLlmLinesStats } from "./exportPolishPipeline";
 
 function flattenPolishText(parts: string[]): string {
   return parts.join("").replace(/[\n\r]/g, "");
@@ -42,21 +41,4 @@ export function assessExportPolishReadiness(
     return { canExport: false, blockReason: block };
   }
   return { canExport: true, blockReason: null };
-}
-
-export type ExportPolishPreviewNotes = {
-  paddedLineIndices: number[];
-  noTrackChangeLineIndices: number[];
-};
-
-export function buildExportPolishPreviewNotes(
-  lineChanges: ExportPolishLineChange[],
-  reconcileStats?: ReconcileLlmLinesStats,
-): ExportPolishPreviewNotes {
-  const padded = [...(reconcileStats?.paddedLineIndices ?? [])].sort((a, b) => a - b);
-  const noTrackChangeLineIndices = lineChanges
-    .filter((row) => !row.hasTrackChange)
-    .map((row) => row.lineIndex)
-    .sort((a, b) => a - b);
-  return { paddedLineIndices: padded, noTrackChangeLineIndices };
 }

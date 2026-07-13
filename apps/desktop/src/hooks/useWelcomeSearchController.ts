@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import {
-  clearWelcomeSearchEditorHighlight,
   readWelcomeSearchScope,
-  setWelcomeSearchEditorHighlight,
   setWelcomeSearchHubFileTarget,
   writeWelcomeSearchScope,
   type WelcomeSearchScope,
@@ -110,16 +108,9 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
       closeSearch();
       resetQuery();
       rememberQuery(debouncedQuery);
-      clearWelcomeSearchEditorHighlight();
-      setWelcomeSearchEditorHighlight({
-        segmentIdx: hit.segment_idx,
-        charStart: hit.char_start,
-        charEnd: hit.char_end,
-      });
       await controller.openWorkspaceFile(hit.project_id, hit.file_id);
       controller.setSelectedIdx(hit.segment_idx);
       scheduleScrollSegmentListIndexToView(hit.segment_idx);
-      window.setTimeout(() => clearWelcomeSearchEditorHighlight(), 6000);
     },
     [closeSearch, controller, debouncedQuery, rememberQuery, resetQuery],
   );

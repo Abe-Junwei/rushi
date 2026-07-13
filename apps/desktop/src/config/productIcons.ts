@@ -87,5 +87,3 @@ export const PRODUCT_ICON = {
   /** 语段行备注（非导入文本 FileText） */
   segmentAnnotation: MessageSquare,
 } as const satisfies Record<string, LucideIcon>;
-
-export type ProductIconKey = keyof typeof PRODUCT_ICON;

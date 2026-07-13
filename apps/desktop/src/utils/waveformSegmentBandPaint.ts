@@ -1,6 +1,5 @@
 export {
   flushTierScrollFrameForTests,
-  registerWaveformSegmentBandPaintScheduler,
   requestWaveformSegmentBandPaint,
   resetTierScrollFrameCoordinatorForTests,
   scheduleTierScrollFrame,

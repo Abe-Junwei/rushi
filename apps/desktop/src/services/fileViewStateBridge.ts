@@ -90,10 +90,6 @@ export function scheduleClearFileViewRestoreWhenSettled(
   }, settleMs);
 }
 
-export function peekFileViewRestore(): FileViewRestorePending | null {
-  return pendingRestore;
-}
-
 export function peekFileViewRestoreForFile(fileId: string | null): FileViewRestorePending | null {
   if (!fileId || !pendingRestore || pendingRestore.fileId !== fileId) return null;
   return pendingRestore;

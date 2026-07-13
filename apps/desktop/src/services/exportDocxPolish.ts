@@ -176,12 +176,3 @@ export async function fetchExportPolishResult(
   assertExportPolishParagraphsAlignLines(result);
   return result;
 }
-
-/** 润色结果是否仍与当前语段正文一致。 */
-export function exportPolishPreviewIsCurrent(
-  segments: SegmentDto[],
-  preview: ExportPolishResult | null,
-): boolean {
-  if (!preview) return false;
-  return preview.segmentsFingerprint === fingerprintExportPolishSegments(segments);
-}

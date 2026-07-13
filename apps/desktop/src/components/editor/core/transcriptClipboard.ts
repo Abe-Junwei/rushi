@@ -15,12 +15,6 @@ export const transcriptClipboardFilters: Extension[] = [
   EditorView.clipboardOutputFilter.of((text) => decodeDocLineToSegmentText(text)),
 ];
 
-export function transcriptSelectionHasText(view: EditorView): boolean {
-  const { from, to } = view.state.selection.main;
-  return from !== to;
-}
-
-/** Cut/copy that would delete inter-segment newlines is rejected by lineCountGuard. */
 export function transcriptSelectionIsSingleLine(view: EditorView): boolean {
   const { from, to } = view.state.selection.main;
   if (from === to) return true;

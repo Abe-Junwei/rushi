@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { transcriptFontFamilyCssStack } from "../editor/editorTranscriptAppearance";
 import type { CspLayoutRules } from "../../utils/cspElementLayout";
 
 export type SegmentRowTextStyle = {
@@ -10,25 +8,6 @@ export type SegmentRowTextStyle = {
   fontStyle: "normal" | "italic";
   fontFamily: string;
 };
-
-export function useSegmentRowTextStyle(
-  transcriptFontPx: number,
-  transcriptFontFamily: string,
-  transcriptFontWeight: 500 | 700,
-  transcriptFontItalic: boolean,
-): SegmentRowTextStyle {
-  return useMemo(
-    () => ({
-      fontSize: transcriptFontPx,
-      lineHeight: 1.72,
-      letterSpacing: "0.005em",
-      fontWeight: transcriptFontWeight,
-      fontStyle: transcriptFontItalic ? "italic" : "normal",
-      fontFamily: transcriptFontFamilyCssStack(transcriptFontFamily),
-    }),
-    [transcriptFontFamily, transcriptFontItalic, transcriptFontPx, transcriptFontWeight],
-  );
-}
 
 /** Map transcript typography to CSS vars consumed by workspace.css (Release-safe fallbacks). */
 export function segmentTextAreaLayoutVars(

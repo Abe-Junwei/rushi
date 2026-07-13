@@ -3,9 +3,6 @@ export const SEGMENT_LIST_DRAG_AUTO_SCROLL_EDGE_PX = 48;
 export const SEGMENT_LIST_DRAG_AUTO_SCROLL_MIN_SPEED_PX = 4;
 export const SEGMENT_LIST_DRAG_AUTO_SCROLL_MAX_SPEED_PX = 24;
 
-/** @deprecated Use min/max speed constants; kept for tests migrating off fixed step. */
-export const SEGMENT_LIST_DRAG_AUTO_SCROLL_STEP_PX = SEGMENT_LIST_DRAG_AUTO_SCROLL_MAX_SPEED_PX;
-
 /** Returns scrollTop delta per frame; 0 in middle band. Pointer may be outside the viewport rect. */
 export function computeSegmentListDragAutoScrollDelta(input: {
   clientY: number;

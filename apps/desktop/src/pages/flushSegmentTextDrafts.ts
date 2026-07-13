@@ -1,7 +1,6 @@
 import { flushSync } from "react-dom";
 import type { SegmentDto } from "../tauri/projectApi";
 import { getTranscriptEditorView } from "../components/editor/core/transcriptEditorViewHandle";
-import { primarySegmentIdx } from "../components/editor/core/selectionField";
 import { readTranscriptEditorSelectionText } from "../components/editor/core/textEditCommands";
 import { isTranscriptEditorCoreFocused } from "../components/editor/core/transcriptEditorDom";
 
@@ -10,32 +9,12 @@ export { resolveLiveSegmentText } from "../utils/segmentTextNormalize";
 /** @deprecated CM6 has no per-row textarea; kept for call-site string checks that should migrate. */
 export const TRANSCRIPT_TEXTAREA_SELECTOR = 'textarea[aria-label="语段正文"]';
 
-/** Focused transcript segment idx when CM6 core is focused; else null. */
-export function readFocusedSegmentTextareaIdx(segmentsLength: number): number | null {
-  if (segmentsLength <= 0) return null;
-  if (!isTranscriptEditorCoreFocused()) return null;
-  const view = getTranscriptEditorView();
-  if (!view) return null;
-  const idx = primarySegmentIdx(view.state);
-  if (idx < 0 || idx >= segmentsLength) return null;
-  return idx;
-}
-
 /** Selection text inside CM6 when core is focused. */
 export function readFocusedTranscriptTextareaSelection(): string {
   if (!isTranscriptEditorCoreFocused()) return "";
   const view = getTranscriptEditorView();
   if (!view) return "";
   return readTranscriptEditorSelectionText(view);
-}
-
-/** @deprecated No-op after P9b2b (no textarea DOM). */
-export function syncDomTextareasFromSegments(
-  _segments: SegmentDto[],
-  _options?: { skipFocused?: boolean },
-): void {
-  void _segments;
-  void _options;
 }
 
 type SegmentListSetter =

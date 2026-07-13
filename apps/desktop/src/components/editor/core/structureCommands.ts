@@ -9,7 +9,7 @@ import {
 import { resolveSelectedIdxAfterIndexRemoval } from "../../../utils/segmentSelection";
 import { encodeSegmentTextForDocLine } from "./segmentNewlineCodec";
 import { serializeTranscriptEditorState } from "./serializeTranscriptEditorState";
-import { segmentMetaField, setSegmentMetaEffect, type SegmentMeta } from "./segmentMetaField";
+import { setSegmentMetaEffect, type SegmentMeta } from "./segmentMetaField";
 import {
   setTranscriptMultiSelectionEffect,
 } from "./selectionField";
@@ -244,9 +244,4 @@ export function insertSegmentAtCommand(
   if (insertAt < 0 || insertAt > live.length) return false;
   const out = [...live.slice(0, insertAt), newSeg, ...live.slice(insertAt)];
   return applyTranscriptSegmentsStructure(view, reindexSegments(out), insertAt);
-}
-
-/** Read meta length for tests / guards. */
-export function transcriptMetaLength(state: EditorState): number {
-  return state.field(segmentMetaField).length;
 }

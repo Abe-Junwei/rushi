@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   flushTierScrollFrameForTests,
-  registerWaveformSegmentBandPaintScheduler,
   requestWaveformSegmentBandPaint,
   resetTierScrollFrameCoordinatorForTests,
+  subscribeTierScrollFrame,
 } from "./waveformSegmentBandPaint";
 import { resolveWaveformTierWheelScrollDelta } from "../hooks/useWaveformTierWheelForward";
 
@@ -11,7 +11,7 @@ describe("waveformSegmentBandPaint", () => {
   it("invokes registered paint scheduler on tier scroll mirror", () => {
     vi.stubGlobal("requestAnimationFrame", () => 99);
     const paint = vi.fn();
-    const unregister = registerWaveformSegmentBandPaintScheduler(paint);
+    const unregister = subscribeTierScrollFrame(paint);
     requestWaveformSegmentBandPaint();
     expect(paint).not.toHaveBeenCalled();
     flushTierScrollFrameForTests();

@@ -9,8 +9,6 @@ import {
 } from "../services/ui/selectionLatencyProfile";
 import {
   cancelListKeyboardKeyupReveal,
-  markListKeyboardImperativeScrollKey,
-  pinListKeyboardVirtualDisplayIndex,
   queueListKeyboardKeyupReveal,
   registerListKeyboardKeyupRevealHandler,
 } from "../services/selection/listKeyboardBurstCoordinator";
@@ -227,8 +225,6 @@ export function useListKeyboardBurstSelection(args: UseListKeyboardBurstSelectio
     (idx: number): string | null => {
       const meta = resolveScrollMeta(idx);
       if (!meta) return null;
-      markListKeyboardImperativeScrollKey(meta.scrollKey);
-      pinListKeyboardVirtualDisplayIndex(meta.selectedDisplayIndex);
       return meta.scrollKey;
     },
     [resolveScrollMeta],
