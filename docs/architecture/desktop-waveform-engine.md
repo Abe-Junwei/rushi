@@ -68,10 +68,12 @@
 ## 整段可见（fit-all）布局意图
 
 - `useWaveformZoom` 维护 `layoutIntent: 'fit-all' | 'fit-selection' | 'default' | 'manual'`（非持久）。
-- 「整段可见」按钮 / 长音频打开默认 → `fit-all`；滑块 / ± / 手动 zoom → `manual`。
+- 「整段可见」按钮 → `fit-all`；长音频（≥30min）打开默认 → **目标可见秒数**（约 45s 入视口，见 `LONG_MEDIA_TARGET_VISIBLE_SEC`），非整段 fit；滑块 / ± / 手动 zoom → `manual`。
 - **贴满不变量**：`isFitAllTimelineFilledInViewport`（`timelineWidthPx ≈ tier 视口宽`），不再用「timeline ≤ viewport」误判高亮。
 - `layoutIntent === 'fit-all'` 时，`resolveFitAllPxPerSecAdjustment` **与 resize 无关**地在 fill gap 时 refit；viewport controller 的 `applyFitAllRefitPxPerSec` 保留 intent 不写 `manual`。
 - **缩放栏 UI：** `computeWaveformZoomBarUiState` 驱动 `Focus`（适配语段）/ `Maximize2`（整段可见）/ 重置 互斥高亮；手动 ± 或滑块 → `manual`（三者均不亮）。fit-selection 模式下波形点选其他语段保持 intent 并 `forceFullFit` re-fit。
+- **Layout vs draw cap（WS-2b）**：`clampPxPerSecForLayout` / `MAX_LAYOUT_TIMELINE_WIDTH_PX` 约束编辑时间轴与 fit-selection；`clampPxPerSecForWaveSurferRender` / `MAX_WAVESURFER_PEAK_COLUMNS` 仅约束 **整轨 inject / decode** 路径，**不得**把长音频 layout zoom 压回 `40960/duration`。
+- **视口主波形细节**：[`WaveformViewportPeaksCanvas`](../../apps/desktop/src/components/WaveformViewportPeaksCanvas.tsx) 经 `PeakCache.getViewportWindowPeaks` / [`extractViewportWindowPeaks`](../../apps/desktop/src/services/waveform/extractViewportWindowPeaks.ts) 按**滚动窗口**从 LOD 取峰（约 1 CSS px ≈ 1 列），禁止再用整轨 40960 列拉伸当细节源。
 
 ## 坐标真源：单一水平投影
 
@@ -240,7 +242,7 @@
 [`waveformTimelineMetrics.ts`](../../apps/desktop/src/utils/waveformTimelineMetrics.ts) 的 `resolveWaveformTimelineMetrics()` 导出：
 
 - `mediaDurationSec` — WS 与 peaks manifest 合并
-- `timelineWidthPx` — `pxPerSec × duration`（无 320 floor）
+- `timelineWidthPx` — `pxPerSec × duration`，受 **layout soft-cap**（`MAX_LAYOUT_TIMELINE_WIDTH_PX`）约束；不等于 peaks 列硬顶
 - 有效布局 px/s 见 [`effectiveTimelinePxPerSec`](../../apps/desktop/src/utils/waveformProjection.ts)（`timelineWidthPx / duration`），不在 metrics 对象重复导出
 
 `useWaveformTimelineController` 为唯一装配点。

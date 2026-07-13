@@ -84,7 +84,8 @@ export function EditorView({
     return () => clearToastBottomInset();
   }, [c.currentFileId]);
 
-  const statusCenterLabel = tx.editorHint || tx.waveformFooterStatusLabel || "";
+  // Waveform load/generate status outranks transient editor hints and shortcut rotation.
+  const statusCenterLabel = tx.waveformFooterStatusLabel || tx.editorHint || "";
   const shortcutHint = useEditorFooterShortcutHintRotation(
     Boolean(c.currentFileId) && !statusCenterLabel,
   );

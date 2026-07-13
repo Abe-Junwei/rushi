@@ -4,15 +4,18 @@ import { clampCreateRangeClearOfSegments } from "./segmentTimeRange";
 import {
   clampSegmentTimeBounds,
   computeDragSegmentBounds,
+  expandSegmentHitGeometry,
   hitSegmentEdgeFromLocalPx,
   hitSegmentEdgeFromTimelinePointer,
   isPlaceholderSegment,
+  resolveExpandedSegmentHitBoundsSec,
   resolveSegmentIndexAtWaveformPointer,
   segmentOverlayGeometry,
   selectPackableSegmentIndices,
   selectPackableSegments,
   WAVEFORM_SEGMENT_INSET_BOTTOM_PX,
   WAVEFORM_SEGMENT_INSET_TOP_PX,
+  WAVEFORM_SEGMENT_MIN_HIT_WIDTH_PX,
 } from "./waveformSegmentBounds";
 
 describe("waveformSegmentBounds", () => {
@@ -61,6 +64,93 @@ describe("waveformSegmentBounds", () => {
     expect(hitSegmentEdgeFromLocalPx(4, 200)).toBe("resize-start");
     expect(hitSegmentEdgeFromLocalPx(196, 200)).toBe("resize-end");
     expect(hitSegmentEdgeFromLocalPx(100, 200)).toBe("move");
+  });
+
+  it("keeps a move zone on extremely narrow painted segments", () => {
+    expect(hitSegmentEdgeFromLocalPx(0, 6)).toBe("resize-start");
+    expect(hitSegmentEdgeFromLocalPx(3, 6)).toBe("move");
+    expect(hitSegmentEdgeFromLocalPx(5, 6)).toBe("resize-end");
+  });
+
+  it("expandSegmentHitGeometry pads painted width to the min hit size", () => {
+    const hit = expandSegmentHitGeometry({ leftPx: 100, widthPx: 4, timelineWidthPx: 1000 });
+    expect(hit.widthPx).toBe(WAVEFORM_SEGMENT_MIN_HIT_WIDTH_PX);
+    expect(hit.leftPx).toBeCloseTo(90, 5);
+  });
+
+  it("expandSegmentHitGeometry half-shrinks into the gap between neighbors", () => {
+    // Painted 4px at 100; neighbors at 90 and 120 → gap mids clamp expansion.
+    const hit = expandSegmentHitGeometry({
+      leftPx: 100,
+      widthPx: 4,
+      timelineWidthPx: 1000,
+      prevPaintedRightPx: 90,
+      nextPaintedLeftPx: 120,
+    });
+    expect(hit.leftPx).toBeCloseTo(95, 5); // mid(90,100)
+    expect(hit.leftPx + hit.widthPx).toBeCloseTo(112, 5); // mid(104,120)
+    expect(hit.widthPx).toBeLessThan(WAVEFORM_SEGMENT_MIN_HIT_WIDTH_PX);
+  });
+
+  it("resolveExpandedSegmentHitBoundsSec does not cross the neighbor midpoint", () => {
+    const hit = resolveExpandedSegmentHitBoundsSec({
+      startSec: 1.0,
+      endSec: 1.02,
+      durationSec: 10,
+      timelineWidthPx: 10_000, // 1000 px/s → painted 20px < 24
+      prevPaintedEndSec: 0.98,
+      nextPaintedStartSec: 1.05,
+    });
+    expect(hit.startSec).toBeGreaterThanOrEqual(0.99); // mid(0.98,1.0)
+    expect(hit.endSec).toBeLessThanOrEqual(1.035); // mid(1.02,1.05)
+  });
+
+  it("resolveSegmentIndexAtWaveformPointer expands narrow hits but stops at neighbor mid", () => {
+    const segments = [
+      { idx: 0, start_sec: 1.0, end_sec: 1.01, text: "a" },
+      { idx: 1, start_sec: 1.03, end_sec: 1.04, text: "b" },
+    ];
+    // Midpoint between 1.01 and 1.03 is 1.02 — belongs to neither expansion past mid.
+    const miss = resolveSegmentIndexAtWaveformPointer({
+      segments: segments as never,
+      timeSec: 1.02,
+      pointerClientY: 40,
+      overlayClientTop: 0,
+      layoutHeightPx: 96,
+      laneByIndex: [0, 0],
+      laneCount: 1,
+      selectedIdx: -1,
+      durationSec: 10,
+      timelineWidthPx: 10_000,
+    });
+    expect(miss).toBe(-1);
+
+    const hitA = resolveSegmentIndexAtWaveformPointer({
+      segments: segments as never,
+      timeSec: 1.005,
+      pointerClientY: 40,
+      overlayClientTop: 0,
+      layoutHeightPx: 96,
+      laneByIndex: [0, 0],
+      laneCount: 1,
+      selectedIdx: -1,
+      durationSec: 10,
+      timelineWidthPx: 10_000,
+    });
+    expect(hitA).toBe(0);
+  });
+
+  it("hitSegmentEdgeFromTimelinePointer uses expanded hit geometry for narrow segments", () => {
+    // 0.05s on a sparse timeline paints ~2px; expanded hit keeps a center move zone.
+    expect(
+      hitSegmentEdgeFromTimelinePointer({
+        pointerTimeSec: 10.025,
+        startSec: 10,
+        endSec: 10.05,
+        timelineWidthPx: 40_000,
+        durationSec: 10_000,
+      }),
+    ).toBe("move");
   });
 
   it("hitSegmentEdgeFromTimelinePointer uses segment time bounds", () => {

@@ -1,6 +1,6 @@
 import {
   clampPxPerSecForFitSelection,
-  clampPxPerSecForWaveSurferRender,
+  clampPxPerSecForLayout,
   quantizePxPerSecForPeaksLoad,
 } from "./pxPerSecClamp";
 import {
@@ -8,6 +8,8 @@ import {
   FIT_ALL_FILL_GAP_MIN_PX,
   FIT_ALL_FILL_GAP_RATIO,
   FIT_SELECTION_VIEWPORT_RATIO,
+  LONG_MEDIA_EDITING_DURATION_SEC,
+  LONG_MEDIA_TARGET_VISIBLE_SEC,
   PX_PER_SEC_FIT_MIN,
   PX_PER_SEC_MAX,
   PX_PER_SEC_FIT_SELECTION_MAX,
@@ -55,16 +57,18 @@ export function resolveWaveformZoomSliderRange(
   if (maxPxPerSec <= minPxPerSec) {
     maxPxPerSec = Math.min(PX_PER_SEC_FIT_SELECTION_MAX, minPxPerSec * 1.5);
   }
-  // Align slider ceiling with WaveSurfer/peaks render cap so ± steps always change timeline width.
+  // Align slider ceiling with layout soft-cap（非 peaks 列硬顶）so ± steps always change timeline width.
   if (durationSec >= 0.5) {
-    const renderCap = clampPxPerSecForWaveSurferRender(maxPxPerSec, durationSec);
-    maxPxPerSec = Math.max(minPxPerSec, Math.min(maxPxPerSec, renderCap));
+    const layoutCap = clampPxPerSecForLayout(maxPxPerSec, durationSec);
+    maxPxPerSec = Math.max(minPxPerSec, Math.min(maxPxPerSec, layoutCap));
   }
   return { minPxPerSec, maxPxPerSec };
 }
 
 /**
- * 当前文件编辑默认 px/s：min/max 几何平均，±5 步各达 fit-all 与手动上限。
+ * 当前文件编辑默认 px/s。
+ * - 短/中等时长：min/max 几何平均（±5 步各达 fit-all 与手动上限）。
+ * - 长音频（≥ {@link LONG_MEDIA_EDITING_DURATION_SEC}）：视口约 {@link LONG_MEDIA_TARGET_VISIBLE_SEC}s。
  * 无视口/时长时回退 TIMELINE_PX_PER_SEC。
  */
 export function resolveDefaultEditingPxPerSec(
@@ -75,6 +79,10 @@ export function resolveDefaultEditingPxPerSec(
     return TIMELINE_PX_PER_SEC;
   }
   const range = resolveWaveformZoomSliderRange(viewportWidthPx, durationSec);
+  if (durationSec >= LONG_MEDIA_EDITING_DURATION_SEC) {
+    const target = viewportWidthPx / LONG_MEDIA_TARGET_VISIBLE_SEC;
+    return clampPxPerSecInSliderRange(target, range);
+  }
   const geometric = Math.sqrt(range.minPxPerSec * range.maxPxPerSec);
   return clampPxPerSecInSliderRange(geometric, range);
 }
@@ -177,12 +185,12 @@ export function resolveQuantizedFitSelectionPxPerSec(
   );
 }
 
-/** viewport fit 最终 layout px/s：peaks 量化 + WaveSurfer 渲染上限（与 timeline clamp 一致）。 */
+/** viewport fit 最终 layout px/s：peaks 量化 + layout soft-cap（与 timeline clamp 一致）。 */
 export function resolveViewportFitLayoutPxPerSec(
   pxPerSec: number,
   durationSec: number,
 ): number {
-  return clampPxPerSecForWaveSurferRender(
+  return clampPxPerSecForLayout(
     quantizePxPerSecForPeaksLoad(pxPerSec),
     durationSec,
   );

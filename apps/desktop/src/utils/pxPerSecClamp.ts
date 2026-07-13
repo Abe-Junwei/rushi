@@ -5,11 +5,16 @@ import {
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   PX_PER_SEC_PEAKS_QUANTUM,
+  resolveMaxLayoutPxPerSec,
   resolveMaxPeaksTimelinePxPerSec,
   resolveMaxRenderablePxPerSec,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSecConstants";
 
+/**
+ * Draw / peaks LOD budget（WS-era 全轨列数 + decode canvas）。
+ * 勿用于 layout 时间轴宽度或「适配语段」——长音频会被压到不可操作。
+ */
 export function clampPxPerSecForWaveSurferRender(pxPerSec: number, durationSec: number): number {
   const capped = Math.min(
     pxPerSec,
@@ -19,14 +24,28 @@ export function clampPxPerSecForWaveSurferRender(pxPerSec: number, durationSec: 
   return clampPxPerSecForFitSelection(capped);
 }
 
-/** Timeline / tier / WS 共用可渲染宽度（peaks 列数与 canvas 宽度双上限）。 */
+/**
+ * Layout / tier / overlay / fit-selection zoom（WS-2b soft timeline width）。
+ * 可高于 peaks 列上限，使超长录音上语段仍可操作。
+ */
+export function clampPxPerSecForLayout(pxPerSec: number, durationSec: number): number {
+  const capped = Math.min(pxPerSec, resolveMaxLayoutPxPerSec(durationSec));
+  return clampPxPerSecForFitSelection(capped);
+}
+
+/** Timeline / tier 布局宽度（layout soft-cap）。 */
+export function computeLayoutTimelineWidthPx(durationSec: number, pxPerSec: number): number {
+  const sec = Math.max(durationSec, 0.5);
+  const layoutPxPerSec = clampPxPerSecForLayout(pxPerSec, sec);
+  return computeTimelineWidthPx(sec, layoutPxPerSec);
+}
+
+/** @deprecated Prefer {@link computeLayoutTimelineWidthPx}; kept for draw-path callers. */
 export function computeRenderableTimelineWidthPx(
   durationSec: number,
   pxPerSec: number,
 ): number {
-  const sec = Math.max(durationSec, 0.5);
-  const renderPxPerSec = clampPxPerSecForWaveSurferRender(pxPerSec, sec);
-  return computeTimelineWidthPx(sec, renderPxPerSec);
+  return computeLayoutTimelineWidthPx(durationSec, pxPerSec);
 }
 
 export function clampPxPerSec(x: number): number {

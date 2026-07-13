@@ -1,13 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const loadMock = vi.fn((path: string) =>
-  Promise.resolve({
+const loadMock = vi.fn((path: string) => {
+  const length = path.includes("l3") ? 3_000 : path.includes("l1") ? 1_000 : 600;
+  return Promise.resolve({
     sample_rate: 44100,
-    length: path.includes("l3") ? 3_000 : path.includes("l1") ? 1_000 : 600,
+    length,
     channels: 1,
     path,
-  }),
-);
+    channel: () => ({
+      min_sample: (i: number) => -((i % 50) + 1) * 100,
+      max_sample: (i: number) => ((i % 50) + 1) * 100,
+    }),
+  });
+});
 const resampleMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn(
   (_data?: unknown): Array<Float32Array | number[]> => [[0, 0.5, -0.1, 0.2]],
@@ -199,6 +204,25 @@ describe("PeakCache", () => {
     const b = cache.getWaveSurferPeaks(40, 600.025);
     expect(a).toBe(b);
     expect(resampleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("getViewportWindowPeaks returns one column per CSS pixel (no 40960 stretch)", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 2, pixelsPerSecond: 200, path: "asset://l2.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    const windowWidthPx = 1_200;
+    const peaks = cache.getViewportWindowPeaks({
+      pxPerSec: 85,
+      durationSec: 10_800,
+      timelineWidthPx: Math.ceil(10_800 * 85),
+      windowLeftPx: 50_000,
+      windowWidthPx,
+    });
+    expect(peaks).not.toBeNull();
+    expect(peaks?.length).toBe(windowWidthPx * 2);
   });
 
   it("getMinimapPeaks uses coarsest loaded LOD when L0 is absent", async () => {

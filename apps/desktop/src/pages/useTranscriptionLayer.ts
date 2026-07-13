@@ -194,6 +194,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     phase: waveformPeaksPhase,
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     waveformReady: wf.isReady,
+    peaksError: peaks.error,
+    peakCache: peaks.peakCache,
+    mediaDurationSec: timeline.timelineMetrics.mediaDurationSec,
   });
 
   useWaveformTierWheelForward({

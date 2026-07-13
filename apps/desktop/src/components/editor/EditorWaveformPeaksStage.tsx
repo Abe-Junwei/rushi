@@ -95,11 +95,8 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
           {tx.loadError}
         </p>
       ) : null}
-      {tx.peaksError && !tx.loadError ? (
-        <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-body text-zen-cinnabar">
-          波形生成失败：{tx.peaksError}
-        </p>
-      ) : null}
+      {/* peaksError is shown viewport-centered in EditorWaveformPane — avoid a
+          full-timeline-width banner whose centered text sits off-screen. */}
       <div className="relative h-full bg-transparent">
         <div
           ref={tx.waveformShellRef}

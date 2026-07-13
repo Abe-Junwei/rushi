@@ -7,7 +7,7 @@ import {
 import { resolveViewportFitScrollPx } from "./useTranscriptionViewportFit";
 
 describe("viewport fit layout px alignment", () => {
-  it("uses render-capped px for pending scroll after layout clamp", () => {
+  it("uses layout-capped px for pending scroll after layout clamp", () => {
     const dur = 4 * 3600;
     const w = 800;
     const raw = computeFitSelectionPxPerSec(w, 10, 10.5);
@@ -15,7 +15,7 @@ describe("viewport fit layout px alignment", () => {
     expect(layoutPx).toBeLessThan(raw);
 
     // Mid-file segment so the centered scroll is positive (unclamped) and its value
-    // depends on the render-capped tw — verifying layoutPx (not raw) feeds the scroll.
+    // depends on the layout-capped tw — verifying layoutPx (not raw) feeds the scroll.
     const segStartSec = dur / 2;
     const segEndSec = segStartSec + 8;
     const pending = {

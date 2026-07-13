@@ -12,6 +12,7 @@ export type WaveformSegmentContextMenuHitInput = {
   laneCount: number;
   selectedIdx: number;
   durationSec?: number;
+  timelineWidthPx?: number;
 };
 
 /** Hit-test a waveform pointer for segment context menu (no DOM queries). */
@@ -29,5 +30,6 @@ export function resolveWaveformSegmentContextMenuIndex(
     laneCount: input.laneCount,
     selectedIdx: input.selectedIdx,
     durationSec: input.durationSec ?? 0,
+    timelineWidthPx: input.timelineWidthPx ?? 0,
   });
 }

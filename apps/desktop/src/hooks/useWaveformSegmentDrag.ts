@@ -1,5 +1,5 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import { hitSegmentEdgeFromTimelinePointer, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
+import { hitSegmentEdgeFromTimelinePointer, resolvePackableSegmentPaintedNeighbors, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { isSegmentSnapEnabled, readSegmentOverlayModifiers } from "../utils/segmentOverlayModifiers";
 import type { CreateRangePreview, OverlayDragState, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
@@ -141,12 +141,19 @@ export function useWaveformSegmentDrag(
       const seg = a.segments[idx];
       if (!seg) return;
       ev.stopPropagation();
+      const neighbors = resolvePackableSegmentPaintedNeighbors(
+        a.segments,
+        idx,
+        a.durationSec,
+      );
       const mode = hitSegmentEdgeFromTimelinePointer({
         pointerTimeSec: a.clientXToTimeSec(ev.clientX),
         startSec: seg.start_sec,
         endSec: seg.end_sec,
         timelineWidthPx: a.timelineWidthPx,
         durationSec: a.durationSec,
+        prevPaintedEndSec: neighbors.prevPaintedEndSec,
+        nextPaintedStartSec: neighbors.nextPaintedStartSec,
       });
       if (mode !== "move") {
         ev.preventDefault();
@@ -200,6 +207,7 @@ export function useWaveformSegmentDrag(
         laneCount: a.laneCount,
         selectedIdx: effectivePrimary >= 0 ? effectivePrimary : a.selectedIdx,
         durationSec: a.durationSec,
+        timelineWidthPx: a.timelineWidthPx,
       });
       if (hitIdx >= 0) {
         onSegmentPointerDown(hitIdx, ev);

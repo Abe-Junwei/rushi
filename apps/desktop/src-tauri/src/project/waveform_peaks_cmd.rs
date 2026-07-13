@@ -3,8 +3,9 @@ use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
 use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
-    peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
-    wait_for_peaks_ready, PeaksGenerationReport, PeaksStaleCheckOptions, PEAK_LEVELS,
+    peaks_generation_in_progress, remove_peaks_data_for_file, remove_peaks_for_file,
+    try_acquire_peaks_lock, wait_for_peaks_ready, PeaksGenerationReport, PeaksStaleCheckOptions,
+    PEAK_LEVELS,
 };
 use super::waveform_peaks_ffmpeg::{
     remux_audio_to_pcm_wav, symphonia_error_eligible_for_ffmpeg_remux,
@@ -173,12 +174,20 @@ fn invalidate_peaks_if_stale_with_options(
     stale_opts: PeaksStaleCheckOptions,
 ) -> Result<bool, String> {
     if force {
-        remove_peaks_for_file(peaks_root, file_id);
+        // Never unlink a live `.generating.lock` — that races with the holder and
+        // makes status.generating=false while peaks keep building in the background.
+        if peaks_generation_in_progress(peaks_root, file_id) {
+            return Ok(false);
+        }
+        remove_peaks_data_for_file(peaks_root, file_id);
         return Ok(true);
     }
     let stale = peaks_cache_is_stale(peaks_root, file_id, audio_path, stale_opts)?;
     if stale {
-        remove_peaks_for_file(peaks_root, file_id);
+        if peaks_generation_in_progress(peaks_root, file_id) {
+            return Ok(false);
+        }
+        remove_peaks_data_for_file(peaks_root, file_id);
         return Ok(true);
     }
     Ok(false)
@@ -210,6 +219,18 @@ fn ensure_waveform_peaks_sync(
     force: bool,
     media_duration_sec: Option<f64>,
 ) -> Result<WaveformPeaksStatus, String> {
+    ensure_waveform_peaks_sync_with_depth(st, project_id, file_id, force, media_duration_sec, 0)
+}
+
+fn ensure_waveform_peaks_sync_with_depth(
+    st: &DbState,
+    project_id: &str,
+    file_id: &str,
+    force: bool,
+    media_duration_sec: Option<f64>,
+    depth: u8,
+) -> Result<WaveformPeaksStatus, String> {
+    const MAX_ENSURE_RETRY_DEPTH: u8 = 2;
     let conn = open_db(st)?;
     let audio_path: Option<String> = conn
         .query_row(
@@ -275,14 +296,41 @@ fn ensure_waveform_peaks_sync(
             media_duration_sec,
         ))
     } else {
-        wait_for_peaks_ready(&peaks_root, file_id, media_duration_sec)?;
+        match wait_for_peaks_ready(&peaks_root, file_id, media_duration_sec) {
+            Ok(()) => {}
+            Err(err) if err.contains("已结束但文件未就绪") => {
+                if depth >= MAX_ENSURE_RETRY_DEPTH {
+                    return Err(err);
+                }
+                // Abandoned / failed lock holder — take the lock and regenerate.
+                return ensure_waveform_peaks_sync_with_depth(
+                    st,
+                    project_id,
+                    file_id,
+                    true,
+                    media_duration_sec,
+                    depth + 1,
+                );
+            }
+            Err(err) => return Err(err),
+        }
         if peaks_cache_is_stale(
             &peaks_root,
             file_id,
             &audio,
             stale_check_options(&audio, media_duration_sec),
         )? {
-            return ensure_waveform_peaks_sync(st, project_id, file_id, true, media_duration_sec);
+            if depth >= MAX_ENSURE_RETRY_DEPTH {
+                return Err("peaks 缓存过期且重试次数耗尽".to_string());
+            }
+            return ensure_waveform_peaks_sync_with_depth(
+                st,
+                project_id,
+                file_id,
+                true,
+                media_duration_sec,
+                depth + 1,
+            );
         }
         let report = load_existing_meta(&peaks_root, file_id);
         Ok(status_from_disk(&peaks_root, file_id, report.as_ref()))

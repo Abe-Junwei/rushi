@@ -18,6 +18,16 @@ describe("resolveWaveformFooterStatusLabel", () => {
   it("returns null for idle waveform ready so footer can rotate shortcut hints", () => {
     expect(resolveWaveformFooterStatusLabel({ ...base, phase: "peaks" })).toBeNull();
   });
+
+  it("surfaces peaksError in the footer", () => {
+    expect(
+      resolveWaveformFooterStatusLabel({
+        ...base,
+        phase: "unavailable",
+        peaksError: "超时",
+      }),
+    ).toBe("波形生成失败：超时");
+  });
 });
 
 describe("resolveWaveformHeaderStatusLabel", () => {
@@ -52,13 +62,44 @@ describe("resolveWaveformCenterStatusLabel", () => {
     ).toBe("正在加载波形…");
   });
 
-  it("hides center overlay for unavailable — use peaksError banner instead", () => {
+  it("shows generating in viewport while WaveSurfer is ready but peaks still decode", () => {
+    expect(
+      resolveWaveformCenterStatusLabel({
+        ...base,
+        phase: "decode",
+        waveformReady: true,
+      }),
+    ).toBe("正在生成波形…");
+  });
+
+  it("shows loading before WaveSurfer is ready during decode", () => {
+    expect(
+      resolveWaveformCenterStatusLabel({
+        ...base,
+        phase: "decode",
+        waveformReady: false,
+      }),
+    ).toBe("正在加载波形…");
+  });
+
+  it("shows peaksError in the viewport center (not off-screen timeline banner)", () => {
+    expect(
+      resolveWaveformCenterStatusLabel({
+        ...base,
+        phase: "unavailable",
+        waveformReady: true,
+        peaksError: "波形 peaks 生成未启动或已失败",
+      }),
+    ).toBe("波形生成失败：波形 peaks 生成未启动或已失败");
+  });
+
+  it("shows unavailable fallback when phase is unavailable without detail", () => {
     expect(
       resolveWaveformCenterStatusLabel({
         ...base,
         phase: "unavailable",
         waveformReady: false,
       }),
-    ).toBeNull();
+    ).toBe("波形生成失败");
   });
 });

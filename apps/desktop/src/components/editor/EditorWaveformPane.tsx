@@ -44,49 +44,65 @@ export const EditorWaveformPane = memo(function EditorWaveformPane({
     phase: tx.waveformPeaksPhase,
     mountDeferTimedOut: tx.mountDeferTimedOut,
     waveformReady: tx.isReady,
+    peaksError: tx.peaksError,
+    peakCache: tx.peakCache,
+    mediaDurationSec: tx.mediaDurationSec,
   });
+  const centerStatusIsError = Boolean(tx.peaksError);
 
   return (
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-hidden bg-notion-sidebar">
-      <CspLayout
-        ref={tx.tierScrollRef}
-        layout={{ "--waveform-stage-height": `${waveformStageHeightPx}px` }}
-        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar waveform-tier-scroll-fallback [overflow-anchor:none]"
-      >
+      {/*
+        Status overlay sits on the non-scrolling shell so long timelines keep the
+        tip centered in the visible viewport (not the full scroll content width).
+      */}
+      <div className="relative w-full shrink-0">
         {centerStatusLabel ? (
           <div
             className="waveform-center-status pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
             aria-live="polite"
           >
-            <p className="rounded-md border border-notion-border bg-notion-sidebar-active/95 px-3 py-2 text-body text-notion-text-muted shadow-none">
+            <p
+              className={
+                centerStatusIsError
+                  ? "max-w-[min(36rem,90%)] rounded-md border border-zen-cinnabar/30 bg-zen-cinnabar/10 px-3 py-2 text-center text-body text-zen-cinnabar shadow-none"
+                  : "rounded-md border border-notion-border bg-notion-sidebar-active/95 px-3 py-2 text-body text-notion-text-muted shadow-none"
+              }
+            >
               {centerStatusLabel}
             </p>
           </div>
         ) : null}
-        <div
-          ref={tx.waveformPeaksStageShellRef}
-          className={`relative z-[1] inline-block min-h-full align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
+        <CspLayout
+          ref={tx.tierScrollRef}
+          layout={{ "--waveform-stage-height": `${waveformStageHeightPx}px` }}
+          className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar waveform-tier-scroll-fallback [overflow-anchor:none]"
         >
-          <EditorWaveformPeaksStage
-            controller={c}
-            tx={tx}
-            viewportWidthPx={viewportWidthPx}
-            peaksPaneHeightPx={peaksPaneHeightPx}
-            peaksPaintedHeightPx={Math.max(1, tx.waveformPaintedHeightPx)}
-            segmentLayoutHeightPx={segmentLayoutHeightPx}
-            waveformVerticalTransform={waveformVerticalTransform}
-            waveSurferPreviewLayerClass={waveSurferPreviewLayerClass}
-            waveformHeightPreviewActive={waveformHeightPreviewActive}
-            stripDisabled={stripDisabled}
-            tierScrollProps={tierScrollProps}
-          />
-          <ResizeBottomHit
-            busy={c.busy}
-            ariaLabel="拖动下边缘调节波形高度"
-            onPointerDown={tx.beginWaveformHeightDrag}
-          />
-        </div>
-      </CspLayout>
+          <div
+            ref={tx.waveformPeaksStageShellRef}
+            className={`relative z-[1] inline-block min-h-full align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
+          >
+            <EditorWaveformPeaksStage
+              controller={c}
+              tx={tx}
+              viewportWidthPx={viewportWidthPx}
+              peaksPaneHeightPx={peaksPaneHeightPx}
+              peaksPaintedHeightPx={Math.max(1, tx.waveformPaintedHeightPx)}
+              segmentLayoutHeightPx={segmentLayoutHeightPx}
+              waveformVerticalTransform={waveformVerticalTransform}
+              waveSurferPreviewLayerClass={waveSurferPreviewLayerClass}
+              waveformHeightPreviewActive={waveformHeightPreviewActive}
+              stripDisabled={stripDisabled}
+              tierScrollProps={tierScrollProps}
+            />
+            <ResizeBottomHit
+              busy={c.busy}
+              ariaLabel="拖动下边缘调节波形高度"
+              onPointerDown={tx.beginWaveformHeightDrag}
+            />
+          </div>
+        </CspLayout>
+      </div>
 
       {tx.minimapEnabled ? (
         <WaveformMinimapStrip

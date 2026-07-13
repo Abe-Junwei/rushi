@@ -18,7 +18,9 @@ export function resolveWaveformPeaksPhase(input: {
   mountDeferred?: boolean;
 }): WaveformPeaksPhase {
   if (!input.mediaUrl) return "idle";
-  if (input.peaksApplied) return "peaks";
+  // WS-2b: peaksApplied can mean stub/media-only transport peaks, while the
+  // visible canvas still needs PeakCache. Only treat as ready when cache exists.
+  if (input.peaksApplied && input.peakCache != null) return "peaks";
   if (input.peaksUnavailable) return "unavailable";
   if (input.peaksHotSwitchPending) return "peaks_pending";
   if (input.mountDeferred && !input.waveformReady) {
@@ -30,18 +32,12 @@ export function resolveWaveformPeaksPhase(input: {
   if (!input.backgroundPeaksEnabled) {
     return "decode";
   }
-  if (input.waveformReady && !input.peaksApplied && !input.peaksHotSwitchPending) {
-    const peaksStillLoading =
-      input.peaksLoading || (input.peakCache != null && !input.peaksApplied);
-    if (!peaksStillLoading) {
-      return "peaks";
-    }
-  }
   if (input.peakCache && !input.peaksApplied) {
     return input.waveformReady ? "decode" : "generating";
   }
   if (input.peaksLoading && !input.peakCache) {
     return input.waveformReady ? "decode" : "generating";
   }
+  // Ready + no PeakCache yet (incl. long-media stub peaksApplied): keep loading tip.
   return input.waveformReady ? "decode" : "generating";
 }

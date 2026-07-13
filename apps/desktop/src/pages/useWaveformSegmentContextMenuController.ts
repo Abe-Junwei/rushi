@@ -36,6 +36,7 @@ export function useWaveformSegmentContextMenuController(args: {
         laneCount: args.laneCount,
         selectedIdx: c.selectedIdx,
         durationSec: args.timeline.timelineMetrics.mediaDurationSec,
+        timelineWidthPx: args.timeline.timelineWidthPx,
       });
       if (segmentIdx < 0) return;
       applyContextMenuSelectionBeforeOpen(

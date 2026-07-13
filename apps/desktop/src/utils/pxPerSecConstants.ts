@@ -23,12 +23,25 @@ export const PX_PER_SEC_PEAKS_QUANTUM = 8;
 
 /**
  * WaveSurfer 单帧 peaks 列数上限（≈+25% vs 原 32768）。
- * 长音频可渲染 max px/s = 此值 / duration；再大则 resample / canvas 成本明显上升。
+ * **Draw / peaks LOD** 可渲染 max px/s ≈ 此值 / duration（WS-2b 视口采样仍可受此约束）。
+ * Layout zoom 另见 {@link MAX_LAYOUT_TIMELINE_WIDTH_PX}，二者勿混用。
  */
 export const MAX_WAVESURFER_PEAK_COLUMNS = 40_960;
 
 /** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限同比例 ≈+25%）。 */
 const MAX_WAVESURFER_CANVAS_WIDTH_PX = 327_680;
+
+/**
+ * Layout 时间轴总宽软上限（WS-2b：可见波形为视口窗口，不必把 layout 绑死在 peaks 列数）。
+ * 约 3h × 56 px/s ≈ 600k；1M 允许更高编辑 zoom 且滚动仍可虚拟化。
+ */
+export const MAX_LAYOUT_TIMELINE_WIDTH_PX = 1_048_576;
+
+/** 超过此时长：开文件默认用「目标可见秒数」，而非 fit-all↔max 几何平均。 */
+export const LONG_MEDIA_EDITING_DURATION_SEC = 30 * 60;
+
+/** 长音频默认：视口内约展示这么多秒（Audacity Zoom Normal 同类）。 */
+export const LONG_MEDIA_TARGET_VISIBLE_SEC = 45;
 
 /** ± 缩放：从默认 px/s 到 min/max 各需按键次数（对数对称步进）。 */
 export const WAVEFORM_ZOOM_STEPS_EACH_WAY = 5;
@@ -68,14 +81,20 @@ export function capWaveformPeakColumns(timelineWidthPx: number): number {
   return Math.min(w, MAX_WAVESURFER_PEAK_COLUMNS);
 }
 
-/** 超长媒体在 decode 路径下可渲染的最大 px/s（避免 duration×px/s 超大 canvas）。 */
+/** decode 回退路径下可渲染的最大 px/s（避免 duration×px/s 超大 canvas）。 */
 export function resolveMaxRenderablePxPerSec(durationSec: number): number {
   const sec = Math.max(durationSec, 0.5);
   return MAX_WAVESURFER_CANVAS_WIDTH_PX / sec;
 }
 
-/** peaks 路径下单帧列数上限对应的 px/s（与 `capWaveformPeakColumns` 一致）。 */
+/** peaks **draw** 路径下单帧列数上限对应的 px/s（与 `capWaveformPeakColumns` 一致）。 */
 export function resolveMaxPeaksTimelinePxPerSec(durationSec: number): number {
   const sec = Math.max(durationSec, 0.5);
   return MAX_WAVESURFER_PEAK_COLUMNS / sec;
+}
+
+/** Layout 时间轴软上限对应的最大 px/s（编辑 zoom；可高于 peaks 列上限）。 */
+export function resolveMaxLayoutPxPerSec(durationSec: number): number {
+  const sec = Math.max(durationSec, 0.5);
+  return MAX_LAYOUT_TIMELINE_WIDTH_PX / sec;
 }

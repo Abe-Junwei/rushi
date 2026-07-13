@@ -108,14 +108,15 @@ export function useWaveformZoomSync(args: {
     }
   }, [onPeaksApplied, peakCache, syncPeaksHotSwitchPending]);
 
-  // WS-2b: zoom sync stays disabled (no ws.zoom / ws.load), but phase UI still
-  // needs peaksApplied=true once mount marked stub/media-only peaks on appliedZoom.
+  // WS-2b: zoom sync stays disabled (no ws.zoom / ws.load). Mark stub/media-only
+  // peaksApplied only when PeakCache is present — otherwise phase UI treats
+  // transport-ready as "波形就绪" and hides long-audio loading tips.
   useEffect(() => {
-    if (!disabled || !isReady) return;
+    if (!disabled || !isReady || !peakCache) return;
     if (isPeaksLoadedIntoWs(appliedZoom)) {
       onPeaksApplied(true, readLoadedPeaksPx(appliedZoom));
     }
-  }, [appliedZoom, disabled, isReady, onPeaksApplied, peakCacheGeneration]);
+  }, [appliedZoom, disabled, isReady, onPeaksApplied, peakCache, peakCacheGeneration]);
 
   useEffect(() => {
     prevDrawPxPerSecRef.current = drawPxPerSec;

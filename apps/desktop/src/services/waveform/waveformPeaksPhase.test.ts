@@ -30,7 +30,7 @@ describe("resolveWaveformPeaksPhase", () => {
     ).toBe("unavailable");
   });
 
-  it("prefers peaks over unavailable when WaveSurfer still has peaks bound", () => {
+  it("shows unavailable when generation failed and PeakCache is missing", () => {
     expect(
       resolveWaveformPeaksPhase({
         mediaUrl: "asset://a.mp3",
@@ -41,10 +41,10 @@ describe("resolveWaveformPeaksPhase", () => {
         peaksHotSwitchPending: false,
         waveformReady: true,
       }),
-    ).toBe("peaks");
+    ).toBe("unavailable");
   });
 
-  it("returns peaks when peaks are applied to WaveSurfer", () => {
+  it("returns peaks when PeakCache exists and peaks are applied", () => {
     expect(
       resolveWaveformPeaksPhase({
         mediaUrl: "asset://a.mp3",
@@ -56,6 +56,22 @@ describe("resolveWaveformPeaksPhase", () => {
         waveformReady: true,
       }),
     ).toBe("peaks");
+  });
+
+  it("keeps decode for WS-2b stub peaksApplied without PeakCache (long audio blank)", () => {
+    expect(
+      resolveWaveformPeaksPhase({
+        mediaUrl: "asset://a.mp3",
+        peaksLoading: true,
+        peakCache: null,
+        peaksUnavailable: false,
+        peaksApplied: true,
+        peaksHotSwitchPending: false,
+        waveformReady: true,
+        backgroundPeaksEnabled: true,
+        mountDeferred: false,
+      }),
+    ).toBe("decode");
   });
 
   it("returns peaks_pending when hot switch is deferred", () => {
@@ -103,7 +119,7 @@ describe("resolveWaveformPeaksPhase", () => {
     ).toBe("generating");
   });
 
-  it("returns peaks when decode is ready and background peaks will not load", () => {
+  it("keeps decode when ready but background peaks have not produced a cache yet", () => {
     expect(
       resolveWaveformPeaksPhase({
         mediaUrl: "asset://a.mp3",
@@ -116,7 +132,7 @@ describe("resolveWaveformPeaksPhase", () => {
         backgroundPeaksEnabled: true,
         mountDeferred: false,
       }),
-    ).toBe("peaks");
+    ).toBe("decode");
   });
 
   it("returns decode when mount started while peaks still load", () => {

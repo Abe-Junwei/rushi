@@ -8,7 +8,7 @@ import { useWaveformEditorRoutePrefs } from "./useWaveformEditorRoutePrefs";
 import { useWaveformDisplay } from "./useWaveformDisplay";
 import { useWaveformPeaks } from "./useWaveformPeaks";
 import { useWaveformZoom } from "./useWaveformZoom";
-import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
+import { clampPxPerSecForLayout } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
@@ -225,11 +225,11 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     if (timelineMetrics.mediaDurationSec <= 0) return;
     refitFitAllIfNeededRef.current();
     const dur = timelineMetrics.mediaDurationSec;
-    const renderCap = clampPxPerSecForWaveSurferRender(zoom.pxPerSec, dur);
-    const renderTol = Math.max(0.001, Math.min(renderCap * 0.05, 8));
-    if (zoom.pxPerSec > renderCap + renderTol) {
+    const layoutCap = clampPxPerSecForLayout(zoom.pxPerSec, dur);
+    const layoutTol = Math.max(0.001, Math.min(layoutCap * 0.05, 8));
+    if (zoom.pxPerSec > layoutCap + layoutTol) {
       // Preserve fit-selection / fit-all / default intent — not a manual slider change.
-      zoom.applyFitAllRefitPxPerSec(renderCap);
+      zoom.applyFitAllRefitPxPerSec(layoutCap);
     }
   }, [
     timelineMetrics.mediaDurationSec,

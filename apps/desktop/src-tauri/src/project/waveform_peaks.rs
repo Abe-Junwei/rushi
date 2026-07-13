@@ -253,12 +253,22 @@ pub fn peaks_cache_is_stale(
     Ok(false)
 }
 
-pub fn remove_peaks_for_file(peaks_root: &Path, file_id: &str) {
+pub fn remove_peaks_data_for_file(peaks_root: &Path, file_id: &str) {
     for (level, _) in PEAK_LEVELS {
         let path = peak_file_path(peaks_root, file_id, level);
         let _ = fs::remove_file(path);
     }
     let _ = fs::remove_file(peak_meta_path(peaks_root, file_id));
+}
+
+/// Remove peaks artifacts for a file.
+///
+/// Deletes `.dat` / `.meta.json` and the lock file. Prefer
+/// [`remove_peaks_data_for_file`] when a live generator may hold the lock —
+/// unlinking an in-flight `.generating.lock` makes `generating` flip false while
+/// the worker keeps running (false UI failure; peaks appear only after re-enter).
+pub fn remove_peaks_for_file(peaks_root: &Path, file_id: &str) {
+    remove_peaks_data_for_file(peaks_root, file_id);
     let _ = fs::remove_file(peak_lock_path(peaks_root, file_id));
 }
 
@@ -287,6 +297,8 @@ pub fn peaks_generation_in_progress(peaks_root: &Path, file_id: &str) -> bool {
 
 /// Wait for another task to finish generating peaks (lock holder).
 /// Timeout scales with media duration (capped) so long files are not treated as stuck.
+/// If the lock disappears without producing files, fail fast so the caller can re-spawn
+/// instead of waiting the full long-media timeout on an abandoned lock.
 pub fn wait_for_peaks_ready(
     peaks_root: &Path,
     file_id: &str,
@@ -297,6 +309,13 @@ pub fn wait_for_peaks_ready(
     loop {
         if all_peak_levels_exist(peaks_root, file_id) {
             return Ok(());
+        }
+        if !peaks_generation_in_progress(peaks_root, file_id) {
+            // Lock holder finished (or never started) without a complete cache.
+            if all_peak_levels_exist(peaks_root, file_id) {
+                return Ok(());
+            }
+            return Err("peaks 生成已结束但文件未就绪".to_string());
         }
         if attempts >= max_attempts {
             return Err("等待 peaks 生成超时".to_string());
@@ -459,6 +478,26 @@ mod tests {
         .expect("stale check");
         assert!(stale, "peaks shorter than media reference must regenerate");
 
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn remove_peaks_data_preserves_generating_lock() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-lock-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let lock = try_acquire_peaks_lock(&temp, "file-lock").unwrap().expect("lock");
+        assert!(peaks_generation_in_progress(&temp, "file-lock"));
+
+        let l0 = peak_file_path(&temp, "file-lock", 0);
+        fs::write(&l0, b"x").unwrap();
+        remove_peaks_data_for_file(&temp, "file-lock");
+
+        assert!(!l0.is_file(), "dat should be removed");
+        assert!(
+            peaks_generation_in_progress(&temp, "file-lock"),
+            "live generating.lock must survive data wipe"
+        );
+        drop(lock);
         let _ = fs::remove_dir_all(temp);
     }
 }

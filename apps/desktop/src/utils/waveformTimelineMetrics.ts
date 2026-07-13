@@ -1,4 +1,4 @@
-import { clampPxPerSecForWaveSurferRender, computeTimelineWidthPx } from "./pxPerSec";
+import { clampPxPerSecForLayout, computeTimelineWidthPx } from "./pxPerSec";
 
 export type ResolveWaveformTimelineMetricsInput = {
   /** WaveSurfer / media element duration once known. */
@@ -9,7 +9,7 @@ export type ResolveWaveformTimelineMetricsInput = {
 };
 
 export type WaveformTimelineMetrics = {
-  /** Layout / segments / scroll / ruler duration truth. */
+  /** Layout / segments / scroll / minimap duration truth. */
   mediaDurationSec: number;
   timelineWidthPx: number;
 };
@@ -54,11 +54,11 @@ export function resolveWaveformTimelineMetrics(
     wsDurationSec: input.wsDurationSec,
     peaksStatusDurationSec: input.peaksStatusDurationSec,
   });
-  const renderPxPerSec =
+  const layoutPxPerSec =
     mediaDurationSec > 0
-      ? clampPxPerSecForWaveSurferRender(input.pxPerSec, mediaDurationSec)
+      ? clampPxPerSecForLayout(input.pxPerSec, mediaDurationSec)
       : input.pxPerSec;
-  const timelineWidthPx = computeTimelineWidthPx(mediaDurationSec, renderPxPerSec);
+  const timelineWidthPx = computeTimelineWidthPx(mediaDurationSec, layoutPxPerSec);
 
   return {
     mediaDurationSec,

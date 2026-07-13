@@ -14,6 +14,10 @@ import {
   estimateWaveSurferPeaksBundleBytes,
   estimateWaveformLikeBytes,
 } from "./peakCacheByteBudget";
+import {
+  extractViewportWindowPeaks,
+  resolveViewportPeaksPxPerSec,
+} from "./extractViewportWindowPeaks";
 import { PEAK_LOD_LEVELS, pickPeakLodLevel } from "./peakLevels";
 
 type LoadedPeakLevel = {
@@ -161,6 +165,58 @@ export class PeakCache {
       duration: layoutDur,
     };
     return this.storeResample(key, bundle);
+  }
+
+  /**
+   * WS-2b viewport canvas: peaks for one scroll window at ~1 CSS px / column.
+   * Bypasses full-timeline `capWaveformPeakColumns` so long-media zoom stays sharp.
+   */
+  getViewportWindowPeaks(input: {
+    pxPerSec: number;
+    durationSec: number;
+    timelineWidthPx: number;
+    windowLeftPx: number;
+    windowWidthPx: number;
+    /** Optional scratch buffer (`length >= windowWidth*2`) to avoid per-paint alloc. */
+    into?: Float32Array;
+  }): Float32Array | null {
+    const px = resolveViewportPeaksPxPerSec(
+      input.timelineWidthPx,
+      input.durationSec,
+      input.pxPerSec,
+    );
+    const base = this.pickBaseLevel(px);
+    if (!base) return null;
+    return extractViewportWindowPeaks(
+      {
+        data: base.data,
+        durationSec: input.durationSec > 0 ? input.durationSec : this.durationSec,
+        timelineWidthPx: input.timelineWidthPx,
+        windowLeftPx: input.windowLeftPx,
+        windowWidthPx: input.windowWidthPx,
+      },
+      input.into,
+    );
+  }
+
+  async ensureViewportWindowPeaks(input: {
+    pxPerSec: number;
+    durationSec: number;
+    timelineWidthPx: number;
+    windowLeftPx: number;
+    windowWidthPx: number;
+  }): Promise<Float32Array> {
+    const px = resolveViewportPeaksPxPerSec(
+      input.timelineWidthPx,
+      input.durationSec,
+      input.pxPerSec,
+    );
+    await this.ensureLevelForPxPerSec(px);
+    const peaks = this.getViewportWindowPeaks(input);
+    if (!peaks) {
+      throw new Error("PeakCache 无可用 LOD");
+    }
+    return peaks;
   }
 
   private buildWaveSurferPeaksBundleSync(

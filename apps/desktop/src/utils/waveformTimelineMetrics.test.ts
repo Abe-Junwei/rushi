@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { effectiveTimelinePxPerSec } from "./waveformProjection";
-import { TIMELINE_PX_PER_SEC, MAX_WAVESURFER_PEAK_COLUMNS } from "./pxPerSec";
+import { TIMELINE_PX_PER_SEC, MAX_LAYOUT_TIMELINE_WIDTH_PX } from "./pxPerSec";
 import {
   resolveLayoutDurationSec,
   resolveMediaDurationSec,
@@ -79,14 +79,14 @@ describe("resolveWaveformTimelineMetrics", () => {
     expect(m.timelineWidthPx).toBe(5600);
   });
 
-  it("caps timeline width to peaks column budget (release peaks path)", () => {
+  it("caps timeline width to layout soft budget (not peaks column hard cap)", () => {
     const m = resolveWaveformTimelineMetrics({
       wsDurationSec: 360,
       peaksStatusDurationSec: 360,
       pxPerSec: 100,
     });
 
-    expect(m.timelineWidthPx).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
-    expect(m.timelineWidthPx).toBeGreaterThan(32_000);
+    expect(m.timelineWidthPx).toBe(36_000);
+    expect(m.timelineWidthPx).toBeLessThanOrEqual(MAX_LAYOUT_TIMELINE_WIDTH_PX);
   });
 });

@@ -3,12 +3,14 @@ import {
   capWaveformPeakColumns,
   clampPxPerSec,
   clampPxPerSecForSlider,
+  clampPxPerSecForLayout,
   clampPxPerSecForWaveSurferRender,
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   computeRenderableTimelineWidthPx,
   computeTimelineWidthPx,
   isTimelineFitInViewport,
+  resolveMaxLayoutPxPerSec,
   resolveMaxPeaksTimelinePxPerSec,
   resolveMaxRenderablePxPerSec,
   resolveSelectionFitPxPerSec,
@@ -22,7 +24,9 @@ import {
   computeViewportFitScrollPx,
   PX_PER_SEC_FIT_MIN,
   PX_PER_SEC_FIT_SELECTION_MAX,
+  MAX_LAYOUT_TIMELINE_WIDTH_PX,
   MAX_WAVESURFER_PEAK_COLUMNS,
+  LONG_MEDIA_TARGET_VISIBLE_SEC,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   quantizePxPerSecForPeaksLoad,
@@ -83,12 +87,19 @@ describe("resolveWaveformZoomSliderRange", () => {
     expect(range.maxPxPerSec).toBeGreaterThanOrEqual(range.minPxPerSec);
   });
 
-  it("caps max at WaveSurfer render budget for long media", () => {
+  it("caps max at layout soft-cap for very long media", () => {
+    const dur = 4 * 3600;
+    const range = resolveWaveformZoomSliderRange(1200, dur);
+    const layoutCap = clampPxPerSecForLayout(PX_PER_SEC_MAX, dur);
+    expect(range.maxPxPerSec).toBeCloseTo(layoutCap, 4);
+    expect(range.maxPxPerSec).toBeGreaterThan(clampPxPerSecForWaveSurferRender(PX_PER_SEC_MAX, dur));
+    expect(range.maxPxPerSec).toBeLessThan(PX_PER_SEC_MAX);
+  });
+
+  it("keeps nominal PX_PER_SEC_MAX when layout soft-cap is higher", () => {
     const dur = 600;
     const range = resolveWaveformZoomSliderRange(960, dur);
-    const renderCap = clampPxPerSecForWaveSurferRender(PX_PER_SEC_MAX, dur);
-    expect(range.maxPxPerSec).toBeCloseTo(renderCap, 4);
-    expect(range.maxPxPerSec).toBeLessThan(PX_PER_SEC_MAX);
+    expect(range.maxPxPerSec).toBe(PX_PER_SEC_MAX);
   });
 });
 
@@ -107,12 +118,20 @@ describe("resolveDefaultEditingPxPerSec", () => {
     expect(fitAll).toBeGreaterThan(PX_PER_SEC_MAX);
   });
 
-  it("uses lower default for long media instead of fit-all", () => {
+  it("uses target visible seconds for long media instead of geometric mean", () => {
     const dur = 4 * 3600;
     const fitAll = computeFitAllPxPerSec(1200, dur);
     const px = resolveDefaultEditingPxPerSec(1200, dur);
     expect(px).toBeGreaterThan(fitAll);
+    expect(px).toBeCloseTo(1200 / LONG_MEDIA_TARGET_VISIBLE_SEC, 4);
+    expect(px * 2).toBeGreaterThanOrEqual(40);
     expect(px).toBeLessThan(PX_PER_SEC_MAX);
+  });
+
+  it("keeps geometric mean for medium media under long-media threshold", () => {
+    const range = resolveWaveformZoomSliderRange(960, 600);
+    const px = resolveDefaultEditingPxPerSec(960, 600);
+    expect(px).toBeCloseTo(Math.sqrt(range.minPxPerSec * range.maxPxPerSec), 4);
   });
 
   it("falls back to TIMELINE_PX_PER_SEC without media context", () => {
@@ -191,14 +210,14 @@ describe("quantizePxPerSecForPeaksLoad", () => {
 });
 
 describe("resolveViewportFitLayoutPxPerSec", () => {
-  it("quantizes then applies WaveSurfer render cap for long media", () => {
+  it("quantizes then applies layout soft-cap for long media (above peaks column cap)", () => {
     const dur = 3600;
     const raw = computeFitSelectionPxPerSec(800, 10, 12);
-    expect(raw).toBeGreaterThan(resolveMaxRenderablePxPerSec(dur));
+    expect(raw).toBeGreaterThan(resolveMaxPeaksTimelinePxPerSec(dur));
     const layout = resolveViewportFitLayoutPxPerSec(raw, dur);
-    expect(layout).toBeLessThanOrEqual(resolveMaxRenderablePxPerSec(dur));
-    expect(layout).toBeLessThanOrEqual(resolveMaxPeaksTimelinePxPerSec(dur));
-    expect(computeTimelineWidthPx(dur, layout)).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
+    expect(layout).toBeLessThanOrEqual(resolveMaxLayoutPxPerSec(dur));
+    expect(layout).toBeGreaterThan(resolveMaxPeaksTimelinePxPerSec(dur));
+    expect(computeTimelineWidthPx(dur, layout)).toBeLessThanOrEqual(MAX_LAYOUT_TIMELINE_WIDTH_PX);
   });
 });
 
@@ -374,10 +393,11 @@ describe("resolveMaxPeaksTimelinePxPerSec", () => {
 });
 
 describe("computeRenderableTimelineWidthPx", () => {
-  it("regression: 360s @ 100px/s must not exceed peaks column cap (DMG peaks path)", () => {
-    const width = computeRenderableTimelineWidthPx(360, 100);
-    expect(width).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
-    expect(width).toBe(Math.ceil(360 * clampPxPerSecForWaveSurferRender(100, 360)));
+  it("uses layout soft-cap (may exceed peaks column budget)", () => {
+    const width = computeRenderableTimelineWidthPx(600, 100);
+    expect(width).toBe(Math.ceil(600 * clampPxPerSecForLayout(100, 600)));
+    expect(width).toBeGreaterThan(MAX_WAVESURFER_PEAK_COLUMNS);
+    expect(width).toBeLessThanOrEqual(MAX_LAYOUT_TIMELINE_WIDTH_PX);
   });
 });
 

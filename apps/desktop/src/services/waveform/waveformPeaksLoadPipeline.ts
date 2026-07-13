@@ -11,12 +11,20 @@ import {
 } from "../../tauri/waveformPeaksApi";
 import { shouldForcePeaksRegenerate } from "../../utils/peakMediaDuration";
 
+/** Grace polls while spawn / lock may still be settling (React Strict Mode remount). */
+const PEAKS_SPAWN_GRACE_POLLS = 20;
+const PEAKS_SPAWN_GRACE_INTERVAL_MS = 250;
+
 function levelToEntry(level: WaveformPeakLevelStatus) {
   return {
     level: level.level,
     pixelsPerSecond: level.pixelsPerSecond,
     path: level.path,
   };
+}
+
+function peaksIdleWithoutFiles(st: WaveformPeaksStatus): boolean {
+  return !st.generating && !st.levels.some((l) => l.exists);
 }
 
 export async function loadPeakCacheFromStatus(
@@ -67,6 +75,55 @@ export async function ensurePeaksAlignedWithMedia(
   return st;
 }
 
+async function sleepMs(ms: number): Promise<void> {
+  await new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+/**
+ * Soft-join an in-flight (or not-yet-visible) generation.
+ *
+ * Do NOT `force: true` here: force used to unlink the live `.generating.lock`,
+ * which made status flip to idle while the worker kept running — UI showed
+ * failure after a few seconds, then re-enter revealed a complete waveform.
+ */
+async function recoverIdlePeaksStatus(input: {
+  projectId: string;
+  fileId: string;
+  mediaDurationSec: number;
+  isCancelled: () => boolean;
+  onStatus: (st: WaveformPeaksStatus) => void;
+  initial: WaveformPeaksStatus;
+}): Promise<WaveformPeaksStatus> {
+  let st = input.initial;
+  const mediaDurationSec =
+    input.mediaDurationSec > 0 ? input.mediaDurationSec : undefined;
+
+  // Soft ensure joins a lock holder (wait) or spawns if idle.
+  st = await ensureWaveformPeaks(input.projectId, input.fileId, {
+    mediaDurationSec,
+  });
+  if (!input.isCancelled()) input.onStatus(st);
+  if (!peaksIdleWithoutFiles(st)) return st;
+
+  for (let i = 0; i < PEAKS_SPAWN_GRACE_POLLS; i++) {
+    if (input.isCancelled()) return st;
+    if (!peaksIdleWithoutFiles(st)) return st;
+    await sleepMs(PEAKS_SPAWN_GRACE_INTERVAL_MS);
+    st = await waveformPeaksStatus(input.projectId, input.fileId);
+    if (!input.isCancelled()) input.onStatus(st);
+  }
+  if (input.isCancelled() || !peaksIdleWithoutFiles(st)) return st;
+
+  // Still idle after grace — soft ensure once more (never force).
+  st = await ensureWaveformPeaks(input.projectId, input.fileId, {
+    mediaDurationSec,
+  });
+  if (!input.isCancelled()) input.onStatus(st);
+  return st;
+}
+
 export async function waitForPeaksWithPolling(input: {
   projectId: string;
   fileId: string;
@@ -84,8 +141,23 @@ export async function waitForPeaksWithPolling(input: {
     return { status: st, cache };
   }
 
-  if (!st.generating && !st.levels.some((l) => l.exists)) {
-    return { status: st, cache };
+  if (peaksIdleWithoutFiles(st)) {
+    st = await recoverIdlePeaksStatus({
+      projectId: input.projectId,
+      fileId: input.fileId,
+      mediaDurationSec: input.mediaDurationSec,
+      isCancelled: input.isCancelled,
+      onStatus: input.onStatus,
+      initial: st,
+    });
+    if (input.isCancelled()) return { status: st, cache };
+    cache = (await loadPeakCacheFromStatus(st, input.onBootstrap)) ?? cache;
+    if (peaksAllLevelsReady(st)) {
+      return { status: st, cache };
+    }
+    if (peaksIdleWithoutFiles(st)) {
+      throw new Error("波形 peaks 生成未启动或已失败");
+    }
   }
 
   st = await pollWaveformPeaksUntilReady({

@@ -37,7 +37,25 @@ describe("resolveWaveformSegmentContextMenuIndex", () => {
       laneCount: 2,
       selectedIdx: -1,
       durationSec: 10,
+      timelineWidthPx: 1000,
     });
     expect(idx).toBe(-1);
+  });
+
+  it("uses timelineWidthPx to expand narrow segment hits", () => {
+    const idx = resolveWaveformSegmentContextMenuIndex({
+      segments: [{ idx: 0, start_sec: 1.0, end_sec: 1.01, text: "tiny" }],
+      timeSec: 1.0,
+      pointerClientY: 40,
+      overlayClientTop: 0,
+      layoutHeightPx: 96,
+      layoutYScale: 1,
+      laneByIndex: [0],
+      laneCount: 1,
+      selectedIdx: -1,
+      durationSec: 10,
+      timelineWidthPx: 10_000,
+    });
+    expect(idx).toBe(0);
   });
 });
