@@ -96,7 +96,7 @@ describe("buildSegmentRowContextMenuItems", () => {
     expect(items.find((i) => i.key === "cutText")?.shortcutHint).toBe("Ctrl+X");
     expect(items.find((i) => i.key === "pasteText")?.shortcutHint).toBe("Ctrl+V");
     expect(items.find((i) => i.key === "editAnnotation")?.shortcutHint).toBe("Ctrl+N");
-    expect(items.find((i) => i.key === "addCorrectionMemory")?.shortcutHint).toBe("Ctrl+L");
+    expect(items.find((i) => i.key === "addCorrectionMemory")?.shortcutHint).toBe("Shift+Ctrl+L");
     expect(items.find((i) => i.key === "mergeNext")?.shortcutHint).toBe("Ctrl+J");
   });
 

@@ -29,6 +29,7 @@ import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
 import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
+import { setTranscriptSegmentLoopEffect } from "./segmentLoopField";
 import { peekFileViewRestoreForFile } from "../../../services/fileViewStateBridge";
 import { findSegmentIndexByUid } from "../../../pages/segmentListHelpers";
 
@@ -49,8 +50,12 @@ export type TranscriptEditorCoreProps = {
   onSelectSegment?: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   /** Primary-row play beside text — scoped segment play/stop. */
   onToggleSegmentPlay?: (idx: number) => void;
+  /** Primary-row loop beside play — segment loop arm/disarm. */
+  onToggleSegmentLoop?: (idx: number) => void;
   /** Syncs play/stop icon on primary stage gutter. */
   isSelectedSegmentPlaying?: boolean;
+  /** Syncs loop pressed state on primary stage gutter. */
+  segmentLoopPlayback?: boolean;
   onOpenContextMenu?: (args: {
     x: number;
     y: number;
@@ -88,7 +93,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     updateSegmentText,
     onSelectSegment,
     onToggleSegmentPlay,
+    onToggleSegmentLoop,
     isSelectedSegmentPlaying = false,
+    segmentLoopPlayback = false,
     onOpenContextMenu,
     panelHighlight = null,
     filterActive = false,
@@ -110,6 +117,8 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   onSelectSegmentRef.current = onSelectSegment;
   const onToggleSegmentPlayRef = useRef(onToggleSegmentPlay);
   onToggleSegmentPlayRef.current = onToggleSegmentPlay;
+  const onToggleSegmentLoopRef = useRef(onToggleSegmentLoop);
+  onToggleSegmentLoopRef.current = onToggleSegmentLoop;
   const onOpenContextMenuRef = useRef(onOpenContextMenu);
   onOpenContextMenuRef.current = onOpenContextMenu;
   const busyRef = useRef(busy);
@@ -134,6 +143,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       updateSegmentTextRef,
       onSelectSegmentRef,
       onToggleSegmentPlayRef,
+      onToggleSegmentLoopRef,
       busyRef,
       onOpenContextMenuRef,
     });
@@ -277,6 +287,14 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       effects: setTranscriptScopedPlayingEffect.of(isSelectedSegmentPlaying),
     });
   }, [isSelectedSegmentPlaying]);
+
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: setTranscriptSegmentLoopEffect.of(segmentLoopPlayback),
+    });
+  }, [segmentLoopPlayback]);
 
   useEffect(() => {
     dispatchTranscriptPanelHighlight(panelHighlight);

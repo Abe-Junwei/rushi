@@ -205,7 +205,11 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
         disabled={disabled}
         aria-pressed={segmentLoopPlayback}
         aria-label={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
-        title={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
+        title={
+          segmentLoopPlayback
+            ? "关闭语段循环播放（⌘/Ctrl+L）"
+            : "开启语段循环播放（⌘/Ctrl+L）"
+        }
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => {
           e.stopPropagation();

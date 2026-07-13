@@ -15,6 +15,7 @@ import type { TranscriptRowSelectionKind } from "./metaGutter";
 import { transcriptHoverSegmentField } from "./hoverSegmentField";
 import { transcriptPlaybackFocusField } from "./playbackFocusField";
 import { transcriptScopedPlayingField } from "./scopedPlayingField";
+import { transcriptSegmentLoopField } from "./segmentLoopField";
 
 /** Compact Lucide-like strokes for stage chips (no React mount in gutter DOM). */
 const STAGE_ICON_SVG: Record<string, string> = {
@@ -32,8 +33,11 @@ const PLAY_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const STOP_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+const LOOP_ICON_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>';
 
 export const CM_SEGMENT_PLAY_ATTR = "data-cm-segment-play";
+export const CM_SEGMENT_LOOP_ATTR = "data-cm-segment-loop";
 
 export class TranscriptStageMarker extends GutterMarker {
   constructor(
@@ -44,13 +48,15 @@ export class TranscriptStageMarker extends GutterMarker {
     /** True when this row is the current playback-focus line (may coexist with primary). */
     readonly isPlaybackFocus: boolean = false,
     /**
-     * Mount play control (opacity-gated). Visible on row hover / content hover /
-     * scoped playing — not primary-only.
+     * Mount transport controls (opacity-gated). Visible on row hover / content hover /
+     * scoped playing / loop arm — not primary-only.
      */
     readonly showSegmentPlay: boolean = false,
     readonly segmentPlayActive: boolean = false,
     /** Content-hover force-visible (gutter :hover also reveals via CSS). */
     readonly segmentPlayForced: boolean = false,
+    /** Primary row with segment loop armed. */
+    readonly segmentLoopActive: boolean = false,
   ) {
     super();
   }
@@ -64,7 +70,8 @@ export class TranscriptStageMarker extends GutterMarker {
       this.isPlaybackFocus === other.isPlaybackFocus &&
       this.showSegmentPlay === other.showSegmentPlay &&
       this.segmentPlayActive === other.segmentPlayActive &&
-      this.segmentPlayForced === other.segmentPlayForced
+      this.segmentPlayForced === other.segmentPlayForced &&
+      this.segmentLoopActive === other.segmentLoopActive
     );
   }
 
@@ -83,17 +90,38 @@ export class TranscriptStageMarker extends GutterMarker {
     wrap.className = ["cm-transcript-stage-cell", kindClass].filter(Boolean).join(" ");
 
     if (this.showSegmentPlay) {
+      const transportVisible = this.segmentPlayForced || this.segmentPlayActive || this.segmentLoopActive;
+      const loopBtn = document.createElement("button");
+      loopBtn.type = "button";
+      loopBtn.className = [
+        "cm-transcript-segment-transport",
+        "cm-transcript-segment-loop",
+        this.segmentPlayForced ? "cm-transcript-segment-transport--forced" : "",
+        this.segmentLoopActive ? "cm-transcript-segment-transport--active" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+      loopBtn.setAttribute(CM_SEGMENT_LOOP_ATTR, "1");
+      loopBtn.tabIndex = transportVisible ? 0 : -1;
+      const loopLabel = this.segmentLoopActive ? "关闭语段循环播放" : "开启语段循环播放";
+      loopBtn.title = `${loopLabel}（⌘/Ctrl+L）`;
+      loopBtn.setAttribute("aria-label", loopLabel);
+      loopBtn.setAttribute("aria-pressed", this.segmentLoopActive ? "true" : "false");
+      loopBtn.innerHTML = LOOP_ICON_SVG;
+      wrap.append(loopBtn);
+
       const playBtn = document.createElement("button");
       playBtn.type = "button";
       playBtn.className = [
+        "cm-transcript-segment-transport",
         "cm-transcript-segment-play",
-        this.segmentPlayForced ? "cm-transcript-segment-play--forced" : "",
-        this.segmentPlayActive ? "cm-transcript-segment-play--active" : "",
+        this.segmentPlayForced ? "cm-transcript-segment-transport--forced" : "",
+        this.segmentPlayActive ? "cm-transcript-segment-transport--active" : "",
       ]
         .filter(Boolean)
         .join(" ");
       playBtn.setAttribute(CM_SEGMENT_PLAY_ATTR, "1");
-      playBtn.tabIndex = this.segmentPlayForced || this.segmentPlayActive ? 0 : -1;
+      playBtn.tabIndex = transportVisible ? 0 : -1;
       const playLabel = this.segmentPlayActive
         ? "停止语段播放"
         : "播本语段（至段尾）";
@@ -133,6 +161,7 @@ export function buildTranscriptStageMarker(
     showSegmentPlay?: boolean;
     segmentPlayActive?: boolean;
     segmentPlayForced?: boolean;
+    segmentLoopActive?: boolean;
   } = {},
 ): TranscriptStageMarker | null {
   if (!meta?.stage) return null;
@@ -147,17 +176,19 @@ export function buildTranscriptStageMarker(
     opts.showSegmentPlay === true,
     opts.segmentPlayActive === true,
     opts.segmentPlayForced === true,
+    opts.segmentLoopActive === true,
   );
 }
 
 export type TranscriptStageGutterOptions = {
   onSelectSegment?: (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => void;
   onToggleSegmentPlay?: (idx: number) => void;
+  onToggleSegmentLoop?: (idx: number) => void;
 };
 
 /**
  * Trailing stage chip gutter (legacy SegmentRowStageBadge column parity).
- * Segment play sits beside text: hover-reveal on any row; stop stays while scoped playing.
+ * Segment transport sits beside text: hover-reveal on any row; stop/loop stay while armed.
  */
 export function createTranscriptStageGutter(
   opts: TranscriptStageGutterOptions = {},
@@ -173,6 +204,7 @@ export function createTranscriptStageGutter(
       const hoverIdx = view.state.field(transcriptHoverSegmentField);
       const playbackIdx = view.state.field(transcriptPlaybackFocusField);
       const scopedPlaying = view.state.field(transcriptScopedPlayingField);
+      const segmentLoop = view.state.field(transcriptSegmentLoopField);
       const selectionKind: TranscriptRowSelectionKind =
         idx === primary
           ? "primary"
@@ -183,6 +215,7 @@ export function createTranscriptStageGutter(
               : null;
       const isPrimary = selectionKind === "primary";
       const segmentPlayActive = isPrimary && scopedPlaying;
+      const segmentLoopActive = isPrimary && segmentLoop;
       return buildTranscriptStageMarker(view.state.field(segmentMetaField)[idx], {
         selectionKind,
         isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
@@ -190,6 +223,7 @@ export function createTranscriptStageGutter(
         showSegmentPlay: true,
         segmentPlayActive,
         segmentPlayForced: hoverIdx === idx,
+        segmentLoopActive,
       });
     },
     lineMarkerChange(update) {
@@ -209,7 +243,9 @@ export function createTranscriptStageGutter(
         update.startState.field(transcriptPlaybackFocusField) !==
           update.state.field(transcriptPlaybackFocusField) ||
         update.startState.field(transcriptScopedPlayingField) !==
-          update.state.field(transcriptScopedPlayingField)
+          update.state.field(transcriptScopedPlayingField) ||
+        update.startState.field(transcriptSegmentLoopField) !==
+          update.state.field(transcriptSegmentLoopField)
       );
     },
     initialSpacer: () =>
@@ -226,6 +262,12 @@ export function createTranscriptStageGutter(
         const mouse = event as MouseEvent;
         const target = mouse.target as HTMLElement | null;
         const idx = view.state.doc.lineAt(line.from).number - 1;
+        if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
+          mouse.preventDefault();
+          mouse.stopPropagation();
+          opts.onToggleSegmentLoop?.(idx);
+          return true;
+        }
         if (target?.closest(`[${CM_SEGMENT_PLAY_ATTR}]`)) {
           mouse.preventDefault();
           mouse.stopPropagation();
@@ -245,8 +287,8 @@ export function createTranscriptStageGutter(
 export const transcriptStageGutterTheme = EditorView.theme({
   // Flush against content — avoid a blank seam between text highlight and stage chip.
   ".cm-transcript-stage-gutter": {
-    // play slot (1.75) + gap (0.25) + chip max (6.5) + cell padding ≈ 9.35
-    minWidth: "9.5rem",
+    // loop (1.75) + play (1.75) + gaps (0.25×2) + chip max (6.5) + cell padding ≈ 11.0
+    minWidth: "11rem",
     paddingLeft: "0",
     paddingRight: "0.35rem",
     borderLeft: "none",
@@ -265,7 +307,7 @@ export const transcriptStageGutterTheme = EditorView.theme({
   },
   ".cm-transcript-stage-cell": {
     display: "flex",
-    // Keep play + stage chip on one baseline band (same as chip height).
+    // Keep transport + stage chip on one baseline band (same as chip height).
     alignItems: "center",
     justifyContent: "flex-start",
     gap: "0.25rem",
@@ -280,13 +322,13 @@ export const transcriptStageGutterTheme = EditorView.theme({
     backgroundColor: "transparent",
     transition: "none",
   },
-  ".cm-transcript-segment-play": {
+  ".cm-transcript-segment-transport": {
     display: "inline-flex",
     flexShrink: "0",
     alignItems: "center",
     justifyContent: "center",
     boxSizing: "border-box",
-    // Always reserve hit target so stage chip never shifts when play appears.
+    // Always reserve hit target so stage chip never shifts when controls appear.
     width: "1.75rem",
     height: "1.375rem",
     minHeight: "1.375rem",
@@ -303,28 +345,28 @@ export const transcriptStageGutterTheme = EditorView.theme({
     transition: "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
   },
   // Gutter cell hover keeps the button clickable (mouse can leave the text).
-  ".cm-transcript-stage-cell:hover .cm-transcript-segment-play": {
+  ".cm-transcript-stage-cell:hover .cm-transcript-segment-transport": {
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
     background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
   },
-  ".cm-transcript-segment-play--forced": {
+  ".cm-transcript-segment-transport--forced": {
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
     background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
   },
-  ".cm-transcript-segment-play:hover": {
+  ".cm-transcript-segment-transport:hover": {
     background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
   },
-  ".cm-transcript-segment-play--active": {
+  ".cm-transcript-segment-transport--active": {
     opacity: "1",
     pointerEvents: "auto",
     background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
     borderColor: "color-mix(in srgb, var(--accent-action) 42%, var(--notion-divider))",
   },
-  ".cm-transcript-segment-play svg": {
+  ".cm-transcript-segment-transport svg": {
     width: "0.75rem",
     height: "0.75rem",
     display: "block",

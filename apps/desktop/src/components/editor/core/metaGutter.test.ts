@@ -72,6 +72,25 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(stage1?.label).toBe("手动转写");
   });
 
+  it("places loop transport left of play when showSegmentPlay", () => {
+    const segs = makeSegments(1);
+    const state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const meta = state.field(segmentMetaField);
+    const stage = buildTranscriptStageMarker(meta[0], {
+      showSegmentPlay: true,
+      segmentLoopActive: true,
+      segmentPlayActive: true,
+    });
+    const dom = stage!.toDOM();
+    const children = [...dom.children];
+    expect(children[0]?.getAttribute("data-cm-segment-loop")).toBe("1");
+    expect(children[0]?.getAttribute("aria-pressed")).toBe("true");
+    expect(children[1]?.getAttribute("data-cm-segment-play")).toBe("1");
+    expect(children[1]?.getAttribute("aria-label")).toBe("停止语段播放");
+  });
+
   it("derives gutter width from full legacy meta column (stage is after-gutter)", () => {
     expect(computeTranscriptMetaGutterWidthPx(132)).toBe(132);
     expect(computeTranscriptMetaGutterWidthPx(104)).toBe(104);

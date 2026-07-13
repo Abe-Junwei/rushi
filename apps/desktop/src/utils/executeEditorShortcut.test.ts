@@ -113,6 +113,25 @@ describe("executeEditorShortcut", () => {
     expect(handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 
+  it("playback.toggleSegmentLoop toggles selected segment loop", () => {
+    const handleToggleSelectedWaveformLoop = vi.fn();
+    const deps = makeDeps({
+      wf: {
+        getPlayheadTime: () => 1.5,
+        togglePlay: vi.fn(),
+        handleToggleSelectedWaveformPlay: vi.fn(),
+        handleToggleSelectedWaveformLoop,
+        seekByDelta: vi.fn(),
+        seek: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+      } as never,
+    });
+
+    expect(executeEditorShortcut("playback.toggleSegmentLoop", deps)).toBe(true);
+    expect(handleToggleSelectedWaveformLoop).toHaveBeenCalledTimes(1);
+  });
+
   it("playback.toggle still works when no segment is selected", () => {
     const togglePlay = vi.fn();
     const handleToggleSelectedWaveformPlay = vi.fn();

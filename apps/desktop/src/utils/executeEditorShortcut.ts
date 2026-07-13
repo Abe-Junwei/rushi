@@ -158,6 +158,12 @@ export function executeEditorShortcut(
       void wf.togglePlay();
       return true;
     }
+    case "playback.toggleSegmentLoop": {
+      if (!ctx.mediaUrl) return true;
+      if (resolveSelectedSegmentIdx(ctx) < 0) return true;
+      void wf.handleToggleSelectedWaveformLoop();
+      return true;
+    }
     case "edit.undo":
       ctx.undo();
       return true;

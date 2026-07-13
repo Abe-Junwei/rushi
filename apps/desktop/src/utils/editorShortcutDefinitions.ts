@@ -114,6 +114,14 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
+    id: "playback.toggleSegmentLoop",
+    bindings: [BINDING.mod("l")],
+    keysLabel: "⌘/Ctrl + L",
+    footerAction: "循环播放本语段",
+    panelAction: "开关当前选中语段的循环播放（与波形/列表循环钮一致）",
+    allowInTextarea: true,
+  },
+  {
     id: "edit.undo",
     bindings: [BINDING.mod("z")],
     keysLabel: "⌘/Ctrl + Z",
@@ -219,8 +227,8 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
   },
   {
     id: "workflow.addCorrectionMemory",
-    bindings: [BINDING.mod("l")],
-    keysLabel: "⌘/Ctrl + L",
+    bindings: [BINDING.mod("l", { shift: true })],
+    keysLabel: "⇧⌘/Ctrl+Shift + L",
     footerAction: "纳入更正记忆",
     panelAction: "将正文选区纳入更正记忆（需先选中文字）",
     allowInTextarea: true,

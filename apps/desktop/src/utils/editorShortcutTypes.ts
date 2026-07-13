@@ -9,6 +9,7 @@ export type EditorShortcutId =
   | "segment.focusText"
   | "segment.delete"
   | "playback.toggle"
+  | "playback.toggleSegmentLoop"
   | "edit.undo"
   | "edit.redo"
   | "edit.copy"

@@ -129,8 +129,13 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "n", metaKey: true }))).toBe("workflow.segmentAnnotation");
   });
 
-  it("matches add correction memory on Cmd+L", () => {
-    expect(matchEditorShortcut(keyEvent({ key: "l", metaKey: true }))).toBe("workflow.addCorrectionMemory");
+  it("matches segment loop on Cmd+L and correction memory on Shift+Cmd+L", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "l", metaKey: true }))).toBe(
+      "playback.toggleSegmentLoop",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "l", metaKey: true, shiftKey: true }))).toBe(
+      "workflow.addCorrectionMemory",
+    );
   });
 
   it("matches advanceSegment on Tab in transcript textarea only", () => {

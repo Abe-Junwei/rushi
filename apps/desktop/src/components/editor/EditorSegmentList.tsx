@@ -9,6 +9,7 @@ import {
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import { TranscriptEditorCore } from "./core/TranscriptEditorCore";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
+import { dispatchSegmentLoopButtonClick } from "../../utils/dispatchSegmentLoopButtonClick";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -120,6 +121,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
           });
         }}
         isSelectedSegmentPlaying={tx.isSelectedSegmentPlaying}
+        segmentLoopPlayback={tx.segmentLoopPlayback}
         onToggleSegmentPlay={(idx) => {
           if (tx.isSelectedSegmentPlaying && c.selectedIdx === idx) {
             void tx.handleToggleSelectedWaveformPlay();
@@ -129,6 +131,16 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             tx.selectSegmentFromList(idx);
           }
           void tx.playSegmentAtIndex(idx);
+        }}
+        onToggleSegmentLoop={(idx) => {
+          dispatchSegmentLoopButtonClick({
+            clickedIdx: idx,
+            selectedIdx: c.selectedIdx,
+            preserveLoopForNextSegmentSelect: tx.preserveLoopForNextSegmentSelect,
+            selectSegment: (i) => tx.selectSegmentFromList(i),
+            playSegmentAtIndex: (i, options) => tx.playSegmentAtIndex(i, options),
+            toggleSelectedLoop: () => tx.handleToggleSelectedWaveformLoop(),
+          });
         }}
       />
     </div>
@@ -160,10 +172,17 @@ function areEditorSegmentListPropsEqual(
   if (prev.appearance.transcriptFontItalic !== next.appearance.transcriptFontItalic) return false;
   if (prev.tx.selectSegmentFromList !== next.tx.selectSegmentFromList) return false;
   if (prev.tx.isSelectedSegmentPlaying !== next.tx.isSelectedSegmentPlaying) return false;
+  if (prev.tx.segmentLoopPlayback !== next.tx.segmentLoopPlayback) return false;
   if (prev.tx.handleToggleSelectedWaveformPlay !== next.tx.handleToggleSelectedWaveformPlay) {
     return false;
   }
+  if (prev.tx.handleToggleSelectedWaveformLoop !== next.tx.handleToggleSelectedWaveformLoop) {
+    return false;
+  }
   if (prev.tx.playSegmentAtIndex !== next.tx.playSegmentAtIndex) return false;
+  if (prev.tx.preserveLoopForNextSegmentSelect !== next.tx.preserveLoopForNextSegmentSelect) {
+    return false;
+  }
   if (prev.appearance !== next.appearance) return false;
   if (prev.onResetSegmentListFilter !== next.onResetSegmentListFilter) return false;
   if (prev.onOpenSegmentContextMenu !== next.onOpenSegmentContextMenu) return false;

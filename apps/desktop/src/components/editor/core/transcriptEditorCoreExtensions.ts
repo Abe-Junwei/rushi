@@ -24,6 +24,7 @@ import {
 import { transcriptHoverExtensions } from "./hoverSegmentField";
 import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
+import { transcriptSegmentLoopExtensions } from "./segmentLoopField";
 import { transcriptClipboardFilters } from "./transcriptClipboard";
 
 export type TranscriptEditorCoreExtensionsOptions = {
@@ -56,6 +57,7 @@ export function transcriptEditorCoreExtensions(
     ...transcriptHoverExtensions,
     ...transcriptPlaybackFocusExtensions,
     ...transcriptScopedPlayingExtensions,
+    ...transcriptSegmentLoopExtensions,
     transcriptPanelHighlightField,
     transcriptPanelHighlightTheme,
     transcriptFilterVisibilityField,

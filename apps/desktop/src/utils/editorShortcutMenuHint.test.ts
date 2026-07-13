@@ -22,11 +22,15 @@ describe("editorShortcutMenuHint", () => {
     expect(
       formatShortcutBindingMenuLabel({ key: "l", mod: true }, "win"),
     ).toBe("Ctrl+L");
+    expect(
+      formatShortcutBindingMenuLabel({ key: "l", mod: true, shift: true }, "win"),
+    ).toBe("Shift+Ctrl+L");
   });
 
   it("maps registry ids to menu hints", () => {
     expect(editorShortcutMenuHint("segment.mergeNext", "mac")).toBe("⌘J");
-    expect(editorShortcutMenuHint("workflow.addCorrectionMemory", "mac")).toBe("⌘L");
+    expect(editorShortcutMenuHint("playback.toggleSegmentLoop", "mac")).toBe("⌘L");
+    expect(editorShortcutMenuHint("workflow.addCorrectionMemory", "mac")).toBe("⇧⌘L");
   });
 
   it("detectShortcutMenuPlatform treats macOS as mac", () => {

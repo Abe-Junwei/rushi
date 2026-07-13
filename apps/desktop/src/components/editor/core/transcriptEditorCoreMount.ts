@@ -42,7 +42,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
-      "--cm-stage-gutter-width": "9.5rem",
+      "--cm-stage-gutter-width": "11rem",
       "--cm-transcript-line-pad": `${linePad}px`,
     },
     ".cm-scroller": {
@@ -95,21 +95,21 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "var(--cm-stage-gutter-width, 11rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
     },
     ".cm-transcript-primary-line": {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
-        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-in-selection-list)",
+        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-in-selection-list)",
       ].join(", "),
     },
     // Same fill as primary — playback-focus only drives icon/class, not a second wash.
@@ -117,14 +117,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-playback-focus": {
       backgroundColor: "var(--transcript-playback-focus-fill)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
-        "var(--cm-stage-gutter-width, 9.5rem) 0 0 0 var(--transcript-playback-focus-fill)",
+        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--transcript-playback-focus-fill)",
       ].join(", "),
     },
   });
@@ -144,6 +144,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
     ((idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void) | undefined
   >;
   onToggleSegmentPlayRef: React.MutableRefObject<((idx: number) => void) | undefined>;
+  onToggleSegmentLoopRef: React.MutableRefObject<((idx: number) => void) | undefined>;
   busyRef: React.MutableRefObject<boolean>;
   onOpenContextMenuRef?: React.MutableRefObject<
     | ((args: {
@@ -170,6 +171,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
       },
       stageGutter: {
         onToggleSegmentPlay: (idx) => args.onToggleSegmentPlayRef.current?.(idx),
+        onToggleSegmentLoop: (idx) => args.onToggleSegmentLoopRef.current?.(idx),
       },
     }),
     transcriptLineCountGuard,

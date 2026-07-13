@@ -64,6 +64,8 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "workflow.closeFile" ||
     shortcutId === "workflow.segmentAnnotation" ||
     shortcutId === "workflow.addCorrectionMemory" ||
+    shortcutId === "playback.toggle" ||
+    shortcutId === "playback.toggleSegmentLoop" ||
     shortcutId === "segment.delete" ||
     shortcutId === "segment.advancePrev" ||
     shortcutId === "segment.advanceNext" ||
@@ -104,7 +106,9 @@ export function useEditorShortcutDispatcher(args: {
       if (!shortcutId) return;
 
       // Key-repeat Space floods concurrent play() and can deadlock WebKit MediaSession.
-      if (e.repeat && shortcutId === "playback.toggle") return;
+      if (e.repeat && (shortcutId === "playback.toggle" || shortcutId === "playback.toggleSegmentLoop")) {
+        return;
+      }
 
       if (shortcutId === "waveform.clearSelection" && hasOpenDialogEscapeHandler()) return;
 
