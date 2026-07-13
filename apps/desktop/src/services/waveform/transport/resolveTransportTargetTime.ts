@@ -52,8 +52,8 @@ export function resolveSegmentPlayFrom(
     // froze media at display high-water — seeking back would rewind the needle.
     if (
       authorityInside &&
-      clamped <= (authority as number) &&
-      (authority as number) - clamped <= lagCap
+      clamped <= (authority) &&
+      (authority) - clamped <= lagCap
     ) {
       return { kind: "resumeSkipSeek" };
     }
@@ -65,7 +65,7 @@ export function resolveSegmentPlayFrom(
 
   if (
     authorityInside &&
-    Math.abs((authority as number) - display) <= epsilon
+    Math.abs((authority) - display) <= epsilon
   ) {
     return { kind: "resumeSkipSeek" };
   }
@@ -77,7 +77,7 @@ export function resolveSegmentPlayFrom(
   if (
     authorityInside &&
     displayInside &&
-    Math.abs((authority as number) - display) <= lagCap
+    Math.abs((authority) - display) <= lagCap
   ) {
     return { kind: "resumeSkipSeek" };
   }

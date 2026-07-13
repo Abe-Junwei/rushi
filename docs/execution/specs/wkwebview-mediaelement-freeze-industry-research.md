@@ -54,7 +54,7 @@
   - MediaElement → WKWebView deadlock / freeze entire Tauri app
   - 改为 WebAudio backend
   - **Reuse single WaveSurfer**（避免反复 create 耗尽 AudioContext）
-- WaveSurfer v7 API：`backend?: 'WebAudio' | 'MediaElement'`（[`wavesurfer.d.ts`](../../../node_modules/wavesurfer.js/dist/wavesurfer.d.ts)）；实现用 `WebAudioPlayer`。
+- WaveSurfer v7 API：`backend?: 'WebAudio' | 'MediaElement'`（[wavesurfer.js typings](https://github.com/katspaugh/wavesurfer.js/blob/main/dist/wavesurfer.d.ts)）；实现用 `WebAudioPlayer`。
 - **局限**：WebAudio 仍可能碰系统 AudioSession；长文件整段 decode → **内存**；seek/loop/Transport 需回归。**不保证**根除，但是 **唯一有公开「WKWebView 假死 → 切 WebAudio」成功叙事的同栈先例**。
 
 #### D — AudioKeepAlive

@@ -166,6 +166,7 @@ function checkTsFile(fullPath) {
   // 仅 selector 本体可直接调用跨度启发式；persist sanitize 须用 isPlaceholderSegment（与 Rust 一致）。
   const dominantPredicateAllowlist = [
     "apps/desktop/src/utils/waveformSegmentBounds.ts",
+    "apps/desktop/src/utils/waveformSegmentPackable.ts",
   ];
   if (
     /\bisDominantWaveformSpanSegment\b/.test(source) &&

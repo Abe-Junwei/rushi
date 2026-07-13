@@ -112,7 +112,7 @@ describe("waveformSegmentBounds", () => {
     ];
     // Midpoint between 1.01 and 1.03 is 1.02 — belongs to neither expansion past mid.
     const miss = resolveSegmentIndexAtWaveformPointer({
-      segments: segments as never,
+      segments: segments,
       timeSec: 1.02,
       pointerClientY: 40,
       overlayClientTop: 0,
@@ -126,7 +126,7 @@ describe("waveformSegmentBounds", () => {
     expect(miss).toBe(-1);
 
     const hitA = resolveSegmentIndexAtWaveformPointer({
-      segments: segments as never,
+      segments: segments,
       timeSec: 1.005,
       pointerClientY: 40,
       overlayClientTop: 0,

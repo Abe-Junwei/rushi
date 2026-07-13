@@ -90,7 +90,7 @@ describe("readWaveformSegmentBandPalette", () => {
     const nums = palette.selected.match(/(\d+(?:\.\d+)?)/g)?.map(Number) ?? [];
     expect(nums.length).toBeGreaterThanOrEqual(3);
     // Pale wash: either 0–1 srgb channels or 0–255 rgb — pulled toward white.
-    const looksNormalized = nums[0]! <= 1.5 && nums[1]! <= 1.5 && nums[2]! <= 1.5;
+    const looksNormalized = nums[0] <= 1.5 && nums[1] <= 1.5 && nums[2] <= 1.5;
     if (looksNormalized) {
       expect(nums[0]).toBeGreaterThan(0.7);
       expect(nums[1]).toBeGreaterThan(0.7);

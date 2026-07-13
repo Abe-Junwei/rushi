@@ -319,11 +319,7 @@ fn truncate_err(err: &str) -> String {
     }
 }
 
-fn apply_export_polish_json_mode(
-    llm_body: &mut serde_json::Value,
-    loopback: bool,
-    enable: bool,
-) {
+fn apply_export_polish_json_mode(llm_body: &mut serde_json::Value, loopback: bool, enable: bool) {
     if !enable {
         return;
     }
@@ -401,31 +397,28 @@ async fn run_export_polish_batch_once(
     .await?;
 
     // 部分云端不认 response_format：400 时降级再试一次。
-    let (status, payload) = if !status.is_success()
-        && !cfg.loopback
-        && use_json_mode
-        && status.as_u16() == 400
-    {
-        append_desktop_log_line(
-            state,
-            "WARN export_polish response_format unsupported; retry without json mode",
-        );
-        let mut fallback_body = llm_body.clone();
-        if let Some(obj) = fallback_body.as_object_mut() {
-            obj.remove("response_format");
-        }
-        send_export_polish_http(
-            state,
-            cancel_state,
-            cfg,
-            &fallback_body,
-            timeout_secs,
-            request_id,
-        )
-        .await?
-    } else {
-        (status, payload)
-    };
+    let (status, payload) =
+        if !status.is_success() && !cfg.loopback && use_json_mode && status.as_u16() == 400 {
+            append_desktop_log_line(
+                state,
+                "WARN export_polish response_format unsupported; retry without json mode",
+            );
+            let mut fallback_body = llm_body.clone();
+            if let Some(obj) = fallback_body.as_object_mut() {
+                obj.remove("response_format");
+            }
+            send_export_polish_http(
+                state,
+                cancel_state,
+                cfg,
+                &fallback_body,
+                timeout_secs,
+                request_id,
+            )
+            .await?
+        } else {
+            (status, payload)
+        };
 
     if !status.is_success() {
         append_desktop_log_line(

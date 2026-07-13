@@ -76,7 +76,7 @@ export async function cutTranscriptSelection(view: EditorView): Promise<boolean>
 }
 
 export async function pasteTranscriptClipboard(view: EditorView): Promise<boolean> {
-  let raw = "";
+  let raw: string;
   try {
     raw = await navigator.clipboard.readText();
   } catch {

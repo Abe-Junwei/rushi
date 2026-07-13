@@ -485,7 +485,9 @@ mod tests {
     fn remove_peaks_data_preserves_generating_lock() {
         let temp = std::env::temp_dir().join(format!("rushi-peaks-lock-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
-        let lock = try_acquire_peaks_lock(&temp, "file-lock").unwrap().expect("lock");
+        let lock = try_acquire_peaks_lock(&temp, "file-lock")
+            .unwrap()
+            .expect("lock");
         assert!(peaks_generation_in_progress(&temp, "file-lock"));
 
         let l0 = peak_file_path(&temp, "file-lock", 0);

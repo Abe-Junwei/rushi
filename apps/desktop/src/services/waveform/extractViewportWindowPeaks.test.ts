@@ -62,8 +62,8 @@ describe("extractViewportWindowPeaks", () => {
     });
     expect(peaks.length).toBe(200);
     // First pixel aggregates early columns; last aggregates late columns.
-    expect(peaks[0]).toBeGreaterThan(peaks[198]!);
-    expect(peaks[1]).toBeLessThan(peaks[199]!);
+    expect(peaks[0]).toBeGreaterThan(peaks[198]);
+    expect(peaks[1]).toBeLessThan(peaks[199]);
   });
 
   it("reuses an into buffer when large enough", () => {

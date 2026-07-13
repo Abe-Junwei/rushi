@@ -377,8 +377,8 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     // Natural-end finally latches display to endSec while React isPlaying is still
     // true; a late rAF freeze must not re-apply media overshoot past the band.
     const raf = stubQueuedRaf();
-    let mediaSec = 22;
-    let mediaPlaying = false;
+    const mediaSec = 22;
+    const mediaPlaying = false;
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({

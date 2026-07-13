@@ -300,20 +300,6 @@ fn score_output_config(channels: u16, sample_rate: u32, target_rate: u32) -> i64
     channel_score - rate_penalty
 }
 
-#[cfg(test)]
-mod tests {
-    use super::score_output_config;
-
-    #[test]
-    fn score_output_config_prefers_stereo_near_target_rate() {
-        let stereo_48k = score_output_config(2, 48_000, 48_000);
-        let mono_48k = score_output_config(1, 48_000, 48_000);
-        let stereo_44k = score_output_config(2, 44_100, 48_000);
-        assert!(stereo_48k > mono_48k);
-        assert!(stereo_48k > stereo_44k);
-    }
-}
-
 fn engine_main(
     path: PathBuf,
     duration_sec: f64,
@@ -771,4 +757,18 @@ fn engine_main(
         let _ = h.join();
     }
     drop(output);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::score_output_config;
+
+    #[test]
+    fn score_output_config_prefers_stereo_near_target_rate() {
+        let stereo_48k = score_output_config(2, 48_000, 48_000);
+        let mono_48k = score_output_config(1, 48_000, 48_000);
+        let stereo_44k = score_output_config(2, 44_100, 48_000);
+        assert!(stereo_48k > mono_48k);
+        assert!(stereo_48k > stereo_44k);
+    }
 }

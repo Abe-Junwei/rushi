@@ -1361,7 +1361,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         return;
       }
       if (decision.action === "resumeSegment") {
-        const seg = segments[decision.idx]!;
+        const seg = segments[decision.idx];
         const stickyFromSec = resolveStickySegmentSpaceFromSec({
           segment: seg,
           displaySec: playhead,

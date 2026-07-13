@@ -32,8 +32,8 @@ export function medianPositiveNumber(values: ReadonlyArray<number>): number | nu
   const xs = values.filter((v) => Number.isFinite(v) && v > 0).slice().sort((a, b) => a - b);
   if (xs.length === 0) return null;
   const mid = Math.floor(xs.length / 2);
-  if (xs.length % 2 === 1) return xs[mid]!;
-  return (xs[mid - 1]! + xs[mid]!) / 2;
+  if (xs.length % 2 === 1) return xs[mid];
+  return (xs[mid - 1] + xs[mid]) / 2;
 }
 
 /** Stable signature for median-default auto-refit (count + median). */

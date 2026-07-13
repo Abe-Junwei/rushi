@@ -63,7 +63,7 @@ describe("transcriptClipboard", () => {
   });
 
   it("copy writes decoded selection to clipboard", async () => {
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal("navigator", {
       ...navigator,
       clipboard: { writeText, readText: vi.fn() },
@@ -90,7 +90,7 @@ describe("transcriptClipboard", () => {
   });
 
   it("cut removes single-line selection after copying", async () => {
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal("navigator", {
       ...navigator,
       clipboard: { writeText, readText: vi.fn() },
@@ -108,7 +108,7 @@ describe("transcriptClipboard", () => {
   });
 
   it("copy with empty caret copies the current line without deleting", async () => {
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal("navigator", {
       ...navigator,
       clipboard: { writeText, readText: vi.fn() },
@@ -122,7 +122,7 @@ describe("transcriptClipboard", () => {
   });
 
   it("cut with empty caret clears current line text but keeps line count", async () => {
-    const writeText = vi.fn(async () => undefined);
+    const writeText = vi.fn(() => Promise.resolve());
     vi.stubGlobal("navigator", {
       ...navigator,
       clipboard: { writeText, readText: vi.fn() },
@@ -137,7 +137,7 @@ describe("transcriptClipboard", () => {
   });
 
   it("paste inserts encoded clipboard text at caret", async () => {
-    const readText = vi.fn(async () => "外\n部");
+    const readText = vi.fn(() => Promise.resolve("外\n部"));
     vi.stubGlobal("navigator", {
       ...navigator,
       clipboard: { writeText: vi.fn(), readText },

@@ -5,10 +5,11 @@ import type { PlaybackTransport, PlaybackTransportEvents } from "../services/wav
 
 let subscribedHandlers: PlaybackTransportEvents | null = null;
 
-const loadMock = vi.fn(async () => {
+const loadMock = vi.fn(() => {
   subscribedHandlers?.onReady?.(123);
+  return Promise.resolve();
 });
-const disposeMock = vi.fn(async () => undefined);
+const disposeMock = vi.fn(() => Promise.resolve());
 
 vi.mock("../services/waveform/transport", () => ({
   createNativeAudioPlaybackTransport: () =>

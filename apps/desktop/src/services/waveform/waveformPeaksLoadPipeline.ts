@@ -96,12 +96,12 @@ async function recoverIdlePeaksStatus(input: {
   onStatus: (st: WaveformPeaksStatus) => void;
   initial: WaveformPeaksStatus;
 }): Promise<WaveformPeaksStatus> {
-  let st = input.initial;
+  if (input.isCancelled()) return input.initial;
   const mediaDurationSec =
     input.mediaDurationSec > 0 ? input.mediaDurationSec : undefined;
 
   // Soft ensure joins a lock holder (wait) or spawns if idle.
-  st = await ensureWaveformPeaks(input.projectId, input.fileId, {
+  let st = await ensureWaveformPeaks(input.projectId, input.fileId, {
     mediaDurationSec,
   });
   if (!input.isCancelled()) input.onStatus(st);
