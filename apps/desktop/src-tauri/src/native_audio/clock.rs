@@ -8,6 +8,8 @@ pub(crate) struct SharedClock {
     pub stop: AtomicBool,
     pub seek_seq: AtomicU64,
     pub drain_seq: AtomicU64,
+    /// Output is flushing stale ring PCM after seek/rebuild; decode must not push.
+    pub drain_pending: AtomicBool,
     pub position_us: AtomicU64,
     pub duration_us: AtomicU64,
     pub rate_milli: AtomicU32,
@@ -30,6 +32,7 @@ impl SharedClock {
             stop: AtomicBool::new(false),
             seek_seq: AtomicU64::new(0),
             drain_seq: AtomicU64::new(0),
+            drain_pending: AtomicBool::new(false),
             position_us: AtomicU64::new(0),
             duration_us: AtomicU64::new((duration_sec.max(0.0) * 1_000_000.0) as u64),
             rate_milli: AtomicU32::new(1000),

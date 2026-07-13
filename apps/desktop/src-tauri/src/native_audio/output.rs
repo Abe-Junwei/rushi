@@ -1,23 +1,53 @@
 //! CPAL output callback — Consumer is owned here (SPSC, no Mutex).
 
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::Ordering;
+use std::sync::mpsc::Sender;
 use std::sync::Arc;
 
 use cpal::traits::DeviceTrait;
-use cpal::{Device, SampleFormat, Stream, StreamConfig};
+use cpal::{Device, ErrorKind, SampleFormat, Stream, StreamConfig};
 use ringbuf::traits::Consumer;
 
 use super::clock::SharedClock;
 
+/// Soft stream faults forwarded from the CPAL error callback to the engine thread.
+#[derive(Debug, Clone)]
+pub(crate) enum StreamFault {
+    DeviceChanged(String),
+    StreamInvalidated(String),
+    DeviceNotAvailable(String),
+    DeviceBusy(String),
+    PermissionDenied(String),
+    Xrun(String),
+    Other(String),
+}
+
+/// Cap seek/rebuild ring drains so a full RING_CAPACITY flush cannot stall CoreAudio.
+const MAX_DRAIN_SAMPLES_PER_CALLBACK: usize = 16_384;
+
 pub(crate) fn build_output_stream(
     device: &Device,
     sample_format: SampleFormat,
-    config: &StreamConfig,
+    config: StreamConfig,
     clock: Arc<SharedClock>,
     cons: impl Consumer<Item = f32> + Send + 'static,
+    fault_tx: Sender<StreamFault>,
 ) -> Result<Stream, String> {
-    let last_drain = AtomicU64::new(0);
-    let err_fn = |e| eprintln!("native_audio cpal error: {e}");
+    let last_drain = 0u64;
+    let err_fn = move |e: cpal::Error| {
+        let kind = e.kind();
+        let msg = e.to_string();
+        let fault = match kind {
+            ErrorKind::DeviceChanged => StreamFault::DeviceChanged(msg),
+            ErrorKind::StreamInvalidated => StreamFault::StreamInvalidated(msg),
+            ErrorKind::DeviceNotAvailable => StreamFault::DeviceNotAvailable(msg),
+            ErrorKind::DeviceBusy => StreamFault::DeviceBusy(msg),
+            ErrorKind::PermissionDenied => StreamFault::PermissionDenied(msg),
+            ErrorKind::Xrun => StreamFault::Xrun(msg),
+            _ => StreamFault::Other(msg),
+        };
+        let _ = fault_tx.send(fault);
+    };
 
     let stream = match sample_format {
         SampleFormat::F32 => {
@@ -74,7 +104,7 @@ fn write_output<T>(
     data: &mut [T],
     clock: &SharedClock,
     cons: &mut impl Consumer<Item = f32>,
-    last_drain: &mut AtomicU64,
+    last_drain: &mut u64,
     map: impl Fn(f32) -> T,
 ) {
     let playing = clock.playing.load(Ordering::Relaxed);
@@ -82,10 +112,29 @@ fn write_output<T>(
     let sample_rate = clock.output_sample_rate.load(Ordering::Relaxed).max(1) as f64;
     let rate = clock.rate() as f64;
 
-    let drain = clock.drain_seq.load(Ordering::Relaxed);
-    if drain != last_drain.load(Ordering::Relaxed) {
-        while cons.try_pop().is_some() {}
-        last_drain.store(drain, Ordering::Relaxed);
+    let drain = clock.drain_seq.load(Ordering::Acquire);
+    if drain != *last_drain {
+        let mut drained = 0usize;
+        let mut empty = false;
+        while drained < MAX_DRAIN_SAMPLES_PER_CALLBACK {
+            match cons.try_pop() {
+                Some(_) => drained += 1,
+                None => {
+                    empty = true;
+                    break;
+                }
+            }
+        }
+        if empty {
+            *last_drain = drain;
+            clock.drain_pending.store(false, Ordering::Release);
+        } else {
+            // Still flushing stale PCM — silence this callback and finish next tick.
+            for s in data.iter_mut() {
+                *s = map(0.0);
+            }
+            return;
+        }
     }
 
     if !playing {
@@ -104,7 +153,7 @@ fn write_output<T>(
         let mut ok = true;
         for ch in 0..channels {
             if let Some(sample) = cons.try_pop() {
-                data[base + ch] = map(sample);
+                data[base + ch] = map(sanitize_output_sample(sample));
                 popped_samples += 1;
             } else {
                 data[base + ch] = map(0.0);
@@ -134,5 +183,29 @@ fn write_output<T>(
             clock.playing.store(false, Ordering::Relaxed);
             clock.at_eof.store(true, Ordering::Relaxed);
         }
+    }
+}
+
+#[inline]
+fn sanitize_output_sample(sample: f32) -> f32 {
+    if sample.is_finite() {
+        sample.clamp(-1.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_output_sample;
+
+    #[test]
+    fn sanitize_output_sample_removes_non_finite_values() {
+        assert_eq!(sanitize_output_sample(f32::NAN), 0.0);
+        assert_eq!(sanitize_output_sample(f32::INFINITY), 0.0);
+        assert_eq!(sanitize_output_sample(f32::NEG_INFINITY), 0.0);
+        assert_eq!(sanitize_output_sample(2.0), 1.0);
+        assert_eq!(sanitize_output_sample(-2.0), -1.0);
+        assert_eq!(sanitize_output_sample(0.25), 0.25);
     }
 }

@@ -19,13 +19,29 @@ pub struct NativeAudioSnapshot {
     content = "data"
 )]
 pub enum NativeAudioEvent {
-    Ready { duration_sec: f64 },
+    Ready {
+        duration_sec: f64,
+    },
     Playing,
     Paused,
-    Seeked { sec: f64 },
-    TimeUpdate { sec: f64 },
+    Seeked {
+        sec: f64,
+    },
+    TimeUpdate {
+        sec: f64,
+    },
     Ended,
-    Error { message: String },
+    /// Soft underrun after consecutive empty output callbacks.
+    Underrun {
+        consecutive: u32,
+    },
+    /// Default output route changed (CoreAudio may auto-reroute).
+    DeviceChanged {
+        message: String,
+    },
+    Error {
+        message: String,
+    },
 }
 
 #[cfg(test)]
@@ -34,10 +50,7 @@ mod tests {
 
     #[test]
     fn event_serde_camel_case_contract() {
-        let ready = serde_json::to_value(NativeAudioEvent::Ready {
-            duration_sec: 12.5,
-        })
-        .unwrap();
+        let ready = serde_json::to_value(NativeAudioEvent::Ready { duration_sec: 12.5 }).unwrap();
         assert_eq!(ready["event"], "ready");
         assert_eq!(ready["data"]["durationSec"], 12.5);
 
@@ -63,5 +76,16 @@ mod tests {
             let v = serde_json::to_value(&unit).unwrap();
             assert!(v.get("event").is_some());
         }
+
+        let underrun = serde_json::to_value(NativeAudioEvent::Underrun { consecutive: 3 }).unwrap();
+        assert_eq!(underrun["event"], "underrun");
+        assert_eq!(underrun["data"]["consecutive"], 3);
+
+        let device = serde_json::to_value(NativeAudioEvent::DeviceChanged {
+            message: "default output device changed".into(),
+        })
+        .unwrap();
+        assert_eq!(device["event"], "deviceChanged");
+        assert_eq!(device["data"]["message"], "default output device changed");
     }
 }

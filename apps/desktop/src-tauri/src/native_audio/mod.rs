@@ -2,13 +2,16 @@
 //! Spec: docs/execution/specs/wkwebview-native-audio-engine-research.md
 //! ADR: docs/adr/0008-native-audio-playback-transport.md
 
-pub mod commands;
 mod clock;
+pub mod commands;
 mod decode;
 mod engine;
 mod events;
 mod output;
 mod types;
+
+#[cfg(test)]
+mod fixture_tests;
 
 pub use engine::NativeAudioState;
 

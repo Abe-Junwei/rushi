@@ -3,11 +3,13 @@
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use ringbuf::traits::Producer;
+use ringbuf::traits::{Observer, Producer};
+use ringbuf::HeapProd;
 use symphonia::core::codecs::audio::{AudioDecoder, AudioDecoderOptions};
 use symphonia::core::errors::Error as SymError;
 use symphonia::core::formats::probe::Hint;
@@ -20,7 +22,7 @@ use super::clock::SharedClock;
 use super::events::EventEmitter;
 use super::types::NativeAudioEvent;
 
-const PREBUFFER_MS: u64 = 120;
+pub(crate) const PREBUFFER_MS: u64 = 120;
 
 pub(crate) fn probe_duration_sec(path: &Path) -> Result<f64, String> {
     let file = File::open(path).map_err(|e| e.to_string())?;
@@ -50,6 +52,28 @@ pub(crate) fn probe_duration_sec(path: &Path) -> Result<f64, String> {
         return Ok(n as f64 / sr as f64);
     }
     Ok(0.0)
+}
+
+fn compute_prebuffer_samples(clock: &SharedClock, out_rate: u32, out_channels: u32) -> u64 {
+    let channels = out_channels.max(1) as u64;
+    let rate = out_rate.max(1) as u64;
+    let prebuffer_target_samples = ((rate * channels * PREBUFFER_MS) / 1000).max(1024);
+    let duration_samples =
+        (clock.duration_us.load(Ordering::Relaxed) * rate * channels) / 1_000_000;
+    if duration_samples > 0 {
+        prebuffer_target_samples.min(duration_samples.max(1))
+    } else {
+        prebuffer_target_samples
+    }
+}
+
+#[inline]
+fn sanitize_pcm_sample(sample: f32) -> f32 {
+    if sample.is_finite() {
+        sample.clamp(-1.0, 1.0)
+    } else {
+        0.0
+    }
 }
 
 fn make_decoder(
@@ -115,22 +139,13 @@ fn seek_format(
 pub(crate) fn decode_loop(
     path: PathBuf,
     clock: Arc<SharedClock>,
-    mut prod: impl Producer<Item = f32>,
-    out_rate: u32,
-    out_channels: u32,
+    mut prod: HeapProd<f32>,
+    prod_rx: Receiver<HeapProd<f32>>,
+    mut out_rate: u32,
+    mut out_channels: u32,
     events: EventEmitter,
 ) {
-    let prebuffer_target_samples =
-        ((out_rate as u64 * out_channels.max(1) as u64 * PREBUFFER_MS) / 1000).max(1024);
-    let duration_samples = (clock.duration_us.load(Ordering::Relaxed)
-        * out_rate as u64
-        * out_channels.max(1) as u64)
-        / 1_000_000;
-    let prebuffer_samples = if duration_samples > 0 {
-        prebuffer_target_samples.min(duration_samples.max(1))
-    } else {
-        prebuffer_target_samples
-    };
+    let mut prebuffer_samples = compute_prebuffer_samples(&clock, out_rate, out_channels);
     let (mut format, track_id, src_rate) = match open_format(&path) {
         Ok(v) => v,
         Err(msg) => {
@@ -144,12 +159,7 @@ pub(crate) fn decode_loop(
         });
         return;
     };
-    let Some(audio_params) = track
-        .codec_params
-        .as_ref()
-        .and_then(|p| p.audio())
-        .cloned()
-    else {
+    let Some(audio_params) = track.codec_params.as_ref().and_then(|p| p.audio()).cloned() else {
         events.emit(NativeAudioEvent::Error {
             message: "无法读取编解码参数".into(),
         });
@@ -173,6 +183,16 @@ pub(crate) fn decode_loop(
     }
 
     while !clock.stop.load(Ordering::Relaxed) {
+        // Output-stream rebuild hands a fresh producer while keeping decode state.
+        while let Ok(next) = prod_rx.try_recv() {
+            prod = next;
+            clock.queued_samples.store(0, Ordering::SeqCst);
+            clock.buffer_ready.store(false, Ordering::SeqCst);
+            out_rate = clock.output_sample_rate.load(Ordering::Relaxed).max(1);
+            out_channels = clock.output_channels.load(Ordering::Relaxed).max(1);
+            prebuffer_samples = compute_prebuffer_samples(&clock, out_rate, out_channels);
+        }
+
         let seek_seq = clock.seek_seq.load(Ordering::SeqCst);
         if seek_seq != last_seek_seq {
             last_seek_seq = seek_seq;
@@ -185,9 +205,12 @@ pub(crate) fn decode_loop(
             }
         }
 
-        if !clock.playing.load(Ordering::Relaxed)
-            && !clock.play_requested.load(Ordering::Relaxed)
-        {
+        if clock.drain_pending.load(Ordering::Acquire) {
+            thread::sleep(Duration::from_millis(1));
+            continue;
+        }
+
+        if !clock.playing.load(Ordering::Relaxed) && !clock.play_requested.load(Ordering::Relaxed) {
             thread::sleep(Duration::from_millis(8));
             continue;
         }
@@ -220,7 +243,7 @@ pub(crate) fn decode_loop(
                                 } else {
                                     frame.iter().sum::<f32>() / ch as f32
                                 };
-                                pending.push(mono);
+                                pending.push(sanitize_pcm_sample(mono));
                             }
                         }
                         Err(SymError::DecodeError(_)) => continue,
@@ -232,6 +255,10 @@ pub(crate) fn decode_loop(
                     // remains; output owns the audible end and final Ended edge.
                     clock.at_eof.store(true, Ordering::Relaxed);
                     let queued = clock.queued_samples.load(Ordering::Relaxed);
+                    let duration_samples = (clock.duration_us.load(Ordering::Relaxed)
+                        * out_rate.max(1) as u64
+                        * out_channels.max(1) as u64)
+                        / 1_000_000;
                     if queued >= prebuffer_samples || (duration_samples == 0 && queued > 0) {
                         clock.buffer_ready.store(true, Ordering::Relaxed);
                     } else {
@@ -264,6 +291,11 @@ pub(crate) fn decode_loop(
         }
 
         while prod.vacant_len() >= out_channels as usize {
+            if clock.drain_pending.load(Ordering::Acquire)
+                || clock.seek_seq.load(Ordering::Relaxed) != last_seek_seq
+            {
+                break;
+            }
             let idx = src_phase.floor() as usize;
             if idx + 1 >= pending.len() {
                 if idx < pending.len() {
@@ -278,7 +310,7 @@ pub(crate) fn decode_loop(
             let frac = src_phase - idx as f64;
             let a = pending[idx];
             let b = pending[idx + 1];
-            let sample = a + (b - a) * frac as f32;
+            let sample = sanitize_pcm_sample(a + (b - a) * frac as f32);
             let mut pushed = 0u64;
             for _ in 0..out_channels {
                 if prod.try_push(sample).is_err() {

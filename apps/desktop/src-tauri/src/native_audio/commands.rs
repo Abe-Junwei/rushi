@@ -33,18 +33,12 @@ pub fn native_audio_pause(audio: State<'_, NativeAudioState>) -> Result<(), Stri
 }
 
 #[tauri::command]
-pub fn native_audio_seek(
-    audio: State<'_, NativeAudioState>,
-    time_sec: f64,
-) -> Result<(), String> {
+pub fn native_audio_seek(audio: State<'_, NativeAudioState>, time_sec: f64) -> Result<(), String> {
     audio.with_player(|p| p.seek(time_sec))
 }
 
 #[tauri::command]
-pub fn native_audio_set_rate(
-    audio: State<'_, NativeAudioState>,
-    rate: f32,
-) -> Result<(), String> {
+pub fn native_audio_set_rate(audio: State<'_, NativeAudioState>, rate: f32) -> Result<(), String> {
     audio.with_player(|p| p.set_rate(rate))
 }
 

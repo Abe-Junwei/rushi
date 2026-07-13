@@ -69,6 +69,6 @@ symphonia = { version = "0.6", default-features = false, features = [
   "vorbis",
   "wav",
 ] }
-cpal = "0.15"
+cpal = "0.18"
 ringbuf = "0.4"
 tauri-plugin-process = "2"
