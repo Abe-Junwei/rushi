@@ -25,7 +25,7 @@ type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type EditorShortcutExecuteDeps = {
   ctx: TranscriptionLayerInput;
-  /** 异步 shortcut（如 Tab 定稿）完成后须读最新 ctx，避免闭包 stale。 */
+  /** 异步 shortcut（如 Enter 定稿跳段）完成后须读最新 ctx，避免闭包 stale。 */
   getCtx?: () => TranscriptionLayerInput;
   wf: WfApi;
   selectSegmentAt: (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void;

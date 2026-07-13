@@ -33,6 +33,7 @@ import {
   readStoredWaveformGlobalPlaybackRate,
   readStoredWaveformMinimapEnabled,
   readStoredWaveformPlaybackScrollFollowMode,
+  readStoredTranscriptPlaybackFollow,
   resolveStoredTranscriptFontPx,
   resolveStoredWaveformHeightPx,
   writeStoredP1TranscriptFontPx,
@@ -41,12 +42,14 @@ import {
   writeStoredWaveformHeightPx,
   writeStoredWaveformMinimapEnabled,
   writeStoredWaveformPlaybackScrollFollowMode,
+  writeStoredTranscriptPlaybackFollow,
 } from "../../utils/waveformPrefs";
 
 export type SettingsProfileEditorSection = {
   tab_advance_loops_segment?: boolean;
   waveform_minimap?: boolean;
   playback_scroll_follow?: WaveformPlaybackScrollFollowMode;
+  transcript_playback_follow?: boolean;
   global_playback_rate?: number;
   transcript_font_px?: number;
   waveform_height_px?: number;
@@ -92,6 +95,7 @@ function buildProfileEditorSection(): SettingsProfileEditorSection {
     tab_advance_loops_segment: readStoredTabAdvanceLoopsSegment(),
     waveform_minimap: readStoredWaveformMinimapEnabled(),
     playback_scroll_follow: readStoredWaveformPlaybackScrollFollowMode(),
+    transcript_playback_follow: readStoredTranscriptPlaybackFollow(),
     global_playback_rate: readStoredWaveformGlobalPlaybackRate(),
     transcript_font_px: resolveStoredTranscriptFontPx(),
     waveform_height_px: resolveStoredWaveformHeightPx(),
@@ -145,6 +149,9 @@ function applyProfileEditorSection(editor: SettingsProfileEditorSection | undefi
   }
   if (editor.playback_scroll_follow != null) {
     writeStoredWaveformPlaybackScrollFollowMode(editor.playback_scroll_follow);
+  }
+  if (editor.transcript_playback_follow != null) {
+    writeStoredTranscriptPlaybackFollow(editor.transcript_playback_follow);
   }
   if (editor.global_playback_rate != null) {
     writeStoredWaveformGlobalPlaybackRate(editor.global_playback_rate);

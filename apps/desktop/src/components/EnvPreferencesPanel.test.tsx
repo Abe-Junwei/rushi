@@ -35,12 +35,12 @@ describe("EnvPreferencesPanel", () => {
     expect(screen.getByRole("heading", { name: "转写与波形" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "界面主题" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "主题色" })).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Tab 定稿后 loop 播下一段" })).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "跳段后 loop 播新语段" })).toBeTruthy();
   });
 
   it("persists tab advance loop preference", () => {
     render(<EnvPreferencesPanel />);
-    fireEvent.click(screen.getByRole("switch", { name: "Tab 定稿后 loop 播下一段" }));
+    fireEvent.click(screen.getByRole("switch", { name: "跳段后 loop 播新语段" }));
     expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("0");
   });
 

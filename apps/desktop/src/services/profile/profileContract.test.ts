@@ -149,6 +149,7 @@ describe("profileContract", () => {
         tab_advance_loops_segment: false,
         waveform_minimap: false,
         playback_scroll_follow: "edge",
+        transcript_playback_follow: false,
         global_playback_rate: 1.5,
         transcript_font_px: 16,
         waveform_height_px: 180,
@@ -158,6 +159,7 @@ describe("profileContract", () => {
     expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("0");
     expect(localStorage.getItem("rushi.p1.waveformMinimap")).toBe("0");
     expect(localStorage.getItem("rushi.p1.waveformPlaybackScrollFollow")).toBe("edge");
+    expect(localStorage.getItem("rushi.p1.transcriptPlaybackFollow")).toBe("0");
     expect(localStorage.getItem("rushi.p1.waveformGlobalPlaybackRate")).toBe("1.5");
     expect(localStorage.getItem("rushi.p1.transcriptFontPx")).toBe("16");
     expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("180");

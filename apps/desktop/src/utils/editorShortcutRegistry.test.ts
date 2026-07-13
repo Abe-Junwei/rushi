@@ -164,6 +164,9 @@ describe("formatEditorShortcutPanelSections", () => {
     const sections = formatEditorShortcutPanelSections();
     const transcript = sections.find((s) => s.id === "transcript");
     expect(transcript?.rows.some((r) => r.keys === "↑ / ↓")).toBe(true);
+    expect(
+      transcript?.rows.find((r) => r.keys === "↑ / ↓")?.action,
+    ).toMatch(/不 seek/);
     expect(transcript?.rows.some((r) => r.id === "segment.mergeNext")).toBe(true);
 
     const playback = sections.find((s) => s.id === "playback");
@@ -179,5 +182,7 @@ describe("formatEditorShortcutPanelSections", () => {
 
     const workflow = sections.find((s) => s.id === "workflow");
     expect(workflow?.rows.some((r) => r.keys === "⌘/Ctrl + F")).toBe(true);
+    expect(workflow?.rows.find((r) => r.keys === "Tab")?.action).toMatch(/不定稿/);
+    expect(workflow?.rows.find((r) => r.keys === "Enter")?.action).toMatch(/定稿/);
   });
 });

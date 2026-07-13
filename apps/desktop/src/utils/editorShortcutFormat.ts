@@ -27,7 +27,7 @@ export function formatEditorShortcutPanelSections(): EditorShortcutPanelSection[
         {
           id: "segment-arrows",
           keys: "↑ / ↓",
-          action: "切换到上一条 / 下一条语段，并联动播放（⇧+方向键仍用于扩选文字）",
+          action: "切换到上一条 / 下一条语段（不 seek、不改播放；⇧+方向键仍用于扩选文字）",
         },
         {
           id: "segment-boundary-merge",

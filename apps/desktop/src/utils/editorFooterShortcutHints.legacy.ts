@@ -16,8 +16,8 @@ export const EDITOR_FOOTER_SHORTCUT_HINTS: EditorFooterShortcutHint[] = [
   {
     id: "segment-arrows",
     keys: "↑ / ↓",
-    footerAction: "语段间切换并联动播放",
-    panelAction: "在语段正文内：↑ 上一条 / ↓ 下一条，并联动播放",
+    footerAction: "语段间切换",
+    panelAction: "在语段正文内：↑ 上一条 / ↓ 下一条（不 seek、不改播放）",
   },
   {
     id: "highlight-word",

@@ -180,8 +180,8 @@ export function EnvPreferencesPanel() {
         <div className={ENV_PANEL_FORM_FIELDS_CLASS}>
           <EnvPrefSwitchRow
             id="pref-tab-advance-loop"
-            label="Tab 定稿后 loop 播下一段"
-            hint="在语段正文按 Tab 确认并跳下一段时，自动 loop 播放新语段（听打默认开）。"
+            label="跳段后 loop 播新语段"
+            hint="在语段正文按 Enter 定稿或 Tab 跳到下一段后，自动 loop 播放新语段（听打默认开）。"
             checked={tabAdvanceLoops}
             onChange={setTabAdvanceLoops}
           />
