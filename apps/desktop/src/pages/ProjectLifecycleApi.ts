@@ -248,17 +248,49 @@ export interface ProjectLifecycleApi {
   renamingProjectFileId: string | null;
   renameProjectFileDraft: string;
   setRenameProjectFileDraft: (value: string) => void;
-  beginRenameProjectFile: (fileId: string, currentName: string) => void;
+  beginRenameProjectFile: (fileId: string, currentName: string, sourceProjectId?: string) => void;
   cancelRenameProjectFile: () => void;
   commitRenameProjectFile: () => void;
   pendingProjectFileDelete: import("./useProjectFileMutationController").PendingProjectFileDelete;
-  requestDeleteProjectFile: (fileId: string, fileName: string) => void;
+  requestDeleteProjectFile: (
+    fileId: string,
+    fileName: string,
+    sourceProjectId?: string,
+  ) => void;
   cancelDeleteProjectFile: () => void;
   confirmDeleteProjectFile: () => void;
+  pendingProjectFileMove: import("./useProjectFileMutationController").PendingProjectFileMove;
+  requestMoveProjectFile: (args: {
+    fileId: string;
+    fileName: string;
+    sourceProjectId: string;
+    destProjectId: string;
+    destProjectName: string;
+  }) => void;
+  moveProjectFileNow: (args: {
+    fileId: string;
+    sourceProjectId: string;
+    destProjectId: string;
+  }) => void;
+  cancelMoveProjectFile: () => void;
+  confirmMoveProjectFile: () => void;
+  pendingProjectFileCopy: import("./useProjectFileMutationController").PendingProjectFileCopy;
+  requestCopyProjectFile: (args: {
+    fileId: string;
+    fileName: string;
+    sourceProjectId: string;
+    destProjectId: string;
+    destProjectName: string;
+  }) => void;
+  cancelCopyProjectFile: () => void;
+  confirmCopyProjectFile: () => void;
+  revealProjectLocation: (projectId: string) => void;
+  revealFileLocation: (fileId: string) => void;
   isRenamingProject: boolean;
+  renamingProjectId: string | null;
   renameProjectDraft: string;
   setRenameProjectDraft: (value: string) => void;
-  beginRenameProject: (currentName: string) => void;
+  beginRenameProject: (currentName: string, projectId?: string) => void;
   cancelRenameProject: () => void;
   commitRenameProject: () => void;
   projectMetadataDialogOpen: boolean;

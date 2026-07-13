@@ -10,6 +10,8 @@ import { AttachImportTargetDialog } from "./AttachImportTargetDialog";
 import { BatchTranscribeQueueDialog } from "./BatchTranscribeQueueDialog";
 import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
 import { DeleteProjectConfirmDialog } from "./DeleteProjectConfirmDialog";
+import { MoveProjectFileConfirmDialog } from "./MoveProjectFileConfirmDialog";
+import { CopyProjectFileConfirmDialog } from "./CopyProjectFileConfirmDialog";
 import { ProjectMetadataDialog } from "./ProjectMetadataDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
@@ -245,6 +247,24 @@ export function ProjectPanelDialogs({
         busy={c.busy}
         onCancel={c.cancelDeleteProjectFile}
         onConfirm={() => void c.confirmDeleteProjectFile()}
+      />
+
+      <MoveProjectFileConfirmDialog
+        open={c.pendingProjectFileMove != null}
+        fileName={c.pendingProjectFileMove?.fileName ?? null}
+        destProjectName={c.pendingProjectFileMove?.destProjectName ?? null}
+        busy={c.busy}
+        onCancel={c.cancelMoveProjectFile}
+        onConfirm={() => void c.confirmMoveProjectFile()}
+      />
+
+      <CopyProjectFileConfirmDialog
+        open={c.pendingProjectFileCopy != null}
+        fileName={c.pendingProjectFileCopy?.fileName ?? null}
+        destProjectName={c.pendingProjectFileCopy?.destProjectName ?? null}
+        busy={c.busy}
+        onCancel={c.cancelCopyProjectFile}
+        onConfirm={() => void c.confirmCopyProjectFile()}
       />
 
       <DeleteProjectConfirmDialog

@@ -10,6 +10,7 @@ interface WorkspaceFileRowProps {
   busy?: boolean;
   selected?: boolean;
   onOpen: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   actionSlot?: ReactNode;
   /** sidebar：嵌套于项目下，小字 + 缩进；panel：主舞台列表（默认） */
   variant?: "panel" | "sidebar";
@@ -19,7 +20,6 @@ interface WorkspaceFileRowProps {
  * Welcome / Hub 共用文件列表行：
  * - hover 背景
  * - 文件名 + meta
- * - "打开" 文字（hover/focus-visible 显）
  * - 可选右侧操作按钮（actionSlot）
  */
 export function WorkspaceFileRow({
@@ -28,6 +28,7 @@ export function WorkspaceFileRow({
   busy,
   selected = false,
   onOpen,
+  onContextMenu,
   actionSlot,
   variant = "panel",
 }: WorkspaceFileRowProps) {
@@ -40,6 +41,7 @@ export function WorkspaceFileRow({
         WORKSPACE_FILE_ROW_CLASS,
         selected ? "bg-notion-sidebar-active hover:bg-notion-sidebar-active" : "",
       ].join(" ")}
+      onContextMenu={onContextMenu}
     >
       <button
         type="button"
@@ -55,7 +57,7 @@ export function WorkspaceFileRow({
         onFocus={() => setRowHovered(true)}
         onBlur={() => setRowHovered(false)}
       >
-        <span className="min-w-0 flex-1 pr-3">
+        <span className="min-w-0 flex-1">
           <HoverRevealText
             text={name}
             revealed={rowHovered}
@@ -77,9 +79,6 @@ export function WorkspaceFileRow({
           >
             {meta}
           </span>
-        </span>
-        <span className="shrink-0 text-label font-medium text-accent-action opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
-          打开
         </span>
       </button>
       {actionSlot ? <div className="flex shrink-0 items-center pr-5">{actionSlot}</div> : null}

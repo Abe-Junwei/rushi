@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { List, Settings } from "lucide-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -11,6 +11,7 @@ import {
   workspaceSidebarFooterItemClass,
 } from "../config/workspaceShellLayout";
 import { useWelcomeSidebarProjectTree } from "../hooks/useWelcomeSidebarProjectTree";
+import { registerProjectFilesCacheInvalidator } from "../services/projectFilesCacheBridge";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
@@ -58,6 +59,11 @@ export function WelcomeSidebar({
     editorMode,
     activeProjectId,
   });
+
+  useEffect(() => {
+    registerProjectFilesCacheInvalidator(projectTree.invalidateProjectFilesCaches);
+    return () => registerProjectFilesCacheInvalidator(null);
+  }, [projectTree.invalidateProjectFilesCaches]);
 
   const handleOpenEditor = useCallback(() => {
     void c.openLastEditorWorkspace();

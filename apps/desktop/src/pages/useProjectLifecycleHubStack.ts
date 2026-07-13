@@ -6,6 +6,7 @@ import { useProjectMutationController } from "./useProjectMutationController";
 import type { ProjectCloseGateControllerApi } from "./useProjectCloseGateController";
 import type { SegmentMutationApi } from "./useSegmentMutationController";
 import type { BusyReason } from "./useProjectCrudController";
+import { invalidateProjectFilesCaches } from "../services/projectFilesCacheBridge";
 
 type UseProjectLifecycleHubStackArgs = {
   pickedPath: string | null;
@@ -47,6 +48,15 @@ export function useProjectLifecycleHubStack(args: UseProjectLifecycleHubStackArg
     projectId: args.current?.id,
     busy: args.busy,
     refreshProjectHub: args.closeGate.refreshProjectHub,
+    refreshProjects: args.refreshProjects,
+    closeOpenFileIfNeeded: async (fileId) => {
+      if (args.currentFileId !== fileId) return;
+      const ok = await args.closeGate.runWithUnsavedNavigateGate(async () => {
+        args.closeGate.closeFileWrapped();
+      });
+      if (!ok) throw new Error("已取消移动：文件仍处于打开状态。");
+    },
+    invalidateProjectFilesCaches,
     setError: args.setError,
   });
 

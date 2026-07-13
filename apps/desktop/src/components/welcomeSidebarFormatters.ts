@@ -11,7 +11,6 @@ export const WELCOME_SIDEBAR_PROJECT_META =
 /** 侧栏嵌套文件行左内边距：px-5 + icon(28px) + gap-2(8px) */
 export const WELCOME_SIDEBAR_FILE_INDENT = "pl-14 pr-5";
 export const WELCOME_PROJECT_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} hover:bg-notion-sidebar-active`;
-export const WELCOME_PROJECT_DELETE_BTN = `${WELCOME_PROJECT_ACTION_BTN} opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100`;
 
 export function sortWelcomeProjects(list: ProjectSummary[]): ProjectSummary[] {
   return [...list].sort((a, b) => b.updated_at_ms - a.updated_at_ms);

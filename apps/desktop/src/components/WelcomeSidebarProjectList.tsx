@@ -1,22 +1,44 @@
-import { ChevronRight, FolderOpen, Trash2 } from "lucide-react";
+import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { ChevronRight, FolderOpen } from "lucide-react";
+import { CONTROL_BTN_LINK } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_SIDEBAR_EMPTY_HINT_BTN, WORKSPACE_SIDEBAR_ROW_SURFACE } from "../config/workspaceShellLayout";
+import { useSidebarFileProjectDrag } from "../hooks/useSidebarFileProjectDrag";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
+import {
+  buildProjectContextMenuItems,
+  buildProjectFileContextMenuItems,
+  isProjectContextMenuKey,
+  isProjectFileContextMenuKey,
+  parseCopyDestProjectId,
+  parseMoveDestProjectId,
+} from "../utils/projectWorkspaceContextMenuModel";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { SegmentContextMenu } from "./SegmentContextMenu";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import {
   formatRecentProjectDate,
   formatRecentProjectName,
   projectFileCountLabel,
   WELCOME_PROJECT_ACTION_BTN,
-  WELCOME_PROJECT_DELETE_BTN,
   WELCOME_PROJECT_ROW_ICON,
   WELCOME_SIDEBAR_PROJECT_META,
   WELCOME_SIDEBAR_PROJECT_NAME,
 } from "./welcomeSidebarFormatters";
+
+type CtxMenu =
+  | { kind: "project"; projectId: string; x: number; y: number }
+  | {
+      kind: "file";
+      projectId: string;
+      fileId: string;
+      fileName: string;
+      x: number;
+      y: number;
+    };
 
 type Props = {
   controller: ProjectControllerApi;
@@ -47,6 +69,29 @@ export function WelcomeSidebarProjectList({
   onOpenProjectFile,
   onToggleProjectExpanded,
 }: Props) {
+  const [ctx, setCtx] = useState<CtxMenu | null>(null);
+  const fileDrag = useSidebarFileProjectDrag({
+    busy: c.busy,
+    onMove: (args) => c.moveProjectFileNow(args),
+  });
+
+  const openProjectMenu = (e: ReactMouseEvent, projectId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtx({ kind: "project", projectId, x: e.clientX, y: e.clientY });
+  };
+
+  const openFileMenu = (
+    e: ReactMouseEvent,
+    projectId: string,
+    fileId: string,
+    fileName: string,
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCtx({ kind: "file", projectId, fileId, fileName, x: e.clientX, y: e.clientY });
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-4">
       <div className="mb-2 flex items-baseline justify-between gap-2 px-5">
@@ -71,42 +116,88 @@ export function WelcomeSidebarProjectList({
               .filter(Boolean)
               .join(" · ");
             const isActiveProject = inProjectContext && p.id === activeProjectId;
+            const isRenamingThis =
+              c.isRenamingProject && (c.renamingProjectId === p.id || (!c.renamingProjectId && isActiveProject));
+
+            const isDropTarget =
+              fileDrag.dragging != null &&
+              fileDrag.dropTargetId === p.id &&
+              fileDrag.dragging.projectId !== p.id;
 
             return (
               <div
                 key={p.id}
+                data-sidebar-project-id={p.id}
                 className={[
                   "group",
                   WORKSPACE_SIDEBAR_ROW_SURFACE,
-                  isActiveProject
-                    ? "bg-notion-sidebar-active"
-                    : "hover:bg-notion-sidebar-hover",
+                  isDropTarget
+                    ? "bg-notion-sidebar-active ring-1 ring-inset ring-accent-action/35"
+                    : isActiveProject
+                      ? "bg-notion-sidebar-active"
+                      : "hover:bg-notion-sidebar-hover",
                 ].join(" ")}
+                onContextMenu={(e) => openProjectMenu(e, p.id)}
               >
-                <div className="flex items-center gap-1 px-5 py-2.5">
-                  <button
-                    type="button"
-                    className="flex min-w-0 flex-1 appearance-none items-center gap-2 border-0 bg-transparent p-0 text-left disabled:opacity-40"
-                    disabled={c.busy}
-                    title={`打开项目：${formatRecentProjectName(p.name)}`}
-                    onClick={() => onOpenProject(p.id)}
+                {isRenamingThis ? (
+                  <form
+                    className="flex items-center gap-2 px-5 py-2.5"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      c.commitRenameProject();
+                    }}
                   >
-                    <span className={WELCOME_PROJECT_ROW_ICON}>
-                      <FolderOpen
-                        className={LUCIDE_ICON_SIZE_SM}
-                        strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                        aria-hidden
-                      />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className={WELCOME_SIDEBAR_PROJECT_NAME}>
-                        {formatRecentProjectName(p.name)}
+                    <input
+                      type="text"
+                      className="min-w-0 flex-1 rounded-sm border border-notion-border bg-notion-bg px-2 py-1 text-sm text-notion-text"
+                      value={c.renameProjectDraft}
+                      disabled={c.busy}
+                      autoFocus
+                      onChange={(e) => c.setRenameProjectDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape") c.cancelRenameProject();
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      className={`${CONTROL_BTN_LINK} shrink-0 text-label text-accent-action`}
+                      disabled={c.busy || !c.renameProjectDraft.trim()}
+                    >
+                      保存
+                    </button>
+                    <button
+                      type="button"
+                      className={`${CONTROL_BTN_LINK} shrink-0 text-label text-notion-text-muted`}
+                      disabled={c.busy}
+                      onClick={() => c.cancelRenameProject()}
+                    >
+                      取消
+                    </button>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-1 px-5 py-2.5">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 appearance-none items-center gap-2 border-0 bg-transparent p-0 text-left disabled:opacity-40"
+                      disabled={c.busy}
+                      title={`打开项目：${formatRecentProjectName(p.name)}`}
+                      onClick={() => onOpenProject(p.id)}
+                    >
+                      <span className={WELCOME_PROJECT_ROW_ICON}>
+                        <FolderOpen
+                          className={LUCIDE_ICON_SIZE_SM}
+                          strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                          aria-hidden
+                        />
                       </span>
-                      <span className={WELCOME_SIDEBAR_PROJECT_META}>{metaLine}</span>
-                    </span>
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className={WELCOME_SIDEBAR_PROJECT_NAME}>
+                          {formatRecentProjectName(p.name)}
+                        </span>
+                        <span className={WELCOME_SIDEBAR_PROJECT_META}>{metaLine}</span>
+                      </span>
+                    </button>
 
-                  <div className="flex shrink-0 items-center">
                     <button
                       type="button"
                       className={WELCOME_PROJECT_ACTION_BTN}
@@ -123,21 +214,8 @@ export function WelcomeSidebarProjectList({
                         />
                       </span>
                     </button>
-                    <button
-                      type="button"
-                      className={WELCOME_PROJECT_DELETE_BTN}
-                      onClick={() => c.requestDeleteProject(p.id, formatRecentProjectName(p.name))}
-                      disabled={c.busy}
-                      aria-label={`删除项目 ${formatRecentProjectName(p.name)}`}
-                    >
-                      <Trash2
-                        className={LUCIDE_ICON_SIZE_SM}
-                        strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                        aria-hidden
-                      />
-                    </button>
                   </div>
-                </div>
+                )}
 
                 {isExpanded ? (
                   <div className="border-t border-notion-divider">
@@ -150,15 +228,69 @@ export function WelcomeSidebarProjectList({
                         {[...files]
                           .sort((a, b) => b.updated_at_ms - a.updated_at_ms)
                           .map((f) => (
-                            <li key={f.id}>
-                              <WorkspaceFileRow
-                                variant="sidebar"
-                                name={f.name}
-                                meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
-                                busy={c.busy}
-                                selected={editorMode && activeFileId === f.id}
-                                onOpen={() => void onOpenProjectFile(p.id, f.id)}
-                              />
+                            <li
+                              key={f.id}
+                              className={
+                                fileDrag.dragging?.fileId === f.id ? "opacity-50" : undefined
+                              }
+                              onPointerDown={(e) => {
+                                if (c.renamingProjectFileId === f.id) return;
+                                fileDrag.beginFilePointerDrag(e, {
+                                  fileId: f.id,
+                                  projectId: p.id,
+                                  fileName: f.name,
+                                });
+                              }}
+                            >
+                              {c.renamingProjectFileId === f.id ? (
+                                <form
+                                  className="flex items-center gap-2 px-5 py-1.5"
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    c.commitRenameProjectFile();
+                                  }}
+                                >
+                                  <input
+                                    type="text"
+                                    className="min-w-0 flex-1 rounded-sm border border-notion-border bg-notion-bg px-2 py-1 text-sm text-notion-text"
+                                    value={c.renameProjectFileDraft}
+                                    disabled={c.busy}
+                                    autoFocus
+                                    onChange={(e) => c.setRenameProjectFileDraft(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Escape") c.cancelRenameProjectFile();
+                                    }}
+                                  />
+                                  <button
+                                    type="submit"
+                                    className={`${CONTROL_BTN_LINK} shrink-0 text-label text-accent-action`}
+                                    disabled={c.busy || !c.renameProjectFileDraft.trim()}
+                                  >
+                                    保存
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className={`${CONTROL_BTN_LINK} shrink-0 text-label text-notion-text-muted`}
+                                    disabled={c.busy}
+                                    onClick={() => c.cancelRenameProjectFile()}
+                                  >
+                                    取消
+                                  </button>
+                                </form>
+                              ) : (
+                                <WorkspaceFileRow
+                                  variant="sidebar"
+                                  name={f.name}
+                                  meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
+                                  busy={c.busy}
+                                  selected={editorMode && activeFileId === f.id}
+                                  onOpen={() => {
+                                    if (fileDrag.consumeOpenClickSuppression()) return;
+                                    void onOpenProjectFile(p.id, f.id);
+                                  }}
+                                  onContextMenu={(e) => openFileMenu(e, p.id, f.id, f.name)}
+                                />
+                              )}
                             </li>
                           ))}
                       </ul>
@@ -184,6 +316,88 @@ export function WelcomeSidebarProjectList({
           </div>
         )}
       </div>
+
+      {ctx?.kind === "project" ? (
+        <SegmentContextMenu
+          x={ctx.x}
+          y={ctx.y}
+          items={buildProjectContextMenuItems({
+            isExpanded: expandedProjectId === ctx.projectId,
+            busy: c.busy,
+          })}
+          onClose={() => setCtx(null)}
+          onSelect={(key) => {
+            const project = projects.find((p) => p.id === ctx.projectId);
+            if (!project || !isProjectContextMenuKey(key)) {
+              setCtx(null);
+              return;
+            }
+            const isExpanded = expandedProjectId === ctx.projectId;
+            setCtx(null);
+            if (key === "toggleExpand") onToggleProjectExpanded(ctx.projectId, isExpanded);
+            else if (key === "revealLocation") void c.revealProjectLocation(ctx.projectId);
+            else if (key === "rename") {
+              c.beginRenameProject(formatRecentProjectName(project.name), ctx.projectId);
+            } else if (key === "delete") {
+              c.requestDeleteProject(ctx.projectId, formatRecentProjectName(project.name));
+            }
+          }}
+        />
+      ) : null}
+
+      {ctx?.kind === "file" ? (
+        <SegmentContextMenu
+          x={ctx.x}
+          y={ctx.y}
+          items={buildProjectFileContextMenuItems({
+            sourceProjectId: ctx.projectId,
+            projects,
+            busy: c.busy,
+          })}
+          onClose={() => setCtx(null)}
+          onSelect={(key) => {
+            if (!isProjectFileContextMenuKey(key)) {
+              setCtx(null);
+              return;
+            }
+            const fileCtx = ctx;
+            setCtx(null);
+            if (key === "open") void onOpenProjectFile(fileCtx.projectId, fileCtx.fileId);
+            else if (key === "revealLocation") void c.revealFileLocation(fileCtx.fileId);
+            else if (key === "rename") {
+              c.beginRenameProjectFile(fileCtx.fileId, fileCtx.fileName, fileCtx.projectId);
+            } else if (key === "delete") {
+              c.requestDeleteProjectFile(fileCtx.fileId, fileCtx.fileName, fileCtx.projectId);
+            } else {
+              const moveDestId = parseMoveDestProjectId(key);
+              if (moveDestId) {
+                const dest = projects.find((p) => p.id === moveDestId);
+                if (!dest) return;
+                c.requestMoveProjectFile({
+                  fileId: fileCtx.fileId,
+                  fileName: fileCtx.fileName,
+                  sourceProjectId: fileCtx.projectId,
+                  destProjectId: moveDestId,
+                  destProjectName: formatRecentProjectName(dest.name),
+                });
+                return;
+              }
+              const copyDestId = parseCopyDestProjectId(key);
+              if (copyDestId) {
+                const dest = projects.find((p) => p.id === copyDestId);
+                if (!dest) return;
+                c.requestCopyProjectFile({
+                  fileId: fileCtx.fileId,
+                  fileName: fileCtx.fileName,
+                  sourceProjectId: fileCtx.projectId,
+                  destProjectId: copyDestId,
+                  destProjectName: formatRecentProjectName(dest.name),
+                });
+              }
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }

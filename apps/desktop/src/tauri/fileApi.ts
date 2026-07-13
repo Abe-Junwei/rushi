@@ -120,6 +120,34 @@ export async function deleteFile(fileId: string): Promise<void> {
   return invoke<void>("delete_file", { fileId });
 }
 
+export type FilePlacementResult = {
+  fileId: string;
+  finalName: string;
+  renamed: boolean;
+};
+
+export async function moveFileToProject(
+  fileId: string,
+  destProjectId: string,
+): Promise<FilePlacementResult> {
+  return invoke<FilePlacementResult>("move_file_to_project", { fileId, destProjectId });
+}
+
+export async function copyFileToProject(
+  fileId: string,
+  destProjectId: string,
+): Promise<FilePlacementResult> {
+  return invoke<FilePlacementResult>("copy_file_to_project", { fileId, destProjectId });
+}
+
+export async function revealProjectInFileManager(projectId: string): Promise<void> {
+  return invoke<void>("reveal_project_in_file_manager", { projectId });
+}
+
+export async function revealFileInFileManager(fileId: string): Promise<void> {
+  return invoke<void>("reveal_file_in_file_manager", { fileId });
+}
+
 export type CorrectionExplicitPair = { beforeText: string; afterText: string };
 
 export type LearnBaselineText = { uid: string; text: string };

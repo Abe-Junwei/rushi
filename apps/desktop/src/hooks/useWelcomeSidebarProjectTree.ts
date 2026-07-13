@@ -15,8 +15,8 @@ export function useWelcomeSidebarProjectTree(
   const [projectFilesById, setProjectFilesById] = useState<Record<string, fileApi.FileSummary[]>>({});
   const [loadingFilesById, setLoadingFilesById] = useState<Record<string, boolean>>({});
 
-  const ensureProjectFilesLoaded = useCallback(async (projectId: string) => {
-    if (projectId in projectFilesById || loadingFilesById[projectId]) return;
+  const ensureProjectFilesLoaded = useCallback(async (projectId: string, force = false) => {
+    if (!force && (projectId in projectFilesById || loadingFilesById[projectId])) return;
     setLoadingFilesById((prev) => ({ ...prev, [projectId]: true }));
     try {
       const files = await fileApi.listFiles(projectId);
@@ -59,6 +59,19 @@ export function useWelcomeSidebarProjectTree(
     void ensureProjectFilesLoaded(activeProjectId);
   }, [activeProjectId, editorMode, ensureProjectFilesLoaded, hubMode]);
 
+  const invalidateProjectFilesCaches = useCallback((projectIds: string[]) => {
+    setProjectFilesById((prev) => {
+      const next = { ...prev };
+      for (const id of projectIds) {
+        delete next[id];
+      }
+      return next;
+    });
+    for (const id of projectIds) {
+      void ensureProjectFilesLoaded(id, true);
+    }
+  }, [ensureProjectFilesLoaded]);
+
   return {
     expandedProjectId,
     projectFilesById,
@@ -66,5 +79,6 @@ export function useWelcomeSidebarProjectTree(
     handleOpenProject,
     handleOpenProjectFile,
     toggleProjectExpanded,
+    invalidateProjectFilesCaches,
   };
 }

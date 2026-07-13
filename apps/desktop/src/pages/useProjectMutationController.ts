@@ -15,9 +15,10 @@ export type PendingProjectDelete = {
 
 export type ProjectMutationControllerApi = {
   isRenamingProject: boolean;
+  renamingProjectId: string | null;
   renameProjectDraft: string;
   setRenameProjectDraft: (value: string) => void;
-  beginRenameProject: (currentName: string) => void;
+  beginRenameProject: (currentName: string, projectId?: string) => void;
   cancelRenameProject: () => void;
   commitRenameProject: () => Promise<void>;
   projectMetadataDialogOpen: boolean;
@@ -44,36 +45,42 @@ type Deps = {
 export function useProjectMutationController(deps: Deps): ProjectMutationControllerApi {
   const { busy, current } = deps;
   const [isRenamingProject, setIsRenamingProject] = useState(false);
+  const [renamingProjectId, setRenamingProjectId] = useState<string | null>(null);
   const [renameProjectDraft, setRenameProjectDraft] = useState("");
   const [projectMetadataDialogOpen, setProjectMetadataDialogOpen] = useState(false);
   const [projectMetadataAfterCreate, setProjectMetadataAfterCreate] = useState(false);
   const [pendingProjectDelete, setPendingProjectDelete] =
     useState<PendingProjectDelete>(null);
 
-  const beginRenameProject = useCallback((currentName: string) => {
+  const beginRenameProject = useCallback((currentName: string, projectId?: string) => {
     setIsRenamingProject(true);
+    setRenamingProjectId(projectId ?? deps.current?.id ?? null);
     setRenameProjectDraft(currentName);
-  }, []);
+  }, [deps.current?.id]);
 
   const cancelRenameProject = useCallback(() => {
     setIsRenamingProject(false);
+    setRenamingProjectId(null);
     setRenameProjectDraft("");
   }, []);
 
   const commitRenameProject = useCallback(async () => {
-    const projectId = deps.current?.id;
+    const projectId = renamingProjectId ?? deps.current?.id;
     const name = renameProjectDraft.trim();
     if (!projectId || !name || deps.busy) return;
 
     try {
       const detail = await p1.renameProject(projectId, name);
       cancelRenameProject();
-      deps.setCurrent((prev) => (prev ? mergeProjectDetailMetadata(prev, detail) : detail));
-      await deps.refreshProjectHub(projectId);
+      if (deps.current?.id === projectId) {
+        deps.setCurrent((prev) => (prev ? mergeProjectDetailMetadata(prev, detail) : detail));
+        await deps.refreshProjectHub(projectId);
+      }
+      await deps.refreshProjects();
     } catch (e) {
       deps.setError(e instanceof Error ? e.message : String(e));
     }
-  }, [cancelRenameProject, deps, renameProjectDraft]);
+  }, [cancelRenameProject, deps, renameProjectDraft, renamingProjectId]);
 
   const openProjectMetadataDialog = useCallback((options?: { afterCreate?: boolean }) => {
     if (busy) return;
@@ -149,6 +156,7 @@ export function useProjectMutationController(deps: Deps): ProjectMutationControl
 
   return {
     isRenamingProject,
+    renamingProjectId,
     renameProjectDraft,
     setRenameProjectDraft,
     beginRenameProject,
