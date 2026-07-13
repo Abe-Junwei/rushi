@@ -14,6 +14,10 @@ import { createSegmentPublishApi } from "./segmentPublishApi";
 import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
 import { clampSegmentIndex } from "../utils/segmentSelection";
 import { dispatchTranscriptEditorSelection } from "../components/editor/core/transcriptEditorViewHandle";
+import {
+  getStructurePlayheadSec,
+  remapStructurePlayback,
+} from "../services/segmentStructurePlaybackBridge";
 
 type UseProjectLifecycleEditorStackArgs = {
   busy: boolean;
@@ -91,6 +95,8 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     pendingAiRevisedUidsRef,
     onSelectionCollapsed,
     onSegmentsStructureRestored,
+    getPlayheadSec: getStructurePlayheadSec,
+    onStructurePlaybackRemap: remapStructurePlayback,
   });
 
   const segmentDeleteConfirm = useSegmentDeleteConfirmController({

@@ -6,6 +6,7 @@ import {
   resolveSessionTogglePlay,
 } from "../utils/playbackSessionToggle";
 import { resolveStickySegmentSpaceFromSec } from "../utils/segmentResumeFromSec";
+import { resolveSegmentIdxContainingPlayhead } from "../utils/segmentPlaybackStructureRemap";
 import type { useWaveformPlayback } from "./useWaveformPlayback";
 import type { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlaybackControls";
 
@@ -49,6 +50,11 @@ export function useProjectWaveformSessionToggle(args: {
       const selectedSegmentIdx = effectiveTranscriptPrimaryIdx(
         selectedIdxForTransportRef.current,
       );
+      const playheadSec = playback.getPlayheadTime();
+      const playheadContainingIdx = resolveSegmentIdxContainingPlayhead(
+        segmentsRef.current,
+        playheadSec,
+      );
       const decision = resolveSessionTogglePlay({
         isPlaying: Boolean(host?.isPlaying()),
         session: segmentPlayback.getPlaybackSession(),
@@ -58,6 +64,8 @@ export function useProjectWaveformSessionToggle(args: {
             ? Boolean(segmentsRef.current[session.idx])
             : undefined;
         })(),
+        playheadContainingIdx:
+          playheadContainingIdx >= 0 ? playheadContainingIdx : undefined,
         selectedSegmentIdx:
           selectedSegmentIdx >= 0 && segmentsRef.current[selectedSegmentIdx]
             ? selectedSegmentIdx

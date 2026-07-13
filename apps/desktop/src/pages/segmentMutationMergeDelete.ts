@@ -13,6 +13,7 @@ import {
   dispatchTranscriptMergeWithPrev,
 } from "../components/editor/core/transcriptEditorViewHandle";
 import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
+import { finalizeStructureChangeSelection } from "./finalizeStructureChangeSelection";
 
 export type SegmentMergeDeleteDeps = {
   segmentPublish: SegmentPublishApi;
@@ -21,6 +22,11 @@ export type SegmentMergeDeleteDeps = {
   setError: (msg: string) => void;
   pushUndo: () => void;
   onSelectionCollapsed?: (idx: number) => void;
+  getPlayheadSec?: () => number;
+  onStructurePlaybackRemap?: (
+    playheadSec: number,
+    segments?: readonly SegmentDto[],
+  ) => void;
 };
 
 function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB: number): SegmentDto {
@@ -30,9 +36,68 @@ function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB:
   );
 }
 
-function persistCoreStructure(
+type StructureSelectionOpts = {
+  affectedBounds?: { startSec: number; endSec: number };
+  fallbackIdx?: number;
+};
+
+/** Merged span [start,end] used to gate playhead-follow selection to the edited region. */
+function mergeBounds(
+  base: readonly SegmentDto[],
+  from: number,
+  to: number,
+): { startSec: number; endSec: number } | undefined {
+  const a = base[from];
+  const b = base[to];
+  if (!a || !b) return undefined;
+  return {
+    startSec: Math.min(a.start_sec, b.start_sec),
+    endSec: Math.max(a.end_sec, b.end_sec),
+  };
+}
+
+function applyPlayheadSelection(deps: SegmentMergeDeleteDeps, opts?: StructureSelectionOpts): void {
+  const playheadSec = deps.getPlayheadSec?.() ?? 0;
+  finalizeStructureChangeSelection({
+    segments: deps.segmentPublish.getCurrentSegmentsSnapshot(),
+    playheadSec,
+    setSelectedIdx: deps.setSelectedIdx,
+    onSelectionCollapsed: deps.onSelectionCollapsed,
+    onStructurePlaybackRemap: deps.onStructurePlaybackRemap,
+    affectedBounds: opts?.affectedBounds,
+    fallbackIdx: opts?.fallbackIdx,
+  });
+}
+
+/** Delete keeps index-mapped selection; still remap sticky playback to playhead geometry. */
+function remapStickyPlaybackOnly(deps: SegmentMergeDeleteDeps): void {
+  const playheadSec = deps.getPlayheadSec?.() ?? 0;
+  deps.onStructurePlaybackRemap?.(
+    playheadSec,
+    deps.segmentPublish.getCurrentSegmentsSnapshot(),
+  );
+}
+
+function persistMergeStructure(
   baseline: readonly SegmentDto[],
-  deps: Pick<SegmentMergeDeleteDeps, "pushUndo" | "segmentPublish" | "setSelectedIdx" | "onSelectionCollapsed">,
+  deps: SegmentMergeDeleteDeps,
+  opts?: StructureSelectionOpts,
+): boolean {
+  return persistTranscriptStructureFromView(baseline, {
+    pushUndo: deps.pushUndo,
+    publishStructure: (next) => deps.segmentPublish.publishStructure(next),
+    onPrimaryIdx: (cmIdx) => {
+      applyPlayheadSelection(deps, {
+        affectedBounds: opts?.affectedBounds,
+        fallbackIdx: opts?.fallbackIdx ?? cmIdx,
+      });
+    },
+  });
+}
+
+function persistDeleteStructure(
+  baseline: readonly SegmentDto[],
+  deps: SegmentMergeDeleteDeps,
 ): boolean {
   return persistTranscriptStructureFromView(baseline, {
     pushUndo: deps.pushUndo,
@@ -40,6 +105,7 @@ function persistCoreStructure(
     onPrimaryIdx: (idx) => {
       deps.setSelectedIdx(idx);
       deps.onSelectionCollapsed?.(idx);
+      remapStickyPlaybackOnly(deps);
     },
   });
 }
@@ -58,7 +124,8 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     if (idx <= 0) return;
     if (readTranscriptEditorCoreEnabled()) {
       const base = segmentPublish.getCurrentSegmentsSnapshot();
-      if (dispatchTranscriptMergeWithPrev(base, idx) && persistCoreStructure(base, deps)) {
+      const opts = { affectedBounds: mergeBounds(base, idx - 1, idx), fallbackIdx: idx - 1 };
+      if (dispatchTranscriptMergeWithPrev(base, idx) && persistMergeStructure(base, deps, opts)) {
         return;
       }
     }
@@ -69,18 +136,19 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const a = base[idx - 1];
     const b = base[idx];
     if (!a || !b) return;
+    const bounds = mergeBounds(base, idx - 1, idx);
     const merged = mergePairWithLiveText(a, b, idx - 1, idx);
     const out = [...base];
     out.splice(idx - 1, 2, merged);
     segmentPublish.publishStructure(reindexSegments(out));
-    setSelectedIdx(idx - 1);
-    onSelectionCollapsed?.(idx - 1);
+    applyPlayheadSelection(deps, { affectedBounds: bounds, fallbackIdx: idx - 1 });
   }
 
   function mergeWithNextAt(idx: number) {
     if (readTranscriptEditorCoreEnabled()) {
       const base = segmentPublish.getCurrentSegmentsSnapshot();
-      if (dispatchTranscriptMergeWithNext(base, idx) && persistCoreStructure(base, deps)) {
+      const opts = { affectedBounds: mergeBounds(base, idx, idx + 1), fallbackIdx: idx };
+      if (dispatchTranscriptMergeWithNext(base, idx) && persistMergeStructure(base, deps, opts)) {
         return;
       }
     }
@@ -91,12 +159,12 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const a = base[idx];
     const b = base[idx + 1];
     if (!a || !b) return;
+    const bounds = mergeBounds(base, idx, idx + 1);
     const merged = mergePairWithLiveText(a, b, idx, idx + 1);
     const out = [...base];
     out.splice(idx, 2, merged);
     segmentPublish.publishStructure(reindexSegments(out));
-    setSelectedIdx(idx);
-    onSelectionCollapsed?.(idx);
+    applyPlayheadSelection(deps, { affectedBounds: bounds, fallbackIdx: idx });
   }
 
   function mergeWithPrev(selectedIdx: number) {
@@ -110,7 +178,8 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   function mergeSegmentRange(lo: number, hi: number) {
     if (readTranscriptEditorCoreEnabled()) {
       const base = segmentPublish.getCurrentSegmentsSnapshot();
-      if (dispatchTranscriptMergeRange(base, lo, hi) && persistCoreStructure(base, deps)) {
+      const opts = { affectedBounds: mergeBounds(base, lo, hi), fallbackIdx: lo };
+      if (dispatchTranscriptMergeRange(base, lo, hi) && persistMergeStructure(base, deps, opts)) {
         return;
       }
     }
@@ -118,11 +187,11 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     pushUndo();
     const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= base.length || lo >= hi) return;
+    const bounds = mergeBounds(base, lo, hi);
     const merged = mergeSegmentRangeFold(base, lo, hi);
     const out = [...base.slice(0, lo), merged, ...base.slice(hi + 1)];
     segmentPublish.publishStructure(reindexSegments(out));
-    setSelectedIdx(lo);
-    onSelectionCollapsed?.(lo);
+    applyPlayheadSelection(deps, { affectedBounds: bounds, fallbackIdx: lo });
   }
 
   function deleteSegmentAtAfterCommit(idx: number) {
@@ -142,12 +211,13 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     }
     setSelectedIdx(nextSelected);
     onSelectionCollapsed?.(nextSelected);
+    remapStickyPlaybackOnly(deps);
   }
 
   function deleteSegmentAt(idx: number) {
     if (readTranscriptEditorCoreEnabled()) {
       const base = segmentPublish.getCurrentSegmentsSnapshot();
-      if (dispatchTranscriptDeleteAt(base, idx) && persistCoreStructure(base, deps)) {
+      if (dispatchTranscriptDeleteAt(base, idx) && persistDeleteStructure(base, deps)) {
         return;
       }
     }
@@ -158,7 +228,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   function deleteSegmentRange(lo: number, hi: number) {
     if (readTranscriptEditorCoreEnabled()) {
       const base = segmentPublish.getCurrentSegmentsSnapshot();
-      if (dispatchTranscriptDeleteRange(base, lo, hi) && persistCoreStructure(base, deps)) {
+      if (dispatchTranscriptDeleteRange(base, lo, hi) && persistDeleteStructure(base, deps)) {
         return;
       }
     }
@@ -177,6 +247,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     segmentPublish.publishStructure(reindexSegments(segs.filter((_, j) => j < lo || j > hi)));
     setSelectedIdx(nextSelected);
     onSelectionCollapsed?.(nextSelected);
+    remapStickyPlaybackOnly(deps);
   }
 
   function deleteSegmentIndices(rawIndices: number[]) {
@@ -185,7 +256,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
       const prevSelected = selectedIdxRef.current;
       if (
         dispatchTranscriptDeleteIndices(base, rawIndices, prevSelected) &&
-        persistCoreStructure(base, deps)
+        persistDeleteStructure(base, deps)
       ) {
         setError("");
         return;
@@ -211,6 +282,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     segmentPublish.publishStructure(reindexSegments(segs.filter((_, j) => !remove.has(j))));
     setSelectedIdx(Math.max(0, Math.min(nextSelected, nextLen - 1)));
     onSelectionCollapsed?.(Math.max(0, Math.min(nextSelected, nextLen - 1)));
+    remapStickyPlaybackOnly(deps);
   }
 
   return {

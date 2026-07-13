@@ -91,6 +91,7 @@ export function buildProjectWaveformPublicApi(input: {
     isBlankGlobalSpaceArmed: sp.isBlankGlobalSpaceArmed,
     isSegmentPlaybackSession: sp.isSegmentPlaybackSession,
     getPlaybackSession: sp.getPlaybackSession,
+    remapPlaybackAfterStructureChange: sp.remapPlaybackAfterStructureChange,
     handleToggleSelectedWaveformLoop: sp.handleToggleSelectedWaveformLoop,
     playSegmentAtIndex: input.playSegmentAtIndex,
     handleToggleSelectedWaveformPlay: input.handleToggleSelectedWaveformPlay,

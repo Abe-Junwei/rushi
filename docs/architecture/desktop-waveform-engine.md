@@ -290,7 +290,7 @@
 | `rushi.p1.waveformPlaybackScrollFollow` | 播放滚屏 center/edge | **设置 → 偏好设置**；工具条 |
 | `rushi.p1.transcriptPlaybackFollow` | 文稿跟播（Playback Focus；默认开） | **设置 → 偏好设置** |
 | `rushi.editor.segmentListFilter.v1` | 语段列表筛选 | 工具条筛选（跨文件记忆） |
-| `rushi.office-shell-theme.v1` / `rushi.office-accent-theme.v1` | 界面主题 / 主题色 | **设置 → 偏好设置** |
+| `rushi.office-shell-theme.v1` / `rushi.office-accent-color.v2` | 界面主题 / 主题色（`#hex`；旧 `office-accent-theme.v1` 预设 id 启动时迁移） | **设置 → 偏好设置** |
 
 编译期常量（非用户 pref）：`WAVEFORM_BACKGROUND_PEAKS_ENABLED`、`WAVEFORM_HOT_SWITCH_WHILE_PLAYING`（见 `waveformPrefs.ts`）。
 

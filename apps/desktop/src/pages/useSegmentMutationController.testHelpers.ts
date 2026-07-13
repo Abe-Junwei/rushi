@@ -18,6 +18,13 @@ export function useTestSegmentMutationController(
   initial: SegmentDto[],
   busy = false,
   onSelectionCollapsed?: (idx: number) => void,
+  opts?: {
+    getPlayheadSec?: () => number;
+    onStructurePlaybackRemap?: (
+      playheadSec: number,
+      segments?: readonly SegmentDto[],
+    ) => void;
+  },
 ) {
   const [segments, setSegments] = useState(initial);
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -35,6 +42,8 @@ export function useTestSegmentMutationController(
     setError,
     busy,
     onSelectionCollapsed,
+    getPlayheadSec: opts?.getPlayheadSec,
+    onStructurePlaybackRemap: opts?.onStructurePlaybackRemap,
   });
 
   return { mutations, segments, selectedIdx, setSelectedIdx, error, segmentsRef, segmentPublish };

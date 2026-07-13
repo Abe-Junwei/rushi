@@ -152,13 +152,14 @@ describe("useSegmentMutationController insert", () => {
     expect(onSelectionCollapsed).toHaveBeenCalledWith(1);
   });
 
-  it("splitAtSelection invokes onSelectionCollapsed", () => {
+  it("splitAtSelection invokes onSelectionCollapsed for playhead-containing half", () => {
     const onSelectionCollapsed = vi.fn();
     const { result } = renderHook(() =>
       useTestSegmentMutationController(
         [makeSeg({ text: "hello world", start_sec: 0, end_sec: 2 })],
         false,
         onSelectionCollapsed,
+        { getPlayheadSec: () => 1.2 },
       ),
     );
 

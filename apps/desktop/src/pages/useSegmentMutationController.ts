@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef } from "react";
+import type { SegmentDto } from "../tauri/projectApi";
 import {
   withAiRevisedStage,
   withManualTranscribeStage,
@@ -75,6 +76,11 @@ type SegmentMutationDeps = {
   pendingAiRevisedUidsRef?: React.MutableRefObject<Set<string>>;
   onSelectionCollapsed?: (idx: number) => void;
   onSegmentsStructureRestored?: () => void;
+  getPlayheadSec?: () => number;
+  onStructurePlaybackRemap?: (
+    playheadSec: number,
+    segments?: readonly SegmentDto[],
+  ) => void;
 };
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
@@ -87,6 +93,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     pendingAiRevisedUidsRef,
     onSelectionCollapsed,
     onSegmentsStructureRestored,
+    getPlayheadSec,
+    onStructurePlaybackRemap,
   } = deps;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -151,6 +159,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         setError,
         pushUndo,
         onSelectionCollapsed,
+        getPlayheadSec,
+        onStructurePlaybackRemap,
       }),
     [
       segmentPublish,
@@ -159,6 +169,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       setError,
       pushUndo,
       onSelectionCollapsed,
+      getPlayheadSec,
+      onStructurePlaybackRemap,
     ],
   );
 
@@ -188,6 +200,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     setError,
     pushUndo,
     onSelectionCollapsed,
+    getPlayheadSec,
+    onStructurePlaybackRemap,
   });
 
   const updateSegmentTime = useCallback(

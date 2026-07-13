@@ -110,7 +110,7 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[0].text).toBe("world");
   });
 
-  it("splitAtSelection divides segment at midpoint", () => {
+  it("splitAtSelection selects half containing playhead (default t=0 → left)", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([makeSeg({ text: "hello world", start_sec: 0, end_sec: 2 })]),
     );
@@ -122,10 +122,47 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[1].start_sec).toBe(1);
     expect(result.current.segments[0].text).toBe("hello ");
     expect(result.current.segments[1].text).toBe("world");
+    expect(result.current.selectedIdx).toBe(0);
+  });
+
+  it("splitAtSelection selects right half when playhead is on/after seam", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController(
+        [makeSeg({ text: "hello world", start_sec: 0, end_sec: 2 })],
+        false,
+        undefined,
+        { getPlayheadSec: () => 1 },
+      ),
+    );
+
+    act(() => result.current.mutations.splitAtSelection(0));
+
     expect(result.current.selectedIdx).toBe(1);
   });
 
-  it("splitAtPlayhead divides at given time", () => {
+  it("splitAtSelection stays on split right half when playhead is in another segment", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController(
+        [
+          makeSeg({ text: "aaaa", start_sec: 0, end_sec: 10 }),
+          makeSeg({ text: "bbbb", start_sec: 10, end_sec: 20 }),
+          makeSeg({ text: "cccc", start_sec: 20, end_sec: 30 }),
+        ],
+        false,
+        undefined,
+        // Playhead sits inside segment A [0,10] while user splits C (idx 2).
+        { getPlayheadSec: () => 3 },
+      ),
+    );
+
+    act(() => result.current.mutations.splitAtSelection(2));
+
+    expect(result.current.segments).toHaveLength(4);
+    // Right half of C is idx 3 — selection must not jump to A (idx 0).
+    expect(result.current.selectedIdx).toBe(3);
+  });
+
+  it("splitAtPlayhead divides at given time and selects right half (seam)", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([makeSeg({ text: "hello", start_sec: 0, end_sec: 3 })]),
     );
@@ -135,6 +172,7 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments).toHaveLength(2);
     expect(result.current.segments[0].end_sec).toBe(1.5);
     expect(result.current.segments[1].start_sec).toBe(1.5);
+    expect(result.current.selectedIdx).toBe(1);
   });
 
   it("splitAtSelection keeps committed text on both halves", () => {

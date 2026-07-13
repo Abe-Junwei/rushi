@@ -1524,4 +1524,35 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.setTime).not.toHaveBeenCalled();
     expect(ws.pause).toHaveBeenCalled();
   });
+
+  it("remapPlaybackAfterStructureChange uses post-mutation segments, not stale props", () => {
+    const ws = makeWs({ getCurrentTime: () => 7, isPlaying: () => false });
+    const wsRef = { current: ws };
+    const stale = [{ ...segments[0], start_sec: 0, end_sec: 10 }];
+    const afterSplit = [
+      { ...segments[0], start_sec: 0, end_sec: 5 },
+      { ...segments[0], start_sec: 5, end_sec: 10, uid: "right" },
+    ];
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: stale,
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => 7,
+        getAuthorityPlayheadTimeSec: () => 7,
+      }),
+    );
+
+    let remapped = -1;
+    act(() => {
+      remapped = result.current.remapPlaybackAfterStructureChange(7, afterSplit);
+    });
+
+    // Stale single block would map t=7 → idx 0; post-split right half → idx 1.
+    expect(remapped).toBe(1);
+    expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 1 });
+  });
 });

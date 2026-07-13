@@ -4,6 +4,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { ActiveSegmentPlaybackBound } from "../utils/segmentPlaybackBound";
 import { isSegmentPlaybackSession } from "../utils/playbackSession";
 import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
+import { resolveStructurePlaybackRemap } from "../utils/segmentPlaybackStructureRemap";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import type { PlaybackTransport } from "../services/waveform/transport";
 import {
@@ -267,6 +268,37 @@ export function useWaveformSegmentPlaybackControls(args: {
     preserveLoopOnNextSelectRef.current = true;
   }, []);
 
+  /**
+   * After split/merge: sticky identity + selection follow the playhead-containing segment.
+   * Call with the post-mutation segment snapshot — `latestSegmentsRef` is render-synced and
+   * may still hold the pre-edit list in the same turn as `publishStructure`.
+   */
+  const remapPlaybackAfterStructureChange = useCallback(
+    (playheadSec: number, segments?: readonly SegmentDto[]) => {
+      if (segments) {
+        latestSegmentsRef.current = [...segments];
+      }
+      const hadAutoStopped = autoStoppedSegmentIdxRef.current != null;
+      const hadPausedAnchor = pausedResumeAnchorRef.current != null;
+      const result = resolveStructurePlaybackRemap({
+        segments: latestSegmentsRef.current,
+        playheadSec,
+        hadAutoStopped,
+        hadPausedAnchor,
+      });
+      if (result.idx < 0) return result.idx;
+      autoStoppedSegmentIdxRef.current = result.autoStoppedIdx;
+      pausedResumeAnchorRef.current = result.pausedAnchor;
+      if (result.session) {
+        playbackSessionRef.current = result.session;
+      }
+      // Playing: re-arm scoped bound to the containing segment (decision 4).
+      syncSelectedSegmentPlayingUi(playheadSec);
+      return result.idx;
+    },
+    [playbackSessionRef, syncSelectedSegmentPlayingUi],
+  );
+
   return {
     segmentLoopPlayback,
     isSelectedSegmentPlaying,
@@ -285,6 +317,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     pauseMediaKeepingSession,
     isSegmentPlaybackSession: isSegmentPlaybackSessionActive,
     getPlaybackSession,
+    remapPlaybackAfterStructureChange,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: toggleSelectedWaveformPlayImpl,
   };

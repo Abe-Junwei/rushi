@@ -140,6 +140,30 @@ describe("resolveSessionTogglePlay (Space sticky)", () => {
     ).toEqual({ action: "resumeSegment", idx: 4 });
   });
 
+  it("playhead-containing idx wins when selection aligns (structure remap)", () => {
+    expect(
+      resolveSessionTogglePlay({
+        isPlaying: false,
+        session: { kind: "segment", idx: 0 },
+        segmentStillExists: true,
+        selectedSegmentIdx: 1,
+        playheadContainingIdx: 1,
+      }),
+    ).toEqual({ action: "resumeSegment", idx: 1 });
+  });
+
+  it("explicit selection away from playhead wins over playheadContainingIdx", () => {
+    expect(
+      resolveSessionTogglePlay({
+        isPlaying: false,
+        session: { kind: "segment", idx: 0 },
+        segmentStillExists: true,
+        selectedSegmentIdx: 2,
+        playheadContainingIdx: 1,
+      }),
+    ).toEqual({ action: "resumeSegment", idx: 2 });
+  });
+
   it("idle / global session without selection → start global", () => {
     expect(
       resolveSessionTogglePlay({ isPlaying: false, session: null }),

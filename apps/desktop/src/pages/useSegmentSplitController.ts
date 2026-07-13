@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import type { SegmentDto } from "../tauri/projectApi";
 import { resolveLiveSegmentText } from "../utils/segmentTextNormalize";
 import { buildSplitPair, reindexSegments } from "./segmentListHelpers";
 import type { SegmentPublishApi } from "./segmentPublishApi";
@@ -8,6 +9,7 @@ import {
   dispatchTranscriptSplitAtTime,
 } from "../components/editor/core/transcriptEditorViewHandle";
 import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
+import { finalizeStructureChangeSelection } from "./finalizeStructureChangeSelection";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -24,35 +26,88 @@ export interface SegmentSplitDeps {
   setError: (msg: string) => void;
   pushUndo: () => void;
   onSelectionCollapsed?: (idx: number) => void;
+  /** Display / authority playhead for post-split selection (seam → right). */
+  getPlayheadSec?: () => number;
+  onStructurePlaybackRemap?: (
+    playheadSec: number,
+    segments?: readonly SegmentDto[],
+  ) => void;
 }
 
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
-  const { segmentPublish, setSelectedIdx, setError, pushUndo, onSelectionCollapsed } = deps;
+  const {
+    segmentPublish,
+    setSelectedIdx,
+    setError,
+    pushUndo,
+    onSelectionCollapsed,
+    getPlayheadSec,
+    onStructurePlaybackRemap,
+  } = deps;
+
+  const applyPlayheadSelection = useCallback(
+    (
+      playheadSec: number,
+      opts?: {
+        affectedBounds?: { startSec: number; endSec: number };
+        fallbackIdx?: number;
+      },
+    ) => {
+      finalizeStructureChangeSelection({
+        segments: segmentPublish.getCurrentSegmentsSnapshot(),
+        playheadSec,
+        setSelectedIdx,
+        onSelectionCollapsed,
+        onStructurePlaybackRemap,
+        affectedBounds: opts?.affectedBounds,
+        fallbackIdx: opts?.fallbackIdx,
+      });
+    },
+    [onSelectionCollapsed, onStructurePlaybackRemap, segmentPublish, setSelectedIdx],
+  );
 
   const persistCore = useCallback(
-    (baseline: Parameters<typeof persistTranscriptStructureFromView>[0]) =>
+    (
+      baseline: Parameters<typeof persistTranscriptStructureFromView>[0],
+      playheadSec: number,
+      opts?: {
+        affectedBounds?: { startSec: number; endSec: number };
+        fallbackIdx?: number;
+      },
+    ) =>
       persistTranscriptStructureFromView(baseline, {
         pushUndo,
         publishStructure: (next) => segmentPublish.publishStructure(next),
-        onPrimaryIdx: (idx) => {
-          setSelectedIdx(idx);
-          onSelectionCollapsed?.(idx);
+        onPrimaryIdx: (cmIdx) => {
+          applyPlayheadSelection(playheadSec, {
+            affectedBounds: opts?.affectedBounds,
+            fallbackIdx: opts?.fallbackIdx ?? cmIdx,
+          });
         },
       }),
-    [onSelectionCollapsed, pushUndo, segmentPublish, setSelectedIdx],
+    [applyPlayheadSelection, pushUndo, segmentPublish],
   );
 
   const splitAtSelection = useCallback(
     (selectedIdx: number) => {
+      const playheadSec = getPlayheadSec?.() ?? 0;
       if (readTranscriptEditorCoreEnabled()) {
         const segs = segmentPublish.getCurrentSegmentsSnapshot();
         if (segs.length === 0) return;
         const i = Math.min(selectedIdx, segs.length - 1);
-        if (dispatchTranscriptSplitAtMidpoint(segs, i) && persistCore(segs)) {
+        const orig = segs[i];
+        // Midpoint split of the selected segment: playhead may sit elsewhere on the
+        // timeline, so only follow it when it is inside the split segment (else right half).
+        const opts = orig
+          ? {
+              affectedBounds: { startSec: orig.start_sec, endSec: orig.end_sec },
+              fallbackIdx: i + 1,
+            }
+          : { fallbackIdx: i + 1 };
+        if (dispatchTranscriptSplitAtMidpoint(segs, i) && persistCore(segs, playheadSec, opts)) {
           setError("");
           return;
         }
-        // Fall through if CM6 rejected (e.g. too short) so setError still runs.
       }
       segmentPublish.commitTextDraftsForStructureMutation();
       const segs = segmentPublish.getCurrentSegmentsSnapshot();
@@ -74,24 +129,26 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       const out = [...segs];
       out.splice(i, 1, splitPair.left, splitPair.right);
       segmentPublish.publishStructure(reindexSegments(out));
-      const nextIdx = i + 1;
-      setSelectedIdx(nextIdx);
-      onSelectionCollapsed?.(nextIdx);
+      applyPlayheadSelection(playheadSec, {
+        affectedBounds: { startSec: s.start_sec, endSec: s.end_sec },
+        fallbackIdx: i + 1,
+      });
     },
-    [onSelectionCollapsed, persistCore, pushUndo, segmentPublish, setError, setSelectedIdx],
+    [applyPlayheadSelection, getPlayheadSec, persistCore, pushUndo, segmentPublish, setError],
   );
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
+      const playheadSec = Number.isFinite(timeSec) ? timeSec : (getPlayheadSec?.() ?? 0);
       if (readTranscriptEditorCoreEnabled()) {
         const segs = segmentPublish.getCurrentSegmentsSnapshot();
-        if (dispatchTranscriptSplitAtTime(segs, timeSec) && persistCore(segs)) {
+        if (dispatchTranscriptSplitAtTime(segs, playheadSec) && persistCore(segs, playheadSec)) {
           setError("");
           return;
         }
       }
       segmentPublish.commitTextDraftsForStructureMutation();
-      const t = roundSec3(timeSec);
+      const t = roundSec3(playheadSec);
       const segs = segmentPublish.getCurrentSegmentsSnapshot();
       const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
       if (i < 0) {
@@ -110,11 +167,9 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       const out = [...segs];
       out.splice(i, 1, splitPair.left, splitPair.right);
       segmentPublish.publishStructure(reindexSegments(out));
-      const nextIdx = i + 1;
-      setSelectedIdx(nextIdx);
-      onSelectionCollapsed?.(nextIdx);
+      applyPlayheadSelection(t);
     },
-    [onSelectionCollapsed, persistCore, pushUndo, segmentPublish, setError, setSelectedIdx],
+    [applyPlayheadSelection, getPlayheadSec, persistCore, pushUndo, segmentPublish, setError],
   );
 
   return { splitAtSelection, splitAtPlayhead };

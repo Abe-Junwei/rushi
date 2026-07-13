@@ -15,6 +15,7 @@ import {
   captureFileViewStateNow,
   peekFileViewRestoreForFile,
 } from "../services/fileViewStateBridge";
+import { registerSegmentStructurePlaybackBridge } from "../services/segmentStructurePlaybackBridge";
 import { writeFileViewState } from "../services/fileViewState";
 import { logDesktopUi } from "../services/desktopUiLog";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
@@ -71,7 +72,22 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         layoutPxPerSec: t.zoom.layoutPxPerSec,
       };
     });
-    return () => registerFileViewStateCapture(null);
+    // Mutations sit above the waveform tree — register playhead + sticky remap.
+    registerSegmentStructurePlaybackBridge({
+      getPlayheadSec: () => {
+        const t = timelineRef.current;
+        const displaySec = t.getDisplayPlayheadTimeSec?.() ?? 0;
+        const decisionSec = t.wf.getPlayheadTime?.() ?? 0;
+        return displaySec > 0 ? displaySec : decisionSec;
+      },
+      remapAfterStructureChange: (playheadSec, segments) =>
+        timelineRef.current.wf.remapPlaybackAfterStructureChange?.(playheadSec, segments) ??
+        -1,
+    });
+    return () => {
+      registerFileViewStateCapture(null);
+      registerSegmentStructurePlaybackBridge(null);
+    };
   }, []);
 
   // Safety net: periodic persist so quit-without-gate / crash still leave a recent bookmark.
@@ -388,6 +404,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     handleToggleSelectedWaveformLoop: wf.handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,
+    preserveLoopForNextSegmentSelect: wf.preserveLoopForNextSegmentSelect,
     mediaDurationSec: timeline.timelineMetrics.mediaDurationSec,
     openSegmentContextMenuFromPointer: selection.openSegmentContextMenuFromPointer,
     openSegmentContextMenu,
