@@ -1,11 +1,7 @@
 import { useCallback } from "react";
-import type WaveSurfer from "wavesurfer.js";
-import type { SegmentDto } from "../tauri/projectApi";
-import type { ActiveSegmentPlaybackBound } from "../utils/segmentPlaybackBound";
 import {
   resolveMediaPlaybackHost,
   resolveSegmentPlayFrom,
-  type PlaybackTransport,
   type SegmentPlayFromResolution,
 } from "../services/waveform/transport";
 import {
@@ -13,47 +9,17 @@ import {
   atomicWaveformSegmentSeek,
 } from "../services/waveform/waveformSegmentPlaybackSeek";
 import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
-import { endMediaPlay, enqueueMediaOp, tryBeginMediaPlay } from "../utils/mediaPlayGate";
-import { resolveSegmentBoundArmAfterPlayStart } from "../services/waveform/segmentPlayBoundArm";
+import { runPlaySegmentResolved } from "../services/waveform/runPlaySegmentResolved";
 import { useWaveformSegmentPlayToggle } from "./useWaveformSegmentPlayToggle";
+import type {
+  PlaySegmentAtIndexOptions,
+  WaveformSegmentPlayActionsArgs,
+} from "./useWaveformSegmentPlayActionsTypes";
 
-export type PlaySegmentAtIndexOptions = {
-  /** Tab 听打：切段后自动循环当前语段。 */
-  loop?: boolean;
-  /** 显式起播时刻（点击/双击）；钳在语段内。 */
-  fromSec?: number;
-};
-
-export type WaveformSegmentPlayActionsArgs = {
-  wsRef: React.MutableRefObject<WaveSurfer | null>;
-  transportRef?: React.MutableRefObject<PlaybackTransport | null>;
-  /** Native visual-only: block WaveSurfer media fallback until transport loads. */
-  requireTransport?: boolean;
-  isReady: boolean;
-  latestSegmentsRef: React.MutableRefObject<SegmentDto[]>;
-  getGlobalPlaybackRate: () => number;
-  getAuthorityPlayheadTimeSec?: () => number;
-  resolvePlayheadSec: () => number;
-  resolveEffectiveSelectedIdx: () => number;
-  resolveSelectedPlaybackRange: () => { start: number; end: number } | null;
-  playGenerationRef: React.MutableRefObject<number>;
-  segmentBoundStopInFlightRef: React.MutableRefObject<boolean>;
-  playStartInFlightGenerationRef: React.MutableRefObject<number | null>;
-  segmentPlaybackBoundRef: React.MutableRefObject<ActiveSegmentPlaybackBound | null>;
-  unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
-  pausedResumeAnchorRef: React.MutableRefObject<{ idx: number; timeSec: number } | null>;
-  autoStoppedSegmentIdxRef: React.MutableRefObject<number | null>;
-  segmentLoopPlaybackRef: React.MutableRefObject<boolean>;
-  clearSegmentPlaybackBound: () => void;
-  cancelSegmentPlaybackBound: () => void;
-  setSegmentLoopPlayback: (loop: boolean) => void;
-  setIsSelectedSegmentPlaying: (playing: boolean) => void;
-  /** Sticky Space session: arm scoped segment after successful segment play start. */
-  armSegmentPlaybackSession: (idx: number) => void;
-  layoutDurationSecRef?: React.MutableRefObject<number>;
-  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
-  commitSeekUi?: (timeSec: number) => void;
-};
+export type {
+  PlaySegmentAtIndexOptions,
+  WaveformSegmentPlayActionsArgs,
+} from "./useWaveformSegmentPlayActionsTypes";
 
 /** Segment play / toggle / loop transport actions (Transport Authority play-from). */
 export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsArgs) {
@@ -119,102 +85,34 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     });
   }, [getGlobalPlaybackRate, requireTransport, transportRef, wsRef]);
 
-  /** Transport Authority: play with play-from already resolved by dispatcher. */
-  const runPlaySegmentResolved = useCallback(
+  const runPlaySegmentResolvedCb = useCallback(
     async (playArgs: {
       idx: number;
       playFrom: SegmentPlayFromResolution;
       loop?: boolean;
     }) => {
-      const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      await runPlaySegmentResolved({
+        ws: wsRef.current,
+        transport: transportRef?.current,
         requireTransport,
+        isReady,
+        segment: latestSegmentsRef.current[playArgs.idx],
+        playFrom: playArgs.playFrom,
+        loop: playArgs.loop,
+        playGenerationRef,
+        playStartInFlightGenerationRef,
+        segmentPlaybackBoundRef,
+        unboundedSelectedPlayGenRef,
+        segmentLoopPlaybackRef,
+        clearSegmentPlaybackBound,
+        setSegmentLoopPlayback,
+        setIsSelectedSegmentPlaying,
+        armSegmentPlaybackSession,
+        applyGlobalPlaybackRate,
+        atomicMediaSeek,
+        resolvePlayheadSec,
+        idx: playArgs.idx,
       });
-      if (!host || !isReady) return;
-      const gateOpts = host.isNative ? { pauseToPlayGapMs: 0 } : undefined;
-      const seg = latestSegmentsRef.current[playArgs.idx];
-      if (!seg) return;
-      // Hold the play gate across seek+play so Space/toggle cannot nest play().
-      if (!tryBeginMediaPlay(host.gateHost)) return;
-      try {
-        const gen = ++playGenerationRef.current;
-        playStartInFlightGenerationRef.current = gen;
-        clearSegmentPlaybackBound();
-        const range = {
-          start: Math.min(seg.start_sec, seg.end_sec),
-          end: Math.max(seg.start_sec, seg.end_sec),
-        };
-        applyGlobalPlaybackRate();
-        if (playArgs.loop) {
-          segmentLoopPlaybackRef.current = true;
-          setSegmentLoopPlayback(true);
-        }
-
-        const wasPlaying = host.isPlaying();
-        const seekToSec =
-          playArgs.playFrom.kind === "seek" ? playArgs.playFrom.timeSec : null;
-        let startAtSec = resolvePlayheadSec();
-        if (seekToSec != null) {
-          startAtSec = seekToSec;
-        }
-
-        // Already playing: seek only — never pause+play (nests RemoteAudioSession sync IPC).
-        if (wasPlaying) {
-          if (seekToSec != null) {
-            await enqueueMediaOp(host.gateHost, "seek", async () => {
-              await atomicMediaSeek(seekToSec);
-            }, gateOpts);
-          }
-        } else {
-          if (seekToSec != null) {
-            await enqueueMediaOp(host.gateHost, "seek", async () => {
-              await atomicMediaSeek(seekToSec);
-            }, gateOpts);
-          }
-          try {
-            await enqueueMediaOp(host.gateHost, "play", async () => {
-              await host.play();
-            }, gateOpts);
-          } catch {
-            if (playStartInFlightGenerationRef.current === gen) {
-              playStartInFlightGenerationRef.current = null;
-            }
-            if (gen !== playGenerationRef.current) return;
-            clearSegmentPlaybackBound();
-            return;
-          }
-        }
-
-        if (gen !== playGenerationRef.current) {
-          if (playStartInFlightGenerationRef.current === gen) {
-            playStartInFlightGenerationRef.current = null;
-          }
-          if (host.isPlaying()) {
-            await enqueueMediaOp(host.gateHost, "pause", () => {
-              void Promise.resolve(host.pause());
-            }, gateOpts);
-          }
-          return;
-        }
-        if (playStartInFlightGenerationRef.current === gen) {
-          playStartInFlightGenerationRef.current = null;
-        }
-        if (!host.isPlaying()) return;
-
-        // Only scope-stop at segment end when starting inside the selected segment.
-        // Past end (gap after): free play from playhead — keep Stop chrome via unbounded gen.
-        const arm = resolveSegmentBoundArmAfterPlayStart({
-          startAtSec,
-          rangeStart: range.start,
-          rangeEnd: range.end,
-          generation: gen,
-        });
-        segmentPlaybackBoundRef.current = arm.bound;
-        unboundedSelectedPlayGenRef.current = arm.unboundedSelectedPlayGen;
-        setIsSelectedSegmentPlaying(true);
-        armSegmentPlaybackSession(playArgs.idx);
-      } finally {
-        endMediaPlay(host.gateHost);
-      }
     },
     [
       applyGlobalPlaybackRate,
@@ -259,7 +157,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         displaySec: resolvePlayheadSec(),
         authoritySec: getAuthorityPlayheadTimeSec?.(),
       });
-      await runPlaySegmentResolved({
+      await runPlaySegmentResolvedCb({
         idx,
         playFrom,
         loop: options?.loop,
@@ -271,7 +169,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
       latestSegmentsRef,
       pausedResumeAnchorRef,
       resolvePlayheadSec,
-      runPlaySegmentResolved,
+      runPlaySegmentResolvedCb,
     ],
   );
 
@@ -320,7 +218,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
 
   return {
     playSegmentAtIndex,
-    runPlaySegmentResolved,
+    runPlaySegmentResolved: runPlaySegmentResolvedCb,
     playSelectedSegment,
     toggleSelectedWaveformPlayImpl,
     handleToggleSelectedWaveformLoop,
