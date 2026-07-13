@@ -159,9 +159,6 @@ export function subscribePlaybackFrame(
   };
 }
 
-/** @deprecated Prefer {@link subscribePlaybackFrame}. */
-export const subscribePlayheadFrame = subscribePlaybackFrame;
-
 /** Schedule one viewport frame: playback subscribers then scroll chrome (single rAF). */
 export function schedulePlaybackViewportFrame(timeSec: number): void {
   const profileEnabled = isWaveformScrollProfileEnabled();
