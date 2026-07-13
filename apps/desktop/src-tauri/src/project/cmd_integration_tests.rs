@@ -171,3 +171,334 @@ fn canonicalize_audio_storage_path_returns_absolute_file_path() {
     assert!(PathBuf::from(&stored).is_absolute());
     assert!(PathBuf::from(stored).is_file());
 }
+
+#[test]
+fn move_file_to_project_relocates_db_and_managed_audio() {
+    use super::file_cmd::move_file_to_project_inner;
+    use super::project_storage::project_storage_dir;
+    use super::waveform_peaks::{peak_file_path, peaks_dir};
+
+    let st = test_state("move_file");
+    let src_id = Uuid::new_v4().to_string();
+    let dest_id = Uuid::new_v4().to_string();
+    let file_id = Uuid::new_v4().to_string();
+    let t = now_ms();
+
+    let src_dir = project_storage_dir(&st.root, &src_id);
+    fs::create_dir_all(peaks_dir(&src_dir)).unwrap();
+    let audio = src_dir.join(format!("{file_id}.wav"));
+    fs::write(&audio, b"wav").unwrap();
+    let audio_path = canonicalize_audio_storage_path(&audio).unwrap();
+    fs::write(peak_file_path(&peaks_dir(&src_dir), &file_id, 0), b"p0").unwrap();
+
+    {
+        let conn = open_db(&st).unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&src_id, "Src", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&dest_id, "Dest", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![&file_id, &src_id, "clip.wav", "paired", &audio_path, t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text) VALUES (?1, 0, 0.0, 1.0, 'hi')",
+            params![&file_id],
+        )
+        .unwrap();
+    }
+
+    move_file_to_project_inner(&st, &file_id, &dest_id).unwrap();
+
+    let conn = open_db(&st).unwrap();
+    let (project_id, new_audio): (String, String) = conn
+        .query_row(
+            "SELECT project_id, audio_path FROM files WHERE id = ?1",
+            params![&file_id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(project_id, dest_id);
+    let dest_dir = fs::canonicalize(project_storage_dir(&st.root, &dest_id)).unwrap();
+    let new_audio_path = PathBuf::from(&new_audio);
+    assert!(new_audio_path.is_file());
+    assert!(new_audio_path.starts_with(&dest_dir));
+    assert!(!audio.is_file());
+    assert!(peak_file_path(&peaks_dir(&project_storage_dir(&st.root, &dest_id)), &file_id, 0).is_file());
+    let seg_count: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM segments WHERE file_id = ?1",
+            params![&file_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(seg_count, 1);
+}
+
+#[test]
+fn move_file_to_project_auto_renames_on_conflict() {
+    use super::file_cmd::move_file_to_project_inner;
+
+    let st = test_state("move_conflict");
+    let src_id = Uuid::new_v4().to_string();
+    let dest_id = Uuid::new_v4().to_string();
+    let file_a = Uuid::new_v4().to_string();
+    let file_b = Uuid::new_v4().to_string();
+    let t = now_ms();
+    let conn = open_db(&st).unwrap();
+    conn.execute(
+        "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+        params![&src_id, "Src", t, t],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+        params![&dest_id, "Dest", t, t],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![&file_a, &src_id, "same.txt", "text", t, t],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![&file_b, &dest_id, "same.txt", "text", t, t],
+    )
+    .unwrap();
+
+    let result = move_file_to_project_inner(&st, &file_a, &dest_id).unwrap();
+    assert!(result.renamed);
+    assert_eq!(result.final_name, "same (2).txt");
+    let name: String = conn
+        .query_row(
+            "SELECT name FROM files WHERE id = ?1",
+            params![&file_a],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(name, "same (2).txt");
+}
+
+#[test]
+fn rename_file_rejects_duplicate_name_in_project() {
+    use super::file_cmd::rename_file_inner;
+
+    let st = test_state("rename_dup");
+    let project_id = Uuid::new_v4().to_string();
+    let file_a = Uuid::new_v4().to_string();
+    let file_b = Uuid::new_v4().to_string();
+    let t = now_ms();
+    {
+        let conn = open_db(&st).unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&project_id, "P", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&file_a, &project_id, "a.txt", "text", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&file_b, &project_id, "b.txt", "text", t, t],
+        )
+        .unwrap();
+    }
+
+    let err = rename_file_inner(&st, &file_a, "b.txt").unwrap_err();
+    assert!(err.contains("已存在"));
+    rename_file_inner(&st, &file_a, "a2.txt").unwrap();
+    let name: String = open_db(&st)
+        .unwrap()
+        .query_row(
+            "SELECT name FROM files WHERE id = ?1",
+            params![&file_a],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(name, "a2.txt");
+}
+
+#[test]
+fn rename_file_rejects_duplicate_name_across_projects() {
+    use super::file_cmd::rename_file_inner;
+
+    let st = test_state("rename_cross");
+    let p1 = Uuid::new_v4().to_string();
+    let p2 = Uuid::new_v4().to_string();
+    let file_a = Uuid::new_v4().to_string();
+    let file_b = Uuid::new_v4().to_string();
+    let t = now_ms();
+    {
+        let conn = open_db(&st).unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&p1, "P1", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&p2, "P2", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&file_a, &p1, "a.txt", "text", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![&file_b, &p2, "taken.txt", "text", t, t],
+        )
+        .unwrap();
+    }
+
+    let err = rename_file_inner(&st, &file_a, "taken.txt").unwrap_err();
+    assert!(err.contains("已存在"));
+}
+
+#[test]
+fn move_file_to_project_auto_renames_when_other_project_holds_name() {
+    use super::file_cmd::move_file_to_project_inner;
+
+    let st = test_state("move_global");
+    let src_id = Uuid::new_v4().to_string();
+    let dest_id = Uuid::new_v4().to_string();
+    let other_id = Uuid::new_v4().to_string();
+    let file_a = Uuid::new_v4().to_string();
+    let file_other = Uuid::new_v4().to_string();
+    let t = now_ms();
+    let conn = open_db(&st).unwrap();
+    for (id, name) in [
+        (&src_id, "Src"),
+        (&dest_id, "Dest"),
+        (&other_id, "Other"),
+    ] {
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![id, name, t, t],
+        )
+        .unwrap();
+    }
+    conn.execute(
+        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![&file_a, &src_id, "same.txt", "text", t, t],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![&file_other, &other_id, "same.txt", "text", t, t],
+    )
+    .unwrap();
+
+    // Dest is empty, but Other still holds `same.txt` → must rename.
+    let result = move_file_to_project_inner(&st, &file_a, &dest_id).unwrap();
+    assert!(result.renamed);
+    assert_eq!(result.final_name, "same (2).txt");
+}
+
+#[test]
+fn copy_file_to_project_duplicates_segments_and_keeps_source() {
+    use super::file_cmd::copy_file_to_project_inner;
+    use super::project_storage::project_storage_dir;
+    use super::waveform_peaks::{peak_file_path, peaks_dir};
+
+    let st = test_state("copy_file");
+    let src_id = Uuid::new_v4().to_string();
+    let dest_id = Uuid::new_v4().to_string();
+    let file_id = Uuid::new_v4().to_string();
+    let t = now_ms();
+
+    let src_dir = project_storage_dir(&st.root, &src_id);
+    fs::create_dir_all(peaks_dir(&src_dir)).unwrap();
+    let audio = src_dir.join(format!("{file_id}.wav"));
+    fs::write(&audio, b"wav").unwrap();
+    let audio_path = canonicalize_audio_storage_path(&audio).unwrap();
+    fs::write(peak_file_path(&peaks_dir(&src_dir), &file_id, 0), b"p0").unwrap();
+
+    {
+        let conn = open_db(&st).unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&src_id, "Src", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&dest_id, "Dest", t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![&file_id, &src_id, "clip.wav", "paired", &audio_path, t, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, uid) VALUES (?1, 0, 0.0, 1.0, 'hi', ?2)",
+            params![&file_id, Uuid::new_v4().to_string()],
+        )
+        .unwrap();
+    }
+
+    let result = copy_file_to_project_inner(&st, &file_id, &dest_id).unwrap();
+    assert_ne!(result.file_id, file_id);
+    // Source still occupies `clip.wav` → workspace-global unique forces rename.
+    assert!(result.renamed);
+    assert_eq!(result.final_name, "clip (2).wav");
+
+    let conn = open_db(&st).unwrap();
+    let src_still: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM files WHERE id = ?1 AND project_id = ?2",
+            params![&file_id, &src_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(src_still, 1);
+    let dest_name: String = conn
+        .query_row(
+            "SELECT name FROM files WHERE id = ?1",
+            params![&result.file_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(dest_name, "clip (2).wav");
+    assert!(audio.is_file());
+    let dest_audio: String = conn
+        .query_row(
+            "SELECT audio_path FROM files WHERE id = ?1",
+            params![&result.file_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(PathBuf::from(&dest_audio).is_file());
+    assert_ne!(dest_audio, audio_path);
+    let dest_segs: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM segments WHERE file_id = ?1",
+            params![&result.file_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(dest_segs, 1);
+}

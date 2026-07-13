@@ -152,6 +152,40 @@ fn reveal_path_in_file_manager(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
+pub(crate) fn open_folder_in_file_manager(path: &Path) -> Result<(), String> {
+    reveal_path_in_file_manager(path)
+}
+
+/// Reveal `path` selected in the system file manager (Finder / Explorer).
+pub(crate) fn reveal_file_selected_in_file_manager(path: &Path) -> Result<(), String> {
+    if !path.is_file() {
+        return Err(format!("文件不存在: {}", path.display()));
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-R", &path.to_string_lossy()])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .arg(format!("/select,{}", path.display()))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        if let Some(parent) = path.parent() {
+            reveal_path_in_file_manager(parent)?;
+        } else {
+            return Err("无法打开文件所在目录。".into());
+        }
+    }
+    Ok(())
+}
+
 /// 在系统文件管理器中打开应用数据根目录（含 `models/`、`rushi.sqlite3` 等）。
 #[tauri::command]
 pub fn open_app_data_folder(state: State<DbState>) -> Result<(), String> {

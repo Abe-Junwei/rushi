@@ -25,6 +25,140 @@ pub fn cleanup_deleted_file_storage(
     }
 }
 
+/// Move peaks (+ optional in-project audio) from `source_project_id` to `dest_project_id`.
+/// Returns the new canonical `audio_path` when the audio file was relocated; otherwise `None`.
+pub fn relocate_file_storage_between_projects(
+    st: &DbState,
+    file_id: &str,
+    source_project_id: &str,
+    dest_project_id: &str,
+    audio_path: Option<&str>,
+) -> Result<Option<String>, String> {
+    use super::waveform_peaks::{
+        peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS,
+    };
+
+    let src_project_dir = project_storage_dir(&st.root, source_project_id);
+    let dest_project_dir = project_storage_dir(&st.root, dest_project_id);
+    let src_peaks = peaks_dir(&src_project_dir);
+    let dest_peaks = peaks_dir(&dest_project_dir);
+    if src_peaks.is_dir() {
+        fs::create_dir_all(&dest_peaks).map_err(|e| format!("创建目标 peaks 目录失败: {e}"))?;
+        for (level, _) in PEAK_LEVELS {
+            let from = peak_file_path(&src_peaks, file_id, level);
+            if from.is_file() {
+                let to = peak_file_path(&dest_peaks, file_id, level);
+                fs::rename(&from, &to).or_else(|_| {
+                    fs::copy(&from, &to).map(|_| ()).and_then(|_| fs::remove_file(&from))
+                }).map_err(|e| format!("搬迁 peaks L{level} 失败: {e}"))?;
+            }
+        }
+        let meta_from = peak_meta_path(&src_peaks, file_id);
+        if meta_from.is_file() {
+            let meta_to = peak_meta_path(&dest_peaks, file_id);
+            fs::rename(&meta_from, &meta_to).or_else(|_| {
+                fs::copy(&meta_from, &meta_to)
+                    .map(|_| ())
+                    .and_then(|_| fs::remove_file(&meta_from))
+            }).map_err(|e| format!("搬迁 peaks meta 失败: {e}"))?;
+        }
+    }
+
+    let Some(path) = audio_path.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    let audio = PathBuf::from(path);
+    if !audio.is_file() {
+        return Ok(None);
+    }
+    let src_can = match fs::canonicalize(&src_project_dir) {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
+    let audio_can = match fs::canonicalize(&audio) {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
+    if audio_can.strip_prefix(&src_can).is_err() {
+        // External / non-managed path — keep as-is.
+        return Ok(None);
+    }
+    fs::create_dir_all(&dest_project_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    let file_name = audio_can
+        .file_name()
+        .ok_or_else(|| "音频路径无效".to_string())?;
+    let dest_audio = dest_project_dir.join(file_name);
+    fs::rename(&audio_can, &dest_audio).or_else(|_| {
+        fs::copy(&audio_can, &dest_audio)
+            .map(|_| ())
+            .and_then(|_| fs::remove_file(&audio_can))
+    }).map_err(|e| format!("搬迁音频失败: {e}"))?;
+    let new_path = super::utils::canonicalize_audio_storage_path(&dest_audio)?;
+    Ok(Some(new_path))
+}
+
+/// Copy peaks (+ optional in-project audio) to a new file id under `dest_project_id`.
+/// Source files are left intact. Returns new canonical `audio_path` when audio was copied.
+pub fn copy_file_storage_between_projects(
+    st: &DbState,
+    source_file_id: &str,
+    dest_file_id: &str,
+    source_project_id: &str,
+    dest_project_id: &str,
+    audio_path: Option<&str>,
+) -> Result<Option<String>, String> {
+    use super::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
+
+    let src_project_dir = project_storage_dir(&st.root, source_project_id);
+    let dest_project_dir = project_storage_dir(&st.root, dest_project_id);
+    let src_peaks = peaks_dir(&src_project_dir);
+    let dest_peaks = peaks_dir(&dest_project_dir);
+    if src_peaks.is_dir() {
+        fs::create_dir_all(&dest_peaks).map_err(|e| format!("创建目标 peaks 目录失败: {e}"))?;
+        for (level, _) in PEAK_LEVELS {
+            let from = peak_file_path(&src_peaks, source_file_id, level);
+            if from.is_file() {
+                let to = peak_file_path(&dest_peaks, dest_file_id, level);
+                fs::copy(&from, &to).map_err(|e| format!("复制 peaks L{level} 失败: {e}"))?;
+            }
+        }
+        let meta_from = peak_meta_path(&src_peaks, source_file_id);
+        if meta_from.is_file() {
+            let meta_to = peak_meta_path(&dest_peaks, dest_file_id);
+            fs::copy(&meta_from, &meta_to).map_err(|e| format!("复制 peaks meta 失败: {e}"))?;
+        }
+    }
+
+    let Some(path) = audio_path.filter(|v| !v.is_empty()) else {
+        return Ok(None);
+    };
+    let audio = PathBuf::from(path);
+    if !audio.is_file() {
+        return Ok(None);
+    }
+    let src_can = match fs::canonicalize(&src_project_dir) {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
+    let audio_can = match fs::canonicalize(&audio) {
+        Ok(p) => p,
+        Err(_) => return Ok(None),
+    };
+    if audio_can.strip_prefix(&src_can).is_err() {
+        // External path — caller keeps the same audio_path on the new row.
+        return Ok(None);
+    }
+    fs::create_dir_all(&dest_project_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    let ext = audio_can
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("dat");
+    let dest_audio = dest_project_dir.join(format!("{dest_file_id}.{ext}"));
+    fs::copy(&audio_can, &dest_audio).map_err(|e| format!("复制音频失败: {e}"))?;
+    let new_path = super::utils::canonicalize_audio_storage_path(&dest_audio)?;
+    Ok(Some(new_path))
+}
+
 /// Best-effort removal of the on-disk project bundle after the DB row is already
 /// committed. A filesystem failure is logged (WARN) but never propagated, so it can
 /// only leave sweepable orphan files — never a reverse orphan (DB row whose media
