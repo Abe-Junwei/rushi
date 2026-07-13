@@ -1,10 +1,7 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
-import {
-  isActiveSegmentPlaybackBound,
-  type ActiveSegmentPlaybackBound,
-} from "../utils/segmentPlaybackBound";
+import type { ActiveSegmentPlaybackBound } from "../utils/segmentPlaybackBound";
 import {
   resolveMediaPlaybackHost,
   resolveSegmentPlayFrom,
@@ -15,12 +12,10 @@ import {
   applyWaveformGlobalPlaybackRate,
   atomicWaveformSegmentSeek,
 } from "../services/waveform/waveformSegmentPlaybackSeek";
-import {
-  resolveSegmentPauseFreezeSec,
-  resolveSegmentResumeFromSec,
-  resolveStickySegmentSpaceFromSec,
-} from "../utils/segmentResumeFromSec";
+import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
 import { endMediaPlay, enqueueMediaOp, tryBeginMediaPlay } from "../utils/mediaPlayGate";
+import { resolveSegmentBoundArmAfterPlayStart } from "../services/waveform/segmentPlayBoundArm";
+import { useWaveformSegmentPlayToggle } from "./useWaveformSegmentPlayToggle";
 
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
@@ -207,25 +202,14 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
 
         // Only scope-stop at segment end when starting inside the selected segment.
         // Past end (gap after): free play from playhead — keep Stop chrome via unbounded gen.
-        const insideAtStart = startAtSec >= range.start && startAtSec < range.end;
-        if (insideAtStart) {
-          unboundedSelectedPlayGenRef.current = null;
-          // Mid-segment resume near the tail: arm immediately so a sparse first frame
-          // past end still stops. Restart-from-start (natural-end replay): stay unarmed
-          // until a frame is near start / inside — a stale end-time frame must not
-          // immediately re-stop (display rewound, media still at end for one tick).
-          const clearOfEnd = startAtSec < range.end - 0.05;
-          const startingNearSegmentStart = startAtSec <= range.start + 0.05;
-          segmentPlaybackBoundRef.current = {
-            startSec: range.start,
-            endSec: range.end,
-            generation: gen,
-            armed: clearOfEnd && !startingNearSegmentStart,
-          };
-        } else {
-          segmentPlaybackBoundRef.current = null;
-          unboundedSelectedPlayGenRef.current = gen;
-        }
+        const arm = resolveSegmentBoundArmAfterPlayStart({
+          startAtSec,
+          rangeStart: range.start,
+          rangeEnd: range.end,
+          generation: gen,
+        });
+        segmentPlaybackBoundRef.current = arm.bound;
+        unboundedSelectedPlayGenRef.current = arm.unboundedSelectedPlayGen;
         setIsSelectedSegmentPlaying(true);
         armSegmentPlaybackSession(playArgs.idx);
       } finally {
@@ -309,137 +293,30 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     wsRef,
   ]);
 
-  /** Impl for Transport dispatcher — do not wrap again with dispatch. */
-  const toggleSelectedWaveformPlayImpl = useCallback(async () => {
-    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+  const { toggleSelectedWaveformPlayImpl, handleToggleSelectedWaveformLoop } =
+    useWaveformSegmentPlayToggle({
+      wsRef,
+      transportRef,
       requireTransport,
+      isReady,
+      latestSegmentsRef,
+      getAuthorityPlayheadTimeSec,
+      resolvePlayheadSec,
+      resolveEffectiveSelectedIdx,
+      resolveSelectedPlaybackRange,
+      playGenerationRef,
+      segmentBoundStopInFlightRef,
+      segmentPlaybackBoundRef,
+      unboundedSelectedPlayGenRef,
+      pausedResumeAnchorRef,
+      segmentLoopPlaybackRef,
+      cancelSegmentPlaybackBound,
+      setSegmentLoopPlayback,
+      armSegmentPlaybackSession,
+      syncDisplayPlayheadAfterSeekRef,
+      playSegmentAtIndex,
+      playSelectedSegment,
     });
-    if (!host || !isReady) return;
-    const range = resolveSelectedPlaybackRange();
-    const bound = segmentPlaybackBoundRef.current;
-    const activeScopedBound =
-      range != null &&
-      isActiveSegmentPlaybackBound(bound, playGenerationRef.current) &&
-      bound.startSec === range.start &&
-      bound.endSec === range.end;
-    const activeUnboundedSelected =
-      unboundedSelectedPlayGenRef.current === playGenerationRef.current;
-    // Global playback may already be running. In that case the segment button is
-    // an explicit "play this segment" request, not a global pause command.
-    if (host.isPlaying()) {
-      if (
-        !segmentBoundStopInFlightRef.current &&
-        !activeScopedBound &&
-        !activeUnboundedSelected
-      ) {
-        const idx = resolveEffectiveSelectedIdx();
-        const seg = latestSegmentsRef.current[idx];
-        if (!seg) return;
-        const stickyFromSec = resolveStickySegmentSpaceFromSec({
-          segment: seg,
-          displaySec: resolvePlayheadSec(),
-          authoritySec: getAuthorityPlayheadTimeSec?.(),
-        });
-        await playSegmentAtIndex(
-          idx,
-          stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
-        );
-        return;
-      }
-      const idx = resolveEffectiveSelectedIdx();
-      const freezeSec = resolveSegmentPauseFreezeSec({
-        displaySec: resolvePlayheadSec(),
-        authoritySec: getAuthorityPlayheadTimeSec?.(),
-      });
-      const anchorInsideSelected =
-        range != null && freezeSec >= range.start && freezeSec < range.end;
-      pausedResumeAnchorRef.current =
-        idx >= 0 && anchorInsideSelected ? { idx, timeSec: freezeSec } : null;
-      if (idx >= 0) {
-        armSegmentPlaybackSession(idx);
-      }
-      cancelSegmentPlaybackBound();
-      await enqueueMediaOp(
-        host.gateHost,
-        "pause",
-        () => {
-          void Promise.resolve(host.pause());
-        },
-        host.isNative ? { pauseToPlayGapMs: 0 } : undefined,
-      );
-      syncDisplayPlayheadAfterSeekRef?.current?.(freezeSec);
-      return;
-    }
-    await playSelectedSegment();
-  }, [
-    armSegmentPlaybackSession,
-    cancelSegmentPlaybackBound,
-    getAuthorityPlayheadTimeSec,
-    isReady,
-    latestSegmentsRef,
-    pausedResumeAnchorRef,
-    playSegmentAtIndex,
-    playSelectedSegment,
-    playGenerationRef,
-    resolveEffectiveSelectedIdx,
-    resolvePlayheadSec,
-    resolveSelectedPlaybackRange,
-    segmentBoundStopInFlightRef,
-    segmentPlaybackBoundRef,
-    syncDisplayPlayheadAfterSeekRef,
-    requireTransport,
-    transportRef,
-    unboundedSelectedPlayGenRef,
-    wsRef,
-  ]);
-
-  const handleToggleSelectedWaveformLoop = useCallback(async () => {
-    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
-      requireTransport,
-    });
-    if (!host || !isReady) return;
-    if (segmentLoopPlaybackRef.current) {
-      segmentLoopPlaybackRef.current = false;
-      setSegmentLoopPlayback(false);
-      cancelSegmentPlaybackBound();
-      await enqueueMediaOp(
-        host.gateHost,
-        "pause",
-        () => {
-          void Promise.resolve(host.pause());
-        },
-        host.isNative ? { pauseToPlayGapMs: 0 } : undefined,
-      );
-      return;
-    }
-    const range = resolveSelectedPlaybackRange();
-    if (!range) return;
-    // Sync ref before await so bound-stop / LoopReplay see loop=on immediately.
-    segmentLoopPlaybackRef.current = true;
-    setSegmentLoopPlayback(true);
-    const idx = resolveEffectiveSelectedIdx();
-    if (idx < 0) return;
-    // Always restart scoped from a defined point so past-end display cannot
-    // resolve as unbounded "gap after" continue.
-    const fromSec =
-      resolvePlayheadSec() >= range.end - 0.05 ? range.start : undefined;
-    await playSegmentAtIndex(
-      idx,
-      fromSec != null ? { fromSec, loop: true } : { loop: true },
-    );
-  }, [
-    cancelSegmentPlaybackBound,
-    isReady,
-    playSegmentAtIndex,
-    resolveEffectiveSelectedIdx,
-    resolvePlayheadSec,
-    resolveSelectedPlaybackRange,
-    segmentLoopPlaybackRef,
-    setSegmentLoopPlayback,
-    requireTransport,
-    transportRef,
-    wsRef,
-  ]);
 
   return {
     playSegmentAtIndex,
