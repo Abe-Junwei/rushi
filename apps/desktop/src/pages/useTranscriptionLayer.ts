@@ -9,6 +9,7 @@ import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformR
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
 import { clearWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
+import { isGlobalPlaybackSession } from "../utils/playbackSession";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -39,9 +40,17 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const showEditorHintRef = useRef(showEditorHint);
   showEditorHintRef.current = showEditorHint;
 
+  const { getPlaybackSession: wfGetPlaybackSession, playbackChromeEpoch: wfPlaybackChromeEpoch } =
+    timeline.wf;
+  const isGlobalPlaybackMode = useMemo(
+    () => isGlobalPlaybackSession(wfGetPlaybackSession()),
+    [wfGetPlaybackSession, wfPlaybackChromeEpoch],
+  );
+
   const playbackFollow = useTranscriptPlaybackFollow({
     isPlaying: timeline.wf.isPlaying,
     isReady: timeline.wf.isReady,
+    isGlobalPlaybackMode,
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     subscribePlayheadFrame: timeline.subscribePlayheadFrame,

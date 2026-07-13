@@ -2,6 +2,11 @@ import { useCallback } from "react";
 import { resetAppliedPeaks } from "../utils/waveformAppliedZoom";
 import type { ProjectWaveformMountRefs } from "./projectWaveformMountSupport";
 
+/**
+ * Tear down WaveSurfer visual host only.
+ * Native {@link PlaybackTransport} lifecycle is owned by useNativePlaybackController
+ * (destroying it here raced remounts and left requireTransport play dead).
+ */
 export function useProjectWaveformDestroy(
   clearWsListeners: () => void,
   refs: Pick<

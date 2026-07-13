@@ -42,6 +42,8 @@ export function useProjectWaveformMount(
   mediaUrl: string | null | undefined,
   mediaDiskPath: string | null | undefined,
   deferDecodeMount: boolean,
+  /** S4: mount WaveSurfer without MediaElement URL (visual stub only). */
+  omitMediaUrl: boolean,
   refs: ProjectWaveformMountRefs,
   destroyWave: () => void,
 ) {
@@ -73,7 +75,11 @@ export function useProjectWaveformMount(
   useEffect(() => {
     destroyWave();
     resetWaveformRenderPathLog();
-    if (!mediaUrl) {
+    if (!mediaUrl && !omitMediaUrl) {
+      setLoadError(null);
+      return;
+    }
+    if (omitMediaUrl && !mediaDiskPath) {
       setLoadError(null);
       return;
     }
@@ -99,6 +105,11 @@ export function useProjectWaveformMount(
         layoutDurationSecRef: layoutDurationSecRef.current,
         peakCacheDurationSec: cache?.durationSec ?? 0,
       });
+      if (omitMediaUrl && layoutDur <= 0) {
+        logDesktopUi("WARN", "waveform mount: native visual-only needs layout duration");
+        setLoadError("音频时长未就绪，请稍后重试");
+        return;
+      }
       const initialMps =
         layoutDur > 0
           ? clampPxPerSecForWaveSurferRender(minPxPerSecRef.current, layoutDur)
@@ -117,7 +128,9 @@ export function useProjectWaveformMount(
         logWaveformRenderPath(
           "peaks",
           "mount_media_only",
-          `stub_peaks dur=${layoutDur.toFixed(1)}`,
+          omitMediaUrl
+            ? `stub_peaks native_visual_only dur=${layoutDur.toFixed(1)}`
+            : `stub_peaks dur=${layoutDur.toFixed(1)}`,
         );
       } else {
         resetAppliedPeaks(appliedZoom);
@@ -138,30 +151,29 @@ export function useProjectWaveformMount(
       });
 
       const wfPalette = readWaveformSurferPalette();
-      const ws = WaveSurfer.create(
-        withWaveSurferCspNonce({
-          container: mountEl,
-          url: mediaUrl,
-          peaks,
-          duration,
-          height: initialH,
-          normalize: true,
-          maxPeak: 1,
-          sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
-          waveColor: wfPalette.waveColor,
-          progressColor: wfPalette.progressColor,
-          cursorColor: wfPalette.cursorColor,
-          cursorWidth: 0,
-          ...WAVEFORM_SURFER_BAR_DISPLAY,
-          minPxPerSec: 0,
-          dragToSeek: !wantDragCreate,
-          interact: !optsRef.current.disabled,
-          autoScroll: false,
-          autoCenter: false,
-          hideScrollbar: true,
-          fillParent: true,
-        }),
-      );
+      const createOpts = withWaveSurferCspNonce({
+        container: mountEl,
+        ...(omitMediaUrl || !mediaUrl ? {} : { url: mediaUrl }),
+        peaks,
+        duration,
+        height: initialH,
+        normalize: true,
+        maxPeak: 1,
+        sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
+        waveColor: wfPalette.waveColor,
+        progressColor: wfPalette.progressColor,
+        cursorColor: wfPalette.cursorColor,
+        cursorWidth: 0,
+        ...WAVEFORM_SURFER_BAR_DISPLAY,
+        minPxPerSec: 0,
+        dragToSeek: !wantDragCreate,
+        interact: !optsRef.current.disabled,
+        autoScroll: false,
+        autoCenter: false,
+        hideScrollbar: true,
+        fillParent: true,
+      });
+      const ws = WaveSurfer.create(createOpts);
       applyWaveSurferShadowCspNonce(mountEl);
 
       wsRef.current = ws;
@@ -169,12 +181,15 @@ export function useProjectWaveformMount(
       if (mediaUrl && !mediaDiskPath) {
         logRuntimeParity("waveform", "mount_parity_probe_skipped no_mediaDiskPath", "WARN");
       }
+      if (omitMediaUrl) {
+        logDesktopUi("INFO", "[s4] WaveSurfer visual-only (no MediaElement url)");
+      }
 
       wsUnsubsRef.current.push(
         ...bindProjectWaveformWaveSurferEvents({
           ws,
           disposed: () => disposed,
-          mediaUrl,
+          mediaUrl: omitMediaUrl ? null : mediaUrl,
           mediaDiskPath,
           optsRef,
           minPxPerSecRef,
@@ -193,7 +208,7 @@ export function useProjectWaveformMount(
         }),
       );
 
-      if (peaks && mediaUrl) {
+      if (peaks && mediaUrl && !omitMediaUrl) {
         void probeWaveformAssetFetchParity("mount_peaks_bootstrap", mediaDiskPath, mediaUrl);
       }
     };
@@ -206,9 +221,12 @@ export function useProjectWaveformMount(
       destroyWave();
     };
   }, [
-    mediaUrl,
+    // Native visual-only: key off disk path so convertFileSrc / mediaUrl churn
+    // cannot remount-storm and leave play gated on a missing transport.
+    omitMediaUrl ? mediaDiskPath : mediaUrl,
     mediaDiskPath,
     deferDecodeMount,
+    omitMediaUrl,
     destroyWave,
     optsRef,
     containerRef,

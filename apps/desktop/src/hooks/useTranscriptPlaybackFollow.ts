@@ -28,6 +28,7 @@ const PROGRAMMATIC_SCROLL_GUARD_MS = 120;
 export function useTranscriptPlaybackFollow(args: {
   isPlaying: boolean;
   isReady: boolean;
+  isGlobalPlaybackMode: boolean;
   segments: readonly SegmentDto[];
   selectedIdx: number;
   subscribePlayheadFrame: (
@@ -37,7 +38,14 @@ export function useTranscriptPlaybackFollow(args: {
 }): {
   notifyUserSegmentSelect: (selectedIdx: number) => void;
 } {
-  const { isPlaying, isReady, segments, selectedIdx, subscribePlayheadFrame } = args;
+  const {
+    isPlaying,
+    isReady,
+    isGlobalPlaybackMode,
+    segments,
+    selectedIdx,
+    subscribePlayheadFrame,
+  } = args;
 
   const enabled = useSyncExternalStore(
     subscribeWaveformPrefs,
@@ -212,7 +220,7 @@ export function useTranscriptPlaybackFollow(args: {
   }, []);
 
   useEffect(() => {
-    if (!isPlaying || !isReady || !enabled) {
+    if (!isPlaying || !isReady || !enabled || !isGlobalPlaybackMode) {
       clearFocus();
       return;
     }
@@ -231,6 +239,7 @@ export function useTranscriptPlaybackFollow(args: {
     clearFocus,
     enabled,
     ensureScrollListener,
+    isGlobalPlaybackMode,
     isPlaying,
     isReady,
     subscribePlayheadFrame,

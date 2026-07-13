@@ -11,6 +11,7 @@
 | [0007](./0007-sherpa-qwen3-default-asr-engine.md) | **R3s-A** Sherpa Qwen3 为将来默认本机 ASR（phased 迁移；**proposed**） |
 | [0004](./0004-waveform-peaks-content-tile-renderer.md) | ~~桌面端波形 content-tile canvas peaks~~ **superseded** → [`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md) |
 | [0005](./0005-waveform-single-scroll-authority.md) | ~~tier scroll + layout/draw 双轨~~ **superseded** → 同上 |
+| [0008](./0008-native-audio-playback-transport.md) | 播放真源：Rust **CPAL + Symphonia**（离开 WKWebView MediaElement） |
 
 与 Jieyu 对齐的跨仓规范仍以 sibling 文档为准；见 [`../architecture/README.md`](../architecture/README.md)。
 

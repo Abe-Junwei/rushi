@@ -12,6 +12,8 @@ const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
 const LS_PLAYBACK_SCROLL_FOLLOW = "rushi.p1.waveformPlaybackScrollFollow";
 const LS_TRANSCRIPT_PLAYBACK_FOLLOW = "rushi.p1.transcriptPlaybackFollow";
+/** S4: Rust CPAL+Symphonia transport — mandatory on desktop (ADR-0008). */
+const LS_NATIVE_AUDIO_PLAYBACK = "rushi.p1.nativeAudioPlayback";
 
 const waveformPrefListeners = new Set<() => void>();
 
@@ -274,6 +276,24 @@ export function readStoredTranscriptPlaybackFollow(): boolean {
 export function writeStoredTranscriptPlaybackFollow(enabled: boolean): void {
   try {
     localStorage.setItem(LS_TRANSCRIPT_PLAYBACK_FOLLOW, enabled ? "1" : "0");
+    notifyAfterWaveformPrefWrite();
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Desktop native audio is mandatory (ADR-0008). Pref retained for one-release
+ * read compatibility; always returns true.
+ */
+export function readStoredNativeAudioPlaybackEnabled(): boolean {
+  return true;
+}
+
+/** @deprecated Pref no longer gates transport; kept as no-op notifier. */
+export function writeStoredNativeAudioPlaybackEnabled(_enabled: boolean): void {
+  try {
+    localStorage.setItem(LS_NATIVE_AUDIO_PLAYBACK, "1");
     notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { EditorView } from "@codemirror/view";
 import { useTranscriptPlaybackFollow } from "./useTranscriptPlaybackFollow";
 import { buildTranscriptEditorState } from "../components/editor/core/buildTranscriptEditorState";
@@ -25,6 +25,10 @@ function makeSegments(n: number): SegmentDto[] {
 describe("useTranscriptPlaybackFollow", () => {
   let view: EditorView | null = null;
   let frameCb: ((t: number) => void) | null = null;
+
+  beforeEach(() => {
+    writeStoredTranscriptPlaybackFollow(true);
+  });
 
   afterEach(() => {
     registerTranscriptEditorView(null);
@@ -55,6 +59,7 @@ describe("useTranscriptPlaybackFollow", () => {
       useTranscriptPlaybackFollow({
         isPlaying: true,
         isReady: true,
+        isGlobalPlaybackMode: true,
         segments: makeSegments(4),
         selectedIdx: 0,
         subscribePlayheadFrame,
@@ -94,6 +99,7 @@ describe("useTranscriptPlaybackFollow", () => {
         useTranscriptPlaybackFollow({
           isPlaying: playing,
           isReady: true,
+          isGlobalPlaybackMode: true,
           segments: makeSegments(2),
           selectedIdx: 0,
           subscribePlayheadFrame,
@@ -107,6 +113,80 @@ describe("useTranscriptPlaybackFollow", () => {
     expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
 
     rerender({ playing: false });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+  });
+
+  it("only paints playback focus during global playback mode", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    registerTranscriptEditorView(view);
+
+    const subscribePlayheadFrame = (cb: (t: number) => void) => {
+      frameCb = cb;
+      return () => {
+        frameCb = null;
+      };
+    };
+
+    const { rerender } = renderHook(
+      ({ global }: { global: boolean }) =>
+        useTranscriptPlaybackFollow({
+          isPlaying: true,
+          isReady: true,
+          isGlobalPlaybackMode: global,
+          segments: makeSegments(3),
+          selectedIdx: 0,
+          subscribePlayheadFrame,
+        }),
+      { initialProps: { global: true } },
+    );
+
+    act(() => {
+      frameCb?.(5.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBe(0);
+
+    rerender({ global: false });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+
+    act(() => {
+      frameCb?.(15.1);
+    });
+    expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
+  });
+
+  it("does not subscribe or paint playback focus when initially mounted outside global playback", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    view = new EditorView({ state, parent });
+    registerTranscriptEditorView(view);
+
+    const subscribePlayheadFrame = (cb: (t: number) => void) => {
+      frameCb = cb;
+      return () => {
+        frameCb = null;
+      };
+    };
+
+    renderHook(() =>
+      useTranscriptPlaybackFollow({
+        isPlaying: true,
+        isReady: true,
+        isGlobalPlaybackMode: false,
+        segments: makeSegments(3),
+        selectedIdx: 0,
+        subscribePlayheadFrame,
+      }),
+    );
+
+    expect(frameCb).toBeNull();
     expect(view.state.field(transcriptPlaybackFocusField)).toBeNull();
   });
 
@@ -131,6 +211,7 @@ describe("useTranscriptPlaybackFollow", () => {
       useTranscriptPlaybackFollow({
         isPlaying: true,
         isReady: true,
+        isGlobalPlaybackMode: true,
         segments,
         selectedIdx: 0,
         subscribePlayheadFrame,
@@ -179,6 +260,7 @@ describe("useTranscriptPlaybackFollow", () => {
       useTranscriptPlaybackFollow({
         isPlaying: true,
         isReady: true,
+        isGlobalPlaybackMode: true,
         segments,
         selectedIdx: 0,
         subscribePlayheadFrame,
@@ -219,6 +301,7 @@ describe("useTranscriptPlaybackFollow", () => {
       useTranscriptPlaybackFollow({
         isPlaying: true,
         isReady: true,
+        isGlobalPlaybackMode: true,
         segments,
         selectedIdx: 0,
         subscribePlayheadFrame,

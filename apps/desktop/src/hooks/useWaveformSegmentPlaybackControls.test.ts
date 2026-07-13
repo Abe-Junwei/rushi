@@ -50,6 +50,12 @@ function makeWsEventBag() {
   return { on, emit };
 }
 
+/** Bound-sync stop awaits host.pause(); flush microtasks for finally handlers. */
+async function flushDeferredSegmentStop() {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
 describe("useWaveformSegmentPlaybackControls", () => {
   const segments = [{ idx: 0, start_sec: 10, end_sec: 20, text: "a" }];
 
@@ -482,9 +488,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
       await result.current.handleToggleSelectedWaveformPlay();
     });
 
-    expect(ws.pause).toHaveBeenCalled();
+    expect(ws.pause).not.toHaveBeenCalled();
     expect(ws.setTime).toHaveBeenCalledWith(10);
-    expect(ws.play).toHaveBeenCalled();
+    // Already playing globally: seek only — do not pause+play (WebKit AudioSession).
+    expect(ws.play).not.toHaveBeenCalled();
     expect(playing).toBe(true);
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
@@ -570,7 +577,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.setTime).toHaveBeenCalledWith(10);
     expect(ws.setTime).not.toHaveBeenCalledWith(25);
-    expect(ws.play).toHaveBeenCalled();
+    // Already playing: seek-only cut into segment — no nested pause+play.
+    expect(ws.pause).not.toHaveBeenCalled();
+    expect(ws.play).not.toHaveBeenCalled();
     expect(playing).toBe(true);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
   });
@@ -877,7 +886,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     playhead = 19.99;
     await act(async () => {
       emit("audioprocess");
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(ws.pause).toHaveBeenCalled();
@@ -993,7 +1002,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(22);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(ws.pause).toHaveBeenCalled();
@@ -1050,7 +1059,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(20);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(playing).toBe(false);
@@ -1120,7 +1129,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(20);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(playing).toBe(false);
@@ -1204,7 +1213,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(20);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(playing).toBe(false);
@@ -1323,7 +1332,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(20);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
 
     expect(playing).toBe(false);
@@ -1376,7 +1385,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       schedulePlaybackViewportFrame(20);
       flushTierScrollFrameForTests();
-      await Promise.resolve();
+      await flushDeferredSegmentStop();
     });
     expect(playing).toBe(false);
 
@@ -1395,7 +1404,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(true);
   });
 
-  it("user pause cancels a pending segment-end seek so playhead does not jump", async () => {
+  it("segment-end bound pause does not seek playhead", async () => {
     let playhead = 10;
     let playing = false;
     const { on, emit } = makeWsEventBag();
@@ -1436,17 +1445,14 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
 
-    // Reach end — schedules microtask stop — then user pauses before it runs.
     playhead = 19.99;
-    emit("audioprocess");
-    playhead = 19.5;
     await act(async () => {
-      await result.current.handleToggleSelectedWaveformPlay();
-      await Promise.resolve();
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
     });
 
     expect(playing).toBe(false);
     expect(ws.setTime).not.toHaveBeenCalled();
-    expect(syncDisplay).toHaveBeenCalledWith(19.5);
+    expect(ws.pause).toHaveBeenCalled();
   });
 });

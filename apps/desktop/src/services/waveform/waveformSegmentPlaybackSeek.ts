@@ -1,41 +1,53 @@
 import type { MutableRefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
-import { applyPeaksOrderedSeek } from "./transport";
+import { applyPeaksOrderedSeek, resolveMediaPlaybackHost } from "./transport";
+import type { PlaybackTransport } from "./transport/playbackTransport";
 import { resolveLayoutDurationSec } from "../../utils/waveformTimelineMetrics";
 
-/** Apply the global transport playback rate onto the live WaveSurfer instance. */
+/** Apply the global transport playback rate onto the live media host. */
 export function applyWaveformGlobalPlaybackRate(args: {
   ws: WaveSurfer | null;
+  transport?: PlaybackTransport | null;
+  requireTransport?: boolean;
   getGlobalPlaybackRate: () => number;
 }): void {
-  const { ws, getGlobalPlaybackRate } = args;
-  if (!ws) return;
-  ws.setPlaybackRate(getGlobalPlaybackRate());
+  const { ws, transport, requireTransport, getGlobalPlaybackRate } = args;
+  const host = resolveMediaPlaybackHost(ws, transport, { requireTransport });
+  if (!host) return;
+  void Promise.resolve(host.setPlaybackRate(getGlobalPlaybackRate()));
 }
 
 /** Peaks-ordered seek used by segment-scoped play / end-stop. */
-export function atomicWaveformSegmentSeek(args: {
+export async function atomicWaveformSegmentSeek(args: {
   ws: WaveSurfer;
+  transport?: PlaybackTransport | null;
+  requireTransport?: boolean;
   timeSec: number;
   layoutDurationSecRef?: MutableRefObject<number>;
   syncDisplayPlayheadAfterSeekRef?: MutableRefObject<((timeSec: number) => void) | null>;
   commitSeekUi?: (timeSec: number) => void;
-}): void {
+}): Promise<void> {
   const {
     ws,
+    transport,
+    requireTransport,
     timeSec,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
   } = args;
+  const host = resolveMediaPlaybackHost(ws, transport, { requireTransport });
+  if (!host) return;
   const d = layoutDurationSecRef
     ? resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current })
-    : ws.getDuration() || 0;
-  applyPeaksOrderedSeek({
+    : transport?.getDuration() || ws.getDuration() || 0;
+  const clamped = applyPeaksOrderedSeek({
     timeSec,
     durationSec: d,
     syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-    setTime: (t) => ws.setTime(t),
+    // Visual-first; media seek awaited below so native IPC cannot race play().
+    setTime: () => undefined,
     commitSeekUi,
   });
+  await Promise.resolve(host.setTime(clamped));
 }

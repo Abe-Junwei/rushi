@@ -15,10 +15,14 @@ import {
   useProjectWaveformMount,
 } from "./useProjectWaveformMount";
 import { useProjectWaveformDestroy } from "./useProjectWaveformDestroy";
-import { WAVEFORM_HEIGHT_DEFAULT } from "../utils/waveformPrefs";
+import {
+  WAVEFORM_HEIGHT_DEFAULT,
+} from "../utils/waveformPrefs";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 import {
   dispatchTransportIntent,
+  resolveMediaPlaybackHost,
+  type PlaybackTransport,
   type TransportIntent,
 } from "../services/waveform/transport";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
@@ -29,7 +33,9 @@ import {
 import { resolveStickySegmentSpaceFromSec } from "../utils/segmentResumeFromSec";
 import { resolveWaveformPlayheadChromeMode } from "../utils/waveformPlayheadChrome";
 import { reconcileSegmentsRefWithState } from "../pages/segmentSegmentsRefSync";
-import { runGatedMediaPlay } from "../utils/mediaPlayGate";
+import { noteMediaPaused, runGatedMediaPlay } from "../utils/mediaPlayGate";
+import { isTauriRuntime } from "../config/env";
+import { useNativePlaybackController } from "./useNativePlaybackController";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -68,6 +74,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const timelineShellRef = useRef<HTMLDivElement | null>(null);
   const peaksStageShellRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<import("wavesurfer.js").default | null>(null);
+  const transportRef = useRef<PlaybackTransport | null>(null);
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
   const lastTimeUiCommitMsRef = useRef(0);
@@ -89,7 +96,18 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
-  const globalPlayback = useWaveformGlobalPlayback(wsRef, isReady);
+  const [transportEpoch, setTransportEpoch] = useState(0);
+  const bumpTransportEpoch = useCallback(() => {
+    setTransportEpoch((n) => n + 1);
+  }, []);
+  // Desktop Tauri: native transport is mandatory (ADR-0008 maturity).
+  const useNativeTransport = isTauriRuntime() && Boolean(mediaDiskPath);
+  const globalPlayback = useWaveformGlobalPlayback(
+    wsRef,
+    isReady,
+    transportRef,
+    useNativeTransport,
+  );
   const applyGlobalPlaybackRateRef = useRef(globalPlayback.applyGlobalPlaybackRate);
   applyGlobalPlaybackRateRef.current = globalPlayback.applyGlobalPlaybackRate;
   const commitSeekUi = useCallback(
@@ -120,6 +138,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     commitSeekUi,
     options.syncDisplayPlayheadAfterSeekRef,
     options.getDisplayPlayheadTimeSecRef,
+    transportRef,
+    useNativeTransport,
   );
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
@@ -127,6 +147,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   }, []);
   const segmentPlayback = useWaveformSegmentPlaybackControls({
     wsRef,
+    transportRef,
+    transportEpoch,
+    requireTransport: useNativeTransport,
     isReady,
     segments,
     selectedIdx,
@@ -151,7 +174,30 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const dispatchTransport = useCallback(
     async (intent: TransportIntent) => {
-      const ws = wsRef.current;
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef.current, {
+        requireTransport: useNativeTransport,
+      });
+      const media = host
+        ? {
+            setTime: (t: number) => {
+              void Promise.resolve(host.setTime(t));
+            },
+            play: () => {
+              return runGatedMediaPlay(host.gateHost, () => host.play()).then(() => undefined);
+            },
+            pause: () => {
+              void Promise.resolve(host.pause()).finally(() => {
+                noteMediaPaused(host.gateHost);
+              });
+            },
+            isPlaying: () => host.isPlaying(),
+          }
+        : {
+            setTime: () => undefined,
+            play: () => Promise.resolve(),
+            pause: () => undefined,
+            isPlaying: () => false,
+          };
       await dispatchTransportIntent(intent, {
         isReady,
         getDurationSec: () =>
@@ -160,15 +206,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
           optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t),
         commitSeekUi,
         suppressPlaybackFollow,
-        media: {
-          setTime: (t) => ws?.setTime(t),
-          play: () => {
-            if (!ws) return;
-            return runGatedMediaPlay(ws, () => ws.play()).then(() => undefined);
-          },
-          pause: () => ws?.pause(),
-          isPlaying: () => ws?.isPlaying() ?? false,
-        },
+        media,
         applySeek: (timeSec, seekOpts) => {
           segmentPlayback.clearPausedResumeAnchor();
           if (seekOpts?.suppressFollow) suppressPlaybackFollow();
@@ -193,7 +231,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
           segmentPlayback.consumeSegmentResumeFromSec(idx, fromSec),
       });
     },
-    [commitSeekUi, isReady, layoutDurationSecRef, playback, segmentPlayback, suppressPlaybackFollow],
+    [commitSeekUi, isReady, layoutDurationSecRef, playback, segmentPlayback, suppressPlaybackFollow, useNativeTransport],
   );
 
   const requestViewportChromeFrame = useCallback(() => {
@@ -256,15 +294,35 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     [appliedZoom, layoutDurationSecRef],
   );
 
-  const destroyWave = useProjectWaveformDestroy(clearWsListeners, mountRefs, mountRefs);
+  const destroyWave = useProjectWaveformDestroy(
+    clearWsListeners,
+    mountRefs,
+    mountRefs,
+  );
 
   useProjectWaveformMount(
     mediaUrl,
     mediaDiskPath,
     deferDecodeMount,
+    useNativeTransport,
     mountRefs,
     destroyWave,
   );
+
+  useNativePlaybackController({
+    enabled: useNativeTransport,
+    mediaDiskPath,
+    layoutDurationSecRef,
+    peakCacheRef,
+    transportRef,
+    applyGlobalPlaybackRate: globalPlayback.applyGlobalPlaybackRate,
+    onWsAudioprocessRef: options.onWsAudioprocessRef,
+    lastTimeUiCommitRef,
+    setIsPlaying,
+    setCurrentTime,
+    setLoadError,
+    onTransportEpoch: bumpTransportEpoch,
+  });
 
   const { refitFitAllIfNeeded, syncShellLayoutForZoom } = useWaveformViewportController({
     wsRef,
@@ -396,12 +454,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     if (sessionToggleInFlightRef.current) return;
     sessionToggleInFlightRef.current = true;
     try {
-      const ws = wsRef.current;
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef.current, {
+        requireTransport: useNativeTransport,
+      });
       const selectedSegmentIdx = effectiveTranscriptPrimaryIdx(
         selectedIdxForTransportRef.current,
       );
       const decision = resolveSessionTogglePlay({
-        isPlaying: Boolean(ws?.isPlaying()),
+        isPlaying: Boolean(host?.isPlaying()),
         session: segmentPlayback.getPlaybackSession(),
         segmentStillExists: (() => {
           const session = segmentPlayback.getPlaybackSession();
@@ -444,16 +504,18 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     } finally {
       sessionToggleInFlightRef.current = false;
     }
-  }, [playback, playSegmentAtIndex, segmentPlayback]);
+  }, [playSegmentAtIndex, playback, segmentPlayback, useNativeTransport]);
 
   /** Toolbar「全局播放」: always global; exit hatch from segment play without Space sticky. */
   const toggleGlobalPlay = useCallback(async () => {
     if (sessionToggleInFlightRef.current) return;
     sessionToggleInFlightRef.current = true;
     try {
-      const ws = wsRef.current;
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef.current, {
+        requireTransport: useNativeTransport,
+      });
       const decision = resolveGlobalTogglePlay({
-        isPlaying: Boolean(ws?.isPlaying()),
+        isPlaying: Boolean(host?.isPlaying()),
         session: segmentPlayback.getPlaybackSession(),
       });
       if (decision.action === "exitSegmentToGlobal") {
@@ -469,7 +531,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     } finally {
       sessionToggleInFlightRef.current = false;
     }
-  }, [playback, segmentPlayback]);
+  }, [playback, segmentPlayback, useNativeTransport]);
 
   const handleToggleSelectedWaveformPlay = useCallback(async () => {
     const idx = effectiveTranscriptPrimaryIdx(selectedIdxForTransportRef.current);
@@ -515,6 +577,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     ...globalPlayback,
     segmentLoopPlayback: segmentPlayback.segmentLoopPlayback,
     isSelectedSegmentPlaying: segmentPlayback.isSelectedSegmentPlaying,
+    playbackChromeEpoch: segmentPlayback.playbackChromeEpoch,
     playheadChromeMode,
     preserveLoopForNextSegmentSelect: segmentPlayback.preserveLoopForNextSegmentSelect,
     clearSegmentPlaybackBound: segmentPlayback.clearSegmentPlaybackBound,

@@ -10,6 +10,10 @@ import {
   subscribeWaveformPrefs,
   writeStoredWaveformGlobalPlaybackRate,
 } from "../utils/waveformPrefs";
+import {
+  resolveMediaPlaybackHost,
+  type PlaybackTransport,
+} from "../services/waveform/transport";
 
 function readInitialGlobalPlaybackRate(): number {
   const migrated = migrateLegacySegmentPlaybackRateToGlobal();
@@ -20,6 +24,8 @@ function readInitialGlobalPlaybackRate(): number {
 export function useWaveformGlobalPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
   isReady: boolean,
+  transportRef?: React.MutableRefObject<PlaybackTransport | null>,
+  requireTransport?: boolean,
 ) {
   const [globalPlaybackRate, setGlobalPlaybackRateState] = useState(readInitialGlobalPlaybackRate);
   const globalPlaybackRateRef = useRef(globalPlaybackRate);
@@ -29,28 +35,36 @@ export function useWaveformGlobalPlayback(
     return subscribeWaveformPrefs(() => {
       const next = readStoredWaveformGlobalPlaybackRate();
       setGlobalPlaybackRateState(next);
-      wsRef.current?.setPlaybackRate(next);
+      resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      })?.setPlaybackRate(next);
     });
-  }, [wsRef]);
+  }, [requireTransport, transportRef, wsRef]);
 
   useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return;
-    ws.setPlaybackRate(globalPlaybackRateRef.current);
-  }, [globalPlaybackRate, isReady, wsRef]);
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    if (!host || !isReady) return;
+    host.setPlaybackRate(globalPlaybackRateRef.current);
+  }, [globalPlaybackRate, isReady, requireTransport, transportRef, wsRef]);
 
   const applyGlobalPlaybackRate = useCallback(() => {
-    wsRef.current?.setPlaybackRate(globalPlaybackRateRef.current);
-  }, [wsRef]);
+    resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    })?.setPlaybackRate(globalPlaybackRateRef.current);
+  }, [requireTransport, transportRef, wsRef]);
 
   const setGlobalPlaybackRate = useCallback(
     (rate: number) => {
       const next = clampWaveformPlaybackRate(rate);
       setGlobalPlaybackRateState(next);
       writeStoredWaveformGlobalPlaybackRate(next);
-      wsRef.current?.setPlaybackRate(next);
+      resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      })?.setPlaybackRate(next);
     },
-    [wsRef],
+    [requireTransport, transportRef, wsRef],
   );
 
   return {

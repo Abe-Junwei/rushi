@@ -7,7 +7,12 @@ import {
   type PlaybackSession,
 } from "../utils/playbackSession";
 import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
+import { noteMediaPaused } from "../utils/mediaPlayGate";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import {
+  resolveMediaPlaybackHost,
+  type PlaybackTransport,
+} from "../services/waveform/transport";
 import {
   useWaveformSegmentPlayActions,
   type PlaySegmentAtIndexOptions,
@@ -19,6 +24,9 @@ export type { PlaySegmentAtIndexOptions };
 
 export function useWaveformSegmentPlaybackControls(args: {
   wsRef: React.MutableRefObject<WaveSurfer | null>;
+  transportRef?: React.MutableRefObject<PlaybackTransport | null>;
+  transportEpoch?: number;
+  requireTransport?: boolean;
   isReady: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
@@ -32,6 +40,9 @@ export function useWaveformSegmentPlaybackControls(args: {
 }) {
   const {
     wsRef,
+    transportRef,
+    transportEpoch = 0,
+    requireTransport,
     isReady,
     segments,
     selectedIdx,
@@ -140,6 +151,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   const armSegmentPlaybackSession = useCallback((idx: number) => {
     const clearedArm = blankGlobalSpaceArmedRef.current;
     blankGlobalSpaceArmedRef.current = false;
+    globalPlayGenRef.current = null;
     const prev = playbackSessionRef.current;
     playbackSessionRef.current = { kind: "segment", idx };
     if (
@@ -188,8 +200,10 @@ export function useWaveformSegmentPlaybackControls(args: {
 
   /** Space / global pause: stop media but keep sticky session for resume. */
   const pauseMediaKeepingSession = useCallback(() => {
-    const ws = wsRef.current;
-    if (!ws) return;
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    if (!host) return;
     const session = playbackSessionRef.current;
     if (isSegmentPlaybackSession(session)) {
       const seg = latestSegmentsRef.current[session.idx];
@@ -215,18 +229,22 @@ export function useWaveformSegmentPlaybackControls(args: {
       globalPlayGenRef.current = null;
       playGenerationRef.current += 1;
       setIsSelectedSegmentPlaying(false);
-      ws.pause();
+      host.pause();
+      noteMediaPaused(host.gateHost);
       syncDisplayPlayheadAfterSeekRef?.current?.(normalizedFreezeSec);
       return;
     }
     playbackSessionRef.current = { kind: "global" };
     clearSegmentPlaybackBound();
-    ws.pause();
+    host.pause();
+    noteMediaPaused(host.gateHost);
   }, [
     clearSegmentPlaybackBound,
     getPlayheadTime,
     getRawMediaPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef,
+    requireTransport,
+    transportRef,
     wsRef,
   ]);
 
@@ -252,11 +270,12 @@ export function useWaveformSegmentPlaybackControls(args: {
   const {
     playSegmentAtIndex,
     runPlaySegmentResolved,
-    playSelectedSegment,
     toggleSelectedWaveformPlayImpl,
     handleToggleSelectedWaveformLoop,
   } = useWaveformSegmentPlayActions({
     wsRef,
+    transportRef,
+    requireTransport,
     isReady,
     latestSegmentsRef,
     getGlobalPlaybackRate,
@@ -284,6 +303,9 @@ export function useWaveformSegmentPlaybackControls(args: {
 
   const { syncSelectedSegmentPlayingUi } = useWaveformSegmentPlaybackBoundSync({
     wsRef,
+    transportRef,
+    transportEpoch,
+    requireTransport,
     isReady,
     playGenerationRef,
     segmentPlaybackBoundRef,
@@ -299,19 +321,20 @@ export function useWaveformSegmentPlaybackControls(args: {
     resolveSelectedPlaybackRange,
     resolveEffectiveSelectedIdx,
     resolveNaturalEndReplayIdx,
-    layoutDurationSecRef,
-    syncDisplayPlayheadAfterSeekRef,
-    commitSeekUi,
   });
 
   useWaveformSegmentLoopReplay({
     wsRef,
+    transportRef,
+    transportEpoch,
+    requireTransport,
     isReady,
     segmentLoopPlayback,
     segmentLoopPlaybackRef,
     resolvePlayheadSec,
     resolveSelectedPlaybackRange,
-    playSelectedSegment,
+    resolveEffectiveSelectedIdx,
+    playSegmentAtIndex,
   });
 
   useEffect(() => {

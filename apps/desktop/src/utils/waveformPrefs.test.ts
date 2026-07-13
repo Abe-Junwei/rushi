@@ -2,10 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clampPxPerSec } from "./pxPerSec";
 import {
   migrateLegacySegmentPlaybackRateToGlobal,
+  readStoredNativeAudioPlaybackEnabled,
   readStoredWaveformGlobalPlaybackRate,
   readStoredWaveformHeightPx,
   readStoredWaveformPxPerSec,
   WAVEFORM_HEIGHT_DEFAULT,
+  writeStoredNativeAudioPlaybackEnabled,
   writeStoredWaveformHeightPx,
   writeStoredWaveformPxPerSec,
   subscribeWaveformPrefs,
@@ -107,5 +109,11 @@ describe("waveformPrefs localStorage", () => {
     expect(migrateLegacySegmentPlaybackRateToGlobal()).toBeNull();
     expect(readStoredWaveformGlobalPlaybackRate()).toBe(2);
     expect(localStorage.getItem("rushi.p1.segmentPlaybackRate")).toBeNull();
+  });
+
+  it("native audio playback is mandatory (always enabled)", () => {
+    expect(readStoredNativeAudioPlaybackEnabled()).toBe(true);
+    writeStoredNativeAudioPlaybackEnabled(false);
+    expect(readStoredNativeAudioPlaybackEnabled()).toBe(true);
   });
 });

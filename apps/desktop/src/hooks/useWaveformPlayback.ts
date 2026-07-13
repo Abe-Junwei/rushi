@@ -1,7 +1,12 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
-import { applyPeaksOrderedSeek } from "../services/waveform/transport";
-import { runGatedMediaPlay } from "../utils/mediaPlayGate";
+import {
+  applyPeaksOrderedSeek,
+  resolveMediaPlaybackHost,
+  type PlaybackTransport,
+} from "../services/waveform/transport";
+import { logDesktopUi } from "../services/desktopUiLog";
+import { runGatedMediaPause, runGatedMediaPlay } from "../utils/mediaPlayGate";
 import {
   clientXToTimelinePx,
   resolveWaveformPointerTimeSecFromClientX,
@@ -22,31 +27,44 @@ export function useWaveformPlayback(
   commitSeekUi?: (timeSec: number) => void,
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
   getDisplayPlayheadTimeSecRef?: React.MutableRefObject<(() => number) | null>,
+  transportRef?: React.MutableRefObject<PlaybackTransport | null>,
+  requireTransport?: boolean,
 ) {
   const resolvePlayheadSec = useCallback(() => {
     const displayFn = getDisplayPlayheadTimeSecRef?.current;
     if (displayFn) return displayFn();
-    return wsRef.current?.getCurrentTime() ?? 0;
-  }, [getDisplayPlayheadTimeSecRef, wsRef]);
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    return host?.getCurrentTime() ?? 0;
+  }, [getDisplayPlayheadTimeSecRef, requireTransport, transportRef, wsRef]);
 
   const getRawMediaPlayheadTimeSec = useCallback((): number => {
-    return wsRef.current?.getCurrentTime() ?? 0;
-  }, [wsRef]);
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    return host?.getCurrentTime() ?? 0;
+  }, [requireTransport, transportRef, wsRef]);
 
   const getRawMediaIsPlaying = useCallback((): boolean => {
-    return wsRef.current?.isPlaying() ?? false;
-  }, [wsRef]);
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    return host?.isPlaying() ?? false;
+  }, [requireTransport, transportRef, wsRef]);
 
   const seek = useCallback(
     (timeSec: number) => {
-      const ws = wsRef.current;
-      if (!ws || !isReady) return;
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      });
+      if (!host || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
       applyPeaksOrderedSeek({
         timeSec,
         durationSec: d,
         syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-        setTime: (t) => ws.setTime(t),
+        setTime: (t) => host.setTime(t),
         commitSeekUi,
       });
     },
@@ -54,25 +72,54 @@ export function useWaveformPlayback(
       commitSeekUi,
       isReady,
       layoutDurationSecRef,
+      requireTransport,
       syncDisplayPlayheadAfterSeekRef,
+      transportRef,
       wsRef,
     ],
   );
 
   const togglePlay = useCallback(async () => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return;
-    if (ws.isPlaying()) {
-      ws.pause();
+    const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+      requireTransport,
+    });
+    if (!isReady) {
+      logDesktopUi("WARN", "[s4] play ignored: waveform not ready");
+      return;
+    }
+    if (!host) {
+      logDesktopUi(
+        "WARN",
+        requireTransport
+          ? "[s4] play ignored: native transport not ready"
+          : "[s4] play ignored: no media host",
+      );
+      return;
+    }
+    if (host.isPlaying()) {
+      try {
+        await runGatedMediaPause(host.gateHost, () => host.pause());
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logDesktopUi("ERROR", `[s4] pause failed: ${msg}`);
+      }
       return;
     }
     // Gate play(): concurrent Space/button can nest HTMLMediaElement.play and
     // deadlock WebKit MediaSession sync IPC on the WebContent main thread.
-    await runGatedMediaPlay(ws, () => {
-      applyGlobalPlaybackRateRef.current();
-      return ws.play();
-    });
-  }, [applyGlobalPlaybackRateRef, isReady, wsRef]);
+    try {
+      const result = await runGatedMediaPlay(host.gateHost, () => {
+        applyGlobalPlaybackRateRef.current();
+        return host.play();
+      });
+      if (result === "busy") {
+        logDesktopUi("WARN", "[s4] play ignored: media gate busy");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logDesktopUi("ERROR", `[s4] play failed: ${msg}`);
+    }
+  }, [applyGlobalPlaybackRateRef, isReady, requireTransport, transportRef, wsRef]);
 
   const getPlayheadTime = useCallback((): number => {
     return resolvePlayheadSec();
@@ -80,15 +127,17 @@ export function useWaveformPlayback(
 
   const seekByDelta = useCallback(
     (deltaSec: number) => {
-      const ws = wsRef.current;
-      if (!ws || !isReady) return;
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      });
+      if (!host || !isReady) return;
       const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
       const base = resolvePlayheadSec();
       applyPeaksOrderedSeek({
         timeSec: base + deltaSec,
         durationSec: d,
         syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
-        setTime: (t) => ws.setTime(t),
+        setTime: (t) => host.setTime(t),
         commitSeekUi,
       });
     },
@@ -96,8 +145,10 @@ export function useWaveformPlayback(
       commitSeekUi,
       isReady,
       layoutDurationSecRef,
+      requireTransport,
       resolvePlayheadSec,
       syncDisplayPlayheadAfterSeekRef,
+      transportRef,
       wsRef,
     ],
   );

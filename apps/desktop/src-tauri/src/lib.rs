@@ -12,6 +12,7 @@ mod export_docx_polish_track;
 mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
+mod native_audio;
 mod online_stt_bridge;
 mod packaged_hints;
 mod postprocess_cmd;
@@ -110,6 +111,7 @@ pub fn run() {
             app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
             app.manage(project::TranscribeCancelState::default());
+            app.manage(native_audio::NativeAudioState::default());
             if std::env::var_os("RUSHI_AUTOMATION").as_deref() == Some(std::ffi::OsStr::new("1"))
                 && std::env::var_os("RUSHI_AUTOMATION_DIAGNOSTIC_ZIP").is_some()
             {
@@ -208,6 +210,13 @@ pub fn run() {
             project::waveform_peaks_cmd::ensure_waveform_peaks,
             project::waveform_peaks_cmd::waveform_peaks_status,
             project::waveform_asset_cmd::scoped_waveform_file_meta,
+            native_audio::commands::native_audio_load,
+            native_audio::commands::native_audio_play,
+            native_audio::commands::native_audio_pause,
+            native_audio::commands::native_audio_seek,
+            native_audio::commands::native_audio_set_rate,
+            native_audio::commands::native_audio_snapshot,
+            native_audio::commands::native_audio_stop,
             project::export_cmd::export_project_bundle,
             project::export_cmd::import_project_bundle,
             project::asr_runtime_paths_cmd::get_asr_runtime_paths,
@@ -284,6 +293,7 @@ pub fn run() {
 
     app.run(|app_handle, event| {
         if matches!(event, RunEvent::Exit) {
+            native_audio::shutdown(app_handle);
             asr_sidecar::stop_bundled(app_handle);
         }
     });
