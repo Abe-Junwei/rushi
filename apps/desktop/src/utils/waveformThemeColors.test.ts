@@ -79,12 +79,26 @@ describe("readWaveformSegmentBandPalette", () => {
     expect(palette.inSelection).toMatch(/0\.239216|61,\s*79,\s*93|rgba\(61/);
   });
 
-  it("selected fill follows accent-action (theme adaptive, not danger red)", () => {
+  it("selected fill follows list wash hue (accent→notion-bg), not raw accent→transparent", () => {
     document.documentElement.style.setProperty("--accent-action", "#3d4f5d");
+    document.documentElement.style.setProperty("--notion-bg", "#ffffff");
     document.documentElement.style.removeProperty(SEGMENT_FILL_CSS_VAR.selected);
     invalidateWaveformSegmentBandPaletteCache();
     const palette = readWaveformSegmentBandPalette();
-    expect(palette.selected).toMatch(/0\.239216|61,\s*79,\s*93|rgba\(61/);
+    // List-like wash is light (high RGB / srgb channels), not a dark accent-tint.
     expect(palette.selected).not.toMatch(/150,\s*53,\s*48|963530/i);
+    const nums = palette.selected.match(/(\d+(?:\.\d+)?)/g)?.map(Number) ?? [];
+    expect(nums.length).toBeGreaterThanOrEqual(3);
+    // Pale wash: either 0–1 srgb channels or 0–255 rgb — pulled toward white.
+    const looksNormalized = nums[0]! <= 1.5 && nums[1]! <= 1.5 && nums[2]! <= 1.5;
+    if (looksNormalized) {
+      expect(nums[0]).toBeGreaterThan(0.7);
+      expect(nums[1]).toBeGreaterThan(0.7);
+      expect(nums[2]).toBeGreaterThan(0.7);
+    } else {
+      expect(nums[0]).toBeGreaterThan(180);
+      expect(nums[1]).toBeGreaterThan(180);
+      expect(nums[2]).toBeGreaterThan(180);
+    }
   });
 });

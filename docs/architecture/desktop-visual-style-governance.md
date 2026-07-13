@@ -47,7 +47,8 @@
 
 | CSS 变量 | 语义 | 典型 mix |
 |----------|------|----------|
-| `--segment-fill-selected` | 列表主选 / overlay 单选 | action **28%** |
+| `--segment-fill-selected` | 波形主选（与 list 同色相，再透明化） | list-wash **82%** → transparent |
+| `--segment-fill-selected-list` | 列表主选 | action **12%** × notion-bg |
 | `--segment-fill-in-selection-waveform` | overlay 多选 | action 12% |
 | `--segment-fill-in-selection-list` | 列表多选行 | action 8% |
 | `--segment-fill-visited` | band 已播放 | action-strong **14%** |

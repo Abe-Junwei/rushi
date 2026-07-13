@@ -129,7 +129,7 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 | 播放头（全局） | 固定黑 `#000000` | `--waveform-playhead-global` | 全局通读；**不**随 Office accent remap；粗度与语段一致（视口 1px），仅以色区分 |
 | Minimap 播放头（全局） | 同上 | `--waveform-minimap-playhead-global` | minimap 线与视口一致（2px） |
 | Minimap 视口 | action | `--waveform-minimap-viewport-*` | 总览视口框 |
-| 语段选中 | action | `--segment-fill-selected` | 波形 overlay 14%；列表另用 selected-list |
+| 语段选中 | action | `--segment-fill-selected` / `--segment-fill-selected-list` | 列表不透明浅底；波形同色相再透明化，避免 peaks 上过饱和 |
 | 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 8% |
 | 语段多选（列表） | action | `--segment-fill-in-selection-list` | 列表行 8% |
 | 语段未播放 | text | `--segment-fill-idle` | band 5% mix，弱化普通灰块 |

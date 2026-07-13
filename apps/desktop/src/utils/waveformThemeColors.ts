@@ -38,6 +38,24 @@ function accentMixFallback(actionPct: number, alphaFallback: number): string {
   return resolveCssColorExpression(expression, `rgba(${r}, ${g}, ${b}, ${alphaFallback})`);
 }
 
+/**
+ * Waveform selected fallback — same hue as list (`accent → notion-bg`), then alpha so peaks show.
+ */
+function accentListWashFallback(actionPct: number, listWashAlpha: number): string {
+  const accent = readAccentActionHex();
+  const bg = readCssColorVar("--notion-bg", "#ffffff");
+  const bgHex = bg.startsWith("#") ? bg : "#ffffff";
+  const pct = Math.round(listWashAlpha * 100);
+  const expression = `color-mix(in srgb, color-mix(in srgb, ${accent} ${actionPct}%, ${bgHex}) ${pct}%, transparent)`;
+  const [ar, ag, ab] = hexToRgb(accent) ?? [197, 138, 67];
+  const [br, bgg, bb] = hexToRgb(bgHex) ?? [255, 255, 255];
+  const t = actionPct / 100;
+  const r = Math.round(ar * t + br * (1 - t));
+  const g = Math.round(ag * t + bgg * (1 - t));
+  const b = Math.round(ab * t + bb * (1 - t));
+  return resolveCssColorExpression(expression, `rgba(${r}, ${g}, ${b}, ${listWashAlpha})`);
+}
+
 function accentStrongMixFallback(strongPct: number, alphaFallback: number): string {
   const strong = readAccentActionStrongHex();
   const expression = `color-mix(in srgb, ${strong} ${strongPct}%, transparent)`;
@@ -137,8 +155,8 @@ export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
   cachedSegmentBandPalette = {
     selected: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.selected,
-      "color-mix(in srgb, var(--accent-action) 14%, transparent)",
-      accentMixFallback(14, 0.14),
+      "color-mix(in srgb, color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg)) 82%, transparent)",
+      accentListWashFallback(12, 0.82),
     ),
     inSelection: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.inSelectionWaveform,
