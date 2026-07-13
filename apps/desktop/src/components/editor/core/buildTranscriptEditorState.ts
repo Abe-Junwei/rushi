@@ -1,4 +1,4 @@
-import { EditorState } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import type { Extension } from "@codemirror/state";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { encodeSegmentTextForDocLine } from "./segmentNewlineCodec";
@@ -16,6 +16,8 @@ export type BuildTranscriptEditorStateOptions = {
   extensions?: Extension[];
   /** Default true — reversible U+240A encoding for embedded newlines. */
   encodeEmbeddedNewlines?: boolean;
+  /** Seed multi-selection primary (file open / remount). Defaults to 0. */
+  initialPrimaryIdx?: number;
 };
 
 /**
@@ -46,8 +48,14 @@ export function buildTranscriptEditorState(
     doc,
     extensions: [segmentMetaField, transcriptMultiSelectionField, ...(opts.extensions ?? [])],
   });
-  const seedIdx = state.doc.lines > 0 ? 0 : -1;
+  const lineCount = state.doc.lines;
+  const seedIdx =
+    lineCount > 0
+      ? Math.max(0, Math.min(opts.initialPrimaryIdx ?? 0, lineCount - 1))
+      : -1;
   state = state.update({
+    selection:
+      seedIdx >= 0 ? EditorSelection.single(state.doc.line(seedIdx + 1).from) : undefined,
     effects: [
       setSegmentMetaEffect.of(meta),
       ...(seedIdx >= 0

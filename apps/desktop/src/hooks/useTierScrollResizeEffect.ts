@@ -1,10 +1,13 @@
 import { useLayoutEffect, useRef } from "react";
 import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
+import { peekFileViewRestoreForFile } from "../services/fileViewStateBridge";
+import { shouldSkipMediaResetForFileViewRestore } from "./useFileViewStateRestoreEffect";
 import type { useTierScrollProgrammaticWrites } from "./tierScrollProgrammaticWrites";
 
 type ProgrammaticWrites = ReturnType<typeof useTierScrollProgrammaticWrites>;
 
 type TierScrollResizeEffectArgs = {
+  fileId?: string | null;
   mediaUrl: string | null;
   timelineWidthPx: number;
   waveformReady: boolean;
@@ -48,6 +51,17 @@ export function useTierScrollResizeEffect(args: TierScrollResizeEffectArgs): voi
     a.prevMediaDurationSecRef.current = dur;
     a.prevTimelineWidthPxRef.current = newTw;
 
+    const vw = tier.clientWidth;
+    if (
+      shouldSkipMediaResetForFileViewRestore(
+        peekFileViewRestoreForFile(a.fileId ?? null),
+        a.fileId ?? null,
+      )
+    ) {
+      a.prevViewportWidthPxRef.current = vw;
+      return;
+    }
+
     const shouldResetScroll = isMediaUrlChange || durationExpanded;
     if (shouldResetScroll) {
       a.committedScrollLeftRef.current = 0;
@@ -55,7 +69,6 @@ export function useTierScrollResizeEffect(args: TierScrollResizeEffectArgs): voi
       return;
     }
 
-    const vw = tier.clientWidth;
     const prevVw = a.prevViewportWidthPxRef.current;
     a.prevViewportWidthPxRef.current = vw;
     const liveSl = tier.scrollLeft;
@@ -100,6 +113,7 @@ export function useTierScrollResizeEffect(args: TierScrollResizeEffectArgs): voi
     a.applyScrollLeftPx(targetSl, "program", { immediate: true });
   }, [
     args.applyScrollLeftPx,
+    args.fileId,
     args.mediaUrl,
     args.timelineWidthPx,
     args.waveformReady,

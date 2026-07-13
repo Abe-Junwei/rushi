@@ -33,6 +33,7 @@ import {
   shouldRevealOnSegmentSelect,
   shouldSeekAfterSegmentSelect,
 } from "../utils/selectionRevealSeekPolicy";
+import { shouldSuppressSegmentSelectSeekForFileViewRestore } from "../services/fileViewStateBridge";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
@@ -106,20 +107,26 @@ export function selectSegmentTransport(
     !opts?.shiftKey &&
     !opts?.toggle &&
     consumeWaveformSegmentPreviewViewportSync(idx, opts?.previewSessionId);
+  const suppressRestoreSelectSeek = shouldSuppressSegmentSelectSeekForFileViewRestore();
   const shouldReveal = shouldRevealOnSegmentSelect({
     source,
     idxChanged: idxChangedFromAuthority,
     forceSeek: opts?.forceSeek,
   });
-  const shouldSeek = shouldSeekAfterSegmentSelect({
-    source,
-    idx,
-    projectionPrimaryIdx: authorityPrimary,
-    reactPrimaryIdx,
-    shiftKey: opts?.shiftKey,
-    toggle: opts?.toggle,
-    forceSeek: opts?.forceSeek,
-  });
+  const shouldSeek =
+    !suppressRestoreSelectSeek &&
+    shouldSeekAfterSegmentSelect({
+      source,
+      idx,
+      projectionPrimaryIdx: authorityPrimary,
+      reactPrimaryIdx,
+      shiftKey: opts?.shiftKey,
+      toggle: opts?.toggle,
+      forceSeek: opts?.forceSeek,
+    });
+  // Waveform reveal recenters tier scroll — skip while restoring view-state.
+  const shouldRevealWaveform = shouldReveal && isWaveformLike && !suppressRestoreSelectSeek;
+  const shouldRevealList = shouldReveal && !isWaveformLike;
   if (source !== "waveform" || opts?.shiftKey || opts?.toggle) {
     clearWaveformSegmentPreviewViewportSync();
   }
@@ -158,7 +165,7 @@ export function selectSegmentTransport(
   }
   lastSegmentSelectSourceRef.current = source;
   const seg =
-    shouldSeek || (shouldReveal && isWaveformLike)
+    shouldSeek || shouldRevealWaveform
       ? selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s)).segment
       : s;
 
@@ -196,7 +203,7 @@ export function selectSegmentTransport(
         syncWaveformSegmentSelectSeek(tl, s, { segmentIdx: idx, source });
       });
     }
-    if (shouldReveal && isWaveformLike) {
+    if (shouldRevealWaveform) {
       cancelPendingSelectionReveal();
       selectionProfileTime("viewport", () => {
         syncWaveformSegmentSelectReveal(
@@ -206,7 +213,7 @@ export function selectSegmentTransport(
         );
       });
     }
-    if (shouldReveal && !isWaveformLike) {
+    if (shouldRevealList) {
       cancelPendingSelectionReveal();
       // Keep list/listKeyboard reveal in the same JS turn as selection + seek.
       // Deferring this by rAF/timeout paints the new highlight once in the old

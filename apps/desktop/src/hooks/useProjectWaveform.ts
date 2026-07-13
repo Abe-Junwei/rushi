@@ -341,6 +341,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     onWsAudioprocessRef: options.onWsAudioprocessRef,
     lastTimeUiCommitRef,
     setIsPlaying,
+    setDuration,
     setCurrentTime,
     setLoadError,
     setAudioReady,

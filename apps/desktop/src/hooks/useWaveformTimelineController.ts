@@ -19,6 +19,7 @@ import { useWaveformVisualPlayheadClock } from "./useWaveformVisualPlayheadClock
 import { setWaveSurferVisualProgressRatioReader } from "../services/waveform/waveformSurferProgressCoverage";
 import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
+import { useFileViewStateRestoreEffect } from "./useFileViewStateRestoreEffect";
 import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
@@ -191,6 +192,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     wfApiRef,
     waveformReady: wf.isReady,
     mediaUrl: ctx.mediaUrl,
+    fileId: ctx.fileId,
     playbackFollowSuppressUntilRef,
   });
 
@@ -209,7 +211,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   useLayoutEffect(() => {
     pxPerSecRef.current = zoom.pxPerSec;
-    durationRef.current = resolvedDurationSec || timelineMetrics.mediaDurationSec || 0;
+    durationRef.current = resolvedDurationSec || timelineMetrics.mediaDurationSec || durationRef.current || 0;
     timelineWidthPxRef.current = timelineWidthPx;
   }, [zoom.pxPerSec, resolvedDurationSec, timelineMetrics.mediaDurationSec, timelineWidthPx]);
 
@@ -293,12 +295,30 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   });
 
   useWaveformMediaZoomResetEffect({
+    fileId: ctx.fileId,
     mediaUrl: ctx.mediaUrl,
     mediaDurationSec: timelineMetrics.mediaDurationSec,
     tierScrollRef,
     tierScrollLive: scroll.tierScrollLive,
     tierScrollLayout: scroll.tierScrollLayout,
     resetZoomForMedia: (viewportWidthPx, durationSec) => resetZoomForMediaRef.current(viewportWidthPx, durationSec),
+  });
+
+  useFileViewStateRestoreEffect({
+    fileId: ctx.fileId,
+    mediaUrl: ctx.mediaUrl,
+    mediaDurationSec: timelineMetrics.mediaDurationSec,
+    layoutPxPerSec: zoom.layoutPxPerSec,
+    isReady: wf.isReady,
+    audioReady: wf.audioReady || !ctx.mediaDiskPath,
+    segments: ctx.segments,
+    setPxPerSec: zoom.setPxPerSec,
+    seek: (timeSec) => wf.seek(timeSec),
+    selectSegmentAt: (idx) => ctx.selectSegmentAt(idx),
+    suppressPlaybackFollowForSelectionSeek,
+    syncDisplayPlayheadAfterSeek: visualPlayheadClock.syncDisplayPlayheadAfterSeek,
+    revealSegmentInViewport: viewportFit.revealSegmentInViewport,
+    tierScrollRef,
   });
 
   return {

@@ -90,6 +90,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
       <TranscriptEditorCore
         segments={c.segments}
         fileId={c.currentFileId}
+        initialPrimaryIdxRef={c.selectedIdxRef}
         busy={c.busy}
         fontPx={tx.transcriptFontPx}
         fontFamily={a.transcriptFontFamily}

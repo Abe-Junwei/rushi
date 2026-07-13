@@ -17,15 +17,25 @@ type UseAppWindowCloseGuardEffectArgs = {
   closeAfterSaveRef: React.MutableRefObject<boolean>;
   onBlockedTranscribe: () => void;
   onBlockedUnsaved: () => void;
+  /** Persist per-file view state when the window is allowed to close. */
+  onAllowClose?: () => void;
 };
 
 export function useAppWindowCloseGuardEffect(args: UseAppWindowCloseGuardEffectArgs): void {
-  const { bridgeStateRef, closeAfterSaveRef, onBlockedTranscribe, onBlockedUnsaved } = args;
+  const {
+    bridgeStateRef,
+    closeAfterSaveRef,
+    onBlockedTranscribe,
+    onBlockedUnsaved,
+    onAllowClose,
+  } = args;
 
   const onBlockedTranscribeRef = useRef(onBlockedTranscribe);
   onBlockedTranscribeRef.current = onBlockedTranscribe;
   const onBlockedUnsavedRef = useRef(onBlockedUnsaved);
   onBlockedUnsavedRef.current = onBlockedUnsaved;
+  const onAllowCloseRef = useRef(onAllowClose);
+  onAllowCloseRef.current = onAllowClose;
 
   useEffect(() => {
     ensureAppWindowCloseGuardRegistered();
@@ -46,6 +56,7 @@ export function useAppWindowCloseGuardEffect(args: UseAppWindowCloseGuardEffectA
         onBlockedUnsavedRef.current();
       },
       isClosingAfterSave: () => closeAfterSaveRef.current,
+      onAllowClose: () => onAllowCloseRef.current?.(),
     });
     return () => setAppWindowCloseGuardBridge(null);
   }, [bridgeStateRef, closeAfterSaveRef]);

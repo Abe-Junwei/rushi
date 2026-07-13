@@ -1,12 +1,17 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import {
   syncWaveformSegmentSelectPreviewViewport,
   syncWaveformSegmentSelectReveal,
   syncWaveformSegmentSelectSeek,
   syncWaveformSegmentSelectViewport,
 } from "./syncWaveformSegmentSelectViewport";
+import {
+  armFileViewRestore,
+  clearFileViewRestore,
+  markFileViewRestorePlayheadApplied,
+} from "../fileViewStateBridge";
 
 function makeTimeline() {
   return {
@@ -19,11 +24,36 @@ function makeTimeline() {
 describe("syncWaveformSegmentSelectViewport", () => {
   const seg = { start_sec: 10, end_sec: 12 };
 
+  beforeEach(() => {
+    clearFileViewRestore();
+    markFileViewRestorePlayheadApplied(0);
+  });
+
+  afterEach(() => {
+    clearFileViewRestore();
+    markFileViewRestorePlayheadApplied(0);
+  });
+
   it("seek moves playhead to segment start", () => {
     const tl = makeTimeline();
     syncWaveformSegmentSelectSeek(tl, seg);
     expect(tl.suppressPlaybackFollowForSelectionSeek).toHaveBeenCalledOnce();
     expect(tl.wfApiRef.current.seek).toHaveBeenCalledWith(10);
+    expect(tl.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
+  });
+
+  it("skips seek and reveal while file-view restore is pending", () => {
+    armFileViewRestore("f1", {
+      playheadSec: 42,
+      selectedSegmentUid: "u",
+      tierScrollLeftPx: 100,
+      layoutPxPerSec: 64,
+      updatedAtMs: 1,
+    });
+    const tl = makeTimeline();
+    syncWaveformSegmentSelectSeek(tl, seg);
+    syncWaveformSegmentSelectReveal(tl, seg);
+    expect(tl.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(tl.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
   });
 

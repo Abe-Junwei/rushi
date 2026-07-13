@@ -54,6 +54,13 @@ describe("P1 build/serializeTranscriptEditorState", () => {
     expect(back.map((s) => s.start_sec)).toEqual(segments.map((s) => s.start_sec));
   });
 
+  it("seeds caret + multi-selection from initialPrimaryIdx", () => {
+    const segments = makeSegments(5);
+    const state = buildTranscriptEditorState(segments, { initialPrimaryIdx: 3 });
+    expect(state.doc.lineAt(state.selection.main.head).number - 1).toBe(3);
+    expect([...state.field(segmentMetaField)].length).toBe(5);
+  });
+
   it("handles empty segment, emoji, and CJK", () => {
     const segments: SegmentDto[] = [
       { uid: "e", idx: 0, start_sec: 0, end_sec: 1, text: "" },

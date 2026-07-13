@@ -29,6 +29,7 @@ export function useTierScrollSync(args: {
   wfApiRef: React.MutableRefObject<WfApi>;
   waveformReady: boolean;
   mediaUrl: string | null;
+  fileId?: string | null;
   playbackFollowSuppressUntilRef?: React.MutableRefObject<number>;
 }) {
   const argsRef = useRef(args);
@@ -263,6 +264,7 @@ export function useTierScrollSync(args: {
   );
 
   useTierScrollMediaResetEffect({
+    fileId: args.fileId ?? null,
     mediaUrl: args.mediaUrl,
     tierScrollRef: args.tierScrollRef,
     committedScrollLeftRef,
@@ -272,6 +274,7 @@ export function useTierScrollSync(args: {
   });
 
   useTierScrollResizeEffect({
+    fileId: args.fileId ?? null,
     mediaUrl: args.mediaUrl,
     timelineWidthPx: args.timelineWidthPx,
     waveformReady: args.waveformReady,

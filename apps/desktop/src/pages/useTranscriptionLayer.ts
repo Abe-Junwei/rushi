@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState, useEffect } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useEditorShortcutDispatcher } from "../hooks/useEditorShortcutDispatcher";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
@@ -10,6 +10,13 @@ import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilter
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
 import { clearWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
 import { isGlobalPlaybackSession } from "../utils/playbackSession";
+import {
+  registerFileViewStateCapture,
+  captureFileViewStateNow,
+  peekFileViewRestoreForFile,
+} from "../services/fileViewStateBridge";
+import { writeFileViewState } from "../services/fileViewState";
+import { logDesktopUi } from "../services/desktopUiLog";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -27,6 +34,53 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   ctxRef.current = ctx;
 
   const timeline = useWaveformTimelineController(ctx);
+  const timelineRef = useRef(timeline);
+  timelineRef.current = timeline;
+
+  useEffect(() => {
+    registerFileViewStateCapture(() => {
+      const c = ctxRef.current;
+      const t = timelineRef.current;
+      if (!c.fileId) return null;
+      const idx = c.selectedIdxRef?.current ?? c.selectedIdx;
+      const uid = c.segments[idx]?.uid ?? null;
+      const scrollLeft =
+        t.tierScrollRef.current?.scrollLeft ?? t.tierScrollLive.scrollLeftRef.current ?? 0;
+      const displaySec = t.getDisplayPlayheadTimeSec();
+      const hostSec = t.wf.getPlayheadTime?.() ?? 0;
+      const rawSec = t.wf.getRawMediaPlayheadTimeSec?.() ?? 0;
+      const stateSec = t.wf.currentTime ?? 0;
+      const liveSec = rawSec > 0 ? rawSec : hostSec > 0 ? hostSec : displaySec;
+      const playheadSec = liveSec > 0 ? liveSec : stateSec;
+      logDesktopUi(
+        "INFO",
+        `[fvsr] capture file=${c.fileId} playhead=${playheadSec.toFixed(2)} raw=${rawSec.toFixed(2)} host=${hostSec.toFixed(2)} disp=${displaySec.toFixed(2)} state=${stateSec.toFixed(2)} scroll=${scrollLeft} px/s=${t.zoom.layoutPxPerSec}`,
+      );
+      return {
+        // Prefer live engine/display time; React state only guards transient remount zeros.
+        playheadSec,
+        selectedSegmentUid: uid ?? null,
+        tierScrollLeftPx: scrollLeft,
+        layoutPxPerSec: t.zoom.layoutPxPerSec,
+      };
+    });
+    return () => registerFileViewStateCapture(null);
+  }, []);
+
+  // Safety net: periodic persist so quit-without-gate / crash still leave a recent bookmark.
+  useEffect(() => {
+    if (!ctx.fileId) return;
+    const fileId = ctx.fileId;
+    const timer = window.setInterval(() => {
+      const snap = captureFileViewStateNow();
+      if (!snap) return;
+      const id = ctxRef.current.fileId;
+      if (!id || id !== fileId) return;
+      if (peekFileViewRestoreForFile(id)) return;
+      writeFileViewState(id, snap);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [ctx.fileId]);
 
   const [editorHint, setEditorHint] = useState("");
   const editorHintTimerRef = useRef(0);

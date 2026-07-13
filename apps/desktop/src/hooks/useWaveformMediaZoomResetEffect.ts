@@ -1,8 +1,11 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { resolveTierViewportMetrics, type TierScrollLayoutMetrics, type TierScrollLiveRefs } from "../utils/waveformViewport";
 import { writeStoredWaveformPxPerSecForMedia } from "../utils/waveformPrefs";
+import { peekFileViewRestoreForFile } from "../services/fileViewStateBridge";
+import { shouldSkipMediaResetForFileViewRestore } from "./useFileViewStateRestoreEffect";
 
 export function useWaveformMediaZoomResetEffect(args: {
+  fileId: string | null;
   mediaUrl: string | null;
   mediaDurationSec: number;
   tierScrollRef: RefObject<HTMLDivElement | null>;
@@ -29,6 +32,10 @@ export function useWaveformMediaZoomResetEffect(args: {
 
   useEffect(() => {
     if (!pendingMediaZoomResetRef.current || !args.mediaUrl) return;
+    if (shouldSkipMediaResetForFileViewRestore(peekFileViewRestoreForFile(args.fileId), args.fileId)) {
+      pendingMediaZoomResetRef.current = false;
+      return;
+    }
     const dur = args.mediaDurationSec;
     const { viewportWidthPx } = resolveTierViewportMetrics({
       tierScrollEl: args.tierScrollRef.current,
@@ -40,6 +47,7 @@ export function useWaveformMediaZoomResetEffect(args: {
     resetZoomForMediaRef.current(viewportWidthPx, dur);
     writeStoredWaveformPxPerSecForMedia(viewportWidthPx, dur);
   }, [
+    args.fileId,
     args.mediaUrl,
     args.mediaDurationSec,
     args.tierScrollRef,

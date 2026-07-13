@@ -22,6 +22,7 @@ export function useNativePlaybackController(args: {
   onWsAudioprocessRef?: MutableRefObject<((timeSec: number) => void) | null>;
   lastTimeUiCommitRef: MutableRefObject<number>;
   setIsPlaying: (playing: boolean) => void;
+  setDuration: (durationSec: number) => void;
   setCurrentTime: (timeSec: number) => void;
   setLoadError: (message: string | null) => void;
   /** Optional: mirror audioReady for toolbar disable / UX. */
@@ -39,6 +40,7 @@ export function useNativePlaybackController(args: {
     onWsAudioprocessRef,
     lastTimeUiCommitRef,
     setIsPlaying,
+    setDuration,
     setCurrentTime,
     setLoadError,
     setAudioReady,
@@ -74,6 +76,9 @@ export function useNativePlaybackController(args: {
         if (cancelled) return;
         if (durationSec > 0 && layoutDurationSecRef.current <= 0) {
           layoutDurationSecRef.current = durationSec;
+        }
+        if (durationSec > 0) {
+          setDuration(durationSec);
         }
       },
       onTimeUpdate: (timeSec) => {
@@ -141,6 +146,7 @@ export function useNativePlaybackController(args: {
     onWsAudioprocessRef,
     peakCacheRef,
     setAudioReady,
+    setDuration,
     setCurrentTime,
     setIsPlaying,
     setLoadError,

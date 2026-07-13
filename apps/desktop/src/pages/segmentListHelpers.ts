@@ -44,7 +44,10 @@ export function sortSegmentsByStartSec(segs: SegmentDto[]): SegmentDto[] {
   return reindexSegments([...segs].sort(compareSegmentsByStartSec));
 }
 
-export function findSegmentIndexByUid(segs: SegmentDto[], uid: string | null | undefined): number {
+export function findSegmentIndexByUid(
+  segs: readonly SegmentDto[],
+  uid: string | null | undefined,
+): number {
   if (!uid) return -1;
   return segs.findIndex((s) => s.uid === uid);
 }

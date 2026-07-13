@@ -5,6 +5,7 @@ import {
 import { resolveSelectTransportSeekTime } from "./transport";
 import { resolveSelectSegmentViewportPlan, type SegmentTimeRange } from "./selectSegmentViewportPlan";
 import { waveformAtomicSeek } from "./waveformAtomicSeek";
+import { shouldSuppressSegmentSelectSeekForFileViewRestore } from "../fileViewStateBridge";
 
 export type WaveformSegmentSelectViewportTimeline = {
   suppressPlaybackFollowForSelectionSeek: () => void;
@@ -23,6 +24,7 @@ export function syncWaveformSegmentSelectSeek(
   segment: SegmentTimeRange,
   opts?: { segmentIdx?: number; source?: string },
 ): void {
+  if (shouldSuppressSegmentSelectSeekForFileViewRestore()) return;
   const idx = opts?.segmentIdx;
   const dispatch = timeline.wfApiRef.current.dispatchTransportIntent;
   if (typeof idx === "number" && dispatch) {
@@ -63,6 +65,7 @@ export function syncWaveformSegmentSelectReveal(
   segment: SegmentTimeRange,
   opts?: { forceBandPaint?: boolean },
 ): void {
+  if (shouldSuppressSegmentSelectSeekForFileViewRestore()) return;
   const plan = resolveSelectSegmentViewportPlan(segment);
   timeline.viewportFit.revealSegmentInViewport(plan.segment);
   if (opts?.forceBandPaint === false) {

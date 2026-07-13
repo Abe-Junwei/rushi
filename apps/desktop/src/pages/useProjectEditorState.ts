@@ -5,6 +5,9 @@ import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
 import { dispatchTranscriptEditorSelection } from "../components/editor/core/transcriptEditorViewHandle";
+import { readFileViewState } from "../services/fileViewState";
+import { armFileViewRestore, clearFileViewRestore } from "../services/fileViewStateBridge";
+import { logDesktopUi } from "../services/desktopUiLog";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -47,10 +50,23 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     try {
       const detail = await fileApi.loadFile(fileId);
       const segs = normalizeSegmentList(detail.segments);
+      const saved = readFileViewState(fileId);
+      const ni = findSegmentIndexByUid(segs, saved?.selectedSegmentUid);
+      const nextIdx = ni >= 0 ? ni : 0;
       setCurrentFileId(fileId);
       setSegments(segs);
-      selectedIdxRef.current = 0;
-      dispatchTranscriptEditorSelection(0);
+      selectedIdxRef.current = nextIdx;
+      dispatchTranscriptEditorSelection(nextIdx);
+      if (saved) {
+        logDesktopUi(
+          "INFO",
+          `[fvsr] arm file=${fileId} playhead=${saved.playheadSec.toFixed(2)} nextIdx=${nextIdx}`,
+        );
+        armFileViewRestore(fileId, saved);
+      } else {
+        logDesktopUi("INFO", `[fvsr] no-arm file=${fileId} (no saved state)`);
+        clearFileViewRestore();
+      }
       try {
         setAudioStoragePath(detail.audio_path ?? null);
         setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
@@ -71,6 +87,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     selectedIdxRef.current = 0;
     setAudioSrc(null);
     setAudioStoragePath(null);
+    clearFileViewRestore();
   }, []);
 
   const closeProject = useCallback(() => {

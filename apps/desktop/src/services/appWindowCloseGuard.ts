@@ -6,6 +6,8 @@ export type AppWindowCloseGuardBridge = {
   shouldBlockClose: () => boolean;
   onBlocked: () => void;
   isClosingAfterSave: () => boolean;
+  /** Called when close is allowed to proceed (not blocked) — persist ephemeral UI state. */
+  onAllowClose?: () => void;
 };
 
 let bridge: AppWindowCloseGuardBridge | null = null;
@@ -24,8 +26,14 @@ export function ensureAppWindowCloseGuardRegistered(): void {
       try {
         const b = bridge;
         if (!b) return;
-        if (b.isClosingAfterSave()) return;
-        if (!b.shouldBlockClose()) return;
+        if (b.isClosingAfterSave()) {
+          b.onAllowClose?.();
+          return;
+        }
+        if (!b.shouldBlockClose()) {
+          b.onAllowClose?.();
+          return;
+        }
         event.preventDefault();
         b.onBlocked();
       } catch (e) {

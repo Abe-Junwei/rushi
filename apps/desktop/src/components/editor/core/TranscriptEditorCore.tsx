@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import type { MutableRefObject, RefObject } from "react";
 import { Compartment, EditorSelection, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
@@ -28,10 +29,14 @@ import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
 import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
+import { peekFileViewRestoreForFile } from "../../../services/fileViewStateBridge";
+import { findSegmentIndexByUid } from "../../../pages/segmentListHelpers";
 
 export type TranscriptEditorCoreProps = {
   segments: readonly SegmentDto[];
   fileId: string | null;
+  /** Host selection seed for file remount — read at mount time (openFile sets this before fileId). */
+  initialPrimaryIdxRef?: RefObject<number | null | undefined> | MutableRefObject<number>;
   busy?: boolean;
   fontPx?: number;
   fontFamily?: string;
@@ -72,6 +77,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   const {
     segments,
     fileId,
+    initialPrimaryIdxRef,
     busy = false,
     fontPx = 16,
     fontFamily = "inherit",
@@ -133,7 +139,18 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     });
     extensionsRef.current = extensions;
 
-    const state = buildTranscriptEditorState(latestSegmentsRef.current, { extensions });
+    const segs = latestSegmentsRef.current;
+    const pending = peekFileViewRestoreForFile(fileId);
+    const fromRestore = pending
+      ? findSegmentIndexByUid(segs, pending.state.selectedSegmentUid)
+      : -1;
+    const seedRaw = initialPrimaryIdxRef?.current;
+    const seedFromRef = typeof seedRaw === "number" && Number.isFinite(seedRaw) ? seedRaw : 0;
+    const seedIdx = fromRestore >= 0 ? fromRestore : seedFromRef;
+    const state = buildTranscriptEditorState(segs, {
+      extensions,
+      initialPrimaryIdx: seedIdx,
+    });
     const ViewCtor = EditorView as EditorViewWithEditContext;
     const prev = ViewCtor.EDIT_CONTEXT;
     ViewCtor.EDIT_CONTEXT = false;

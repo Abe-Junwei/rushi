@@ -1,6 +1,9 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useRef, useState } from "react";
 import { writeLastWorkspace, type WorkspaceFileTarget } from "../services/lastWorkspace";
+import { writeFileViewState } from "../services/fileViewState";
+import { captureFileViewStateNow } from "../services/fileViewStateBridge";
+import { logDesktopUi } from "../services/desktopUiLog";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./ProjectLifecycleApi";
 import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
@@ -94,6 +97,14 @@ export function useProjectCloseGateController(
     onClearTranscribeSession?.();
   };
 
+  const persistLeavingFileViewState = (fileId: string | null) => {
+    logDesktopUi("INFO", `[fvsr] persistLeaving file=${fileId ?? "null"}`);
+    if (!fileId) return;
+    const snap = captureFileViewStateNow();
+    if (!snap) return;
+    writeFileViewState(fileId, snap);
+  };
+
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
   const transcribeBlockIntentRef = useRef<"app-quit" | "navigate">("navigate");
@@ -126,6 +137,7 @@ export function useProjectCloseGateController(
   const navigate = createCloseGateNavigateHandlers(navigateState, navigateCtx);
 
   function performCloseFile() {
+    persistLeavingFileViewState(currentFileId);
     closeFile();
     dirty.clearSavedSnapshot();
     resetMutationHistory();
@@ -166,6 +178,9 @@ export function useProjectCloseGateController(
 
   async function openFileWrapped(fileId: string) {
     const performOpen = async () => {
+      if (currentFileId && currentFileId !== fileId) {
+        persistLeavingFileViewState(currentFileId);
+      }
       commitOpenedFile(await openFile(fileId), fileId);
     };
 
@@ -186,6 +201,9 @@ export function useProjectCloseGateController(
   openFileWrappedRef.current = openFileWrapped;
 
   async function openFileAfterImport(fileId: string) {
+    if (currentFileId && currentFileId !== fileId) {
+      persistLeavingFileViewState(currentFileId);
+    }
     commitOpenedFile(await openFile(fileId), fileId);
   }
   openFileAfterImportRef.current = openFileAfterImport;
@@ -243,6 +261,7 @@ export function useProjectCloseGateController(
   }
 
   async function requestAppClose() {
+    persistLeavingFileViewState(currentFileId);
     closeAfterSaveRef.current = true;
     setCloseGateOpen(false);
     navigateProceedRef.current = null;
@@ -322,6 +341,7 @@ export function useProjectCloseGateController(
       setCloseGateIntent("app-quit");
       setCloseGateOpen(true);
     },
+    onAllowClose: () => persistLeavingFileViewState(currentFileId),
   });
 
   return {
