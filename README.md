@@ -4,11 +4,9 @@
 
 **如是我闻** — 本地课录音转写与校对
 
-与 sibling 仓库 **Jieyu**（解语）**平级**，本目录路径：
+与 sibling 仓库 **Jieyu**（解语）**平级**的 **独立代码仓**（本地中文转写、校对、导出等）。产品范围与阶段仍可对照 Jieyu 计划书；**实现与验收真源以本仓** `docs/` / 代码为准。
 
-`…/Obsremote/（50）开发/Rushi`
-
-本仓库为 **如是我闻** 产品方向的 **独立代码仓**（本地中文转写、校对、导出等，以 Jieyu 内执行计划为范围真源）。
+**最新发行**：[v0.1.9](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.9)（2026-06-23）— **macOS**（`aarch64.dmg`）与 **Windows** portable（分卷 zip）；**无 Linux 桌面包**。
 
 版权：见根目录 [`LICENSE`](./LICENSE)（Copyright (c) **沂南灵创技术服务中心**，专有软件许可 · 商业软件 · 保留一切权利）。
 
@@ -125,7 +123,7 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 
 ## 与 Jieyu 的文档链接
 
-以下路径假设 **Rushi** 与 **Jieyu** 位于同一父目录 `（50）开发/` 下（与当前本机布局一致）。若你单独克隆 Rushi，请将 Jieyu 克隆为同级目录或自行调整链接。
+若本机将 **Rushi** 与 **Jieyu** 放在同一父目录下，可用下列相对路径；单独克隆时请自行调整，或以本仓 `docs/` 为准。
 
 | 文档 | 相对路径（从本 README） |
 |------|-------------------------|
@@ -150,8 +148,8 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 
 ## 下一步（产品 / 工程）
 
-- **P0–P4（已完成）**：见上文各 `p*-acceptance.md` / [`stabilization.md`](./docs/execution/stabilization.md)。
-- **v1.1 主序（2026-06）**：REL-1.1、ACC-STT-IFLYTEK 等已签收；并行索引见 [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)。
-- **桌面端近期（2026-06-18）**：Hub 侧栏 `list_files` 空响应 max-depth 修复；语段选中 `flushSync` + 列表虚拟化阈值 90；`__rushiSelectionProfile` 开发剖析；环境/词表/质量页 UI 切片与 CSP spec 入仓。
-- 编排层遵守 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选纪律：**controller / service** 下沉，避免 mega-hook 与壳层误接。
-- CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `eval-run.py`**、Playwright 桌面 E2E（`desktop:test:e2e:desktop`）；本地提交前建议 `node scripts/check-architecture-guard.mjs`。
+- **P0–P4 / §10.4 v1.1+（已闭合）**：验收见各 `p*-acceptance.md`、[`stabilization.md`](./docs/execution/stabilization.md)；主序签收见 [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10.4。
+- **发行**：最新 **[v0.1.9](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.9)**（macOS + Windows portable）；并行轨见 [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)（Win 手测 / Release parity L3 等）。
+- **桌面工程（2026-07）**：波形区架构热点拆分（`useProjectWaveform` / segment play / band paint 等下沉 service·子 hook）；knip 无用导出清理；提交前继续跑 architecture guard。
+- **Agent / 贡献者入口**：[`AI_QUICKSTART.md`](./AI_QUICKSTART.md)（目录落位、任务路由）；编排纪律：**controller / service** 下沉，避免 mega-hook。
+- **CI**：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`**、Python pytest、stub ASR `eval-run`、Playwright 桌面 E2E；本地建议 `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`。
