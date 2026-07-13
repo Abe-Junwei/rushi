@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
-import {
-  exportModeSupportsLlmPolish,
-  type ExportPolishResult,
-} from "../services/exportDocxPolish";
+import { exportModeSupportsLlmPolish } from "../services/exportDocxPolish";
 import { assessExportPolishReadiness } from "../services/exportPolishDelivery";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import { FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
@@ -13,8 +10,6 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import { resolveExportPolishBlockReason } from "../services/exportDocxPolish";
-import { useDeliveryExportPolishPreview } from "../hooks/useDeliveryExportPolishPreview";
-import { DeliveryExportPolishPreviewSection } from "./DeliveryExportPolishPreviewSection";
 import type { DocxProjectMetadata } from "../services/exportDeliveryAppendix";
 import { DeliveryExportModeSection } from "./DeliveryExportModeSection";
 import { DeliveryExportMetadataSection } from "./DeliveryExportMetadataSection";
@@ -22,8 +17,8 @@ import { readFloatingPanelViewport } from "./floatingPanelViewport";
 
 const PANEL_ID = "delivery-export-word-v2";
 const DEFAULT_WIDTH = 440;
-const DEFAULT_BODY_HEIGHT = 528;
-const MIN_SIZE = { width: 360, height: 420 } as const;
+const DEFAULT_BODY_HEIGHT = 480;
+const MIN_SIZE = { width: 360, height: 380 } as const;
 const PANEL_MARGIN = 24;
 
 export type DeliveryExportDialogProps = {
@@ -31,6 +26,8 @@ export type DeliveryExportDialogProps = {
   busy: boolean;
   segments: SegmentDto[];
   projectName: string;
+  /** Word 封面标题预览用（当前文件名；无文件时回退项目名）。 */
+  documentTitle?: string;
   projectMetadata?: DocxProjectMetadata;
   /** 切换 LLM 来源后递增，用于刷新就绪检测。 */
   llmStatusRefreshSeq?: number;
@@ -41,7 +38,6 @@ export type DeliveryExportDialogProps = {
     includeRevisionAppendix: boolean,
     includeProjectMetadata: boolean,
     llmPolish: boolean,
-    polishPreview: ExportPolishResult | null,
   ) => void;
 };
 
@@ -50,6 +46,7 @@ export function DeliveryExportDialog({
   busy,
   segments,
   projectName,
+  documentTitle,
   projectMetadata,
   llmStatusRefreshSeq = 0,
   onOpenLlmSettings,
@@ -64,32 +61,17 @@ export function DeliveryExportDialog({
   const [llmPolish, setLlmPolish] = useState(false);
 
   const polishAvailable = exportModeSupportsLlmPolish(mode);
-  const canPreviewPolish =
-    polishAvailable && llmPolish && !exportPolishBlockReason && !busy;
-
-  const polishPreview = useDeliveryExportPolishPreview({
-    open,
-    busy,
-    segments,
-    llmPolish,
-    canPreviewPolish,
-  });
-
   const polishReadiness = assessExportPolishReadiness(
     segments,
     mode,
     polishAvailable && llmPolish,
-    polishPreview.preview,
     llmEnv.blockReason,
   );
   const exportBlockedByPolish =
-    polishAvailable &&
-    llmPolish &&
-    !polishReadiness.canExport &&
-    !busy &&
-    !polishPreview.previewLoading;
+    polishAvailable && llmPolish && !polishReadiness.canExport && !busy;
 
-  const exportTitleLine = `导出：${projectName.trim() || "未命名"} · …`;
+  const titleForExport = (documentTitle ?? projectName).trim() || "未命名";
+  const exportTitleLine = `导出：${titleForExport} · …`;
 
   useEffect(() => {
     if (!polishAvailable) setLlmPolish(false);
@@ -98,7 +80,7 @@ export function DeliveryExportDialog({
   if (!open) return null;
 
   const handleClose = () => {
-    if (!busy && !polishPreview.previewLoading) onClose();
+    if (!busy) onClose();
   };
 
   const viewport = readFloatingPanelViewport();
@@ -127,7 +109,7 @@ export function DeliveryExportDialog({
           <button
             type="button"
             className={CONTROL_BTN_SECONDARY}
-            disabled={polishPreview.exportBusy}
+            disabled={busy}
             onClick={handleClose}
           >
             取消
@@ -135,18 +117,21 @@ export function DeliveryExportDialog({
           <button
             type="button"
             className={CONTROL_BTN_PRIMARY}
-            disabled={polishPreview.exportBusy || exportBlockedByPolish}
+            disabled={busy || exportBlockedByPolish}
             onClick={() =>
               onExport(
                 mode,
                 includeAppendix,
                 includeProjectMetadata,
                 polishAvailable && llmPolish,
-                polishAvailable && llmPolish ? polishPreview.preview : null,
               )
             }
           >
-            {busy ? "导出中…" : "导出 DOCX…"}
+            {busy
+              ? polishAvailable && llmPolish
+                ? "润色并导出中…"
+                : "导出中…"
+              : "导出 DOCX…"}
           </button>
         </>
       }
@@ -154,15 +139,15 @@ export function DeliveryExportDialog({
     >
       <FloatingPanelDialogScroll className="flex flex-col gap-3">
             <p className={PANEL_TYPOGRAPHY.dialogBody}>
-              导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。
+              导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。勾选大模型润色时，导出会直接生成终稿（无需预览）。
             </p>
             <DeliveryExportModeSection
               mode={mode}
-              exportBusy={polishPreview.exportBusy}
+              exportBusy={busy}
               onModeChange={setMode}
             />
             <DeliveryExportMetadataSection
-              exportBusy={polishPreview.exportBusy}
+              exportBusy={busy}
               exportTitleLine={exportTitleLine}
               includeProjectMetadata={includeProjectMetadata}
               projectMetadata={projectMetadata}
@@ -179,13 +164,13 @@ export function DeliveryExportDialog({
                     type="checkbox"
                     className="mt-0.5"
                     checked={llmPolish}
-                    disabled={polishPreview.exportBusy || Boolean(exportPolishBlockReason)}
+                    disabled={busy || Boolean(exportPolishBlockReason)}
                     onChange={(e) => setLlmPolish(e.target.checked)}
                   />
                   <span>
                     大模型润色（可选）
                     <span className="block text-xs text-notion-text-muted">
-                      修订轨仅标错字与标点；口语重复字（喔喔喔等）本地自动压缩。请重新生成预览后再导出。
+                      仅改正文错别字与错误标点（标点优先检查）；超范围改写回退原文。自然段按语义合并且约 ≤300 字。导出时直接生成终稿。
                     </span>
                     {exportPolishBlockReason ? (
                       <span className="block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
@@ -207,24 +192,12 @@ export function DeliveryExportDialog({
                 ) : null}
               </div>
             ) : null}
-            {polishPreview.showPreviewSection ? (
-              <DeliveryExportPolishPreviewSection
-                llmEnv={llmEnv}
-                canPreviewPolish={canPreviewPolish}
-                previewLoading={polishPreview.previewLoading}
-                previewError={polishPreview.previewError}
-                preview={polishPreview.preview}
-                polishReadinessPreviewCurrent={polishReadiness.previewCurrent}
-                onRefreshPreview={() => void polishPreview.handleRefreshPreview()}
-                onCancelPreview={() => void polishPreview.handleCancelPreview()}
-              />
-            ) : null}
             <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
               <input
                 type="checkbox"
                 className="mt-0.5"
                 checked={includeAppendix}
-                disabled={polishPreview.exportBusy}
+                disabled={busy}
                 onChange={(e) => setIncludeAppendix(e.target.checked)}
               />
               <span>

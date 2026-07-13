@@ -1,4 +1,4 @@
-//! 交付导出大模型润色 Tauri 命令（HTTP + 可取消；长稿自动分批）。
+//! 交付导出大模型润色 Tauri 命令（HTTP + 可取消；长稿自动分批；截断/解析失败可拆批重试）。
 
 use crate::project::utils::append_desktop_log_line;
 use crate::utils::{
@@ -212,6 +212,148 @@ async fn run_export_polish_batch(
     request_id: Option<&str>,
     prompt_overrides: Option<&PostprocessPromptOverrides>,
 ) -> Result<(ExportPolishParsed, u64), String> {
+    match run_export_polish_batch_once(
+        state,
+        cancel_state,
+        cfg,
+        batch_body,
+        line_count,
+        rule_hints,
+        batch_note,
+        request_id,
+        prompt_overrides,
+        0.15,
+        true,
+    )
+    .await
+    {
+        Ok(ok) => Ok(ok),
+        Err(first_err) => {
+            if !postprocess_export_polish::export_polish_error_is_retriable(&first_err) {
+                return Err(first_err);
+            }
+
+            // 优先对半拆批，降低 JSON 截断概率。
+            if line_count >= postprocess_export_polish::EXPORT_POLISH_RETRY_SPLIT_MIN_LINES {
+                if let Some((left, right)) =
+                    postprocess_export_polish::split_export_polish_batch_body(batch_body)
+                {
+                    let left_n = postprocess_export_polish::count_body_lines(&left);
+                    let right_n = postprocess_export_polish::count_body_lines(&right);
+                    append_desktop_log_line(
+                        state,
+                        &format!(
+                            "WARN export_polish_retry_split lines={line_count} -> {left_n}+{right_n} cause={}",
+                            crate::utils::redact_http_body_snippet(&first_err)
+                        ),
+                    );
+                    let (p0, t0) = Box::pin(run_export_polish_batch(
+                        state,
+                        cancel_state,
+                        cfg,
+                        &left,
+                        left_n,
+                        rule_hints,
+                        batch_note,
+                        request_id,
+                        prompt_overrides,
+                    ))
+                    .await?;
+                    let (p1, t1) = Box::pin(run_export_polish_batch(
+                        state,
+                        cancel_state,
+                        cfg,
+                        &right,
+                        right_n,
+                        rule_hints,
+                        batch_note,
+                        request_id,
+                        prompt_overrides,
+                    ))
+                    .await?;
+                    let merged = postprocess_export_polish::merge_export_polish_batches(
+                        vec![p0, p1],
+                        &[left_n, right_n],
+                    );
+                    return Ok((merged, t0.saturating_add(t1)));
+                }
+            }
+
+            append_desktop_log_line(
+                state,
+                &format!(
+                    "WARN export_polish_retry_cold lines={line_count} cause={}",
+                    crate::utils::redact_http_body_snippet(&first_err)
+                ),
+            );
+            run_export_polish_batch_once(
+                state,
+                cancel_state,
+                cfg,
+                batch_body,
+                line_count,
+                rule_hints,
+                batch_note,
+                request_id,
+                prompt_overrides,
+                0.05,
+                true,
+            )
+            .await
+            .map_err(|retry_err| {
+                format!(
+                    "{retry_err}（已自动重试仍失败；首次：{}）",
+                    truncate_err(&first_err)
+                )
+            })
+        }
+    }
+}
+
+fn truncate_err(err: &str) -> String {
+    let t: String = err.chars().take(160).collect();
+    if err.chars().count() > 160 {
+        format!("{t}…")
+    } else {
+        t
+    }
+}
+
+fn apply_export_polish_json_mode(
+    llm_body: &mut serde_json::Value,
+    loopback: bool,
+    enable: bool,
+) {
+    if !enable {
+        return;
+    }
+    let Some(obj) = llm_body.as_object_mut() else {
+        return;
+    };
+    if loopback {
+        obj.insert("format".to_string(), json!("json"));
+    } else {
+        obj.insert(
+            "response_format".to_string(),
+            json!({ "type": "json_object" }),
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+async fn run_export_polish_batch_once(
+    state: &DbState,
+    cancel_state: &PostprocessCancelState,
+    cfg: &ExportPolishLlmConfig,
+    batch_body: &str,
+    line_count: usize,
+    rule_hints: &str,
+    batch_note: Option<(usize, usize)>,
+    request_id: Option<&str>,
+    prompt_overrides: Option<&PostprocessPromptOverrides>,
+    temperature: f64,
+    use_json_mode: bool,
+) -> Result<(ExportPolishParsed, u64), String> {
     let system_prompt = postprocess_export_polish::resolve_export_polish_system_prompt(
         prompt_overrides.and_then(|o| o.export_polish_system.as_deref()),
     );
@@ -227,7 +369,7 @@ async fn run_export_polish_batch(
     let char_count = batch_body.chars().count();
     let mut llm_body = json!({
         "model": cfg.model,
-        "temperature": 0.35,
+        "temperature": temperature,
         "messages": [
             {
                 "role": "system",
@@ -239,80 +381,52 @@ async fn run_export_polish_batch(
             }
         ]
     });
-    if cfg.loopback {
-        if let Some(obj) = llm_body.as_object_mut() {
-            obj.insert("format".to_string(), json!("json"));
-        }
-    }
+    apply_export_polish_json_mode(&mut llm_body, cfg.loopback, use_json_mode);
     let max_tokens = export_polish_max_tokens(line_count, char_count);
     if let Some(obj) = llm_body.as_object_mut() {
         obj.insert("max_tokens".to_string(), json!(max_tokens));
     }
 
     let timeout_secs = export_polish_timeout_secs(char_count, cfg.loopback);
-    let http = postprocess_async_client(cfg.loopback);
     let t0 = Instant::now();
 
-    let cancel_registration = request_id.map(|id| {
-        let (handle, registration) = AbortHandle::new_pair();
-        if let Ok(mut handles) = cancel_state.0.lock() {
-            if let Some(previous) = handles.insert(id.to_string(), handle) {
-                previous.abort();
-            }
+    let (status, payload) = send_export_polish_http(
+        state,
+        cancel_state,
+        cfg,
+        &llm_body,
+        timeout_secs,
+        request_id,
+    )
+    .await?;
+
+    // 部分云端不认 response_format：400 时降级再试一次。
+    let (status, payload) = if !status.is_success()
+        && !cfg.loopback
+        && use_json_mode
+        && status.as_u16() == 400
+    {
+        append_desktop_log_line(
+            state,
+            "WARN export_polish response_format unsupported; retry without json mode",
+        );
+        let mut fallback_body = llm_body.clone();
+        if let Some(obj) = fallback_body.as_object_mut() {
+            obj.remove("response_format");
         }
-        (id.to_string(), registration)
-    });
-
-    let log_state = state.clone();
-    let endpoint = cfg.endpoint.clone();
-    let api_key = cfg.api_key.clone();
-    let loopback = cfg.loopback;
-    let http_future = async move {
-        let resp = http
-            .post(endpoint)
-            .bearer_auth(api_key)
-            .timeout(std::time::Duration::from_secs(timeout_secs))
-            .json(&llm_body)
-            .send()
-            .await
-            .map_err(|e| {
-                append_desktop_log_line(
-                    &log_state,
-                    &format!(
-                        "ERROR export_polish transport loopback={loopback} timeout_secs={timeout_secs} {e}"
-                    ),
-                );
-                format_postprocess_transport_error(&e, loopback, "大模型润色")
-            })?;
-
-        let status = resp.status();
-        let payload = resp.text().await.map_err(|e| {
-            append_desktop_log_line(&log_state, &format!("ERROR export_polish read body {e}"));
-            "润色返回体读取失败。".to_string()
-        })?;
-        Ok::<_, String>((status, payload))
+        send_export_polish_http(
+            state,
+            cancel_state,
+            cfg,
+            &fallback_body,
+            timeout_secs,
+            request_id,
+        )
+        .await?
+    } else {
+        (status, payload)
     };
 
-    let http_result = if let Some((id, registration)) = cancel_registration {
-        let out = Abortable::new(http_future, registration).await;
-        if let Ok(mut handles) = cancel_state.0.lock() {
-            handles.remove(&id);
-        }
-        match out {
-            Ok(result) => result,
-            Err(_) => {
-                append_desktop_log_line(
-                    state,
-                    &format!("INFO postprocess_export_polish_cancelled request_id={id}"),
-                );
-                return Err("大模型润色请求已取消。".to_string());
-            }
-        }
-    } else {
-        http_future.await
-    }?;
-
-    let (status, payload) = http_result;
     if !status.is_success() {
         append_desktop_log_line(
             state,
@@ -334,26 +448,28 @@ async fn run_export_polish_batch(
     })?;
     let raw = extract_chat_completion_text(&json)?;
     let finish_reason = chat_completion_finish_reason(&json).unwrap_or("unknown");
-    let mut parsed = postprocess_export_polish::parse_export_polish_json(&raw, line_count).map_err(|e| {
-        let truncated = finish_reason == "length";
-        let open_braces = raw.matches('{').count();
-        let close_braces = raw.matches('}').count();
-        append_desktop_log_line(
-            state,
-            &format!(
-                "ERROR export_polish parse_json line_count={line_count} finish_reason={finish_reason} raw_len={} braces={open_braces}/{close_braces} err={e} snippet={}",
-                raw.chars().count(),
-                crate::utils::redact_http_body_snippet(&raw)
-            ),
-        );
-        if truncated {
-            format!(
-                "{e} 模型输出被截断（finish_reason=length，max_tokens={max_tokens}），请换更小批次模型或改用云端 LLM。"
-            )
-        } else {
-            e
-        }
-    })?;
+    let mut parsed = postprocess_export_polish::parse_export_polish_json(&raw, line_count).map_err(
+        |e| {
+            let truncated = finish_reason == "length";
+            let open_braces = raw.matches('{').count();
+            let close_braces = raw.matches('}').count();
+            append_desktop_log_line(
+                state,
+                &format!(
+                    "ERROR export_polish parse_json line_count={line_count} finish_reason={finish_reason} raw_len={} braces={open_braces}/{close_braces} err={e} snippet={}",
+                    raw.chars().count(),
+                    crate::utils::redact_http_body_snippet(&raw)
+                ),
+            );
+            if truncated {
+                format!(
+                    "{e} 模型输出被截断（finish_reason=length，max_tokens={max_tokens}），请缩小导出范围或改用云端 LLM。"
+                )
+            } else {
+                e
+            }
+        },
+    )?;
     if parsed.punct_lines.is_empty() {
         return Err("润色结果为空，请重试或取消勾选大模型润色。".to_string());
     }
@@ -364,4 +480,74 @@ async fn run_export_polish_batch(
     );
 
     Ok((parsed, t0.elapsed().as_millis() as u64))
+}
+
+async fn send_export_polish_http(
+    state: &DbState,
+    cancel_state: &PostprocessCancelState,
+    cfg: &ExportPolishLlmConfig,
+    llm_body: &serde_json::Value,
+    timeout_secs: u64,
+    request_id: Option<&str>,
+) -> Result<(reqwest::StatusCode, String), String> {
+    let http = postprocess_async_client(cfg.loopback);
+    let cancel_registration = request_id.map(|id| {
+        let (handle, registration) = AbortHandle::new_pair();
+        if let Ok(mut handles) = cancel_state.0.lock() {
+            if let Some(previous) = handles.insert(id.to_string(), handle) {
+                previous.abort();
+            }
+        }
+        (id.to_string(), registration)
+    });
+
+    let log_state = state.clone();
+    let endpoint = cfg.endpoint.clone();
+    let api_key = cfg.api_key.clone();
+    let loopback = cfg.loopback;
+    let body = llm_body.clone();
+    let http_future = async move {
+        let resp = http
+            .post(endpoint)
+            .bearer_auth(api_key)
+            .timeout(std::time::Duration::from_secs(timeout_secs))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                append_desktop_log_line(
+                    &log_state,
+                    &format!(
+                        "ERROR export_polish transport loopback={loopback} timeout_secs={timeout_secs} {e}"
+                    ),
+                );
+                format_postprocess_transport_error(&e, loopback, "大模型润色")
+            })?;
+
+        let status = resp.status();
+        let payload = resp.text().await.map_err(|e| {
+            append_desktop_log_line(&log_state, &format!("ERROR export_polish read body {e}"));
+            "润色返回体读取失败。".to_string()
+        })?;
+        Ok::<_, String>((status, payload))
+    };
+
+    if let Some((id, registration)) = cancel_registration {
+        let out = Abortable::new(http_future, registration).await;
+        if let Ok(mut handles) = cancel_state.0.lock() {
+            handles.remove(&id);
+        }
+        match out {
+            Ok(result) => result,
+            Err(_) => {
+                append_desktop_log_line(
+                    state,
+                    &format!("INFO postprocess_export_polish_cancelled request_id={id}"),
+                );
+                Err("大模型润色请求已取消。".to_string())
+            }
+        }
+    } else {
+        http_future.await
+    }
 }

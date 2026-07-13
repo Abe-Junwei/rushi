@@ -1,49 +1,48 @@
 /** 讲稿/干净稿润色导出：语义分段（仅版式，不进修订轨）。 */
 
-/** 相邻分段至少间隔的语段行数。 */
-const EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH = 8;
+import { graphemeCount } from "./text/grapheme";
 
-/** Word 自然段上限（避免 LLM 几乎每行一分段）。 */
-export const EXPORT_POLISH_MAX_PARAGRAPHS = 12;
+/** Word 自然段建议上限（字素）；超过则在语段边界强制切开。 */
+export const EXPORT_POLISH_MAX_PARAGRAPH_GRAPHEMES = 300;
+
+/** 过短自然段阈值：语义断点若使本段不足此字数，则并入下一段（强制切分除外）。 */
+const EXPORT_POLISH_MIN_PARAGRAPH_GRAPHEMES = 40;
 
 /**
- * 合并过密的 `break_after_line`；超出上限时按语段均匀切分。
+ * 合并过碎的语义断点，并按字数上限切开过长自然段。
+ * 断点均在语段行边界（行下标之后）。
  */
 export function coalesceExportParagraphBreaks(
-  lineCount: number,
+  lines: string[],
   breakAfterLine: number[],
 ): number[] {
+  const lineCount = lines.length;
   if (lineCount <= 1) return [];
 
-  let breaks = [...new Set(breakAfterLine)]
-    .filter((i) => i >= 0 && i < lineCount - 1)
-    .sort((a, b) => a - b);
+  const semantic = new Set(
+    [...new Set(breakAfterLine)].filter((i) => i >= 0 && i < lineCount - 1),
+  );
 
-  const minGap = EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH;
-  const merged: number[] = [];
-  let lastBreak = -minGap;
-  for (const b of breaks) {
-    if (b - lastBreak >= minGap) {
-      merged.push(b);
-      lastBreak = b;
+  const breaks: number[] = [];
+  let paraLen = 0;
+
+  for (let i = 0; i < lineCount - 1; i += 1) {
+    paraLen += graphemeCount(lines[i] ?? "");
+    const nextLen = graphemeCount(lines[i + 1] ?? "");
+    const wouldExceed =
+      paraLen > 0 && paraLen + nextLen > EXPORT_POLISH_MAX_PARAGRAPH_GRAPHEMES;
+    const wantSemantic = semantic.has(i);
+
+    if (!wouldExceed && !wantSemantic) continue;
+    if (wantSemantic && !wouldExceed && paraLen < EXPORT_POLISH_MIN_PARAGRAPH_GRAPHEMES) {
+      continue;
     }
-  }
-  breaks = merged;
 
-  const maxBreaks = EXPORT_POLISH_MAX_PARAGRAPHS - 1;
-  if (breaks.length <= maxBreaks) {
-    return breaks;
+    breaks.push(i);
+    paraLen = 0;
   }
 
-  const out: number[] = [];
-  for (let k = 1; k <= maxBreaks; k += 1) {
-    const targetLine = Math.floor((lineCount * k) / EXPORT_POLISH_MAX_PARAGRAPHS) - 1;
-    const b = Math.max(0, Math.min(lineCount - 2, targetLine));
-    if (out.length === 0 || b > out[out.length - 1]) {
-      out.push(b);
-    }
-  }
-  return out;
+  return breaks;
 }
 
 export function buildParagraphsFromBreaks(

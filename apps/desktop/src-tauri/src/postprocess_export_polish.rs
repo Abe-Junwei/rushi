@@ -11,9 +11,11 @@ pub const EXPORT_POLISH_LINE_SEPARATOR: char = '\u{001e}';
 #[cfg(test)]
 pub const MAX_PARAGRAPHS: usize = 500;
 /// 超过此行数则拆成多批 LLM 请求（避免输出 token 截断）。
-pub const EXPORT_POLISH_BATCH_LINE_THRESHOLD: usize = 200;
+pub const EXPORT_POLISH_BATCH_LINE_THRESHOLD: usize = 120;
 /// 单批最多语段行数。
-pub const EXPORT_POLISH_BATCH_MAX_LINES: usize = 180;
+pub const EXPORT_POLISH_BATCH_MAX_LINES: usize = 100;
+/// 单批失败后可对半拆分重试的最小行数。
+pub const EXPORT_POLISH_RETRY_SPLIT_MIN_LINES: usize = 24;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportPolishParsed {
@@ -66,6 +68,31 @@ pub fn plan_export_polish_batch_lines(lines: &[String]) -> Vec<Vec<String>> {
         .chunks(EXPORT_POLISH_BATCH_MAX_LINES)
         .map(|chunk| chunk.to_vec())
         .collect()
+}
+
+/// 将一批正文对半拆成两段（失败重试用）；不足两行则返回 None。
+pub fn split_export_polish_batch_body(body: &str) -> Option<(String, String)> {
+    let lines = lines_from_export_polish_body(body);
+    if lines.len() < 2 {
+        return None;
+    }
+    let mid = lines.len() / 2;
+    let sep = EXPORT_POLISH_LINE_SEPARATOR.to_string();
+    Some((lines[..mid].join(&sep), lines[mid..].join(&sep)))
+}
+
+/// 预览失败是否值得自动重试 / 拆批（截断、JSON 解析、空结果）。
+pub fn export_polish_error_is_retriable(err: &str) -> bool {
+    let e = err.to_lowercase();
+    e.contains("finish_reason=length")
+        || e.contains("输出被截断")
+        || e.contains("未返回可解析")
+        || e.contains("未找到 json")
+        || e.contains("模型未返回 lines")
+        || e.contains("润色结果为空")
+        || e.contains("润色 lines 为空")
+        || e.contains("返回格式无法解析")
+        || e.contains("无法解析的 json")
 }
 
 /// 将单批 LLM 返回行数对齐到输入语段行数；缺失行回退为原文，避免导出缺段。
@@ -127,24 +154,28 @@ pub fn merge_export_polish_batches(
 }
 
 pub fn default_export_polish_system_prompt() -> &'static str {
-    "你是中文讲稿 ASR 润色助手。lines 会被程序原样写入导出稿，不得增删行。须逐行改正文错字、同音误识别、口语重复字并规范标点；另给 break_after_line。禁止 paragraphs 字段与整句编造。只输出合法 JSON。"
+    "你是中文讲稿 ASR 纠错助手。lines 不得增删行。仅改正文明显错别字与错误标点（尤重标点正确性）；禁止整句重写、同义替换、删口语词。另给 break_after_line。禁止 paragraphs 字段。只输出合法 JSON。"
 }
 
 pub fn default_export_polish_instructions_template() -> String {
-    r#"你是中文讲稿 ASR 润色器。输入为 {line_count} 条语段（每行一条，不得增删行）。**客户端将原样采用你返回的 lines，不会做二次删改或拒收**，因此必须在 lines 里直接写好全部修正。{batch_note}
+    r#"你是中文讲稿 ASR 纠错器。输入为 {line_count} 条语段（每行一条，不得增删行）。客户端会对过大改动回退原文，请只做有把握的纠错。{batch_note}
 
 ## 输出 JSON（仅此结构）
 {"lines":["行1",...,"行{line_count}"],"break_after_line":[0,3,7]}
 
 ## lines（应尽量 {line_count} 行；若合并语段可少 1–2 行，客户端会自动对齐）
-对每一行在本行内完成（保持原意、人称与事实，禁止整句重写）：
-1. **错字/同音误识别**：必须改正 obvious 问题（示例：传讨→传统，辛库→辛苦，小胸小→胸腔，棵→颗，的/地/得，在/再）。
-2. **口语 ASR 噪声**：连续无义重复字应删减或合并（如 喔喔喔、啊啊啊、鹅鹅鹅、呜呜、哇哇 等）。
-3. **标点与空格**：补全句号、逗号等，规范「，」前后空格。
+对每一行仅允许（保持原意、人称与事实，禁止整句重写/润色用词；不要删口语词、不要改句式）：
+1. **明显错别字 / 同音误识别**（示例：传讨→传统，辛库→辛苦，棵→颗，的/地/得，在/再）。
+2. **错误标点（必须认真检查，优先于「保持原样」）**：
+   - 句末缺标点则补「。」「？」「！」；陈述/疑问/感叹语气用对应句末标点。
+   - 逗号「，」与顿号「、」误用：并列词语用顿号，分句用逗号。
+   - 英文标点混入中文句（`,` `.` `?` `!` `:` `;`）改为中文对应标点。
+   - 明显错用的引号、括号、冒号（未配对或语气不符）予以改正。
+   - 仅改正错误或缺失；不要为「更好读」而大量重排标点。
 无需改动的行请原样抄写。
 
 ## break_after_line
-语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。**尽量少分段**（建议全文不超过 12 段、相邻分段至少间隔 8 行语段）；分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{rule_hints}
+语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。按语义合并短句，但**单段建议不超过约 300 字**；过长请在话题/句群边界切开。分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{rule_hints}
 
 输入（{line_count} 行，语段之间以 Unicode RS「␞」分隔，语段内换行保留）：
 {body}"#
@@ -487,7 +518,10 @@ mod tests {
     fn prompt_mentions_break_after_only() {
         let p = build_export_polish_prompt("a\nb", 2, "", None, None);
         assert!(p.contains("break_after_line"));
-        assert!(p.contains("原样采用"));
+        assert!(p.contains("回退原文"));
+        assert!(p.contains("300"));
+        assert!(p.contains("错误标点"));
+        assert!(p.contains("顿号"));
     }
 
     #[test]
@@ -516,12 +550,37 @@ mod tests {
 
     #[test]
     fn plan_batches_splits_over_threshold() {
-        let lines: Vec<String> = (0..250).map(|i| format!("行{i}")).collect();
+        let lines: Vec<String> = (0..150).map(|i| format!("行{i}")).collect();
         let body = lines.join(&EXPORT_POLISH_LINE_SEPARATOR.to_string());
         let batches = plan_export_polish_batch_bodies(&body);
         assert_eq!(batches.len(), 2);
-        assert_eq!(count_body_lines(&batches[0]), 180);
-        assert_eq!(count_body_lines(&batches[1]), 70);
+        assert_eq!(count_body_lines(&batches[0]), 100);
+        assert_eq!(count_body_lines(&batches[1]), 50);
+    }
+
+    #[test]
+    fn split_batch_body_halves_lines() {
+        let body = format!(
+            "a{}b{}c{}d",
+            EXPORT_POLISH_LINE_SEPARATOR,
+            EXPORT_POLISH_LINE_SEPARATOR,
+            EXPORT_POLISH_LINE_SEPARATOR
+        );
+        let (left, right) = split_export_polish_batch_body(&body).unwrap();
+        assert_eq!(count_body_lines(&left), 2);
+        assert_eq!(count_body_lines(&right), 2);
+    }
+
+    #[test]
+    fn retriable_errors_cover_truncate_and_parse() {
+        assert!(export_polish_error_is_retriable(
+            "x 模型输出被截断（finish_reason=length，max_tokens=1024）"
+        ));
+        assert!(export_polish_error_is_retriable(
+            "模型未返回可解析的 JSON（需 lines + break_after_line）：eof"
+        ));
+        assert!(!export_polish_error_is_retriable("大模型润色请求已取消。"));
+        assert!(!export_polish_error_is_retriable("LLM 未配置。"));
     }
 
     #[test]

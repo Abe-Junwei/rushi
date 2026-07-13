@@ -73,12 +73,12 @@ export function listDocxProjectMetadataPreviewLines(
 
 /** Word 封面抬头：导出行；勾选「附带场次信息」时再追加 P0 元信息行（Rust 侧按行渲染）。 */
 export function buildDocxExportMetaLine(
-  projectTitle: string,
+  documentTitle: string,
   exportedAt = new Date(),
   options?: { includeProjectMetadata?: boolean; metadata?: DocxProjectMetadata },
 ): string {
   const when = exportedAt.toLocaleString("zh-CN", { hour12: false });
-  const title = projectTitle.trim() || "未命名";
+  const title = documentTitle.trim() || "未命名";
   const lines = [`导出：${title} · ${when}`];
   if (options?.includeProjectMetadata) {
     for (const { key, label } of DOCX_METADATA_FIELDS) {

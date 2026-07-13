@@ -12,11 +12,7 @@ import {
   assertExportPolishParagraphsAlignLines,
   assessExportPolishReadiness,
 } from "./exportPolishDelivery";
-import {
-  clearExportPolishPreviewCache,
-  fingerprintExportPolishSegments,
-  setExportPolishPreviewCache,
-} from "./exportPolishPreviewCache";
+import { fingerprintExportPolishSegments } from "./exportPolishPreviewCache";
 import type { SegmentDto } from "../tauri/projectApi";
 
 function seg(text: string): SegmentDto {
@@ -74,20 +70,16 @@ describe("assertExportPolishParagraphsAlignLines", () => {
 });
 
 describe("assessExportPolishReadiness", () => {
-  it("blocks lecture export without preview", () => {
-    clearExportPolishPreviewCache();
+  it("allows lecture export without preview when LLM is ready", () => {
     const segments = [seg("正文")];
-    const r = assessExportPolishReadiness(segments, "lecture", true, null);
-    expect(r.canExport).toBe(false);
-    expect(r.blockReason).toMatch(/生成预览/);
+    const r = assessExportPolishReadiness(segments, "lecture", true);
+    expect(r.canExport).toBe(true);
+    expect(r.blockReason).toBeNull();
   });
 
-  it("allows export when cache matches", () => {
-    clearExportPolishPreviewCache();
+  it("still allows clean export with polish when ready", () => {
     const segments = [seg("正文")];
-    const result = mockResult(segments);
-    setExportPolishPreviewCache(segments, result);
-    const r = assessExportPolishReadiness(segments, "clean", true, null);
+    const r = assessExportPolishReadiness(segments, "clean", true);
     expect(r.canExport).toBe(true);
   });
 });

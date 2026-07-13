@@ -1,4 +1,3 @@
-import type { ExportPolishResult } from "../services/exportDocxPolish";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -40,7 +39,6 @@ export type ProjectPanelDialogsProps = {
     includeRevisionAppendix: boolean,
     includeProjectMetadata: boolean,
     llmPolish: boolean,
-    polishPreview: ExportPolishResult | null,
   ) => void;
 };
 
@@ -170,6 +168,13 @@ export function ProjectPanelDialogs({
         busy={c.busy}
         segments={segments}
         projectName={c.current?.name ?? ""}
+        documentTitle={
+          (c.currentFileId
+            ? c.current?.files?.find((f) => f.id === c.currentFileId)?.name
+            : undefined)?.trim() ||
+          c.current?.name ||
+          ""
+        }
         projectMetadata={{
           narrator: c.current?.narrator,
           recorded_at: c.current?.recorded_at,
@@ -180,9 +185,9 @@ export function ProjectPanelDialogs({
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         onOpenLlmSettings={onOpenLlmSettings}
         onClose={onDeliveryExportClose}
-        onExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview) => {
+        onExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish) => {
           onDeliveryExportClose();
-          onDeliveryExport(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview);
+          onDeliveryExport(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish);
         }}
       />
 

@@ -1,5 +1,4 @@
 import type { ExportPolishResult } from "./exportDocxPolish";
-import { EXPORT_POLISH_HYGIENE_REV } from "./exportPolishHygiene";
 import { segmentLinesFromSegments } from "./exportPolishPipeline";
 import type { SegmentDto } from "../tauri/projectApi";
 
@@ -10,7 +9,10 @@ type CacheEntry = {
 
 let entry: CacheEntry | null = null;
 
-/** 语段正文指纹（行数 + 滚动哈希，用于预览/导出对齐）。 */
+/** 指纹修订：口语本地压缩已移除。 */
+const EXPORT_POLISH_FINGERPRINT_REV = "p2";
+
+/** 语段正文指纹（行数 + 滚动哈希，用于润色结果对齐）。 */
 export function fingerprintExportPolishSegments(segments: SegmentDto[]): string {
   const lines = segmentLinesFromSegments(segments);
   const body = lines.join("\n");
@@ -18,7 +20,7 @@ export function fingerprintExportPolishSegments(segments: SegmentDto[]): string 
   for (let i = 0; i < body.length; i += 1) {
     hash = ((hash << 5) + hash) ^ body.charCodeAt(i);
   }
-  return `${EXPORT_POLISH_HYGIENE_REV}:${lines.length}:${body.length}:${(hash >>> 0).toString(16)}`;
+  return `${EXPORT_POLISH_FINGERPRINT_REV}:${lines.length}:${body.length}:${(hash >>> 0).toString(16)}`;
 }
 
 export function setExportPolishPreviewCache(
@@ -43,7 +45,7 @@ export function clearExportPolishPreviewCache(): void {
   entry = null;
 }
 
-/** 导出：复用预览缓存；无有效缓存时返回 null。 */
+/** 若缓存指纹与当前语段一致则返回缓存结果。 */
 export function tryAdoptExportPolishPreview(
   segments: SegmentDto[],
   polishPreview?: ExportPolishResult | null,

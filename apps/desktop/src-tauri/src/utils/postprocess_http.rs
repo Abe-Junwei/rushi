@@ -125,9 +125,10 @@ pub fn export_polish_timeout_secs(char_count: usize, loopback: bool) -> u64 {
 pub fn export_polish_max_tokens(line_count: usize, char_count: usize) -> u32 {
     const MIN: u32 = 1024;
     const MAX: u32 = 28_000;
-    let from_lines = line_count.saturating_mul(56) as u32;
+    // 每行 JSON 字串开销偏高（转义 + 逗号）；略抬高系数降低 finish_reason=length。
+    let from_lines = line_count.saturating_mul(72) as u32;
     let from_chars = (char_count.saturating_mul(2) as u32).max(512);
-    (from_lines.max(from_chars) + 512).clamp(MIN, MAX)
+    (from_lines.max(from_chars) + 768).clamp(MIN, MAX)
 }
 
 pub fn format_postprocess_transport_error(
@@ -166,9 +167,13 @@ mod tests {
 
     #[test]
     fn export_polish_max_tokens_scales_with_line_count() {
-        assert_eq!(export_polish_max_tokens(0, 0), 1024);
+        assert_eq!(export_polish_max_tokens(0, 0), 1280);
         assert_eq!(export_polish_max_tokens(569, 5895), 28_000);
         assert_eq!(export_polish_max_tokens(10_000, 1_000_000), 28_000);
+        // 80 行不应顶满上限，但应明显高于旧 56*lines 公式
+        let mid = export_polish_max_tokens(80, 4_000);
+        assert!(mid > 80 * 56 + 512);
+        assert!(mid < 28_000);
     }
 
     #[test]

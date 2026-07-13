@@ -58,17 +58,15 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
     : undefined;
 
   if (wantsPolish) {
-    const readiness = assessExportPolishReadiness(
-      segments,
-      request.mode,
-      true,
-      request.polishPreview ?? null,
-    );
+    const readiness = assessExportPolishReadiness(segments, request.mode, true);
     if (!readiness.canExport) {
-      return { ok: false, error: readiness.blockReason ?? "请先完成润色预览。" };
+      return { ok: false, error: readiness.blockReason ?? "大模型润色不可用。" };
+    }
+    if (!request.polishResult) {
+      return { ok: false, error: "缺少润色结果，请重试导出。" };
     }
     try {
-      const polish = resolveExportPolishForDelivery(segments, request.polishPreview);
+      const polish = resolveExportPolishForDelivery(segments, request.polishResult);
       polishedParagraphs = polish.paragraphs;
       polishCorrectedLines =
         polish.correctedLines.length > 0 ? polish.correctedLines : undefined;

@@ -3,7 +3,6 @@ import { extractSingleTextDiffParts } from "../utils/textDiff";
 import { applyStableRulesToPolishLines } from "./exportPolishFinalize";
 import { joinExportPolishLines } from "./exportDocxPolish.helpers";
 import type { SegmentDto } from "../tauri/projectApi";
-import { collapseOralFillerRuns, collapseOralStutter } from "./exportPolishHygiene";
 import { lineWouldHaveWordTrackMarkup } from "./exportPolishTrackMarkup";
 import { graphemeCount as countGraphemes, splitGraphemes } from "./text/grapheme";
 
@@ -173,15 +172,9 @@ function levenshteinGraphemes(a: string, b: string): number {
   return dp[n] ?? Math.max(m, n);
 }
 
-function isLocalHygieneOnlyDiff(before: string, after: string): boolean {
-  const normalized = collapseOralFillerRuns(collapseOralStutter(before));
-  return normalized === after;
-}
-
 /** 本语段改动是否应进入 Word 修订轨（仅错字/标点，不含大段改写）。 */
 export function lineEligibleForExportTrack(before: string, after: string): boolean {
   if (before === after) return false;
-  if (isLocalHygieneOnlyDiff(before, after)) return true;
   if (isPunctuationOnlyLineDiff(before, after)) return true;
   const b = stripForPunctCompare(before);
   const a = stripForPunctCompare(after);
@@ -189,6 +182,31 @@ export function lineEligibleForExportTrack(before: string, after: string): boole
   const dist = levenshteinGraphemes(b, a);
   const maxLen = Math.max(countGraphemes(b), countGraphemes(a), 1);
   return dist <= 4 || dist / maxLen <= 0.12;
+}
+
+/**
+ * 定稿正文只保留「错别字 / 错误标点」级改动；超范围改写回退原文。
+ * 本地 hygiene 与稳定纠错规则应在本函数之后应用。
+ */
+export function clampExportPolishLinesToEligible(
+  beforeLines: string[],
+  afterLines: string[],
+): string[] {
+  const n = Math.min(beforeLines.length, afterLines.length);
+  const out: string[] = [];
+  for (let i = 0; i < n; i += 1) {
+    const before = beforeLines[i] ?? "";
+    const after = afterLines[i] ?? "";
+    if (before === after || lineEligibleForExportTrack(before, after)) {
+      out.push(after);
+    } else {
+      out.push(before);
+    }
+  }
+  while (out.length < beforeLines.length) {
+    out.push(beforeLines[out.length] ?? "");
+  }
+  return out;
 }
 
 export type ExportPolishLineChange = {

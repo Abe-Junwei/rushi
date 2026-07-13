@@ -3,10 +3,8 @@ import type { SegmentDto } from "../tauri/projectApi";
 import {
   exportModeSupportsLlmPolish,
   type ExportPolishResult,
-  exportPolishPreviewIsCurrent,
   resolveExportPolishBlockReason,
 } from "./exportDocxPolish";
-import { getExportPolishPreviewCache } from "./exportPolishPreviewCache";
 import type { ExportPolishLineChange, ReconcileLlmLinesStats } from "./exportPolishPipeline";
 
 function flattenPolishText(parts: string[]): string {
@@ -19,7 +17,7 @@ export function assertExportPolishParagraphsAlignLines(result: ExportPolishResul
   const paraFlat = flattenPolishText(result.paragraphs);
   if (lineFlat !== paraFlat) {
     throw new Error(
-      `润色段落与语段行正文不一致（${result.paragraphs.length} 段 / ${result.correctedLines.length} 行），请重新生成预览。`,
+      `润色段落与语段行正文不一致（${result.paragraphs.length} 段 / ${result.correctedLines.length} 行），请重试导出。`,
     );
   }
 }
@@ -27,42 +25,23 @@ export function assertExportPolishParagraphsAlignLines(result: ExportPolishResul
 export type ExportPolishReadiness = {
   canExport: boolean;
   blockReason: string | null;
-  previewCurrent: boolean;
 };
 
-/** 勾选大模型润色时：须有与当前语段指纹一致的预览或缓存。 */
+/** 勾选大模型润色时：仅检查 LLM/正文前置条件（导出时再请求模型，无需预览）。 */
 export function assessExportPolishReadiness(
   segments: SegmentDto[],
   mode: DocxExportMode,
   llmPolish: boolean,
-  preview: ExportPolishResult | null,
   llmBlockReason?: string | null,
 ): ExportPolishReadiness {
   if (!llmPolish || !exportModeSupportsLlmPolish(mode)) {
-    return { canExport: true, blockReason: null, previewCurrent: false };
+    return { canExport: true, blockReason: null };
   }
   const block = resolveExportPolishBlockReason(segments, llmBlockReason);
   if (block) {
-    return { canExport: false, blockReason: block, previewCurrent: false };
+    return { canExport: false, blockReason: block };
   }
-  if (getExportPolishPreviewCache(segments)) {
-    return { canExport: true, blockReason: null, previewCurrent: true };
-  }
-  if (!preview) {
-    return {
-      canExport: false,
-      blockReason: "请先点击「生成预览」，确认修订后再导出。",
-      previewCurrent: false,
-    };
-  }
-  if (!exportPolishPreviewIsCurrent(segments, preview)) {
-    return {
-      canExport: false,
-      blockReason: "语段正文已变更或预览已失效，请重新生成预览。",
-      previewCurrent: false,
-    };
-  }
-  return { canExport: true, blockReason: null, previewCurrent: true };
+  return { canExport: true, blockReason: null };
 }
 
 export type ExportPolishPreviewNotes = {

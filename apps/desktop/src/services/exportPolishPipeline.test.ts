@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampExportPolishLinesToEligible,
   isPunctuationOnlyLineDiff,
   lineEligibleForExportTrack,
   reconcileLlmPolishLines,
@@ -21,6 +22,18 @@ describe("lineEligibleForExportTrack", () => {
         "今天我们讨论这个问题。",
       ),
     ).toBe(false);
+  });
+});
+
+describe("clampExportPolishLinesToEligible", () => {
+  it("keeps typo and punct fixes, reverts rewrites in final lines", () => {
+    const before = ["辛库", "你好", "嗯那个我们今天呢就来说一下"];
+    const after = ["辛苦", "你好。", "今天我们讨论这个问题。"];
+    expect(clampExportPolishLinesToEligible(before, after)).toEqual([
+      "辛苦",
+      "你好。",
+      "嗯那个我们今天呢就来说一下",
+    ]);
   });
 });
 

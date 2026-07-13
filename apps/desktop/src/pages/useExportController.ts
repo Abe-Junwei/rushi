@@ -6,7 +6,12 @@ import { exportDocx as exportDocxImpl, type DocxExportMode } from "../tauri/expo
 import { buildDocxExportMetaLine } from "../services/exportDeliveryAppendix";
 import { planDeliveryDocxExport } from "../services/exportDeliveryPlan";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
-import type { ExportPolishResult } from "../services/exportDocxPolish";
+import {
+  exportModeSupportsLlmPolish,
+  fetchExportPolishResult,
+  resolveExportPolishBlockReason,
+  type ExportPolishResult,
+} from "../services/exportDocxPolish";
 import { safeExportBasename } from "../utils/safeExportBasename";
 import { toast } from "../services/ui/toast";
 import { pushExportFailureActivity } from "../services/ui/pushActivity";
@@ -18,10 +23,10 @@ export type DeliveryDocxExportRequest = {
   includeRevisionAppendix: boolean;
   /** 封面抬头附带讲述人/时间/地点/主题/转录人（Hub「项目信息」）。 */
   includeProjectMetadata?: boolean;
-  /** 讲稿/干净稿：导出前 LLM 润色（纠错字、标点、语义分段）。 */
+  /** 讲稿/干净稿：导出时 LLM 纠错（错别字、错误标点、语义分段）。 */
   llmPolish?: boolean;
-  /** 交付导出对话框「生成预览」结果；与当前语段一致时复用，不再请求 LLM。 */
-  polishPreview?: ExportPolishResult | null;
+  /** 控制器在导出前拉取的润色结果（勾选润色时必填）。 */
+  polishResult?: ExportPolishResult | null;
 };
 
 export interface ExportApi {
@@ -116,7 +121,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
       if (!current) return undefined;
-      return buildDocxExportMetaLine(current.name, new Date(), {
+      return buildDocxExportMetaLine(exportContextLabel(), new Date(), {
         includeProjectMetadata,
         metadata: {
           narrator: current.narrator,
@@ -127,7 +132,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         },
       });
     },
-    [current],
+    [current, exportContextLabel],
   );
 
   const exportDocx = useCallback(
@@ -137,7 +142,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       flushSegmentTextDrafts();
       const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
       try {
-        await exportDocxImpl(exportDefaultBasename("docx"), current.name, mode, normalized, {
+        await exportDocxImpl(exportDefaultBasename("docx"), exportContextLabel(), mode, normalized, {
           exportMetaLine: docxExportMetaLine(false),
         });
         syncOnboardingExport();
@@ -145,7 +150,16 @@ export function useExportController(deps: ExportDeps): ExportApi {
         reportExportFailure("DOCX", e);
       }
     },
-    [current, docxExportMetaLine, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError],
+    [
+      current,
+      docxExportMetaLine,
+      exportContextLabel,
+      exportDefaultBasename,
+      getCurrentSegmentsSnapshot,
+      reportExportFailure,
+      flushSegmentTextDrafts,
+      setError,
+    ],
   );
 
   const exportDeliveryDocx = useCallback(
@@ -165,8 +179,29 @@ export function useExportController(deps: ExportDeps): ExportApi {
             return;
           }
         }
+        let polishResult: ExportPolishResult | null = null;
+        if (request.llmPolish && exportModeSupportsLlmPolish(request.mode)) {
+          const block = resolveExportPolishBlockReason(normalized);
+          if (block) {
+            setError(block);
+            pushExportFailureActivity({
+              formatLabel: "交付 DOCX",
+              errorMessage: block,
+              projectId: current.id,
+              fileId: currentFileId,
+              fileLabel: exportContextLabel(),
+            });
+            return;
+          }
+          try {
+            polishResult = await fetchExportPolishResult(normalized);
+          } catch (e) {
+            reportExportFailure("交付 DOCX", e);
+            return;
+          }
+        }
         const plan = planDeliveryDocxExport({
-          request,
+          request: { ...request, polishResult },
           segments: normalized,
           editLogRows,
           currentFileId,
@@ -185,7 +220,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         }
         await exportDocxImpl(
           exportDefaultBasename("docx"),
-          current.name,
+          exportContextLabel(),
           request.mode,
           normalized,
           plan.docxOptions,

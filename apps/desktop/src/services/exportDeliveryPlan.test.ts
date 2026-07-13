@@ -1,27 +1,61 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
-import { planDeliveryDocxExport } from "./exportDeliveryPlan";
+import { fingerprintExportPolishSegments } from "./exportPolishPreviewCache";
+import type { ExportPolishResult } from "./exportDocxPolish";
 
-vi.mock("./exportPolishDelivery", () => ({
-  assessExportPolishReadiness: vi.fn(() => ({
-    canExport: false,
-    blockReason: "请先点击「生成预览」，确认修订后再导出。",
-    previewCurrent: false,
-  })),
-}));
+vi.mock("./exportPolishDelivery", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./exportPolishDelivery")>();
+  return {
+    ...actual,
+    assessExportPolishReadiness: vi.fn(() => ({
+      canExport: true,
+      blockReason: null,
+    })),
+  };
+});
+
+import { planDeliveryDocxExport } from "./exportDeliveryPlan";
 
 const segments: SegmentDto[] = [
   { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "第一句。" },
 ];
 
+function polishFor(rows: SegmentDto[]): ExportPolishResult {
+  return {
+    paragraphs: ["第一句。"],
+    correctedLines: ["第一句。"],
+    lineChanges: [],
+    breakAfterLine: [],
+    diagnostic: {
+      lines: [],
+      llmTypoLines: 0,
+      llmPunctLines: 0,
+      llmRejectedLines: 0,
+      typoInFinal: 0,
+      punctInFinal: 0,
+      singleCharRulesSkipped: 0,
+      acceptedSingleCharRules: 0,
+    },
+    diagnosticHint: null,
+    segmentsFingerprint: fingerprintExportPolishSegments(rows),
+    reconcileStats: {
+      llmCount: 1,
+      segmentCount: 1,
+      paddedFromBefore: 0,
+      mergedSegmentPairs: 0,
+      paddedLineIndices: [],
+    },
+  };
+}
+
 describe("planDeliveryDocxExport", () => {
-  it("blocks LLM polish export without preview", () => {
+  it("allows LLM polish export with polishResult (no preview gate)", () => {
     const plan = planDeliveryDocxExport({
       request: {
         mode: "clean",
         includeRevisionAppendix: false,
         llmPolish: true,
-        polishPreview: null,
+        polishResult: polishFor(segments),
       },
       segments,
       editLogRows: [],
@@ -29,9 +63,28 @@ describe("planDeliveryDocxExport", () => {
       exportMetaLine: undefined,
     });
 
+    expect(plan.ok).toBe(true);
+    if (plan.ok) {
+      expect(plan.docxOptions.polishedParagraphs).toEqual(["第一句。"]);
+    }
+  });
+
+  it("blocks polish export when polishResult missing", () => {
+    const plan = planDeliveryDocxExport({
+      request: {
+        mode: "clean",
+        includeRevisionAppendix: false,
+        llmPolish: true,
+        polishResult: null,
+      },
+      segments,
+      editLogRows: [],
+      currentFileId: "f1",
+      exportMetaLine: undefined,
+    });
     expect(plan.ok).toBe(false);
     if (!plan.ok) {
-      expect(plan.error).toContain("预览");
+      expect(plan.error).toMatch(/润色结果/);
     }
   });
 
