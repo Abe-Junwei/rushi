@@ -2,8 +2,8 @@
 
 ## 开始之前
 
-1. 阅读 [`README.md`](./README.md) 中的 Jieyu 文档链接。
-2. 阅读对齐策略与计划书中的阶段边界、禁止项与验收口径。
+1. 阅读 [`README.md`](./README.md) 的本地开发与常用命令。
+2. 阅读本仓 [`docs/architecture/`](./docs/architecture/) 与 [`docs/execution/`](./docs/execution/) 中的阶段边界、禁止项与验收口径。
 
 ## 代码与许可证
 
