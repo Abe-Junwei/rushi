@@ -32,6 +32,8 @@ export type WaveformZoomBarProps = {
   durationSec: number;
   selectedStartSec?: number;
   selectedEndSec?: number;
+  /** Packable spans for long-media median default highlight / reset. */
+  segmentSpansSec?: ReadonlyArray<number>;
   onFitSelection: () => void;
   onFitAll: () => void;
   onResetDefaultZoom: () => void;
@@ -52,6 +54,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   durationSec,
   selectedStartSec,
   selectedEndSec,
+  segmentSpansSec,
   onFitSelection,
   onFitAll,
   onResetDefaultZoom,
@@ -80,9 +83,19 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         durationSec,
         selectedStartSec,
         selectedEndSec,
+        segmentSpansSec,
         sliderRange,
       }),
-    [durationSec, layoutIntent, pxPerSec, selectedEndSec, selectedStartSec, sliderRange, viewportWidthPx],
+    [
+      durationSec,
+      layoutIntent,
+      pxPerSec,
+      selectedEndSec,
+      selectedStartSec,
+      segmentSpansSec,
+      sliderRange,
+      viewportWidthPx,
+    ],
   );
 
   const handleZoomIn = useCallback(() => {

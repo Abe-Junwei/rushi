@@ -40,8 +40,14 @@ export const MAX_LAYOUT_TIMELINE_WIDTH_PX = 1_048_576;
 /** 超过此时长：开文件默认用「目标可见秒数」，而非 fit-all↔max 几何平均。 */
 export const LONG_MEDIA_EDITING_DURATION_SEC = 30 * 60;
 
-/** 长音频默认：视口内约展示这么多秒（Audacity Zoom Normal 同类）。 */
+/** 长音频默认（无语段）：视口内约展示这么多秒（Audacity Zoom Normal 同类）。 */
 export const LONG_MEDIA_TARGET_VISIBLE_SEC = 45;
+
+/**
+ * 长音频默认（有 packable 语段）：中位语段目标绘制宽（px）。
+ * `px/s ≈ TARGET / median(spanSec)`，再 clamp 到滑块与 layout soft-cap。
+ */
+export const LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX = 80;
 
 /** ± 缩放：从默认 px/s 到 min/max 各需按键次数（对数对称步进）。 */
 export const WAVEFORM_ZOOM_STEPS_EACH_WAY = 5;

@@ -283,6 +283,20 @@ export function selectPackableSegments<T extends PlaceholderProbe>(
   return packableIndices.map((i) => segments[i]);
 }
 
+/** Packable segment time spans for long-media median default zoom. */
+export function collectPackableSegmentSpansSec(
+  segments: ReadonlyArray<PlaceholderProbe>,
+  durationSec: number,
+): number[] {
+  const packable = selectPackableSegments(segments, durationSec);
+  const spans: number[] = [];
+  for (const seg of packable) {
+    const span = Math.abs(seg.end_sec - seg.start_sec);
+    if (Number.isFinite(span) && span > 0) spans.push(span);
+  }
+  return spans;
+}
+
 export function clampSegmentTimeBounds(
   startSec: number,
   endSec: number,

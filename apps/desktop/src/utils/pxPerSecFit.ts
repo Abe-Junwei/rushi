@@ -9,6 +9,7 @@ import {
   FIT_ALL_FILL_GAP_RATIO,
   FIT_SELECTION_VIEWPORT_RATIO,
   LONG_MEDIA_EDITING_DURATION_SEC,
+  LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX,
   LONG_MEDIA_TARGET_VISIBLE_SEC,
   PX_PER_SEC_FIT_MIN,
   PX_PER_SEC_MAX,
@@ -20,6 +21,27 @@ import {
 } from "./pxPerSecConstants";
 
 export type { WaveformZoomLayoutIntent, WaveformZoomSliderRange };
+
+export type DefaultEditingPxPerSecOptions = {
+  /** Packable segment spans (end−start); median drives long-media default when present. */
+  segmentSpansSec?: ReadonlyArray<number>;
+};
+
+/** Median of positive finite numbers, or null when empty. */
+export function medianPositiveNumber(values: ReadonlyArray<number>): number | null {
+  const xs = values.filter((v) => Number.isFinite(v) && v > 0).slice().sort((a, b) => a - b);
+  if (xs.length === 0) return null;
+  const mid = Math.floor(xs.length / 2);
+  if (xs.length % 2 === 1) return xs[mid]!;
+  return (xs[mid - 1]! + xs[mid]!) / 2;
+}
+
+/** Stable signature for median-default auto-refit (count + median). */
+export function packableSegmentSpansSignature(spans: ReadonlyArray<number>): string {
+  const m = medianPositiveNumber(spans);
+  if (m == null) return "";
+  return `${spans.filter((v) => Number.isFinite(v) && v > 0).length}:${m.toFixed(3)}`;
+}
 
 /** 语段 fit 时左右留白（导航时判定「已能放下」用） */
 const VIEWPORT_FIT_HORIZONTAL_PADDING_PX = 24;
@@ -68,19 +90,28 @@ export function resolveWaveformZoomSliderRange(
 /**
  * 当前文件编辑默认 px/s。
  * - 短/中等时长：min/max 几何平均（±5 步各达 fit-all 与手动上限）。
- * - 长音频（≥ {@link LONG_MEDIA_EDITING_DURATION_SEC}）：视口约 {@link LONG_MEDIA_TARGET_VISIBLE_SEC}s。
+ * - 长音频（≥ {@link LONG_MEDIA_EDITING_DURATION_SEC}）：
+ *   - 有 packable 语段跨度 → `TARGET_SEGMENT_WIDTH / median(span)`（路线 D）；
+ *   - 否则视口约 {@link LONG_MEDIA_TARGET_VISIBLE_SEC}s。
  * 无视口/时长时回退 TIMELINE_PX_PER_SEC。
  */
 export function resolveDefaultEditingPxPerSec(
   viewportWidthPx: number,
   durationSec: number,
+  options?: DefaultEditingPxPerSecOptions,
 ): number {
   if (viewportWidthPx <= 0 || durationSec < 0.5) {
     return TIMELINE_PX_PER_SEC;
   }
   const range = resolveWaveformZoomSliderRange(viewportWidthPx, durationSec);
   if (durationSec >= LONG_MEDIA_EDITING_DURATION_SEC) {
-    const target = viewportWidthPx / LONG_MEDIA_TARGET_VISIBLE_SEC;
+    const medianSpan = medianPositiveNumber(options?.segmentSpansSec ?? []);
+    let target: number;
+    if (medianSpan != null && medianSpan > 0) {
+      target = LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX / medianSpan;
+    } else {
+      target = viewportWidthPx / LONG_MEDIA_TARGET_VISIBLE_SEC;
+    }
     return clampPxPerSecInSliderRange(target, range);
   }
   const geometric = Math.sqrt(range.minPxPerSec * range.maxPxPerSec);
@@ -98,13 +129,14 @@ export function resolveWaveformZoomStepRatio(range: WaveformZoomSliderRange): nu
 }
 
 /**
- * UI「重置」/ 换文件默认 px/s（per-file 几何默认；极短音频 min≈max 时即为 fit-all）。
+ * UI「重置」/ 换文件默认 px/s（per-file；极短音频 min≈max 时即为 fit-all）。
  */
 export function resolveDefaultResetPxPerSec(
   viewportWidthPx: number,
   durationSec: number,
+  options?: DefaultEditingPxPerSecOptions,
 ): number {
-  return resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec);
+  return resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec, options);
 }
 
 export function clampPxPerSecInSliderRange(

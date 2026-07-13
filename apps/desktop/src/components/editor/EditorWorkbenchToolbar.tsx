@@ -6,6 +6,7 @@ import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
+import { collectPackableSegmentSpansSec } from "../../utils/waveformSegmentBounds";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformPlaybackScrollFollowModeControl } from "../WaveformPlaybackScrollFollowMode";
@@ -74,6 +75,7 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   });
   const { viewportWidthPx } = tierViewport;
   const mediaDurationSec = tx.mediaDurationSec;
+  const packableSpansSec = collectPackableSegmentSpansSec(c.segments, mediaDurationSec);
   const stripDisabled = c.busy || !tx.isReady;
   // 段播中工具条是「全局出口」（撕 bound 续通读），不是暂停 — 勿显示暂停图标/文案。
   const globalTransportShowsPause = tx.isPlaying && !tx.isSelectedSegmentPlaying;
@@ -151,9 +153,14 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
                 durationSec={mediaDurationSec}
                 selectedStartSec={selectedSegment?.start_sec}
                 selectedEndSec={selectedSegment?.end_sec}
+                segmentSpansSec={packableSpansSec}
                 onFitSelection={tx.zoomToFitSelection}
                 onFitAll={tx.zoomToFitAll}
-                onResetDefaultZoom={() => tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec)}
+                onResetDefaultZoom={() =>
+                  tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec, {
+                    segmentSpansSec: packableSpansSec,
+                  })
+                }
               onPxPerSecChange={tx.setPxPerSecFromSlider}
               compactLayout={compactLayout}
             />

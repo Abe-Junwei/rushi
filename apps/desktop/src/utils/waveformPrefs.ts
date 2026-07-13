@@ -310,9 +310,13 @@ export function resetStoredEditorLayoutDefaults(): void {
 export function writeStoredWaveformPxPerSecForMedia(
   viewportWidthPx: number,
   durationSec: number,
+  options?: { segmentSpansSec?: ReadonlyArray<number> },
 ): void {
   try {
-    localStorage.setItem(LS_KEY, String(resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec)));
+    localStorage.setItem(
+      LS_KEY,
+      String(resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec, options)),
+    );
   } catch {
     /* noop */
   }

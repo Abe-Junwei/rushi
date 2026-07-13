@@ -123,6 +123,8 @@ export type WaveformZoomBarUiInput = {
   /** 有选中语段时传入，用于判定 fit-selection 视图。 */
   selectedStartSec?: number;
   selectedEndSec?: number;
+  /** Packable spans for long-media median default highlight. */
+  segmentSpansSec?: ReadonlyArray<number>;
   sliderRange?: WaveformZoomSliderRange;
 };
 
@@ -144,7 +146,9 @@ export type WaveformZoomBarUiState = {
 
 function resolveEditingDefaultPxPerSec(input: WaveformZoomBarUiInput): number {
   if (input.viewportWidthPx > 0 && input.durationSec >= 0.5) {
-    return resolveDefaultEditingPxPerSec(input.viewportWidthPx, input.durationSec);
+    return resolveDefaultEditingPxPerSec(input.viewportWidthPx, input.durationSec, {
+      segmentSpansSec: input.segmentSpansSec,
+    });
   }
   return TIMELINE_PX_PER_SEC;
 }
@@ -227,10 +231,16 @@ export function isNearEditingDefaultForMedia(
   pxPerSec: number,
   viewportWidthPx: number,
   durationSec: number,
+  options?: { segmentSpansSec?: ReadonlyArray<number> },
 ): boolean {
   return isNearEditingDefaultPxPerSec(
     pxPerSec,
-    resolveEditingDefaultPxPerSec({ pxPerSec, viewportWidthPx, durationSec }),
+    resolveEditingDefaultPxPerSec({
+      pxPerSec,
+      viewportWidthPx,
+      durationSec,
+      segmentSpansSec: options?.segmentSpansSec,
+    }),
   );
 }
 

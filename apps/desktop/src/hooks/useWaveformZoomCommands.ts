@@ -5,6 +5,7 @@ import {
   computeFitAllPxPerSec,
   resolveDefaultResetPxPerSec,
   TIMELINE_PX_PER_SEC,
+  type DefaultEditingPxPerSecOptions,
   type WaveformZoomLayoutIntent,
 } from "../utils/pxPerSec";
 import { isPxPerSecNearFitAll, isNearEditingDefaultForMedia } from "../utils/waveformZoomBarState";
@@ -59,14 +60,18 @@ export function useWaveformZoomCommands(deps: WaveformZoomCommandDeps) {
   }, [applyLayoutAndDraw, setLayoutIntentState]);
 
   const resetZoomForMedia = useCallback(
-    (viewportWidthPx: number, durationSec: number) => {
-      const px = resolveDefaultResetPxPerSec(viewportWidthPx, durationSec);
+    (
+      viewportWidthPx: number,
+      durationSec: number,
+      options?: DefaultEditingPxPerSecOptions,
+    ) => {
+      const px = resolveDefaultResetPxPerSec(viewportWidthPx, durationSec, options);
       let intent: WaveformZoomLayoutIntent = "manual";
       if (viewportWidthPx > 0 && durationSec >= 0.5) {
         const fitAll = computeFitAllPxPerSec(viewportWidthPx, durationSec);
         if (isPxPerSecNearFitAll(px, fitAll)) {
           intent = "fit-all";
-        } else if (isNearEditingDefaultForMedia(px, viewportWidthPx, durationSec)) {
+        } else if (isNearEditingDefaultForMedia(px, viewportWidthPx, durationSec, options)) {
           intent = "default";
         }
       } else if (Math.abs(px - TIMELINE_PX_PER_SEC) < 1e-6) {

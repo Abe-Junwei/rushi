@@ -17,6 +17,7 @@ import {
   resolveViewportFitLayoutPxPerSec,
   resolveDefaultEditingPxPerSec,
   resolveDefaultResetPxPerSec,
+  medianPositiveNumber,
   resolveWaveformZoomSliderRange,
   resolveWaveformZoomStepRatio,
   WAVEFORM_ZOOM_STEPS_EACH_WAY,
@@ -27,6 +28,7 @@ import {
   MAX_LAYOUT_TIMELINE_WIDTH_PX,
   MAX_WAVESURFER_PEAK_COLUMNS,
   LONG_MEDIA_TARGET_VISIBLE_SEC,
+  LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   quantizePxPerSecForPeaksLoad,
@@ -118,7 +120,7 @@ describe("resolveDefaultEditingPxPerSec", () => {
     expect(fitAll).toBeGreaterThan(PX_PER_SEC_MAX);
   });
 
-  it("uses target visible seconds for long media instead of geometric mean", () => {
+  it("uses target visible seconds for long media without spans", () => {
     const dur = 4 * 3600;
     const fitAll = computeFitAllPxPerSec(1200, dur);
     const px = resolveDefaultEditingPxPerSec(1200, dur);
@@ -126,6 +128,22 @@ describe("resolveDefaultEditingPxPerSec", () => {
     expect(px).toBeCloseTo(1200 / LONG_MEDIA_TARGET_VISIBLE_SEC, 4);
     expect(px * 2).toBeGreaterThanOrEqual(40);
     expect(px).toBeLessThan(PX_PER_SEC_MAX);
+  });
+
+  it("uses median segment span for long media when spans are provided", () => {
+    const dur = 4 * 3600;
+    const spans = [1, 2, 2, 8]; // median 2
+    const px = resolveDefaultEditingPxPerSec(1200, dur, { segmentSpansSec: spans });
+    expect(px).toBeCloseTo(LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX / 2, 4);
+    expect(px).toBeGreaterThan(1200 / LONG_MEDIA_TARGET_VISIBLE_SEC);
+  });
+
+  it("falls back to visible-seconds default when spans are empty", () => {
+    const dur = 4 * 3600;
+    expect(resolveDefaultEditingPxPerSec(1200, dur, { segmentSpansSec: [] })).toBeCloseTo(
+      1200 / LONG_MEDIA_TARGET_VISIBLE_SEC,
+      4,
+    );
   });
 
   it("keeps geometric mean for medium media under long-media threshold", () => {
@@ -136,6 +154,14 @@ describe("resolveDefaultEditingPxPerSec", () => {
 
   it("falls back to TIMELINE_PX_PER_SEC without media context", () => {
     expect(resolveDefaultEditingPxPerSec(0, 0)).toBe(TIMELINE_PX_PER_SEC);
+  });
+});
+
+describe("medianPositiveNumber", () => {
+  it("returns null for empty and median for odd/even lists", () => {
+    expect(medianPositiveNumber([])).toBeNull();
+    expect(medianPositiveNumber([3, 1, 2])).toBe(2);
+    expect(medianPositiveNumber([4, 1, 2, 3])).toBe(2.5);
   });
 });
 
