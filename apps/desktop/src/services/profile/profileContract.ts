@@ -20,10 +20,14 @@ import {
   writeStoredLocalAsrRecognitionLanguage,
   normalizeLocalAsrRecognitionLanguage,
 } from "../asr/localAsrRecognitionLanguage";
-import { applyOfficeAccentTheme, readStoredOfficeAccentThemeId } from "../ui/officeAccentTheme";
+import {
+  applyOfficeAccentColor,
+  readStoredOfficeAccentColor,
+} from "../ui/officeAccentTheme";
 import { applyOfficeShellTheme, readStoredOfficeShellThemeId } from "../ui/officeShellTheme";
-import { isOfficeAccentThemeId, type OfficeAccentThemeId } from "../../config/officeAccentThemes";
+import { isOfficeAccentThemeId, resolveAccentHexFromLegacyId } from "../../config/officeAccentThemes";
 import { isOfficeShellThemeId, type OfficeShellThemeId } from "../../config/officeShellThemes";
+import { normalizeAccentHex } from "../../utils/deriveAccentRamp";
 import type { WaveformPlaybackScrollFollowMode } from "../../utils/waveformPlaybackScrollFollow";
 import {
   clampTranscriptFontPx,
@@ -54,7 +58,10 @@ export type SettingsProfileEditorSection = {
   transcript_font_px?: number;
   waveform_height_px?: number;
   shell_theme?: OfficeShellThemeId;
-  accent_theme?: OfficeAccentThemeId;
+  /** Free accent `#RRGGBB` (Obsidian-style). */
+  accent_color?: string;
+  /** @deprecated Prefer {@link accent_color}; legacy Fluent preset id. */
+  accent_theme?: string;
 };
 
 export type SettingsProfileLocalAsrSection = {
@@ -100,7 +107,7 @@ function buildProfileEditorSection(): SettingsProfileEditorSection {
     transcript_font_px: resolveStoredTranscriptFontPx(),
     waveform_height_px: resolveStoredWaveformHeightPx(),
     shell_theme: readStoredOfficeShellThemeId(),
-    accent_theme: readStoredOfficeAccentThemeId(),
+    accent_color: readStoredOfficeAccentColor(),
   };
 }
 
@@ -165,8 +172,11 @@ function applyProfileEditorSection(editor: SettingsProfileEditorSection | undefi
   if (editor.shell_theme && isOfficeShellThemeId(editor.shell_theme)) {
     applyOfficeShellTheme(editor.shell_theme);
   }
-  if (editor.accent_theme && isOfficeAccentThemeId(editor.accent_theme)) {
-    applyOfficeAccentTheme(editor.accent_theme);
+  const accentFromColor = normalizeAccentHex(editor.accent_color);
+  if (accentFromColor) {
+    applyOfficeAccentColor(accentFromColor);
+  } else if (editor.accent_theme && isOfficeAccentThemeId(editor.accent_theme)) {
+    applyOfficeAccentColor(resolveAccentHexFromLegacyId(editor.accent_theme));
   }
   notifyWaveformPrefsChanged();
 }

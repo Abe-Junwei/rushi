@@ -4,7 +4,7 @@ import {
   isOfficeShellThemeId,
   type OfficeShellThemeId,
 } from "../../config/officeShellThemes";
-import { readStoredOfficeAccentThemeId, applyOfficeAccentTheme } from "./officeAccentTheme";
+import { readStoredOfficeAccentColor, applyOfficeAccentColor } from "./officeAccentTheme";
 
 export const OFFICE_SHELL_THEME_STORAGE_KEY = "rushi.office-shell-theme.v1";
 
@@ -47,7 +47,7 @@ function applyShellThemeToRoot(root: HTMLElement, id: OfficeShellThemeId): void 
 export function initOfficeShellTheme(): OfficeShellThemeId {
   const id = readStoredOfficeShellThemeId();
   applyOfficeShellTheme(id, { reapplyAccent: false });
-  applyOfficeAccentTheme(readStoredOfficeAccentThemeId());
+  applyOfficeAccentColor(readStoredOfficeAccentColor());
   return id;
 }
 
@@ -60,7 +60,7 @@ export function applyOfficeShellTheme(
   applyShellThemeToRoot(document.documentElement, id);
   writeStoredOfficeShellThemeId(id);
   if (reapplyAccent) {
-    applyOfficeAccentTheme(readStoredOfficeAccentThemeId());
+    applyOfficeAccentColor(readStoredOfficeAccentColor());
   }
   notifyOfficeShellThemeChanged();
 }

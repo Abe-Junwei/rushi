@@ -34,7 +34,8 @@ describe("EnvPreferencesPanel", () => {
     expect(screen.getByRole("heading", { name: "外观" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "转写与波形" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "界面主题" })).toBeTruthy();
-    expect(screen.getByRole("combobox", { name: "主题色" })).toBeTruthy();
+    expect(screen.getByLabelText("主题色")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "重置主题色" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "跳段后 loop 播新语段" })).toBeTruthy();
   });
 
@@ -44,12 +45,18 @@ describe("EnvPreferencesPanel", () => {
     expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("0");
   });
 
-  it("persists accent theme from custom select", () => {
+  it("persists accent color from color input", () => {
     render(<EnvPreferencesPanel />);
-    fireEvent.click(screen.getByRole("combobox", { name: "主题色" }));
-    const listbox = screen.getByRole("listbox", { name: "主题色" });
-    fireEvent.click(within(listbox).getByRole("option", { name: "蓝色" }));
-    expect(localStorage.getItem("rushi.office-accent-theme.v1")).toBe("blue");
+    const input = screen.getByLabelText("主题色");
+    fireEvent.change(input, { target: { value: "#0078d4" } });
+    expect(localStorage.getItem("rushi.office-accent-color.v2")).toBe("#0078d4");
+  });
+
+  it("resets accent color to brand", () => {
+    render(<EnvPreferencesPanel />);
+    fireEvent.change(screen.getByLabelText("主题色"), { target: { value: "#107c10" } });
+    fireEvent.click(screen.getByRole("button", { name: "重置主题色" }));
+    expect(localStorage.getItem("rushi.office-accent-color.v2")).toBe("#c58a43");
   });
 
   it("persists playback rate from custom select", () => {

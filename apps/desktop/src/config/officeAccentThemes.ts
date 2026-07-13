@@ -135,3 +135,13 @@ export const DEFAULT_OFFICE_ACCENT_THEME_ID: OfficeAccentThemeId = "brand";
 export function isOfficeAccentThemeId(value: string): value is OfficeAccentThemeId {
   return OFFICE_ACCENT_THEME_PRESETS.some((preset) => preset.id === value);
 }
+
+/** Map legacy v1 preset id (incl. purple→indigo) to base hex for v2 migration. */
+export function resolveAccentHexFromLegacyId(id: string): string {
+  const normalized = id === "purple" ? "indigo" : id;
+  if (!isOfficeAccentThemeId(normalized)) {
+    return BRAND_OFFICE_ACCENT.base;
+  }
+  const preset = OFFICE_ACCENT_THEME_PRESETS.find((p) => p.id === normalized);
+  return preset?.base ?? BRAND_OFFICE_ACCENT.base;
+}

@@ -1,10 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-import {
-  isOfficeAccentThemeId,
-  OFFICE_ACCENT_THEME_PRESETS,
-  type OfficeAccentThemeId,
-} from "../config/officeAccentThemes";
+import { CONTROL_BTN_GHOST } from "../config/controlStyles";
 import {
   isOfficeShellThemeId,
   OFFICE_SHELL_THEME_PRESETS,
@@ -12,8 +8,9 @@ import {
 } from "../config/officeShellThemes";
 import { ENV_PANEL_FORM_FIELD_CLASS } from "../utils/environmentPanelNav";
 import {
-  applyOfficeAccentTheme,
-  getOfficeAccentThemeSnapshot,
+  applyOfficeAccentColor,
+  getOfficeAccentColorSnapshot,
+  resetOfficeAccentColor,
   subscribeOfficeAccentTheme,
 } from "../services/ui/officeAccentTheme";
 import {
@@ -21,7 +18,9 @@ import {
   getOfficeShellThemeSnapshot,
   subscribeOfficeShellTheme,
 } from "../services/ui/officeShellTheme";
+import { isBrandAccentHex } from "../utils/deriveAccentRamp";
 import { EnvPanelSelect, type EnvPanelSelectOption } from "./EnvPanelSelect";
+import { CspLayout } from "./CspLayout";
 
 function ShellThemePreview({ id }: { id: OfficeShellThemeId }) {
   return (
@@ -35,18 +34,7 @@ function ShellThemePreview({ id }: { id: OfficeShellThemeId }) {
   );
 }
 
-function AccentThemePreview({ id }: { id: OfficeAccentThemeId }) {
-  return <span className={`accent-theme-swatch--${id} h-5 w-5 shrink-0 rounded-full`} aria-hidden />;
-}
-
 const SHELL_OPTIONS: EnvPanelSelectOption<OfficeShellThemeId>[] = OFFICE_SHELL_THEME_PRESETS.map(
-  (preset) => ({
-    id: preset.id,
-    label: preset.label,
-  }),
-);
-
-const ACCENT_OPTIONS: EnvPanelSelectOption<OfficeAccentThemeId>[] = OFFICE_ACCENT_THEME_PRESETS.map(
   (preset) => ({
     id: preset.id,
     label: preset.label,
@@ -59,11 +47,12 @@ export function EnvAppearanceSections() {
     getOfficeShellThemeSnapshot,
     getOfficeShellThemeSnapshot,
   );
-  const activeAccentId = useSyncExternalStore(
+  const activeAccentHex = useSyncExternalStore(
     subscribeOfficeAccentTheme,
-    getOfficeAccentThemeSnapshot,
-    getOfficeAccentThemeSnapshot,
+    getOfficeAccentColorSnapshot,
+    getOfficeAccentColorSnapshot,
   );
+  const isBrand = isBrandAccentHex(activeAccentHex);
 
   return (
     <div className="grid gap-5 sm:grid-cols-2">
@@ -83,16 +72,33 @@ export function EnvAppearanceSections() {
 
       <div className={ENV_PANEL_FORM_FIELD_CLASS}>
         <span className={PANEL_TYPOGRAPHY.fieldLabel}>主题色</span>
-        <EnvPanelSelect
-          id="pref-accent-theme"
-          aria-label="主题色"
-          value={activeAccentId}
-          options={ACCENT_OPTIONS}
-          onChange={(next) => {
-            if (isOfficeAccentThemeId(next)) applyOfficeAccentTheme(next);
-          }}
-          renderPreview={(option) => <AccentThemePreview id={option.id} />}
-        />
+        <div className="flex items-center gap-2">
+          <label className="relative inline-flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center">
+            <CspLayout
+              as="span"
+              aria-hidden
+              className="pointer-events-none absolute inset-0 rounded-full border border-notion-border shadow-none"
+              layout={{ backgroundColor: activeAccentHex }}
+            />
+            <input
+              id="pref-accent-color"
+              type="color"
+              aria-label="主题色"
+              value={activeAccentHex}
+              onChange={(event) => applyOfficeAccentColor(event.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </label>
+          <button
+            type="button"
+            className={CONTROL_BTN_GHOST}
+            aria-label="重置主题色"
+            disabled={isBrand}
+            onClick={() => resetOfficeAccentColor()}
+          >
+            重置
+          </button>
+        </div>
       </div>
     </div>
   );
