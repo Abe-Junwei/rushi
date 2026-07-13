@@ -43,36 +43,66 @@ export function applySegmentDraftOverlayImperative(
   },
   overlayRoot: ParentNode | null,
 ): boolean {
-  const el = overlaySegmentNode(overlayRoot, draft.idx);
-  if (!el) return false;
-  const geom = segmentOverlayGeometry({
-    startSec: draft.startSec,
-    endSec: draft.endSec,
-    timelineWidthPx: args.timelineWidthPx,
-    durationSec: args.durationSec,
-    lane: args.laneByIndex[draft.idx] ?? 0,
-    laneCount: args.laneCount,
-    containerHeightPx: args.layoutHeightPx,
-  });
-  setCspLayoutRules(
-    el,
-    {
-      left: geom.leftPx,
-      width: geom.widthPx,
-      top: geom.topPx,
-      height: geom.heightPx,
-    },
-    WAVEFORM_SEGMENT_DRAFT_LAYOUT_OWNER,
-  );
-  return true;
+  let applied = false;
+  const applyOne = (idx: number, startSec: number, endSec: number) => {
+    const el = overlaySegmentNode(overlayRoot, idx);
+    if (!el) return false;
+    const geom = segmentOverlayGeometry({
+      startSec,
+      endSec,
+      timelineWidthPx: args.timelineWidthPx,
+      durationSec: args.durationSec,
+      lane: args.laneByIndex[idx] ?? 0,
+      laneCount: args.laneCount,
+      containerHeightPx: args.layoutHeightPx,
+    });
+    setCspLayoutRules(
+      el,
+      {
+        left: geom.leftPx,
+        width: geom.widthPx,
+        top: geom.topPx,
+        height: geom.heightPx,
+        display: "block",
+      },
+      WAVEFORM_SEGMENT_DRAFT_LAYOUT_OWNER,
+    );
+    return true;
+  };
+
+  applied = applyOne(draft.idx, draft.startSec, draft.endSec) || applied;
+  for (const patch of draft.neighborPatches ?? []) {
+    applied = applyOne(patch.idx, patch.startSec, patch.endSec) || applied;
+  }
+  for (const delIdx of draft.pendingDeleteIndices ?? []) {
+    const el = overlaySegmentNode(overlayRoot, delIdx);
+    if (!el) continue;
+    setCspLayoutRules(
+      el,
+      { display: "none" },
+      WAVEFORM_SEGMENT_DRAFT_LAYOUT_OWNER,
+    );
+    applied = true;
+  }
+  return applied;
 }
 
 export function clearSegmentDraftOverlayLayout(
-  idx: number | null,
+  draft: SegmentOverlayDraft | number | null,
   overlayRoot: ParentNode | null,
 ): void {
-  const el = overlaySegmentNode(overlayRoot, idx);
-  if (el) clearCspLayoutRules(el, WAVEFORM_SEGMENT_DRAFT_LAYOUT_OWNER);
+  const indices = new Set<number>();
+  if (typeof draft === "number") {
+    indices.add(draft);
+  } else if (draft) {
+    indices.add(draft.idx);
+    for (const p of draft.neighborPatches ?? []) indices.add(p.idx);
+    for (const d of draft.pendingDeleteIndices ?? []) indices.add(d);
+  }
+  for (const idx of indices) {
+    const el = overlaySegmentNode(overlayRoot, idx);
+    if (el) clearCspLayoutRules(el, WAVEFORM_SEGMENT_DRAFT_LAYOUT_OWNER);
+  }
 }
 
 export function applySegmentDraftPreviewFallback(

@@ -39,7 +39,15 @@ export type WaveformSegmentOverlayProps = {
   getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
-  onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
+  onBoundsCommit: (
+    idx: number,
+    startSec: number,
+    endSec: number,
+    options?: {
+      neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+      deleteIndices?: number[];
+    },
+  ) => void;
   onCreateRange?: (
     startSec: number,
     endSec: number,

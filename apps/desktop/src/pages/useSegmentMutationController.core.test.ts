@@ -196,4 +196,71 @@ describe("useSegmentMutationController core", () => {
 
     expect(result.current.segments[0]?.text).toBe("hello");
   });
+
+  it("updateSegmentBounds eat pushes neighbor and undoes in one step", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" }),
+        makeSeg({ text: "b", start_sec: 1, end_sec: 2, uid: "b" }),
+      ]),
+    );
+
+    act(() =>
+      result.current.mutations.updateSegmentBounds(0, 0, 1.4, "commit", {
+        neighborPatches: [{ idx: 1, startSec: 1.4, endSec: 2 }],
+      }),
+    );
+
+    expect(result.current.segments[0]?.end_sec).toBe(1.4);
+    expect(result.current.segments[1]?.start_sec).toBe(1.4);
+
+    act(() => result.current.mutations.undo());
+    expect(result.current.segments[0]?.end_sec).toBe(1);
+    expect(result.current.segments[1]?.start_sec).toBe(1);
+  });
+
+  it("updateSegmentBounds eat deletes neighbor below min span", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" }),
+        makeSeg({ text: "b", start_sec: 1, end_sec: 2, uid: "b" }),
+        makeSeg({ text: "c", start_sec: 2, end_sec: 3, uid: "c" }),
+      ]),
+    );
+
+    act(() =>
+      result.current.mutations.updateSegmentBounds(0, 0, 1.98, "commit", {
+        deleteIndices: [1],
+      }),
+    );
+
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.segments[0]?.end_sec).toBe(1.98);
+    expect(result.current.segments[1]?.uid).toBe("c");
+  });
+
+  it("updateSegmentBounds eat-delete undoes structure and selection in one step", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" }),
+        makeSeg({ text: "b", start_sec: 1, end_sec: 2, uid: "b" }),
+        makeSeg({ text: "c", start_sec: 2, end_sec: 3, uid: "c" }),
+      ]),
+    );
+
+    act(() => result.current.setSelectedIdx(1));
+    act(() =>
+      result.current.mutations.updateSegmentBounds(0, 0, 1.98, "commit", {
+        deleteIndices: [1],
+      }),
+    );
+
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.selectedIdx).toBe(1);
+    expect(result.current.segments[1]?.uid).toBe("c");
+
+    act(() => result.current.mutations.undo());
+    expect(result.current.segments).toHaveLength(3);
+    expect(result.current.segments[1]?.uid).toBe("b");
+  });
 });

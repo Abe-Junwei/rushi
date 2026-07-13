@@ -49,7 +49,12 @@ export function useWaveformSegmentOverlay(
     getSelectedIndices?: () => ReadonlySet<number>;
     onBeginBoundsEdit?: () => void;
     onFocusWaveformShell?: () => void;
-    onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
+    onBoundsCommit: (
+      idx: number,
+      startSec: number,
+      endSec: number,
+      options?: { neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>; deleteIndices?: number[] },
+    ) => void;
     onCreateRange?: (
       startSec: number,
       endSec: number,
@@ -70,7 +75,7 @@ export function useWaveformSegmentOverlay(
   argsRef.current = args;
 
   const [segmentDraft, setSegmentDraft] = useState<SegmentOverlayDraft | null>(null);
-  const activeDraftIdxRef = useRef<number | null>(null);
+  const activeDraftRef = useRef<SegmentOverlayDraft | null>(null);
 
   const segmentDraftIdx = segmentDraft?.idx ?? null;
   const createPreviewInitializedRef = useRef(false);
@@ -155,10 +160,28 @@ export function useWaveformSegmentOverlay(
     (draft: SegmentOverlayDraft | null) => {
       const overlayRoot = overlayRootFromCreatePreview(createPreviewRef);
       if (draft) {
-        if (activeDraftIdxRef.current != null && activeDraftIdxRef.current !== draft.idx) {
-          clearSegmentDraftOverlayLayout(activeDraftIdxRef.current, overlayRoot);
+        const prev = activeDraftRef.current;
+        if (prev && prev.idx !== draft.idx) {
+          clearSegmentDraftOverlayLayout(prev, overlayRoot);
+        } else if (prev) {
+          // Clear neighbor/delete indices that are no longer in the new draft.
+          const nextTouched = new Set<number>([
+            draft.idx,
+            ...(draft.neighborPatches?.map((p) => p.idx) ?? []),
+            ...(draft.pendingDeleteIndices ?? []),
+          ]);
+          const stale: number[] = [];
+          for (const p of prev.neighborPatches ?? []) {
+            if (!nextTouched.has(p.idx)) stale.push(p.idx);
+          }
+          for (const d of prev.pendingDeleteIndices ?? []) {
+            if (!nextTouched.has(d)) stale.push(d);
+          }
+          for (const idx of stale) {
+            clearSegmentDraftOverlayLayout(idx, overlayRoot);
+          }
         }
-        activeDraftIdxRef.current = draft.idx;
+        activeDraftRef.current = draft;
         const appliedExistingOverlay = applySegmentDraftOverlayImperative(
           draft,
           argsRef.current,
@@ -182,8 +205,8 @@ export function useWaveformSegmentOverlay(
         }
         setSegmentDraft(draft);
       } else {
-        clearSegmentDraftOverlayLayout(activeDraftIdxRef.current, overlayRoot);
-        activeDraftIdxRef.current = null;
+        clearSegmentDraftOverlayLayout(activeDraftRef.current, overlayRoot);
+        activeDraftRef.current = null;
         hidePreviewFallback(createPreviewRef.current);
         setSegmentDraft(null);
       }

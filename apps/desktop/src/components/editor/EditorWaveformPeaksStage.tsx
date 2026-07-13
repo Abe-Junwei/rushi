@@ -215,12 +215,12 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                 onClearMultiSelection={c.clearMultiSelection}
                 isMultiSegmentSelection={() => c.isMultiSegmentSelection}
                 onFocusWaveformShell={tx.focusWaveformShell}
-                onBoundsCommit={(idx, startSec, endSec) => {
+                onBoundsCommit={(idx, startSec, endSec, options) => {
                   const clamped =
                     mediaDurationSec > 0
                       ? clampSegmentTimeBounds(startSec, endSec, mediaDurationSec)
                       : { startSec, endSec };
-                  c.updateSegmentBounds(idx, clamped.startSec, clamped.endSec, "commit");
+                  c.updateSegmentBounds(idx, clamped.startSec, clamped.endSec, "commit", options);
                 }}
                 onCreateRange={(lo, hi, options) => {
                   const idx = c.insertSegmentFromTimeRange(

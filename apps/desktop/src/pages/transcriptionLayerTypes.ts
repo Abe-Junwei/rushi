@@ -29,7 +29,16 @@ export type TranscriptionLayerInput = {
   requestDeleteSelectedIndices: (indices: number[]) => void;
   undo: () => void;
   redo: () => void;
-  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
+  updateSegmentBounds: (
+    idx: number,
+    startSec: number,
+    endSec: number,
+    phase?: "live" | "commit",
+    options?: {
+      neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+      deleteIndices?: number[];
+    },
+  ) => void;
   insertSegmentFromTimeRange: (
     startSec: number,
     endSec: number,

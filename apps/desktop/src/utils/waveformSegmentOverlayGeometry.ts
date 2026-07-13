@@ -7,6 +7,8 @@ export type SegmentOverlayDraft = {
   idx: number;
   startSec: number;
   endSec: number;
+  neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+  pendingDeleteIndices?: number[];
 };
 
 export type CreateRangePreview = {
@@ -37,16 +39,23 @@ export type OverlayDragState = {
   lastFinalizedBounds?: { startSec: number; endSec: number };
 };
 
-/** 语段条渲染边界：拖拽 draft 优先于 committed segment。 */
+  /** 语段条渲染边界：拖拽 draft 优先于 committed segment。 */
 export function resolveSegmentBoundsAt(
   idx: number,
   segments: SegmentDto[],
   segmentDraft: SegmentOverlayDraft | null,
 ): { startSec: number; endSec: number } | null {
+  if (segmentDraft?.pendingDeleteIndices?.includes(idx)) {
+    return null;
+  }
   const seg = segments[idx];
   if (!seg) return null;
   if (segmentDraft?.idx === idx) {
     return { startSec: segmentDraft.startSec, endSec: segmentDraft.endSec };
+  }
+  const patch = segmentDraft?.neighborPatches?.find((p) => p.idx === idx);
+  if (patch) {
+    return { startSec: patch.startSec, endSec: patch.endSec };
   }
   return { startSec: seg.start_sec, endSec: seg.end_sec };
 }

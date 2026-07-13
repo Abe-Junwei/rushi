@@ -7,13 +7,23 @@ export type SegmentOverlayTapGesture = {
   sessionId?: string;
 };
 
+export type SegmentBoundsCommitOptions = {
+  neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+  deleteIndices?: number[];
+};
+
 export type OverlayPointerActions = {
   onSegmentPointerTap: (
     segmentIdx: number,
     pointerTimeSec: number,
     tapGesture?: SegmentOverlayTapGesture,
   ) => void;
-  onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
+  onBoundsCommit: (
+    idx: number,
+    startSec: number,
+    endSec: number,
+    options?: SegmentBoundsCommitOptions,
+  ) => void;
   onCreateRange?: (
     startSec: number,
     endSec: number,
@@ -101,10 +111,18 @@ export function applyOverlayPointerUpIntent(
       suppressClick();
       actions.onSegmentPointerTap(intent.segmentIdx, intent.pointerTimeSec, tapGesture);
       break;
-    case "commit-bounds":
+    case "commit-bounds": {
       suppressClick();
-      actions.onBoundsCommit(intent.segmentIdx, intent.startSec, intent.endSec);
+      if (intent.neighborPatches?.length || intent.deleteIndices?.length) {
+        actions.onBoundsCommit(intent.segmentIdx, intent.startSec, intent.endSec, {
+          neighborPatches: intent.neighborPatches,
+          deleteIndices: intent.deleteIndices,
+        });
+      } else {
+        actions.onBoundsCommit(intent.segmentIdx, intent.startSec, intent.endSec);
+      }
       break;
+    }
     case "create-range":
       suppressClick();
       actions.onCreateRange?.(intent.startSec, intent.endSec, {

@@ -109,7 +109,16 @@ export interface ProjectLifecycleApi {
   redo: () => void;
   updateSegmentText: (idx: number, text: string) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
-  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
+  updateSegmentBounds: (
+    idx: number,
+    startSec: number,
+    endSec: number,
+    phase?: "live" | "commit",
+    options?: {
+      neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+      deleteIndices?: number[];
+    },
+  ) => void;
   splitAtSelection: () => void;
   splitAtPlayhead: (timeSec: number) => void;
   mergeWithNext: () => void;

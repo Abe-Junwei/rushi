@@ -4,6 +4,7 @@ import {
   finalizeSegmentOverlayBounds,
   findSegmentInsertIndexByStart,
   resolveInsertAfterSpan,
+  resolveResizeEatAgainstNeighbors,
   segmentBoundsMeetMinSpan,
 } from "./segmentGapPolicy";
 
@@ -60,5 +61,112 @@ describe("segmentGapPolicy", () => {
   it("segmentBoundsMeetMinSpan checks min span", () => {
     expect(segmentBoundsMeetMinSpan(0, 0.06)).toBe(true);
     expect(segmentBoundsMeetMinSpan(0, 0.01)).toBe(false);
+  });
+
+  it("resolveResizeEatAgainstNeighbors pushes next start when resize-end crosses", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 1 },
+      { start_sec: 1, end_sec: 2 },
+    ];
+    const out = resolveResizeEatAgainstNeighbors({
+      mode: "resize-end",
+      activeIdx: 0,
+      rawStartSec: 0,
+      rawEndSec: 1.4,
+      segments: segs,
+      minSpanSec: 0.05,
+      durationSec: 10,
+    });
+    expect(out).toEqual({
+      active: { startSec: 0, endSec: 1.4 },
+      neighborPatches: [{ idx: 1, startSec: 1.4, endSec: 2 }],
+      deleteIndices: [],
+    });
+  });
+
+  it("resolveResizeEatAgainstNeighbors deletes next when below minSpan", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 1 },
+      { start_sec: 1, end_sec: 2 },
+    ];
+    const out = resolveResizeEatAgainstNeighbors({
+      mode: "resize-end",
+      activeIdx: 0,
+      rawStartSec: 0,
+      rawEndSec: 1.98,
+      segments: segs,
+      minSpanSec: 0.05,
+      durationSec: 10,
+    });
+    expect(out).toEqual({
+      active: { startSec: 0, endSec: 1.98 },
+      neighborPatches: [],
+      deleteIndices: [1],
+    });
+  });
+
+  it("resolveResizeEatAgainstNeighbors chains delete then push on further neighbor", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 1 },
+      { start_sec: 1, end_sec: 1.5 },
+      { start_sec: 1.5, end_sec: 3 },
+    ];
+    const out = resolveResizeEatAgainstNeighbors({
+      mode: "resize-end",
+      activeIdx: 0,
+      rawStartSec: 0,
+      rawEndSec: 2,
+      segments: segs,
+      minSpanSec: 0.05,
+      durationSec: 10,
+    });
+    expect(out).toEqual({
+      active: { startSec: 0, endSec: 2 },
+      neighborPatches: [{ idx: 2, startSec: 2, endSec: 3 }],
+      deleteIndices: [1],
+    });
+  });
+
+  it("resolveResizeEatAgainstNeighbors pushes prev end on resize-start", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 1 },
+      { start_sec: 1, end_sec: 2 },
+    ];
+    const out = resolveResizeEatAgainstNeighbors({
+      mode: "resize-start",
+      activeIdx: 1,
+      rawStartSec: 0.6,
+      rawEndSec: 2,
+      segments: segs,
+      minSpanSec: 0.05,
+      durationSec: 10,
+    });
+    expect(out).toEqual({
+      active: { startSec: 0.6, endSec: 2 },
+      neighborPatches: [{ idx: 0, startSec: 0, endSec: 0.6 }],
+      deleteIndices: [],
+    });
+  });
+
+  it("resolveResizeEatAgainstNeighbors move mode only clamps", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 1 },
+      { start_sec: 1, end_sec: 2 },
+      { start_sec: 2, end_sec: 3 },
+    ];
+    const out = resolveResizeEatAgainstNeighbors({
+      mode: "move",
+      activeIdx: 1,
+      rawStartSec: 0.5,
+      rawEndSec: 1.5,
+      segments: segs,
+      minSpanSec: 0.05,
+      durationSec: 10,
+    });
+    expect(out).toEqual({
+      active: { startSec: 1, endSec: 1.5 },
+      neighborPatches: [],
+      deleteIndices: [],
+    });
   });
 });

@@ -6,8 +6,9 @@ import {
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
 import {
-  finalizeSegmentOverlayBounds,
+  finalizeSegmentOverlayBoundsEat,
   SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
+  type ResizeEatResult,
 } from "../utils/segmentGapPolicy";
 import { resolveCreateOverlapPolicy, type SegmentOverlayPointerModifiers } from "../utils/segmentOverlayModifiers";
 import { resolveCreateRangeForPolicy } from "../utils/segmentTimeRange";
@@ -80,22 +81,18 @@ export function finalizeEditDragBounds(
   bounds: { startSec: number; endSec: number },
   snapEnabled: boolean,
   minSpanSec: number,
-): { startSec: number; endSec: number } | null {
+): ResizeEatResult | null {
   if (drag.mode === "lasso") return null;
   const { targets, thresholdSec } = snapTargetsForOverlay(a, drag.segmentIdx);
-  const prev = a.segments[drag.segmentIdx - 1];
-  const next = a.segments[drag.segmentIdx + 1];
-  return finalizeSegmentOverlayBounds({
+  return finalizeSegmentOverlayBoundsEat({
     bounds,
     mode: drag.mode,
+    activeIdx: drag.segmentIdx,
+    segments: a.segments,
     targets,
     thresholdSec,
     snapEnabled,
     durationSec: a.durationSec,
-    neighbors: {
-      prevEndSec: prev?.end_sec,
-      nextStartSec: next?.start_sec,
-    },
     minSpanSec,
   });
 }
@@ -203,9 +200,9 @@ export function finishWaveformEditDrag(input: {
   let clamped = drag.lastFinalizedBounds ?? boundsForOverlayDrag(drag, timeSec, a.durationSec);
   if (!clamped) return;
 
-  const finalized = finalizeEditDragBounds(a, drag, clamped, snapEnabled, WAVEFORM_SEGMENT_MIN_SPAN_SEC);
-  if (!finalized) return;
-  clamped = finalized;
+  const eat = finalizeEditDragBounds(a, drag, clamped, snapEnabled, WAVEFORM_SEGMENT_MIN_SPAN_SEC);
+  if (!eat) return;
+  clamped = eat.active;
 
   const intent = resolveOverlayPointerUpIntent({
     mode: drag.mode,
@@ -217,6 +214,8 @@ export function finishWaveformEditDrag(input: {
     initialEndSec: drag.initialEndSec,
     clampedStartSec: clamped.startSec,
     clampedEndSec: clamped.endSec,
+    neighborPatches: eat.neighborPatches,
+    deleteIndices: eat.deleteIndices,
   });
   if (intent.kind === "select-segment") {
     if (ev.shiftKey) {
@@ -272,14 +271,26 @@ export function updateWaveformOverlayDragMove(input: {
   if (!drag.moved) return;
   let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
   if (!clamped) return;
-  clamped =
+  const eat =
     finalizeEditDragBounds(
       a,
       drag,
       clamped,
       snapEnabled,
-      SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
-    ) ?? clamped;
+      // Match commit threshold so push-vs-delete preview does not flip on pointerup.
+      WAVEFORM_SEGMENT_MIN_SPAN_SEC,
+    ) ?? null;
+  if (eat) {
+    clamped = eat.active;
+    drag.lastFinalizedBounds = clamped;
+    applySegmentDraft({
+      idx: drag.segmentIdx,
+      ...clamped,
+      ...(eat.neighborPatches.length > 0 ? { neighborPatches: eat.neighborPatches } : {}),
+      ...(eat.deleteIndices.length > 0 ? { pendingDeleteIndices: eat.deleteIndices } : {}),
+    });
+    return;
+  }
   drag.lastFinalizedBounds = clamped;
   applySegmentDraft({ idx: drag.segmentIdx, ...clamped });
 }

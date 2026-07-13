@@ -16,7 +16,14 @@ export function resolveBlankOverlayShellDragMode(input: {
 
 export type OverlayPointerUpIntent =
   | { kind: "select-segment"; segmentIdx: number; pointerTimeSec: number }
-  | { kind: "commit-bounds"; segmentIdx: number; startSec: number; endSec: number }
+  | {
+      kind: "commit-bounds";
+      segmentIdx: number;
+      startSec: number;
+      endSec: number;
+      neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+      deleteIndices?: number[];
+    }
   | { kind: "create-range"; startSec: number; endSec: number; overlapPolicy?: SegmentOverlapPolicy }
   | { kind: "seek-blank"; timeSec: number }
   | { kind: "noop" };
@@ -33,6 +40,8 @@ export function resolveOverlayPointerUpIntent(input: {
   clampedStartSec: number;
   clampedEndSec: number;
   minSpanSec?: number;
+  neighborPatches?: Array<{ idx: number; startSec: number; endSec: number }>;
+  deleteIndices?: number[];
 }): OverlayPointerUpIntent {
   const minSpan = input.minSpanSec ?? WAVEFORM_SEGMENT_MIN_SPAN_SEC;
 
@@ -58,7 +67,9 @@ export function resolveOverlayPointerUpIntent(input: {
 
   const unchanged =
     Math.abs(input.clampedStartSec - input.initialStartSec) < 0.0005 &&
-    Math.abs(input.clampedEndSec - input.initialEndSec) < 0.0005;
+    Math.abs(input.clampedEndSec - input.initialEndSec) < 0.0005 &&
+    (input.neighborPatches?.length ?? 0) === 0 &&
+    (input.deleteIndices?.length ?? 0) === 0;
   if (unchanged) {
     return {
       kind: "select-segment",
@@ -72,5 +83,7 @@ export function resolveOverlayPointerUpIntent(input: {
     segmentIdx: input.segmentIdx,
     startSec: input.clampedStartSec,
     endSec: input.clampedEndSec,
+    neighborPatches: input.neighborPatches,
+    deleteIndices: input.deleteIndices,
   };
 }
