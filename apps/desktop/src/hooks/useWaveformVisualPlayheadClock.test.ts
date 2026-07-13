@@ -52,7 +52,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
       setTime: vi.fn(),
       isPlaying: () => false,
     };
-    const getRawMediaPlayheadTimeSec = vi.fn(() => ws.getCurrentTime());
+    const getEngineDisplayTimeSec = vi.fn(() => ws.getCurrentTime());
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({
@@ -61,12 +61,12 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 0,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec,
+        getEngineDisplayTimeSec,
       }),
     );
 
     expect(result.current.getDisplayPlayheadTimeSec()).toBe(2.25);
-    expect(getRawMediaPlayheadTimeSec).toHaveBeenCalledTimes(1);
+    expect(getEngineDisplayTimeSec).toHaveBeenCalledTimes(1);
   });
 
   it("notifies subscribers in priority order via playing rAF media poll", () => {
@@ -79,7 +79,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => mediaSec,
+        getEngineDisplayTimeSec: () => mediaSec,
       }),
     );
 
@@ -121,7 +121,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 2,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => mediaSec,
+        getEngineDisplayTimeSec: () => mediaSec,
         getRawMediaIsPlaying: () => mediaPlaying,
       }),
     );
@@ -155,7 +155,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 5,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 5,
+        getEngineDisplayTimeSec: () => 5,
       }),
     );
 
@@ -177,7 +177,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 1,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 1,
+        getEngineDisplayTimeSec: () => 1,
       }),
     );
 
@@ -207,7 +207,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 1,
+        getEngineDisplayTimeSec: () => 1,
       }),
     );
 
@@ -241,7 +241,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: 5,
           playbackRate: 1,
-          getRawMediaPlayheadTimeSec: () => 8,
+          getEngineDisplayTimeSec: () => 8,
         }),
       { initialProps: { isPlaying: false } },
     );
@@ -263,7 +263,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 2,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => 2,
+        getEngineDisplayTimeSec: () => 2,
       }),
     );
 
@@ -290,7 +290,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: props.currentTimeSec,
           playbackRate: 1,
-          getRawMediaPlayheadTimeSec: () => props.currentTimeSec,
+          getEngineDisplayTimeSec: () => props.currentTimeSec,
         }),
       { initialProps: { currentTimeSec: 165 } },
     );
@@ -322,7 +322,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: props.currentTimeSec,
           playbackRate: 1,
-          getRawMediaPlayheadTimeSec: () => 15,
+          getEngineDisplayTimeSec: () => 15,
           getRawMediaIsPlaying: () => props.isPlaying,
         }),
       { initialProps: { isPlaying: true, currentTimeSec: 10 } },
@@ -348,7 +348,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
         durationSec: 30,
         currentTimeSec: 12,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => mediaSec,
+        getEngineDisplayTimeSec: () => mediaSec,
       }),
     );
 
@@ -373,6 +373,38 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
   });
 
+  it("keeps segment-end latch when React isPlaying lags media pause", () => {
+    // Natural-end finally latches display to endSec while React isPlaying is still
+    // true; a late rAF freeze must not re-apply media overshoot past the band.
+    const raf = stubQueuedRaf();
+    let mediaSec = 22;
+    let mediaPlaying = false;
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 10,
+        playbackRate: 1,
+        getEngineDisplayTimeSec: () => mediaSec,
+        getRawMediaIsPlaying: () => mediaPlaying,
+      }),
+    );
+
+    act(() => {
+      result.current.syncDisplayPlayheadAfterSeek(20);
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(20);
+
+    act(() => {
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(20);
+  });
+
   it("cancels playing rAF loop on pause", () => {
     const raf = stubQueuedRaf();
     const { rerender } = renderHook(
@@ -383,7 +415,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           durationSec: 30,
           currentTimeSec: 1,
           playbackRate: 1,
-          getRawMediaPlayheadTimeSec: () => 1,
+          getEngineDisplayTimeSec: () => 1,
         }),
       { initialProps: { isPlaying: true } },
     );
@@ -400,7 +432,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
 
   it("playing rAF polls raw media without rate-based lead", async () => {
     const source = await import("./useWaveformVisualPlayheadClock.ts?raw");
-    expect(source.default).toContain("getRawMediaPlayheadTimeSec");
+    expect(source.default).toContain("getEngineDisplayTimeSec");
     expect(source.default).toContain("requestAnimationFrame(tick)");
     expect(source.default).not.toMatch(/playbackRate\s*\*/);
     expect(source.default).not.toMatch(/lastMedia.*elapsed|elapsed.*playbackRate/i);

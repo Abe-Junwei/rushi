@@ -133,7 +133,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 14.48,
-        getRawMediaPlayheadTimeSec: () => 14.5,
+        getAuthorityPlayheadTimeSec: () => 14.5,
       }),
     );
 
@@ -143,6 +143,67 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.setTime).not.toHaveBeenCalled();
     expect(ws.play).toHaveBeenCalledWith();
+  });
+
+  it("freezes pause anchor to display high-water when raw TimeUpdate lags", async () => {
+    // Visual clock tracks native getDisplayTime (leads); freezing to lagging raw
+    // rewinds the needle on pause/resume — especially visible at high zoom.
+    let playhead = 15.2;
+    let playing = true;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
+    const syncDisplay = vi.fn((t: number) => {
+      playhead = t;
+    });
+    const ws = makeWs({
+      getCurrentTime: () => 15.0,
+      isPlaying: () => playing,
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => (playing ? 15.0 : playhead),
+        commitSeekUi,
+        syncDisplayPlayheadAfterSeekRef: { current: syncDisplay },
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 15.2 });
+    });
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    syncDisplay.mockClear();
+
+    act(() => {
+      result.current.pauseMediaKeepingSession();
+    });
+
+    expect(syncDisplay).toHaveBeenCalledWith(15.2);
+    expect(playhead).toBe(15.2);
+    expect(playing).toBe(false);
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0);
+    });
+
+    // Resume must not seek backward to lagging raw (15.0).
+    expect(ws.setTime).not.toHaveBeenCalled();
+    expect(playing).toBe(true);
   });
 
   it("resumes without seeking when display lags raw beyond epsilon but within lag cap", async () => {
@@ -157,7 +218,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 14.7,
-        getRawMediaPlayheadTimeSec: () => 15.0,
+        getAuthorityPlayheadTimeSec: () => 15.0,
       }),
     );
 
@@ -184,7 +245,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 10,
-        getRawMediaPlayheadTimeSec: () => 14.5,
+        getAuthorityPlayheadTimeSec: () => 14.5,
       }),
     );
 
@@ -208,7 +269,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 2,
-        getRawMediaPlayheadTimeSec: () => 2,
+        getAuthorityPlayheadTimeSec: () => 2,
       }),
     );
 
@@ -232,7 +293,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 25,
-        getRawMediaPlayheadTimeSec: () => 2,
+        getAuthorityPlayheadTimeSec: () => 2,
       }),
     );
 
@@ -296,7 +357,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 15,
-        getRawMediaPlayheadTimeSec: () => 15,
+        getAuthorityPlayheadTimeSec: () => 15,
       }),
     );
 
@@ -341,7 +402,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 15,
-        getRawMediaPlayheadTimeSec: () => 15,
+        getAuthorityPlayheadTimeSec: () => 15,
       }),
     );
 
@@ -400,7 +461,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 10,
-        getRawMediaPlayheadTimeSec: () => 10,
+        getAuthorityPlayheadTimeSec: () => 10,
       }),
     );
 
@@ -435,7 +496,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 1,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => 31,
-        getRawMediaPlayheadTimeSec: () => 31,
+        getAuthorityPlayheadTimeSec: () => 31,
         syncDisplayPlayheadAfterSeekRef: syncRef,
       }),
     );
@@ -476,7 +537,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -563,7 +624,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -615,7 +676,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 1,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -642,10 +703,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
   it("resumes from the captured pause anchor when raw and display clocks fall backward", async () => {
     let playing = true;
-    let rawMediaSec = 15.8;
+    let authoritySec = 15.8;
     let displaySec = 15.6;
     const ws = makeWs({
-      getCurrentTime: () => rawMediaSec,
+      getCurrentTime: () => authoritySec,
       isPlaying: () => playing,
       pause: vi.fn(() => {
         playing = false;
@@ -665,7 +726,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => displaySec,
-        getRawMediaPlayheadTimeSec: () => rawMediaSec,
+        getAuthorityPlayheadTimeSec: () => authoritySec,
       }),
     );
 
@@ -675,7 +736,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.pause).toHaveBeenCalled();
 
     // Both observable clocks can lag after pause; the explicit pause anchor must win.
-    rawMediaSec = 15.1;
+    authoritySec = 15.1;
     displaySec = 14.9;
     await act(async () => {
       await result.current.handleToggleSelectedWaveformPlay();
@@ -709,7 +770,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playheadSec,
-        getRawMediaPlayheadTimeSec: () => playheadSec,
+        getAuthorityPlayheadTimeSec: () => playheadSec,
       }),
     );
 
@@ -757,7 +818,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
           selectedIdx,
           getGlobalPlaybackRate: () => 1,
           getPlayheadTime: () => playhead,
-          getRawMediaPlayheadTimeSec: () => playhead,
+          getAuthorityPlayheadTimeSec: () => playhead,
         }),
       { initialProps: { selectedIdx: 0 } },
     );
@@ -817,7 +878,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -837,7 +898,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     resetTranscriptProjectionForTests();
   });
 
-  it("auto-stops at segment end with pause only (no seek, no visual rewind)", async () => {
+  it("auto-stops at segment end and latches display to endSec (no media seek)", async () => {
     let playhead = 10;
     let playing = false;
     const { on, emit } = makeWsEventBag();
@@ -866,7 +927,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -890,10 +951,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(ws.pause).toHaveBeenCalled();
-    // Pause only — no media setTime and no visual rewind (WebKit AudioSession safe).
+    // No media setTime (WebKit AudioSession safe); display latches to exact endSec.
     expect(ws.setTime).not.toHaveBeenCalled();
-    expect(commitSeekUi).not.toHaveBeenCalled();
-    expect(playhead).toBe(19.99);
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
+    expect(playhead).toBe(20);
   });
 
   it("global play does not auto-scope-stop at selected segment end", async () => {
@@ -923,7 +984,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -980,7 +1041,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -1007,9 +1068,10 @@ describe("useWaveformSegmentPlaybackControls", () => {
 
     expect(ws.pause).toHaveBeenCalled();
     expect(playing).toBe(false);
+    // No media seek (WebKit-safe); display latches to segment end after sparse-frame overshoot.
     expect(ws.setTime).not.toHaveBeenCalled();
-    expect(commitSeekUi).not.toHaveBeenCalled();
-    expect(playhead).toBe(22);
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
+    expect(playhead).toBe(20);
   });
 
   it("replays from segment start after auto-stopping at segment end", async () => {
@@ -1039,7 +1101,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -1047,6 +1109,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     await act(async () => {
       await result.current.playSegmentAtIndex(0, { fromSec: 10 });
     });
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
     commitSeekUi.mockClear();
 
     playhead = 15;
@@ -1063,11 +1126,14 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(playing).toBe(false);
-    // Pause only at end — no visual rewind; playhead stays at the segment end.
-    expect(commitSeekUi).not.toHaveBeenCalled();
+    // Latch display to exact segment end (even when the stop sample was already on endSec).
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
     expect(playhead).toBe(20);
+    // Still no media seek on natural end.
+    expect(ws.setTime).not.toHaveBeenCalled();
 
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    commitSeekUi.mockClear();
     await act(async () => {
       await result.current.handleToggleSelectedWaveformPlay();
     });
@@ -1078,8 +1144,8 @@ describe("useWaveformSegmentPlaybackControls", () => {
   });
 
   it("one press replays when playhead is left at the segment end (media at end)", async () => {
-    // Pause-only natural end: display and media both stay at end. A single play
-    // click must seek to segment start and play, not resume from the tail.
+    // Natural end latches display at endSec. A single play click must seek to
+    // segment start and play, not resume from the tail.
     let playhead = 10;
     let playing = false;
     const commitSeekUi = vi.fn((t: number) => {
@@ -1109,7 +1175,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -1133,11 +1199,12 @@ describe("useWaveformSegmentPlaybackControls", () => {
     });
 
     expect(playing).toBe(false);
-    expect(commitSeekUi).not.toHaveBeenCalled();
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
     expect(playhead).toBe(20);
 
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
     (ws.play as ReturnType<typeof vi.fn>).mockClear();
+    commitSeekUi.mockClear();
     await act(async () => {
       await result.current.handleToggleSelectedWaveformPlay();
     });
@@ -1193,7 +1260,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -1219,8 +1286,8 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(false);
     expect(result.current.isSelectedSegmentPlaying).toBe(false);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
-    // Pause only — playhead stays at end; replay-from-start resolved on next play.
-    expect(commitSeekUi).not.toHaveBeenCalled();
+    // Display latches to endSec; replay-from-start resolved on next play.
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
     expect(playhead).toBe(20);
 
     const decision = resolveSessionTogglePlay({
@@ -1231,6 +1298,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(decision).toEqual({ action: "resumeSegment", idx: 0 });
 
     (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    commitSeekUi.mockClear();
     await act(async () => {
       if (decision.action === "resumeSegment") {
         await result.current.playSegmentAtIndex(decision.idx);
@@ -1276,7 +1344,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         commitSeekUi,
       }),
     );
@@ -1338,7 +1406,8 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playing).toBe(false);
     expect(result.current.isSelectedSegmentPlaying).toBe(false);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 0 });
-    // Pause only at end — no rewind to segment start; playhead stays at end.
+    // Latch to endSec — no rewind to segment start.
+    expect(commitSeekUi).toHaveBeenCalledWith(20);
     expect(commitSeekUi).not.toHaveBeenCalledWith(10);
     expect(playhead).toBe(20);
   });
@@ -1367,7 +1436,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
       }),
     );
 
@@ -1431,7 +1500,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
         selectedIdx: 0,
         getGlobalPlaybackRate: () => 1,
         getPlayheadTime: () => playhead,
-        getRawMediaPlayheadTimeSec: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
         syncDisplayPlayheadAfterSeekRef: { current: syncDisplay },
       }),
     );

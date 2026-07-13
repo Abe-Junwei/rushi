@@ -14,7 +14,7 @@ describe("resolveSegmentPlayFrom", () => {
         segment: seg,
         fromSec: 16.5,
         displaySec: 11,
-        rawMediaSec: 11,
+        authoritySec: 11,
       }),
     ).toEqual({ kind: "seek", timeSec: 16.5 });
     expect(
@@ -31,7 +31,7 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 14.48,
-        rawMediaSec: 14.5,
+        authoritySec: 14.5,
       }),
     ).toEqual({ kind: "resumeSkipSeek" });
   });
@@ -41,7 +41,30 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 14.7,
-        rawMediaSec: 15.0,
+        authoritySec: 15.0,
+      }),
+    ).toEqual({ kind: "resumeSkipSeek" });
+  });
+
+  it("resumes without seek when display leads raw slightly inside segment", () => {
+    // Native display interpolation leads TimeUpdate; seeking to display would
+    // yank media forward, while seeking to a lagging pause anchor rewinds.
+    expect(
+      resolveSegmentPlayFrom({
+        segment: seg,
+        displaySec: 15.2,
+        authoritySec: 15.0,
+      }),
+    ).toEqual({ kind: "resumeSkipSeek" });
+  });
+
+  it("skips seek when lagging pause fromSec is behind raw inside segment", () => {
+    expect(
+      resolveSegmentPlayFrom({
+        segment: seg,
+        fromSec: 15.0,
+        displaySec: 15.2,
+        authoritySec: 15.2,
       }),
     ).toEqual({ kind: "resumeSkipSeek" });
   });
@@ -51,7 +74,7 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 10,
-        rawMediaSec: 14.5,
+        authoritySec: 14.5,
       }),
     ).toEqual({ kind: "seek", timeSec: 10 });
   });
@@ -70,7 +93,7 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 25,
-        rawMediaSec: 25,
+        authoritySec: 25,
       }),
     ).toEqual({ kind: "resumeSkipSeek" });
   });
@@ -80,7 +103,7 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 25,
-        rawMediaSec: 2,
+        authoritySec: 2,
       }),
     ).toEqual({ kind: "seek", timeSec: 25 });
   });
@@ -90,7 +113,7 @@ describe("resolveSegmentPlayFrom", () => {
       resolveSegmentPlayFrom({
         segment: seg,
         displaySec: 2,
-        rawMediaSec: 2,
+        authoritySec: 2,
       }),
     ).toEqual({ kind: "seek", timeSec: 10 });
   });

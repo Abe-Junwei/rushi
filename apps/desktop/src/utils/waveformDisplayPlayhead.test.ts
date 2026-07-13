@@ -7,7 +7,7 @@ describe("resolveDisplayPlayheadTimeSec", () => {
       resolveDisplayPlayheadTimeSec({
         isReady: true,
         getVisualPlayheadTimeSec: () => 12.5,
-        getRawMediaPlayheadTimeSec: () => 12.7,
+        getEngineDisplayTimeSec: () => 12.7,
       }),
     ).toBe(12.5);
   });
@@ -17,7 +17,7 @@ describe("resolveDisplayPlayheadTimeSec", () => {
       resolveDisplayPlayheadTimeSec({
         isReady: true,
         getVisualPlayheadTimeSec: () => 12.5,
-        getRawMediaPlayheadTimeSec: () => 12.1,
+        getEngineDisplayTimeSec: () => 12.1,
       }),
     ).toBe(12.5);
   });
@@ -27,7 +27,7 @@ describe("resolveDisplayPlayheadTimeSec", () => {
       resolveDisplayPlayheadTimeSec({
         isReady: true,
         getVisualPlayheadTimeSec: () => 142,
-        getRawMediaPlayheadTimeSec: () => 165,
+        getEngineDisplayTimeSec: () => 165,
       }),
     ).toBe(142);
   });
@@ -37,7 +37,7 @@ describe("resolveDisplayPlayheadTimeSec", () => {
       resolveDisplayPlayheadTimeSec({
         isReady: false,
         getVisualPlayheadTimeSec: () => 12.5,
-        getRawMediaPlayheadTimeSec: () => 0,
+        getEngineDisplayTimeSec: () => 0,
       }),
     ).toBe(0);
   });

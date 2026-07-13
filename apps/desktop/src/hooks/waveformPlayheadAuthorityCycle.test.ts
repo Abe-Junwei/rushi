@@ -21,7 +21,7 @@ describe("waveform playhead authority cycle", () => {
         durationSec: 0,
         currentTimeSec: 0,
         playbackRate: 1,
-        getRawMediaPlayheadTimeSec: () => ws.getCurrentTime(),
+        getEngineDisplayTimeSec: () => ws.getCurrentTime(),
       }),
     );
 

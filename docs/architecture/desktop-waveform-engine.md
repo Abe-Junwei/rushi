@@ -68,7 +68,7 @@
 ## 整段可见（fit-all）布局意图
 
 - `useWaveformZoom` 维护 `layoutIntent: 'fit-all' | 'fit-selection' | 'default' | 'manual'`（非持久）。
-- 「整段可见」按钮 → `fit-all`；长音频（≥30min）打开默认 → **目标可见秒数**（约 45s 入视口，见 `LONG_MEDIA_TARGET_VISIBLE_SEC`），非整段 fit；滑块 / ± / 手动 zoom → `manual`。
+- 「整段可见」按钮 → `fit-all`；长音频（≥30min）打开默认 → 无语段时约 **45s** 入视口；**有 packable 语段**时按中位跨度使典型句约 **80px** 宽（`LONG_MEDIA_TARGET_SEGMENT_WIDTH_PX`），语段首次就绪且 `layoutIntent==='default'` 时可自动 refit；滑块 / ± / 手动 zoom → `manual`。
 - **贴满不变量**：`isFitAllTimelineFilledInViewport`（`timelineWidthPx ≈ tier 视口宽`），不再用「timeline ≤ viewport」误判高亮。
 - `layoutIntent === 'fit-all'` 时，`resolveFitAllPxPerSecAdjustment` **与 resize 无关**地在 fill gap 时 refit；viewport controller 的 `applyFitAllRefitPxPerSec` 保留 intent 不写 `manual`。
 - **缩放栏 UI：** `computeWaveformZoomBarUiState` 驱动 `Focus`（适配语段）/ `Maximize2`（整段可见）/ 重置 互斥高亮；手动 ± 或滑块 → `manual`（三者均不亮）。fit-selection 模式下波形点选其他语段保持 intent 并 `forceFullFit` re-fit。
@@ -83,6 +83,8 @@
 - **语段 tap（两段式 seek）：** [`resolveSegmentOverlayTap`](../../apps/desktop/src/utils/waveformSegmentOverlayActions.ts) — 未选中语段 → `selectSegmentAt`（viewport fit + seek 语段头）；已选中语段内再点 → `seekToTime`（钳在语段边界）。pointerup 为主路径（`applyOverlayPointerUpIntent`），click 为兜底。
 - **语段播放起点：** [`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts) / [`resolveSegmentPlaybackStartSec`](../../apps/desktop/src/utils/formatMediaTime.ts) — 段内从 playhead；**已过段尾从 playhead 续播**（不回段头）；段前仍跳到段头。
 - **语段自然结束 → Space 重播：** 段尾 auto-stop 设 `autoStoppedSegmentIdxRef`；Space sticky → `resumeSegment` → Transport `playSegment` 必须经 `resolveSegmentResumeFromSec` / `consumeSegmentResumeFromSec` 注入段头 `fromSec`。若只走 `resolveSegmentPlayFrom(display@end)` 会从段尾 **无 bound 续播**（与设计「重播该句」不符）。浮层 toggle 仍走 controls 内 `playSegmentAtIndex`（同源 helper）。
+- **段尾显示钳位：** sparse playback frame 常在 `currentSec > endSec` 才命中 bound；pause **不** media-seek（WebKit nest 风险）。`enforceSegmentPlaybackBound` 在 pause settle 后对 display 做 `syncDisplayPlayheadAfterSeek(endSec)` + `commitSeekUi`；视觉钟在 media 已停、React `isPlaying` 未提交时仍装 400ms imperative guard，挡住晚到的 rAF freeze 用媒体超时时覆盖针头。
+- **语段中段暂停续播：** 视觉钟跟 native `getDisplayTime`（插值常领先 TimeUpdate）。暂停 freeze / resume anchor 取 `max(display, authority)`；`resolveSegmentPlayFrom` 在双钟落差 ≤ lag cap 时 `resumeSkipSeek`，禁止 seek 回滞后锚点（高 zoom 下回退会很明显）。命名见 [`playback-clock-api-naming-research.md`](../execution/specs/playback-clock-api-naming-research.md)。
 - **工具条「全局播放」：** [`toggleGlobalPlay`](../../apps/desktop/src/hooks/useProjectWaveform.ts) — 始终全局；段播中撕 bound 变通读（出口）。语段 scoped / loop：波形浮层 / 旁侧 [`handleToggleSelectedWaveformPlay`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackControls.ts)；段尾停由 Rushi **playback frame** 执行（WS-2b 后 `audioprocess` 稀疏，不可再当唯一尾停时钟）。
 - **文稿 Playback Focus：** [`useTranscriptPlaybackFollow`](../../apps/desktop/src/hooks/useTranscriptPlaybackFollow.ts) — 播放中按 `resolveVisitedSegmentIndexAtPlayhead` 更新 CM6 行装饰（**≠ selection**）；条件 reveal 使用 [`revealSegmentInScrollDOM`](../../apps/desktop/src/components/editor/core/revealSegment.ts)，只写 CM6 `scrollDOM.scrollTop`，禁止 playback follow 走 `EditorView.scrollIntoView`。播放启动第一帧（focus 从 `-1` 初始化到当前句）只上色、不居中滚动；后续跨句才跟随 reveal。偏好 `rushi.p1.transcriptPlaybackFollow`。见 [`transcript-playback-follow-research.md`](../execution/specs/transcript-playback-follow-research.md)。
 - **WS-2a sticky 层：** `waveform-timeline-wave-layer` 与 playhead sticky 壳用 **`h-0` + 子层 absolute 铺满**，避免 in-flow `h-full` 把后续 sticky 壳挤出 `peaksPaneHeightPx` 后被 tier `overflow-y-hidden` 裁掉（播放头不可见回归）。
@@ -249,10 +251,10 @@
 
 ## 播放时钟与单 tick（playhead / 滚动跟随同源）
 
-调研：[`waveform-visual-raf-playhead-research.md`](../execution/specs/waveform-visual-raf-playhead-research.md)（播放驱动）、[`waveform-playhead-single-clock-research.md`](../execution/specs/waveform-playhead-single-clock-research.md)（无外推）、[`waveform-playhead-clock-unification-research.md`](../execution/specs/waveform-playhead-clock-unification-research.md)（rAF 分发，历史）。
+调研：[`waveform-visual-raf-playhead-research.md`](../execution/specs/waveform-visual-raf-playhead-research.md)（播放驱动）、[`waveform-playhead-single-clock-research.md`](../execution/specs/waveform-playhead-single-clock-research.md)（无外推）、[`waveform-playhead-clock-unification-research.md`](../execution/specs/waveform-playhead-clock-unification-research.md)（rAF 分发，历史）、[`playback-clock-api-naming-research.md`](../execution/specs/playback-clock-api-naming-research.md)（权威/显示命名）。
 
-- **单时间源（无外推）**：真源 = `media.currentTime`（`getRawMediaPlayheadTimeSec`）。**不做** `playbackRate * dt` 外推。显示、决策、滚动跟随、ruler/label 一律经 `getDisplayPlayheadTimeSec()`（ready 时 = `visualTimeSecRef`）。
-- **播放视觉驱动（VRP）**：playing 时 [`useWaveformVisualPlayheadClock`](../../apps/desktop/src/hooks/useWaveformVisualPlayheadClock.ts) **本仓 rAF** 每帧轮询 raw media → 写 `visualTimeSecRef` → `schedulePlaybackViewportFrame`。不依赖 WS `audioprocess` 帧率（Tauri/WKWebView 实测常仅 13–17Hz）。`audioprocess` 仅在暂停态（或 `isPlaying` 尚未 commit）schedule；playing 时只锚 ref。
+- **单时间源（无外推）**：UI 真源 = `getDisplayPlayheadTimeSec()`（ready 时 = `visualTimeSecRef`）。播放中 rAF 轮询 **引擎显示钟** `getDisplayMediaPlayheadTimeSec` → `getEngineDisplayTimeSec`（native 可插值）。**权威 latch** = `getAuthorityPlayheadTimeSec`（TimeUpdate / Seeked），仅用于 seek 命令与 resume-skip 门闩。**不做** `playbackRate * dt` 外推。
+- **播放视觉驱动（VRP）**：playing 时 [`useWaveformVisualPlayheadClock`](../../apps/desktop/src/hooks/useWaveformVisualPlayheadClock.ts) **本仓 rAF** 每帧轮询引擎显示钟 → 写 `visualTimeSecRef` → `schedulePlaybackViewportFrame`。不依赖 WS `audioprocess` 帧率（Tauri/WKWebView 实测常仅 13–17Hz）。`audioprocess` 仅在暂停态（或 `isPlaying` 尚未 commit）schedule；playing 时只锚 ref。
 - **Seek（Peaks 序）**：`syncDisplayPlayheadAfterSeek(t)` → `ws.setTime(t)` → `commitSeekUi`。用户路径同栈已刷 UI。入口：[`applyPeaksOrderedSeek`](../../apps/desktop/src/services/waveform/transport/dispatchTransportIntent.ts) / [`useWaveformPlayback.seek`](../../apps/desktop/src/hooks/useWaveformPlayback.ts)。
 - **WS `seeking` 事件**：播放态 **不**重同步 playhead（下一帧 rAF / media 轮询覆盖）；暂停态 **仍** `syncDisplayPlayheadAfterSeek` — 覆盖 peaks 热重载等 **WS-only `setTime`**（不经 Peaks 序），避免 band `playheadSecRef` 滞后。
 - **Pause / Chromium 回退**：停播取消 rAF；`lastTimeUiCommitRef` → `setCurrentTime` → `syncPausedTime`；`pausedImperativeSeekUntil`（~400ms）防止 stale React `currentTime` 覆盖 imperative seek。
@@ -269,9 +271,9 @@
 - **问题**：display 时钟已单源，但「写什么时间 / 何时 play」曾分散在 playback、segment controls、selection、gesture、shortcut 等多处，SC2/raw/display 启发式互相覆盖 → 播放中选段不 seek、假 seek-within、raw 滞后起播。
 - **真源模块**：[`services/waveform/transport/`](../../apps/desktop/src/services/waveform/transport/) — `resolveSegmentPlayFrom` / `resolveSelectTransportSeekTime` / `applyPeaksOrderedSeek` / `dispatchTransportIntent`。
 - **生产接线**：[`useProjectWaveform`](../../apps/desktop/src/hooks/useProjectWaveform.ts) 组装 `TransportDispatchDeps`，导出 `dispatchTransportIntent`；`seek` / `seekByDelta` / `playSegmentAtIndex` / `handleToggleSelectedWaveformPlay` 均经 dispatcher。Timeline 透传：`useWaveformTimelineController.dispatchTransportIntent`。选中 seek：`syncWaveformSegmentSelectSeek(..., { segmentIdx })` → `selectSegmentTransport`。
-- **Play-from 优先级**（写死）：`fromSec`（钳入段）→ raw≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
+- **Play-from 优先级**（写死）：`fromSec`（钳入段）→ authority≈display 且段内 resume skip → 段内 display → **已过段尾从 display 续播** → 段前跳段头（[`resolveSegmentPlayFrom`](../../apps/desktop/src/services/waveform/transport/resolveTransportTargetTime.ts)）。
 - **选中 seek**：由 CM6 projection primary 变化或显式 `seekPolicy` / `viewportSyncedOnDown`（真实 preview seek token）决定；**禁止**用已删除的 SC2 chrome 匹配推断「已 seek」。
-- **产品入口**：正文外 Space / 正文内 ⇧Space = `togglePlay`（会话粘性；**有选中语段时起播=段播**，无选中=全局）。工具条「全局播放」= `toggleGlobalPlay`。波形浮层 / 旁侧 play/loop = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent。语段起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)。
+- **产品入口**：正文外 Space / 正文内 ⇧Space = `togglePlay`（会话粘性；**无 sticky session 且有选中语段时起播=段播**；**全局会话暂停后再 Space = 从停点续通读**）。工具条「全局播放」= `toggleGlobalPlay`。波形浮层 / 旁侧 play/loop = `handleToggleSelectedWaveformPlay` → `toggleSegmentPlay` intent。语段起播索引用 [`effectiveTranscriptPrimaryIdx`](../../apps/desktop/src/components/editor/core/projectionWaveformBridge.ts)。
 - **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks。Transport 只消费时间与 seekPolicy，不拥有选区 chrome。
 - **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 

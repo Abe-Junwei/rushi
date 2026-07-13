@@ -47,14 +47,21 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       const scrollLeft =
         t.tierScrollRef.current?.scrollLeft ?? t.tierScrollLive.scrollLeftRef.current ?? 0;
       const displaySec = t.getDisplayPlayheadTimeSec();
-      const hostSec = t.wf.getPlayheadTime?.() ?? 0;
-      const rawSec = t.wf.getRawMediaPlayheadTimeSec?.() ?? 0;
+      const decisionSec = t.wf.getPlayheadTime?.() ?? 0;
+      const authoritySec = t.wf.getAuthorityPlayheadTimeSec?.() ?? 0;
       const stateSec = t.wf.currentTime ?? 0;
-      const liveSec = rawSec > 0 ? rawSec : hostSec > 0 ? hostSec : displaySec;
-      const playheadSec = liveSec > 0 ? liveSec : stateSec;
+      // ADR-0008: bookmark the display/decision clock, not a lagging TimeUpdate latch.
+      const playheadSec =
+        displaySec > 0
+          ? displaySec
+          : decisionSec > 0
+            ? decisionSec
+            : authoritySec > 0
+              ? authoritySec
+              : stateSec;
       logDesktopUi(
         "INFO",
-        `[fvsr] capture file=${c.fileId} playhead=${playheadSec.toFixed(2)} raw=${rawSec.toFixed(2)} host=${hostSec.toFixed(2)} disp=${displaySec.toFixed(2)} state=${stateSec.toFixed(2)} scroll=${scrollLeft} px/s=${t.zoom.layoutPxPerSec}`,
+        `[fvsr] capture file=${c.fileId} playhead=${playheadSec.toFixed(2)} disp=${displaySec.toFixed(2)} decision=${decisionSec.toFixed(2)} auth=${authoritySec.toFixed(2)} state=${stateSec.toFixed(2)} scroll=${scrollLeft} px/s=${t.zoom.layoutPxPerSec}`,
       );
       return {
         // Prefer live engine/display time; React state only guards transient remount zeros.

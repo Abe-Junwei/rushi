@@ -41,6 +41,10 @@ export type WaveformSegmentPlaybackBoundSyncArgs = {
   resolveEffectiveSelectedIdx: () => number;
   /** Prefer sticky session idx over selection when marking natural-end replay. */
   resolveNaturalEndReplayIdx?: () => number;
+  /** Display-only latch after natural end (avoid media seek; WebKit nest risk). */
+  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  /** Keep React currentTime aligned with the display latch. */
+  commitSeekUi?: (timeSec: number) => void;
 };
 
 /**
@@ -73,6 +77,8 @@ export function useWaveformSegmentPlaybackBoundSync(
     resolveSelectedPlaybackRange,
     resolveEffectiveSelectedIdx,
     resolveNaturalEndReplayIdx,
+    syncDisplayPlayheadAfterSeekRef,
+    commitSeekUi,
   } = args;
 
   const phaseRef = useRef<SegmentPlaybackPhase>("idle");
@@ -103,6 +109,9 @@ export function useWaveformSegmentPlaybackBoundSync(
       const loop = segmentLoopPlaybackRef.current;
       const stopGen = ++playGenerationRef.current;
       const gateHost = host.gateHost;
+      // Sparse frames often detect the bound after currentSec has already crossed
+      // endSec — latch display to the segment edge (no media seek).
+      const latchEndSec = bound.endSec;
 
       // Native Channel pause is async IPC — no WK MediaElement nest risk.
       // Keep stop-in-flight until pause settles so TimeUpdate cannot re-arm.
@@ -125,11 +134,16 @@ export function useWaveformSegmentPlaybackBoundSync(
             segmentPlaybackBoundRef.current = null;
             setIsSelectedSegmentPlaying(false);
             phaseRef.current = nextSegmentPlaybackPhase(phaseRef.current, "reset");
+            // Clamp visual playhead to the segment end so sparse-frame overshoot
+            // does not leave the needle past the band edge.
+            syncDisplayPlayheadAfterSeekRef?.current?.(latchEndSec);
+            commitSeekUi?.(latchEndSec);
           }
         });
     },
     [
       autoStoppedSegmentIdxRef,
+      commitSeekUi,
       isReady,
       playGenerationRef,
       resolveEffectiveSelectedIdx,
@@ -139,6 +153,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       segmentLoopPlaybackRef,
       segmentPlaybackBoundRef,
       setIsSelectedSegmentPlaying,
+      syncDisplayPlayheadAfterSeekRef,
       requireTransport,
       transportRef,
       wsRef,

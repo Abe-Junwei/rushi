@@ -8,6 +8,23 @@
  */
 import { segmentPlaybackReachedEnd } from "./segmentPlaybackBound";
 
+/**
+ * Mid-segment pause freeze: prefer the leading clock (native display interpolation
+ * often leads TimeUpdate). Freezing to lagging authority rewinds the needle — worse
+ * at high zoom. ADR-0008: pause latch = display high-water.
+ */
+export function resolveSegmentPauseFreezeSec(args: {
+  displaySec: number;
+  authoritySec?: number;
+}): number {
+  const display = Number.isFinite(args.displaySec) ? args.displaySec : 0;
+  const authority = args.authoritySec;
+  if (typeof authority === "number" && Number.isFinite(authority)) {
+    return Math.max(display, authority);
+  }
+  return display;
+}
+
 export function resolveSegmentResumeFromSec(args: {
   segment: { start_sec: number; end_sec: number };
   targetIdx: number;
@@ -32,22 +49,22 @@ export function resolveSegmentResumeFromSec(args: {
  * (natural stop), force replay from start even if autoStopped marker was cleared.
  *
  * Also covers visual-only natural end: display rewound to segment start while
- * raw media is still at/past end (no ws.setTime on stop — WebKit freeze avoid).
+ * authority is still at/past end (no media seek on stop — WebKit freeze avoid).
  */
 export function resolveStickySegmentSpaceFromSec(args: {
   segment: { start_sec: number; end_sec: number };
   displaySec: number;
-  rawMediaSec?: number;
+  authoritySec?: number;
 }): number | undefined {
   const start = Math.min(args.segment.start_sec, args.segment.end_sec);
   const end = Math.max(args.segment.start_sec, args.segment.end_sec);
   if (!Number.isFinite(args.displaySec)) return undefined;
   if (segmentPlaybackReachedEnd(args.displaySec, end)) return start;
-  const raw = args.rawMediaSec;
+  const authority = args.authoritySec;
   if (
-    raw != null &&
-    Number.isFinite(raw) &&
-    segmentPlaybackReachedEnd(raw, end) &&
+    authority != null &&
+    Number.isFinite(authority) &&
+    segmentPlaybackReachedEnd(authority, end) &&
     args.displaySec <= start + 0.05
   ) {
     return start;

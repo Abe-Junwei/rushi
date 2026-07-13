@@ -6,7 +6,7 @@ import {
   isSegmentPlaybackSession,
   type PlaybackSession,
 } from "../utils/playbackSession";
-import { resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
+import { resolveSegmentPauseFreezeSec, resolveSegmentResumeFromSec } from "../utils/segmentResumeFromSec";
 import { noteMediaPaused } from "../utils/mediaPlayGate";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import {
@@ -33,7 +33,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   getGlobalPlaybackRate: () => number;
   getPlayheadTime: () => number;
   /** Raw media `currentTime` — used only to detect "already inside this segment" on resume. */
-  getRawMediaPlayheadTimeSec?: () => number;
+  getAuthorityPlayheadTimeSec?: () => number;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   layoutDurationSecRef?: React.MutableRefObject<number>;
   commitSeekUi?: (timeSec: number) => void;
@@ -48,7 +48,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     selectedIdx,
     getGlobalPlaybackRate,
     getPlayheadTime,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef,
     layoutDurationSecRef,
     commitSeekUi,
@@ -207,12 +207,10 @@ export function useWaveformSegmentPlaybackControls(args: {
     const session = playbackSessionRef.current;
     if (isSegmentPlaybackSession(session)) {
       const seg = latestSegmentsRef.current[session.idx];
-      const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
-      const freezeSec =
-        typeof rawFreezeSec === "number" && Number.isFinite(rawFreezeSec)
-          ? rawFreezeSec
-          : getPlayheadTime();
-      const normalizedFreezeSec = Number.isFinite(freezeSec) ? freezeSec : 0;
+      const normalizedFreezeSec = resolveSegmentPauseFreezeSec({
+        displaySec: getPlayheadTime(),
+        authoritySec: getAuthorityPlayheadTimeSec?.(),
+      });
       const anchorInsideSession =
         seg != null &&
         normalizedFreezeSec >= Math.min(seg.start_sec, seg.end_sec) &&
@@ -241,7 +239,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, [
     clearSegmentPlaybackBound,
     getPlayheadTime,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef,
     requireTransport,
     transportRef,
@@ -279,7 +277,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     isReady,
     latestSegmentsRef,
     getGlobalPlaybackRate,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     resolvePlayheadSec,
     resolveEffectiveSelectedIdx,
     resolveSelectedPlaybackRange,
@@ -321,6 +319,8 @@ export function useWaveformSegmentPlaybackControls(args: {
     resolveSelectedPlaybackRange,
     resolveEffectiveSelectedIdx,
     resolveNaturalEndReplayIdx,
+    syncDisplayPlayheadAfterSeekRef,
+    commitSeekUi,
   });
 
   useWaveformSegmentLoopReplay({

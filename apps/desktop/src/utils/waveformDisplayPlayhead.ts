@@ -1,9 +1,12 @@
-/** Display playhead: single time source via visualTimeSecRef; raw media only before ready. */
+/**
+ * Display playhead: single UI time source via visualTimeSecRef.
+ * Before ready, fall back to the engine display poll (ADR-0008 interpolator).
+ */
 export function resolveDisplayPlayheadTimeSec(input: {
   isReady: boolean;
   getVisualPlayheadTimeSec: () => number;
-  getRawMediaPlayheadTimeSec: () => number;
+  getEngineDisplayTimeSec: () => number;
 }): number {
-  if (!input.isReady) return input.getRawMediaPlayheadTimeSec();
+  if (!input.isReady) return input.getEngineDisplayTimeSec();
   return input.getVisualPlayheadTimeSec();
 }

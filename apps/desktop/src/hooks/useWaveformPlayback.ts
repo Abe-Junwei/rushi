@@ -39,13 +39,14 @@ export function useWaveformPlayback(
     return host?.getCurrentTime() ?? 0;
   }, [getDisplayPlayheadTimeSecRef, requireTransport, transportRef, wsRef]);
 
-  const getRawMediaPlayheadTimeSec = useCallback((): number => {
+  const getAuthorityPlayheadTimeSec = useCallback((): number => {
     const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
       requireTransport,
     });
     return host?.getCurrentTime() ?? 0;
   }, [requireTransport, transportRef, wsRef]);
 
+  /** Engine display clock (native may interpolate between TimeUpdate anchors). */
   const getDisplayMediaPlayheadTimeSec = useCallback((): number => {
     const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
       requireTransport,
@@ -216,7 +217,7 @@ export function useWaveformPlayback(
     seek,
     togglePlay,
     getPlayheadTime,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     getDisplayMediaPlayheadTimeSec,
     getRawMediaIsPlaying,
     seekByDelta,

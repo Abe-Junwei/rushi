@@ -157,7 +157,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     durationSec: timelineMetrics.mediaDurationSec,
     currentTimeSec: wf.currentTime,
     playbackRate: wf.globalPlaybackRate,
-    getRawMediaPlayheadTimeSec: wf.getDisplayMediaPlayheadTimeSec,
+    getEngineDisplayTimeSec: wf.getDisplayMediaPlayheadTimeSec,
     getRawMediaIsPlaying: wf.getRawMediaIsPlaying,
   });
 
@@ -298,10 +298,14 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     fileId: ctx.fileId,
     mediaUrl: ctx.mediaUrl,
     mediaDurationSec: timelineMetrics.mediaDurationSec,
+    segments: ctx.segments,
+    layoutIntent: zoom.layoutIntent,
+    currentPxPerSec: zoom.pxPerSec,
     tierScrollRef,
     tierScrollLive: scroll.tierScrollLive,
     tierScrollLayout: scroll.tierScrollLayout,
-    resetZoomForMedia: (viewportWidthPx, durationSec) => resetZoomForMediaRef.current(viewportWidthPx, durationSec),
+    resetZoomForMedia: (viewportWidthPx, durationSec, options) =>
+      resetZoomForMediaRef.current(viewportWidthPx, durationSec, options),
   });
 
   useFileViewStateRestoreEffect({

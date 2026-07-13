@@ -1,10 +1,22 @@
 import { describe, expect, it } from "vitest";
 import {
+  resolveSegmentPauseFreezeSec,
   resolveSegmentResumeFromSec,
   resolveStickySegmentSpaceFromSec,
 } from "./segmentResumeFromSec";
 
 const seg = { start_sec: 10, end_sec: 20 };
+
+describe("resolveSegmentPauseFreezeSec", () => {
+  it("prefers the leading of display and authority", () => {
+    expect(resolveSegmentPauseFreezeSec({ displaySec: 15.2, authoritySec: 15.0 })).toBe(15.2);
+    expect(resolveSegmentPauseFreezeSec({ displaySec: 14.8, authoritySec: 15.0 })).toBe(15.0);
+  });
+
+  it("falls back to display when authority is absent", () => {
+    expect(resolveSegmentPauseFreezeSec({ displaySec: 12 })).toBe(12);
+  });
+});
 
 describe("resolveSegmentResumeFromSec", () => {
   it("uses explicit fromSec when provided", () => {
@@ -70,14 +82,14 @@ describe("resolveStickySegmentSpaceFromSec", () => {
       resolveStickySegmentSpaceFromSec({
         segment: seg,
         displaySec: 10,
-        rawMediaSec: 20,
+        authoritySec: 20,
       }),
     ).toBe(10);
     expect(
       resolveStickySegmentSpaceFromSec({
         segment: seg,
         displaySec: 10,
-        rawMediaSec: 19.99,
+        authoritySec: 19.99,
       }),
     ).toBe(10);
   });
@@ -87,7 +99,7 @@ describe("resolveStickySegmentSpaceFromSec", () => {
       resolveStickySegmentSpaceFromSec({
         segment: seg,
         displaySec: 10,
-        rawMediaSec: 10,
+        authoritySec: 10,
       }),
     ).toBeUndefined();
   });

@@ -165,7 +165,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
     getGlobalPlaybackRate: () => globalPlayback.globalPlaybackRate,
     getPlayheadTime: playback.getPlayheadTime,
-    getRawMediaPlayheadTimeSec: playback.getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec: playback.getAuthorityPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef: options.syncDisplayPlayheadAfterSeekRef,
     layoutDurationSecRef,
     commitSeekUi,
@@ -246,7 +246,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
             segment: seg,
             fromSec,
             displaySec: playback.getPlayheadTime(),
-            rawMediaSec: playback.getRawMediaPlayheadTimeSec(),
+            authoritySec: playback.getAuthorityPlayheadTimeSec(),
           };
         },
         resolveSegmentResumeFromSec: (idx, fromSec) =>
@@ -513,7 +513,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         const stickyFromSec = resolveStickySegmentSpaceFromSec({
           segment: seg,
           displaySec: playback.getPlayheadTime(),
-          rawMediaSec: playback.getRawMediaPlayheadTimeSec(),
+          authoritySec: playback.getAuthorityPlayheadTimeSec(),
         });
         await playSegmentAtIndex(
           decision.idx,

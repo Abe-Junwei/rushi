@@ -10,19 +10,24 @@ export type ResolveSegmentPlayFromInput = {
   fromSec?: number;
   /** Display / decision clock (`getDisplayPlayheadTimeSec`). */
   displaySec: number;
-  /** Raw `ws.getCurrentTime()` — only for resume-skip gate. */
-  rawMediaSec?: number;
-  /** Max |raw − display| to allow resume without seek. */
+  /**
+   * Authority latch (`getAuthorityPlayheadTimeSec` / TimeUpdate).
+   * Resume-skip gate only — never the sole pause freeze source.
+   */
+  authoritySec?: number;
+  /** Max |authority − display| to allow resume without seek. */
   resumeEpsilonSec?: number;
-  /** Max display lag behind raw to still resume (avoid seek-backward). */
+  /** Max |authority − display| to still resume (avoid yanking either clock). */
   displayLagResumeCapSec?: number;
 };
 
 /**
  * Play-from priority (Transport Authority):
- * 1. explicit `fromSec` (clamped into segment)
- * 2. raw≈display and raw inside segment → resume skip seek
- * 3. display lags raw slightly (both in segment) → resume skip (never seek backward)
+ * 1. explicit `fromSec` (clamped into segment) — but never seek *backward* to a
+ *    lagging pause anchor when authority already leads within the lag cap
+ * 2. authority≈display and authority inside segment → resume skip seek
+ * 3. either clock slightly behind the other (both in segment) → resume skip
+ *    (never yank the needle toward the lagging clock; high zoom makes this loud)
  * 4. display inside segment → seek to display
  * 5. display past segment end → play from display (gap after; do not snap to start)
  * 6. display before segment start → seek to segment start
@@ -35,34 +40,44 @@ export function resolveSegmentPlayFrom(
   const epsilon = input.resumeEpsilonSec ?? TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC;
   const lagCap = input.displayLagResumeCapSec ?? TRANSPORT_DISPLAY_LAG_RESUME_CAP_SEC;
 
+  const display = Number.isFinite(input.displaySec) ? input.displaySec : 0;
+  const authority = input.authoritySec;
+  const authorityInside =
+    authority != null && Number.isFinite(authority) && authority >= start && authority < end;
+  const displayInside = display >= start && display < end;
+
   if (input.fromSec != null && Number.isFinite(input.fromSec)) {
+    const clamped = Math.max(start, Math.min(end, input.fromSec));
+    // Pause anchor captured from lagging TimeUpdate while native pause already
+    // froze media at display high-water — seeking back would rewind the needle.
+    if (
+      authorityInside &&
+      clamped <= (authority as number) &&
+      (authority as number) - clamped <= lagCap
+    ) {
+      return { kind: "resumeSkipSeek" };
+    }
     return {
       kind: "seek",
-      timeSec: Math.max(start, Math.min(end, input.fromSec)),
+      timeSec: clamped,
     };
   }
 
-  const display = Number.isFinite(input.displaySec) ? input.displaySec : 0;
-  const raw = input.rawMediaSec;
-  const rawInside =
-    raw != null && Number.isFinite(raw) && raw >= start && raw < end;
-  const displayInside = display >= start && display < end;
-
   if (
-    rawInside &&
-    Math.abs((raw) - display) <= epsilon
+    authorityInside &&
+    Math.abs((authority as number) - display) <= epsilon
   ) {
     return { kind: "resumeSkipSeek" };
   }
 
-  // Pause-resume: visual/React display often lags media by >ε; seeking to display
-  // pulls the playhead backward. Keep media position when the lag is small.
-  // Large display≪raw gaps are intentional (select→segment start while raw stale).
+  // Pause-resume: either clock may lag the other by >ε. Seeking to the lagging
+  // side pulls the playhead backward (worse at high zoom). Keep media position
+  // when the gap is small. Large display≪authority gaps are intentional (select→
+  // segment start while authority stale) and still honor display below.
   if (
-    rawInside &&
+    authorityInside &&
     displayInside &&
-    display < (raw) &&
-    (raw) - display <= lagCap
+    Math.abs((authority as number) - display) <= lagCap
   ) {
     return { kind: "resumeSkipSeek" };
   }
@@ -74,9 +89,9 @@ export function resolveSegmentPlayFrom(
   // Past segment end (including finished segment / gap after): continue from playhead.
   if (display >= end) {
     if (
-      raw != null &&
-      Number.isFinite(raw) &&
-      Math.abs((raw) - display) <= epsilon
+      authority != null &&
+      Number.isFinite(authority) &&
+      Math.abs(authority - display) <= epsilon
     ) {
       return { kind: "resumeSkipSeek" };
     }

@@ -16,16 +16,17 @@ export const PLAYHEAD_FRAME_PRIORITY_SCROLL = 0;
 export const PLAYHEAD_FRAME_PRIORITY_PLAYHEAD = 1;
 
 /**
- * Single-source playhead clock — engine TimeUpdate/Seeked is the authority.
+ * Single-source playhead clock for UI — polls engine *display* time (ADR-0008).
  *
- * While playing, a local rAF loop polls {@link getRawMediaPlayheadTimeSec}.
- * For native transport that getter may return a *display-only* interpolation
- * between authoritative Channel anchors (last event + wall-clock × rate).
+ * While playing, a local rAF loop polls {@link getEngineDisplayTimeSec}
+ * (`getDisplayMediaPlayheadTimeSec` / native interpolator). Seek commands still
+ * write the authority latch; pause freeze uses display high-water.
  * Rules (ADR-0008 clock contract):
  * 1. Every TimeUpdate/Seeked re-anchors; interpolation only fills event gaps.
  * 2. Monotonic clamp: discard display values that jump backwards.
- * 3. Interpolated values must never feed seek/pause authority.
- * 4. Pause/seek latches immediately to the authoritative value.
+ * 3. Interpolated display must not be the sole seek-command authority.
+ * 4. Pause latch = display high-water (`max(display, authority)`); never snap
+ *    back to a lagging TimeUpdate alone.
  * {@link schedulePlaybackViewportFrame} merges playback UI with tier scroll chrome.
  */
 export function useWaveformVisualPlayheadClock(input: {
@@ -35,7 +36,8 @@ export function useWaveformVisualPlayheadClock(input: {
   currentTimeSec: number;
   /** Not used for visual lead; kept for parent hook input parity. */
   playbackRate: number;
-  getRawMediaPlayheadTimeSec: () => number;
+  /** Engine display clock (native may interpolate). Not the authority latch. */
+  getEngineDisplayTimeSec: () => number;
   /**
    * Live media playing flag (e.g. `ws.isPlaying()`). Prefer over React `isPlaying`
    * so the rAF loop stops the same stack as pause, without waiting for setState.
@@ -61,7 +63,7 @@ export function useWaveformVisualPlayheadClock(input: {
       resolveDisplayPlayheadTimeSec({
         isReady: argsRef.current.isReady,
         getVisualPlayheadTimeSec: () => visualTimeSecRef.current,
-        getRawMediaPlayheadTimeSec: argsRef.current.getRawMediaPlayheadTimeSec,
+        getEngineDisplayTimeSec: argsRef.current.getEngineDisplayTimeSec,
       }),
     [],
   );
@@ -76,6 +78,11 @@ export function useWaveformVisualPlayheadClock(input: {
   const applyMediaTimeToVisualClock = useCallback((timeSec: number, scheduleFrame: boolean) => {
     const live = argsRef.current;
     if (!live.isReady) return;
+    // Segment natural-end latch (and paused seeks) must win over a late rAF freeze
+    // that still samples media past the bound while React isPlaying lags.
+    if (performance.now() < pausedImperativeSeekUntilRef.current) {
+      return;
+    }
     const dur = live.durationSec;
     const clamped =
       dur > 0 ? Math.max(0, Math.min(timeSec, dur)) : Math.max(0, timeSec);
@@ -119,15 +126,15 @@ export function useWaveformVisualPlayheadClock(input: {
       // Stop on live media pause before React commits isPlaying=false (avoids +1 frame drift).
       const mediaPlaying = live.getRawMediaIsPlaying?.() ?? true;
       if (!mediaPlaying) {
-        applyMediaTimeToVisualClock(live.getRawMediaPlayheadTimeSec(), true);
+        applyMediaTimeToVisualClock(live.getEngineDisplayTimeSec(), true);
         stopped = true;
         return;
       }
-      applyMediaTimeToVisualClock(live.getRawMediaPlayheadTimeSec(), true);
+      applyMediaTimeToVisualClock(live.getEngineDisplayTimeSec(), true);
       rafId = requestAnimationFrame(tick);
     };
     // Same-stack first sample so playhead does not wait one blank frame after play().
-    applyMediaTimeToVisualClock(argsRef.current.getRawMediaPlayheadTimeSec(), true);
+    applyMediaTimeToVisualClock(argsRef.current.getEngineDisplayTimeSec(), true);
     rafId = requestAnimationFrame(tick);
     return () => {
       stopped = true;
@@ -162,13 +169,14 @@ export function useWaveformVisualPlayheadClock(input: {
   const syncDisplayPlayheadAfterSeek = useCallback(
     (timeSec: number) => {
       if (!argsRef.current.isReady) return;
-      if (argsRef.current.isPlaying) {
-        visualTimeSecRef.current = timeSec;
-        schedulePlaybackViewportFrame(timeSec);
-        return;
+      const live = argsRef.current;
+      const mediaPlaying = live.getRawMediaIsPlaying?.() ?? live.isPlaying;
+      // Prefer live media pause over React isPlaying: natural-end clamp runs in
+      // pause().finally while setState(isPlaying=false) may not have committed yet.
+      if (!mediaPlaying) {
+        pausedImperativeSeekTimeRef.current = timeSec;
+        pausedImperativeSeekUntilRef.current = performance.now() + 400;
       }
-      pausedImperativeSeekTimeRef.current = timeSec;
-      pausedImperativeSeekUntilRef.current = performance.now() + 400;
       syncPausedTime(timeSec);
       schedulePlaybackViewportFrame(timeSec);
     },

@@ -25,7 +25,7 @@ function makeDeps(overrides: Partial<TransportDispatchDeps> = {}): TransportDisp
       return {
         segment: { start_sec: 10, end_sec: 20 },
         displaySec: 15,
-        rawMediaSec: 15,
+        authoritySec: 15,
         fromSec,
       };
     },
@@ -81,7 +81,7 @@ describe("dispatchTransportIntent", () => {
           segment: { start_sec: 10, end_sec: 20 },
           // Playhead frozen at segment end — without sticky resume this continues past end.
           displaySec: 20,
-          rawMediaSec: 20,
+          authoritySec: 20,
           fromSec,
         }),
       }),

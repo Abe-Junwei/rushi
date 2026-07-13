@@ -49,8 +49,8 @@ export type SegmentPlayFromResolution =
 export const TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC = 0.08;
 
 /**
- * If display lags raw by at most this much (both in-segment), resume from media
- * instead of seeking backward to the lagging display. Larger gaps (e.g. select
- * seek to segment start while raw is still catching up) still honor display.
+ * If either clock lags the other by at most this much (both in-segment), resume
+ * from media instead of seeking toward the lagging clock. Larger gaps (e.g.
+ * select seek to segment start while raw is still catching up) still honor display.
  */
 export const TRANSPORT_DISPLAY_LAG_RESUME_CAP_SEC = 0.5;

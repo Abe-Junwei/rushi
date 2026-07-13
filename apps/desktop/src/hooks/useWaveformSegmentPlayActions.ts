@@ -16,6 +16,7 @@ import {
   atomicWaveformSegmentSeek,
 } from "../services/waveform/waveformSegmentPlaybackSeek";
 import {
+  resolveSegmentPauseFreezeSec,
   resolveSegmentResumeFromSec,
   resolveStickySegmentSpaceFromSec,
 } from "../utils/segmentResumeFromSec";
@@ -36,7 +37,7 @@ export type WaveformSegmentPlayActionsArgs = {
   isReady: boolean;
   latestSegmentsRef: React.MutableRefObject<SegmentDto[]>;
   getGlobalPlaybackRate: () => number;
-  getRawMediaPlayheadTimeSec?: () => number;
+  getAuthorityPlayheadTimeSec?: () => number;
   resolvePlayheadSec: () => number;
   resolveEffectiveSelectedIdx: () => number;
   resolveSelectedPlaybackRange: () => { start: number; end: number } | null;
@@ -68,7 +69,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     isReady,
     latestSegmentsRef,
     getGlobalPlaybackRate,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     resolvePlayheadSec,
     resolveEffectiveSelectedIdx,
     resolveSelectedPlaybackRange,
@@ -272,7 +273,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         segment: seg,
         fromSec: resumeFromSec,
         displaySec: resolvePlayheadSec(),
-        rawMediaSec: getRawMediaPlayheadTimeSec?.(),
+        authoritySec: getAuthorityPlayheadTimeSec?.(),
       });
       await runPlaySegmentResolved({
         idx,
@@ -282,7 +283,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     },
     [
       autoStoppedSegmentIdxRef,
-      getRawMediaPlayheadTimeSec,
+      getAuthorityPlayheadTimeSec,
       latestSegmentsRef,
       pausedResumeAnchorRef,
       resolvePlayheadSec,
@@ -337,7 +338,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         const stickyFromSec = resolveStickySegmentSpaceFromSec({
           segment: seg,
           displaySec: resolvePlayheadSec(),
-          rawMediaSec: getRawMediaPlayheadTimeSec?.(),
+          authoritySec: getAuthorityPlayheadTimeSec?.(),
         });
         await playSegmentAtIndex(
           idx,
@@ -346,11 +347,10 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
         return;
       }
       const idx = resolveEffectiveSelectedIdx();
-      const rawFreezeSec = getRawMediaPlayheadTimeSec?.();
-      const freezeSec =
-        typeof rawFreezeSec === "number" && Number.isFinite(rawFreezeSec)
-          ? rawFreezeSec
-          : resolvePlayheadSec();
+      const freezeSec = resolveSegmentPauseFreezeSec({
+        displaySec: resolvePlayheadSec(),
+        authoritySec: getAuthorityPlayheadTimeSec?.(),
+      });
       const anchorInsideSelected =
         range != null && freezeSec >= range.start && freezeSec < range.end;
       pausedResumeAnchorRef.current =
@@ -374,7 +374,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
   }, [
     armSegmentPlaybackSession,
     cancelSegmentPlaybackBound,
-    getRawMediaPlayheadTimeSec,
+    getAuthorityPlayheadTimeSec,
     isReady,
     latestSegmentsRef,
     pausedResumeAnchorRef,

@@ -40,7 +40,7 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 | Latch | pause | 冻结为当时 display（`max(权威, 插值高水位)`），禁止回跳到滞后 TimeUpdate |
 | Latch | seek | 落到 Seeked 权威值并停止插值；**用户 seek 输入**不得使用插值时间 |
 
-`useWaveformVisualPlayheadClock` 通过 `getRawMediaPlayheadTimeSec` 读显示时间（native 为插值）；seek 路径仍用权威 latch。
+`useWaveformVisualPlayheadClock` 通过 `getEngineDisplayTimeSec`（接线 `getDisplayMediaPlayheadTimeSec`）读显示时间（native 为插值）；seek 路径用 `getAuthorityPlayheadTimeSec`（权威 latch）。暂停 freeze = display 高水位。
 
 ## 后果
 
