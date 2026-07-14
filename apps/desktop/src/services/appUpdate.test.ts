@@ -28,6 +28,7 @@ describe("mapAppUpdateError", () => {
 
   it("maps network failures", () => {
     expect(mapAppUpdateError(new Error("network timeout"))).toMatch(/无法连接/);
+    expect(mapAppUpdateError(new Error("network timeout"))).toMatch(/updates\.rushi\.app/);
   });
 
   it("falls back to message text", () => {

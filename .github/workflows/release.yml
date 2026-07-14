@@ -5,7 +5,8 @@
 # Sidecar is built before Tauri bundle; artifacts upload via gh release upload.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
-#   Tauri generates .app.tar.gz + .sig; CI produces macOS latest.json.
+#   Tauri generates .app.tar.gz + .sig; CI produces macOS latest.json (CDN URLs).
+#   OTA package host: https://updates.rushi.app (Cloudflare R2). GitHub Release mirrors assets.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the installer.
 # No runtime manifest / OTA sidecar artifacts are produced.
 #
@@ -198,12 +199,34 @@ jobs:
 
       - name: Generate updater latest.json (macOS release)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          RUSHI_UPDATER_CDN_BASE: https://updates.rushi.app
         run: |
           bash scripts/ci-generate-updater-latest-json.sh \
             --tag "${{ github.ref_name }}" \
-            --repository "${{ github.repository }}" \
+            --cdn-base "${RUSHI_UPDATER_CDN_BASE}" \
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --platform darwin-aarch64
+
+      - name: Upload OTA artifacts to Cloudflare R2 CDN
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          RUSHI_UPDATER_CDN_BASE: https://updates.rushi.app
+        run: |
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT). Optional R2_BUCKET (default rushi-updates)."
+            exit 1
+          fi
+          # aws CLI is preinstalled on GitHub-hosted runners.
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --cdn-base "${RUSHI_UPDATER_CDN_BASE}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
 
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
@@ -462,13 +485,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Verify OTA manifest on GitHub Release
+      - name: Verify OTA manifest on GitHub Release + CDN
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUSHI_UPDATER_CDN_BASE: https://updates.rushi.app
         run: |
           bash scripts/ci-verify-updater-manifest.sh \
             --tag "${{ github.ref_name }}" \
-            --repository "${{ github.repository }}"
+            --repository "${{ github.repository }}" \
+            --cdn-base "${RUSHI_UPDATER_CDN_BASE}"
 
       - name: Publish GitHub Release
         env:

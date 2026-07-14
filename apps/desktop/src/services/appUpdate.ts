@@ -37,7 +37,7 @@ export function mapAppUpdateError(error: unknown): string {
   const raw = error instanceof Error ? error.message : String(error);
   const lower = raw.toLowerCase();
   if (lower.includes("signature") || lower.includes("sign")) {
-    return "更新包验签失败，已拒绝安装。请从 GitHub Release 手动下载安装。";
+    return "更新包验签失败，已拒绝安装。请从官网或 GitHub Release 手动下载安装。";
   }
   if (
     lower.includes("network") ||
@@ -45,7 +45,7 @@ export function mapAppUpdateError(error: unknown): string {
     lower.includes("timeout") ||
     lower.includes("connection")
   ) {
-    return "无法连接更新服务器，请检查网络后重试。";
+    return "无法连接更新服务器（updates.rushi.app），请检查网络后重试。";
   }
   if (lower.includes("404") || lower.includes("not found")) {
     return "未找到更新清单，请稍后再试或从 GitHub Release 手动下载。";

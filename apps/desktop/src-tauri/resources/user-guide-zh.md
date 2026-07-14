@@ -48,5 +48,5 @@ lang: zh-CN
 1. **首次安装**：从 [GitHub Releases](https://github.com/Abe-Junwei/rushi/releases) 下载 **unsigned** `.dmg`（如 `如是我闻_0.1.2_aarch64.dmg`），拖入「应用程序」文件夹。
 2. **Gatekeeper（未签名包）**：若系统提示「无法验证开发者」，请在 Finder 中 **按住 Control 点击应用 → 打开**，确认后再正常双击启动。
 3. **从 v0.1.1 升级**：v0.1.1 **不支持**应用内更新，须 **手动安装一次 v0.1.2 DMG**；之后方可使用应用内更新。
-4. **应用内更新（v0.1.2+）**：启动时会检查 GitHub 上的更新清单；若有新版本会弹出确认框，确认后下载、验签并安装，完成后自动重启。也可在 **设置 → 关于 → 检查更新** 手动触发。
+4. **应用内更新（v0.1.2+）**：启动时会检查官方 CDN（`updates.rushi.app`）上的更新清单；若有新版本会弹出确认框，确认后下载、验签并安装，完成后自动重启。也可在 **设置 → 关于 → 检查更新** 手动触发。手动安装包仍可从 [GitHub Releases](https://github.com/Abe-Junwei/rushi/releases) 获取。
 5. **验签说明**：更新包使用 Tauri Ed25519 签名验证，与 Apple 代码签名无关；验签失败时会提示拒绝安装，请改从 Release 页手动下载 DMG。

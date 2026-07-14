@@ -28,14 +28,16 @@ OTA-6  v0.1.4 + 流水线修复 + v0.1.3→v0.1.4 手测           → Go ✅ 20
 | `tauri.conf.json` | `plugins.updater.endpoints` → GitHub raw/release URL 模板；`pubkey`；`createUpdaterArtifacts: true` |
 | `capabilities/default.json` | updater 相关 permission |
 
-**endpoint 示例**（按 repo 定稿）：
+**endpoint（CDN 优先，GitHub 镜像清单兜底）**：
 
 ```json
 "endpoints": [
+  "https://updates.rushi.app/latest.json",
   "https://github.com/Abe-Junwei/rushi/releases/latest/download/latest.json"
 ]
 ```
 
+包体 URL 写在 `latest.json` 内，指向 `https://updates.rushi.app/<tag>/app.tar.gz`（见 [`rel-mac-ota-cdn-r2.md`](./rel-mac-ota-cdn-r2.md)）。
 ---
 
 ## OTA-2 前端
