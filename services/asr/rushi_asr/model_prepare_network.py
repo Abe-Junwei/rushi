@@ -37,6 +37,24 @@ def is_transient_network_error(exc: BaseException) -> bool:
     return any(hint in msg for hint in _TRANSIENT_HINTS)
 
 
+def _invoke_snapshot_download(
+    snapshot_download: Callable[..., str | Path],
+    model_id: str,
+    progress_callbacks: Sequence[Any],
+) -> Path:
+    """Call ModelScope ``snapshot_download``, tolerating API drift.
+
+    Older hub versions accept ``progress_callbacks=…``; newer ones raise
+    ``TypeError: unexpected keyword argument 'progress_callbacks'``.
+    """
+    try:
+        return Path(snapshot_download(model_id, progress_callbacks=progress_callbacks))
+    except TypeError as exc:
+        if "progress_callbacks" not in str(exc):
+            raise
+        return Path(snapshot_download(model_id))
+
+
 def snapshot_download_with_retry(
     model_id: str,
     snapshot_download: Callable[..., str | Path],
@@ -48,7 +66,7 @@ def snapshot_download_with_retry(
     for attempt in range(max_attempts):
         raise_if_prepare_cancelled()
         try:
-            return Path(snapshot_download(model_id, progress_callbacks=progress_callbacks))
+            return _invoke_snapshot_download(snapshot_download, model_id, progress_callbacks)
         except PrepareCancelledError:
             raise
         except Exception as exc:  # noqa: BLE001 — classify ModelScope / urllib failures

@@ -50,3 +50,20 @@ def test_snapshot_download_with_retry_propagates_cancel() -> None:
 
     with pytest.raises(PrepareCancelledError):
         snapshot_download_with_retry("iic/demo", cancelled, [], max_attempts=3)
+
+
+def test_snapshot_download_with_retry_falls_back_without_progress_callbacks() -> None:
+    """ModelScope hub no longer accepts ``progress_callbacks`` (CI 1.0.0 failure)."""
+    calls: list[dict[str, object]] = []
+
+    def modern_download(model_id: str, **kwargs: object) -> str:
+        calls.append({"model_id": model_id, "kwargs": kwargs})
+        if "progress_callbacks" in kwargs:
+            raise TypeError("snapshot_download() got an unexpected keyword argument 'progress_callbacks'")
+        return str(Path("/tmp") / model_id.replace("/", "_"))
+
+    path = snapshot_download_with_retry("iic/demo", modern_download, ["cb"], max_attempts=1)
+    assert path == Path("/tmp/iic_demo")
+    assert len(calls) == 2
+    assert "progress_callbacks" in calls[0]["kwargs"]
+    assert calls[1]["kwargs"] == {}
