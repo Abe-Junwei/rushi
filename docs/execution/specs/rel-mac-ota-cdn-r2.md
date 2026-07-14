@@ -1,61 +1,49 @@
-# 运维：桌面 OTA 走 Cloudflare R2 CDN（updates.rushi.app）
+# 运维：桌面发版只上 Cloudflare R2 CDN（updates.rushi.app）
 
-> **状态**：已落地配置 · 2026-07-14  
+> **状态**：已落地 · 2026-07-14  
 > **关联**：[`rel-mac-ota-plan.md`](./rel-mac-ota-plan.md) · Tauri `plugins.updater`
 
-## 架构
+## 原则
+
+- **安装包与 OTA 只发布到 CDN**（R2 桶 `rushi-updates`）。
+- **不再** `gh release upload` 安装包 / updater 资产。
+- 客户端 updater endpoint 仅：`https://updates.rushi.app/latest.json`。
+- GitHub Actions 仍用 tag 触发构建；`workflow_dispatch` 可把产物留在 Actions Artifact（非 Release）。
+
+## CDN 布局
 
 ```text
-客户端 check()
-  → https://updates.rushi.app/latest.json          （主）
-  → GitHub releases/.../latest.json                （清单镜像兜底）
-  → platforms.*.url = https://updates.rushi.app/<tag>/app.tar.gz
-验签：既有 TAURI_SIGNING_PRIVATE_KEY / pubkey
+https://updates.rushi.app/latest.json
+https://updates.rushi.app/<tag>/app.tar.gz
+https://updates.rushi.app/<tag>/app.tar.gz.sig
+https://updates.rushi.app/<tag>/<dmg>
+https://updates.rushi.app/<tag>/windows-portable-x64.zip
 ```
 
-| 对象 | 路径 |
-|------|------|
-| 当前清单 | `/latest.json` |
-| 版本包 | `/<tag>/app.tar.gz` |
-| 签名 | `/<tag>/app.tar.gz.sig` |
-| 清单归档 | `/<tag>/latest.json` |
+## Secrets
 
-桶名：`rushi-updates` · 自定义域：`updates.rushi.app`
-
-## GitHub Actions Secrets（必填）
-
-在仓库 **Settings → Secrets and variables → Actions** 添加：
-
-| Secret | 值 |
-|--------|-----|
-| `R2_ACCESS_KEY_ID` | R2 API Token Access Key ID |
-| `R2_SECRET_ACCESS_KEY` | Secret Access Key |
-| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`（截图里 S3 API 主机，**不要**带桶名路径） |
+| Secret | 说明 |
+|--------|------|
+| `R2_ACCESS_KEY_ID` | R2 API token |
+| `R2_SECRET_ACCESS_KEY` | Secret |
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
 | `R2_BUCKET` | 可选，默认 `rushi-updates` |
+| `TAURI_SIGNING_*` | OTA 签名（不变） |
 
-Token 权限：该桶的 Object Read & Write。
+## 脚本
 
-## 本地/发版脚本
+- `scripts/ci-generate-updater-latest-json.sh` — 清单 URL 指向 CDN
+- `scripts/ci-upload-updater-cdn.sh --mode macos-ota|macos-dmg|windows`
+- `scripts/ci-verify-updater-manifest.sh` — 仅校验 CDN HTTP 200 + 版本一致性
+
+## 发版步骤
 
 ```bash
-# 生成清单（包体 URL 指向 CDN）
-bash scripts/ci-generate-updater-latest-json.sh --tag v0.1.9 --bundle-root … 
-
-# 上传 R2
-export R2_ACCESS_KEY_ID=…
-export R2_SECRET_ACCESS_KEY=…
-export R2_ENDPOINT=https://….r2.cloudflarestorage.com
-bash scripts/ci-upload-updater-cdn.sh --tag v0.1.9 --bundle-root …
-
-# 校验（Release 资产 + CDN 200）
-bash scripts/ci-verify-updater-manifest.sh --tag v0.1.9 --repository Abe-Junwei/rushi
+# 版本号已写入 package.json / tauri.conf / Cargo.toml 后：
+git push origin main
+git tag -a vX.Y.Z -m "vX.Y.Z"
+git push origin vX.Y.Z
+# 等待 Actions → Release build → verify-cdn-release 绿
 ```
 
-## 客户端
-
-`apps/desktop/src-tauri/tauri.conf.json` → `plugins.updater.endpoints` 已含 CDN 优先。  
-**已安装旧版**仍指向 GitHub：须至少升级到含本配置的版本后，后续更新才走 CDN（或手动装一版新 DMG）。
-
-## 首装 / 手动下载
-
-`.dmg` 仍可走 GitHub Releases；CDN 专供应用内 OTA。
+下载入口改为 CDN，例如 mac：`https://updates.rushi.app/v1.0.0/…dmg`（具体文件名以构建产物为准）。

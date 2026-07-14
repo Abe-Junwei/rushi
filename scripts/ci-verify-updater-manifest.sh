@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
-# Verify GitHub Release OTA assets + CDN-facing latest.json URLs before publishing.
+# Verify CDN-hosted OTA manifest + package (no GitHub Release assets required).
 set -euo pipefail
 
 TAG=""
-REPO=""
 CDN_BASE="${RUSHI_UPDATER_CDN_BASE:-https://updates.rushi.app}"
 
 usage() {
-  echo "Usage: $0 --tag <vX.Y.Z> [--repository OWNER/REPO] [--cdn-base URL]" >&2
+  echo "Usage: $0 --tag <vX.Y.Z> [--cdn-base URL]" >&2
   exit 1
 }
 
@@ -17,12 +16,12 @@ while [ $# -gt 0 ]; do
       TAG="${2:-}"
       shift 2
       ;;
-    --repository)
-      REPO="${2:-}"
-      shift 2
-      ;;
     --cdn-base)
       CDN_BASE="${2:-}"
+      shift 2
+      ;;
+    # Backward-compatible no-op.
+    --repository)
       shift 2
       ;;
     -h | --help)
@@ -40,57 +39,31 @@ if [ -z "$TAG" ]; then
 fi
 
 CDN_BASE="${CDN_BASE%/}"
-
-REPO="${GITHUB_REPOSITORY:-$REPO}"
-if [ -z "$REPO" ]; then
-  echo "--repository or GITHUB_REPOSITORY is required." >&2
-  exit 1
-fi
-
-if ! gh release view "$TAG" >/dev/null 2>&1; then
-  echo "Release ${TAG} not found." >&2
-  exit 1
-fi
-
-mapfile -t asset_names < <(gh release view "$TAG" --json assets -q '.assets[].name')
-
-has_asset() {
-  local name="$1"
-  local item
-  for item in "${asset_names[@]}"; do
-    if [ "$item" = "$name" ]; then
-      return 0
-    fi
-  done
-  return 1
-}
-
-missing=0
-for required in latest.json app.tar.gz app.tar.gz.sig; do
-  if ! has_asset "$required"; then
-    echo "Missing release asset: ${required}" >&2
-    missing=1
-  fi
-done
-
-if [ "$missing" -ne 0 ]; then
-  echo "OTA manifest incomplete on ${TAG}." >&2
-  exit 1
-fi
-
-# Draft releases return 404 on public download URLs until published — fetch via gh API instead.
-VERIFY_DIR="$(mktemp -d)"
-cleanup_verify_dir() {
-  rm -rf "$VERIFY_DIR"
-}
-trap cleanup_verify_dir EXIT
-
-gh release download "$TAG" --repo "$REPO" --pattern "latest.json" --dir "$VERIFY_DIR"
-JSON="$(cat "${VERIFY_DIR}/latest.json")"
-MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
-APP_VERSION="$(node -p "require('./apps/desktop/package.json').version")"
-TAR_URL="$(echo "$JSON" | jq -r '.platforms["darwin-aarch64"].url // empty')"
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP_VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
 EXPECTED_URL="${CDN_BASE}/${TAG}/app.tar.gz"
+LATEST_URL="${CDN_BASE}/latest.json"
+
+http_code() {
+  local url="$1"
+  curl -fsSIL "$url" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}'
+}
+
+HTTP_LATEST="$(http_code "$LATEST_URL")"
+HTTP_TAR="$(http_code "$EXPECTED_URL")"
+
+if [ "$HTTP_LATEST" != "200" ]; then
+  echo "CDN latest.json not reachable (HTTP ${HTTP_LATEST}): ${LATEST_URL}" >&2
+  exit 1
+fi
+if [ "$HTTP_TAR" != "200" ]; then
+  echo "CDN app.tar.gz not reachable (HTTP ${HTTP_TAR}): ${EXPECTED_URL}" >&2
+  exit 1
+fi
+
+JSON="$(curl -fsSL "$LATEST_URL")"
+MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
+TAR_URL="$(echo "$JSON" | jq -r '.platforms["darwin-aarch64"].url // empty')"
 
 if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
   echo "latest.json missing version field." >&2
@@ -98,8 +71,8 @@ if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
 fi
 
 if [ "$MANIFEST_VERSION" != "$APP_VERSION" ]; then
-  echo "latest.json version must match apps/desktop/package.json for OTA semver." >&2
-  echo "  manifest: ${MANIFEST_VERSION}" >&2
+  echo "CDN latest.json version must match apps/desktop/package.json." >&2
+  echo "  cdn: ${MANIFEST_VERSION}" >&2
   echo "  package.json: ${APP_VERSION}" >&2
   exit 1
 fi
@@ -111,24 +84,4 @@ if [ "$TAR_URL" != "$EXPECTED_URL" ]; then
   exit 1
 fi
 
-# Live CDN checks (public HTTPS).
-HTTP_LATEST="$(curl -fsSIL "${CDN_BASE}/latest.json" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}')"
-HTTP_TAR="$(curl -fsSIL "$EXPECTED_URL" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}')"
-if [ "$HTTP_LATEST" != "200" ]; then
-  echo "CDN latest.json not reachable (HTTP ${HTTP_LATEST}): ${CDN_BASE}/latest.json" >&2
-  exit 1
-fi
-if [ "$HTTP_TAR" != "200" ]; then
-  echo "CDN app.tar.gz not reachable (HTTP ${HTTP_TAR}): ${EXPECTED_URL}" >&2
-  exit 1
-fi
-
-CDN_VERSION="$(curl -fsSL "${CDN_BASE}/latest.json" | jq -r '.version')"
-if [ "$CDN_VERSION" != "$APP_VERSION" ]; then
-  echo "CDN latest.json version mismatch." >&2
-  echo "  cdn: ${CDN_VERSION}" >&2
-  echo "  package.json: ${APP_VERSION}" >&2
-  exit 1
-fi
-
-echo "OTA manifest OK: version=${MANIFEST_VERSION} cdn=${EXPECTED_URL}"
+echo "OTA CDN OK: version=${MANIFEST_VERSION} url=${EXPECTED_URL}"
