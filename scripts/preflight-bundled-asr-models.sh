@@ -33,24 +33,19 @@ ROOT = Path(os.environ["RUSHI_REPO_ROOT"])
 target = Path(os.environ["TARGET"])
 sys.path.insert(0, str(ROOT / "services" / "asr"))
 
-from rushi_asr.defaults import (
-    DEFAULT_FUNASR_MODEL_ID,
-    DEFAULT_FUNASR_PUNC_MODEL_ID,
-    DEFAULT_FUNASR_VAD_MODEL_ID,
-)
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID
+from rushi_asr.model_prepare_cache import required_models_cached_guess
 
 manifest = json.loads((target / "manifest.json").read_text(encoding="utf-8"))
 if manifest.get("bundle_id") != "default-paraformer-v1":
     raise SystemExit(f"FAIL: unexpected bundle_id {manifest.get('bundle_id')!r}")
 
 ms = target / "modelscope"
-for hub_id in (DEFAULT_FUNASR_MODEL_ID, DEFAULT_FUNASR_VAD_MODEL_ID, DEFAULT_FUNASR_PUNC_MODEL_ID):
-    owner, name = hub_id.split("/", 1)
-    candidates = [
-        ms / "models" / owner / name,
-        ms / "models" / owner / name.replace(".", "___"),
-    ]
-    if not any(p.is_dir() for p in candidates):
-        raise SystemExit(f"FAIL: model dir missing for {hub_id}")
+os.environ["MODELSCOPE_CACHE"] = str(ms)
+if not required_models_cached_guess(DEFAULT_FUNASR_MODEL_ID):
+    raise SystemExit(
+        "FAIL: default Paraformer triplet incomplete under bundled modelscope cache "
+        f"({ms})"
+    )
 print("OK: bundled-asr-models preflight passed")
 PY
