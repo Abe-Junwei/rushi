@@ -4,7 +4,8 @@ use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_ro
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
     peaks_generation_in_progress, remove_peaks_data_for_file, remove_peaks_for_file,
-    try_acquire_peaks_lock, wait_for_peaks_ready, PeaksGenerationReport, PeaksStaleCheckOptions,
+    reclaim_stale_peaks_lock, try_acquire_peaks_lock, PeaksGenerationReport,
+    PeaksStaleCheckOptions,
     PEAK_LEVELS,
 };
 use super::waveform_peaks_ffmpeg::{
@@ -252,6 +253,11 @@ fn ensure_waveform_peaks_sync_with_depth(
 
     let peaks_root = peaks_dir(&project_dir(st, project_id));
     let audio = resolve_audio_path_under_root(&st.root, &audio_path)?;
+    let effective_duration = resolve_reference_duration_sec(&audio, media_duration_sec);
+
+    // Crash / kill can leave `.generating.lock` forever (create_new existence lock,
+    // not OS flock). Reclaim before acquire so 3h+ media is not stuck on a dead wait.
+    reclaim_stale_peaks_lock(&peaks_root, file_id, effective_duration);
 
     let cache_complete = all_peak_levels_exist(&peaks_root, file_id);
     let stale_opts = if cache_complete {
@@ -295,45 +301,29 @@ fn ensure_waveform_peaks_sync_with_depth(
             Some(&audio),
             media_duration_sec,
         ))
+    } else if depth < MAX_ENSURE_RETRY_DEPTH
+        && !peaks_generation_in_progress(&peaks_root, file_id)
+        && !all_peak_levels_exist(&peaks_root, file_id)
+    {
+        // Lock vanished between try_acquire and now (abandoned holder) — retry once.
+        return ensure_waveform_peaks_sync_with_depth(
+            st,
+            project_id,
+            file_id,
+            true,
+            media_duration_sec,
+            depth + 1,
+        );
     } else {
-        match wait_for_peaks_ready(&peaks_root, file_id, media_duration_sec) {
-            Ok(()) => {}
-            Err(err) if err.contains("已结束但文件未就绪") => {
-                if depth >= MAX_ENSURE_RETRY_DEPTH {
-                    return Err(err);
-                }
-                // Abandoned / failed lock holder — take the lock and regenerate.
-                return ensure_waveform_peaks_sync_with_depth(
-                    st,
-                    project_id,
-                    file_id,
-                    true,
-                    media_duration_sec,
-                    depth + 1,
-                );
-            }
-            Err(err) => return Err(err),
-        }
-        if peaks_cache_is_stale(
+        // Live holder: soft-join. Do not block spawn_blocking for up to 15m —
+        // frontend polls `waveform_peaks_status` with a duration-scaled budget.
+        Ok(status_from_disk_with_probe(
             &peaks_root,
             file_id,
-            &audio,
-            stale_check_options(&audio, media_duration_sec),
-        )? {
-            if depth >= MAX_ENSURE_RETRY_DEPTH {
-                return Err("peaks 缓存过期且重试次数耗尽".to_string());
-            }
-            return ensure_waveform_peaks_sync_with_depth(
-                st,
-                project_id,
-                file_id,
-                true,
-                media_duration_sec,
-                depth + 1,
-            );
-        }
-        let report = load_existing_meta(&peaks_root, file_id);
-        Ok(status_from_disk(&peaks_root, file_id, report.as_ref()))
+            load_existing_meta(&peaks_root, file_id).as_ref(),
+            Some(&audio),
+            media_duration_sec,
+        ))
     }
 }
 

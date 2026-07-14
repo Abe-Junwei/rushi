@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { peaksAllLevelsReady, resolvePeaksPollTimeoutMs } from "./waveformPeaksPoll";
+import { peaksAllLevelsReady, resolvePeaksPollTimeoutMs, resolvePeaksPollDurationSec } from "./waveformPeaksPoll";
 import type { WaveformPeaksStatus } from "../../tauri/waveformPeaksApi";
 
 function status(levels: Array<{ level: number; exists: boolean }>): WaveformPeaksStatus {
@@ -41,5 +41,11 @@ describe("waveformPeaksPoll", () => {
   it("scales poll timeout with media duration", () => {
     expect(resolvePeaksPollTimeoutMs(0)).toBe(120_000);
     expect(resolvePeaksPollTimeoutMs(48 * 60)).toBe(900_000);
+  });
+
+  it("prefers the longer of media and status duration for poll budget", () => {
+    expect(resolvePeaksPollDurationSec(0, 13_230)).toBe(13_230);
+    expect(resolvePeaksPollDurationSec(13_230, null)).toBe(13_230);
+    expect(resolvePeaksPollDurationSec(100, 50)).toBe(100);
   });
 });

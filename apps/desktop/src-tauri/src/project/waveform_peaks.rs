@@ -83,6 +83,59 @@ pub fn try_acquire_peaks_lock(
     }
 }
 
+fn peaks_remux_temp_path(peaks_root: &Path, file_id: &str) -> PathBuf {
+    peaks_root.join(format!("{file_id}.peaks-remux.wav"))
+}
+
+/// Wall-clock budget for waiting on / reclaiming a `.generating.lock`.
+/// Scales with media duration; defaults to 120s when duration is unknown.
+pub fn peaks_wait_timeout_sec(media_duration_sec: Option<f64>) -> f64 {
+    media_duration_sec
+        .filter(|d| d.is_finite() && *d > 0.0)
+        .map(|d| (d * 0.35 + 60.0).min(900.0))
+        .unwrap_or(120.0)
+}
+
+/// Remove a `.generating.lock` left behind after process crash / kill (Drop never ran).
+/// Age threshold matches [`peaks_wait_timeout_sec`] so live long-file generation is not stolen.
+pub fn reclaim_stale_peaks_lock(
+    peaks_root: &Path,
+    file_id: &str,
+    media_duration_sec: Option<f64>,
+) -> bool {
+    reclaim_stale_peaks_lock_at(
+        peaks_root,
+        file_id,
+        media_duration_sec,
+        std::time::SystemTime::now(),
+    )
+}
+
+fn reclaim_stale_peaks_lock_at(
+    peaks_root: &Path,
+    file_id: &str,
+    media_duration_sec: Option<f64>,
+    now: std::time::SystemTime,
+) -> bool {
+    let path = peak_lock_path(peaks_root, file_id);
+    let Ok(meta) = fs::metadata(&path) else {
+        return false;
+    };
+    let Ok(modified) = meta.modified() else {
+        return false;
+    };
+    let Ok(age) = now.duration_since(modified) else {
+        return false;
+    };
+    let budget = Duration::from_secs_f64(peaks_wait_timeout_sec(media_duration_sec));
+    if age <= budget {
+        return false;
+    }
+    let _ = fs::remove_file(&path);
+    let _ = fs::remove_file(peaks_remux_temp_path(peaks_root, file_id));
+    true
+}
+
 pub fn write_peaks_meta(
     peaks_root: &Path,
     file_id: &str,
@@ -295,10 +348,8 @@ pub fn peaks_generation_in_progress(peaks_root: &Path, file_id: &str) -> bool {
     peak_lock_path(peaks_root, file_id).is_file()
 }
 
-/// Wait for another task to finish generating peaks (lock holder).
-/// Timeout scales with media duration (capped) so long files are not treated as stuck.
-/// If the lock disappears without producing files, fail fast so the caller can re-spawn
-/// instead of waiting the full long-media timeout on an abandoned lock.
+/// Prefer soft-join via status polling. Blocking wait retained for unit tests.
+#[cfg(test)]
 pub fn wait_for_peaks_ready(
     peaks_root: &Path,
     file_id: &str,
@@ -311,7 +362,6 @@ pub fn wait_for_peaks_ready(
             return Ok(());
         }
         if !peaks_generation_in_progress(peaks_root, file_id) {
-            // Lock holder finished (or never started) without a complete cache.
             if all_peak_levels_exist(peaks_root, file_id) {
                 return Ok(());
             }
@@ -325,12 +375,10 @@ pub fn wait_for_peaks_ready(
     }
 }
 
+#[cfg(test)]
 fn peaks_wait_max_attempts(media_duration_sec: Option<f64>) -> u32 {
     const INTERVAL_MS: f64 = 100.0;
-    let max_sec = media_duration_sec
-        .filter(|d| d.is_finite() && *d > 0.0)
-        .map(|d| (d * 0.35 + 60.0).min(900.0))
-        .unwrap_or(120.0);
+    let max_sec = peaks_wait_timeout_sec(media_duration_sec);
     ((max_sec * 1000.0) / INTERVAL_MS).ceil().max(1.0) as u32
 }
 
@@ -500,6 +548,69 @@ mod tests {
             "live generating.lock must survive data wipe"
         );
         drop(lock);
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn reclaim_stale_peaks_lock_removes_old_lock_and_remux_temp() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-stale-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let lock_path = peak_lock_path(&temp, "stale-file");
+        fs::write(&lock_path, b"").unwrap();
+        let remux = peaks_remux_temp_path(&temp, "stale-file");
+        fs::write(&remux, b"x").unwrap();
+
+        let modified = fs::metadata(&lock_path).unwrap().modified().unwrap();
+        let later = modified + Duration::from_secs(200);
+        assert!(reclaim_stale_peaks_lock_at(
+            &temp,
+            "stale-file",
+            None,
+            later,
+        ));
+        assert!(!lock_path.is_file());
+        assert!(!remux.is_file());
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn reclaim_stale_peaks_lock_keeps_fresh_lock() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-fresh-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let lock = try_acquire_peaks_lock(&temp, "fresh-file")
+            .unwrap()
+            .expect("lock");
+        let modified = peak_lock_path(&temp, "fresh-file")
+            .metadata()
+            .unwrap()
+            .modified()
+            .unwrap();
+        assert!(!reclaim_stale_peaks_lock_at(
+            &temp,
+            "fresh-file",
+            None,
+            modified + Duration::from_secs(30),
+        ));
+        assert!(peaks_generation_in_progress(&temp, "fresh-file"));
+        drop(lock);
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn peaks_wait_timeout_scales_and_defaults() {
+        assert!((peaks_wait_timeout_sec(None) - 120.0).abs() < f64::EPSILON);
+        assert!((peaks_wait_timeout_sec(Some(0.0)) - 120.0).abs() < f64::EPSILON);
+        let long = peaks_wait_timeout_sec(Some(13_230.0));
+        assert!((long - 900.0).abs() < f64::EPSILON);
+        assert_eq!(peaks_wait_max_attempts(None), 1200);
+    }
+
+    #[test]
+    fn wait_for_peaks_ready_fails_fast_without_lock() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-wait-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let err = wait_for_peaks_ready(&temp, "missing", None).unwrap_err();
+        assert!(err.contains("已结束但文件未就绪"));
         let _ = fs::remove_dir_all(temp);
     }
 }

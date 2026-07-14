@@ -176,7 +176,11 @@ export async function waitForPeaksWithPolling(input: {
       }
       return next;
     },
-    mediaDurationSec: input.mediaDurationSec,
+    mediaDurationSec: Math.max(
+      input.mediaDurationSec > 0 ? input.mediaDurationSec : 0,
+      st.durationSec ?? 0,
+      input.initial.durationSec ?? 0,
+    ),
     isCancelled: input.isCancelled,
   });
 
