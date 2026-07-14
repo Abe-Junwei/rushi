@@ -3,9 +3,8 @@ use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
 use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
-    peaks_generation_in_progress, remove_peaks_data_for_file, remove_peaks_for_file,
-    reclaim_stale_peaks_lock, try_acquire_peaks_lock, PeaksGenerationReport,
-    PeaksStaleCheckOptions,
+    peaks_generation_in_progress, reclaim_stale_peaks_lock, remove_peaks_data_for_file,
+    remove_peaks_for_file, try_acquire_peaks_lock, PeaksGenerationReport, PeaksStaleCheckOptions,
     PEAK_LEVELS,
 };
 use super::waveform_peaks_ffmpeg::{
