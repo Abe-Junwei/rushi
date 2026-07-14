@@ -808,7 +808,7 @@
  *   z-1  WaveSurfer container（可见波形 + progress + 内置 cursor playhead）
  *   z-2  waveform-segment-band-canvas（语段条 display 层）
  *   z-3  waveform-segment-overlay（语段交互 DOM：选中 / 拖拽 draft）
- *   z-8  region-action-overlay（语段播放控制，sticky 视口坐标）
+ *   z-8  .region-action-overlay（语段播放控制，timeline 坐标，overlay 内容层内）
  *   z-9  .waveform-viewport-playhead（全高播放头，sticky 视口坐标）
  *   z-10 .waveform-embedded-time-ruler（timeline overlay 底边，随 tier 原生 scroll）
  *   z-10 sticky 壳：.waveform-viewport-playhead（全高播放头，视口坐标）

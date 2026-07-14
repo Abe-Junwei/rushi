@@ -258,23 +258,29 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                 onCenterTierAtClientX={tx.centerTierAtClientX}
                 onSetScrollLeftPx={tx.userScrubScroll}
               />
+              {/*
+                Must live inside the subpixel content layer: P1 float offset is
+                applied here via translate3d(-fraction). Mounting as a sibling
+                made the controls scroll with integer S only while bands moved
+                with S+fraction — visible detach during global follow.
+              */}
+              <WaveformSegmentPlaybackControls
+                disabled={stripDisabled}
+                fileId={c.currentFileId}
+                segments={c.segments}
+                rulerBandHeightPx={rulerHeightPx}
+                isPlaying={tx.isSelectedSegmentPlaying}
+                timelineWidthPx={tx.timelineWidthPx}
+                durationSec={mediaDurationSec}
+                tierScrollRef={tx.tierScrollRef}
+                tierScrollLive={tx.tierScrollLive}
+                tierScrollLayout={tx.tierScrollLayout}
+                selectedSegment={selectedSegment}
+                segmentLoopPlayback={tx.segmentLoopPlayback}
+                onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
+                onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
+              />
             </CspLayout>
-            <WaveformSegmentPlaybackControls
-              disabled={stripDisabled}
-              fileId={c.currentFileId}
-              segments={c.segments}
-              rulerBandHeightPx={rulerHeightPx}
-              isPlaying={tx.isSelectedSegmentPlaying}
-              timelineWidthPx={tx.timelineWidthPx}
-              durationSec={mediaDurationSec}
-              tierScrollRef={tx.tierScrollRef}
-              tierScrollLive={tx.tierScrollLive}
-              tierScrollLayout={tx.tierScrollLayout}
-              selectedSegment={selectedSegment}
-              segmentLoopPlayback={tx.segmentLoopPlayback}
-              onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
-              onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
-            />
             {/*
               Same zero-height absolute + scroll-pin pattern as the wave layer.
               h-0 avoids consuming in-flow height inside the fixed-height shell.

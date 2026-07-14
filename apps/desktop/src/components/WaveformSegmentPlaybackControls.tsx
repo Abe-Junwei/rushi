@@ -34,8 +34,10 @@ type WaveformSegmentPlaybackControlsProps = {
 };
 
 /**
- * 选中语段的播放/循环浮层。定位（left/width/可见性）随 tier 横向滚动变化，
- * 走 imperative tierScrollFrame + CSP-safe layout 写入，滚动期间不触发 React 重渲染。
+ * 选中语段的播放/循环浮层。定位用 timeline 坐标，挂在
+ * `waveform-timeline-overlay-layer` 内，与语段 band 共享原生 scroll 与 P1
+ * `translate3d(-fraction)`，避免全局跟随时控件相对语段漂移。
+ * 滚动期走 imperative tierScrollFrame + CSP-safe layout，不触发 React 重渲染。
  */
 export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlaybackControls({
   disabled,
