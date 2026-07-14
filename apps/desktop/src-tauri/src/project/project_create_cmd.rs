@@ -1,4 +1,7 @@
 use super::asset_scope;
+use super::audio_container_normalize::{
+    cleanup_normalize_artifacts, normalize_project_audio_in_place,
+};
 use super::file_name_unique::unique_file_name;
 use super::import_duplicate::{
     import_file_display_name, import_provenance_for_src, ImportFileKind,
@@ -73,6 +76,13 @@ pub(crate) fn project_create_from_audio_inner(
     copy_audio_with_context(&src, &dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
+    let dest_audio = match normalize_project_audio_in_place(&dest_audio, Some(st)) {
+        Ok(report) => report.path,
+        Err(e) => {
+            let _ = fs::remove_dir_all(&dest_dir);
+            return Err(e);
+        }
+    };
     let dest_str = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
@@ -280,9 +290,22 @@ pub(crate) fn import_audio_to_project_inner(
     let file_id = Uuid::new_v4().to_string();
     let dest_dir = st.root.join("projects").join(project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
-    let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
-    copy_audio_with_context(&src, &dest_audio)?;
-    let dest_str = canonicalize_audio_storage_path(&dest_audio)?;
+    let copied_audio = dest_dir.join(format!("{file_id}.{ext}"));
+    copy_audio_with_context(&src, &copied_audio)?;
+    let dest_audio = match normalize_project_audio_in_place(&copied_audio, Some(st)) {
+        Ok(report) => report.path,
+        Err(e) => {
+            cleanup_normalize_artifacts(&copied_audio, None);
+            return Err(e);
+        }
+    };
+    let dest_str = match canonicalize_audio_storage_path(&dest_audio) {
+        Ok(s) => s,
+        Err(e) => {
+            cleanup_normalize_artifacts(&copied_audio, Some(&dest_audio));
+            return Err(e);
+        }
+    };
     let provenance = import_provenance_for_src(src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
@@ -316,7 +339,7 @@ pub(crate) fn import_audio_to_project_inner(
         Ok(())
     })();
     if let Err(e) = db_result {
-        let _ = fs::remove_file(&dest_audio);
+        cleanup_normalize_artifacts(&copied_audio, Some(&dest_audio));
         return Err(e);
     }
     let detail = project_detail_from_conn(&conn, project_id)?;

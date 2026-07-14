@@ -2,6 +2,7 @@
 //! P2: segment confidence / low_confidence / detail; local glossary_terms.
 
 pub mod app_data_paths;
+pub mod audio_container_normalize;
 pub mod asr_cache_cmd;
 pub mod asr_runtime_paths_cmd;
 pub mod asset_scope;

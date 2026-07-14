@@ -236,7 +236,8 @@
 
 - Rust 生成 `.dat` LOD；前端 `PeakCache.getWaveSurferPeaks(px/s, layoutDuration)` 供 WS 注入。
 - peaks 生成失败不阻断 UI（无波形区错误条）；WS decode 仍可播放与显示波形。
-- Symphonia 探测/解码失败时，peaks 路径尝试 **ffmpeg remux → 临时 WAV → 再生成**（`waveform_peaks_ffmpeg.rs`）。
+- Symphonia 探测/解码失败时，peaks 路径尝试 **ffmpeg remux → 临时 WAV → 再生成**（`waveform_peaks_ffmpeg.rs`；超时按时长/体积推导）。
+- **导入 / 打开播放**：[`audio_container_normalize.rs`](../../apps/desktop/src-tauri/src/project/audio_container_normalize.rs) 先 Symphonia 探测，失败则廉价修 PCM WAV 头，再失败则 ffmpeg remux（**保留声道**；peaks 路径仍强制 mono）写回项目音频真源（见 [`audio-import-container-normalize-research.md`](../execution/specs/audio-import-container-normalize-research.md)）。`native_audio_load` 在 `spawn_blocking` 中跑 normalize，避免堵 UI。
 - `peaksMediaDurationMismatch` 仍用于 `useWaveformPeaks` 触发一次 best-effort regenerate（仅当已有 `.dat` 级别）。
 
 ## 时长真源
