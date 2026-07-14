@@ -3456,7 +3456,7 @@ dependencies = [
 
 [[package]]
 name = "rushi-desktop"
-version = "0.1.9"
+version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "calamine",

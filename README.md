@@ -8,7 +8,7 @@
 - 本机 / 在线转写、校对、拆分合并、词表与纠错记忆
 - 导出 TXT / SRT / DOCX；设置内可导出诊断包
 
-**最新发行**：[v0.1.9](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.9)（macOS `aarch64.dmg` · Windows portable 分卷 zip；**无 Linux 桌面包**）。
+**最新发行**：[v1.0.0](https://github.com/Abe-Junwei/rushi/releases/tag/v1.0.0)（macOS `aarch64.dmg` · Windows portable 分卷 zip；OTA：`updates.rushi.app`；**无 Linux 桌面包**）。
 
 版权见 [`LICENSE`](./LICENSE)（Copyright (c) **沂南灵创技术服务中心** · 专有软件 · 保留一切权利）。
 
