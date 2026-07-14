@@ -1,10 +1,10 @@
 import {
-  IconArrowsHorizontal,
-  IconCrop,
-  IconRefresh,
-  IconWaveSine,
-  IconZoomInArea,
-  IconZoomOutArea,
+  IconArrowAutofitWidth,
+  IconBoxMargin,
+  IconLayoutBottombar,
+  IconZoomIn,
+  IconZoomOut,
+  IconZoomReset,
   type TablerIcon,
 } from "@tabler/icons-react";
 import { workbenchDropdownItemActiveClass } from "./editor/editorSegmentToolbarStyles";
@@ -12,17 +12,19 @@ import { WorkbenchOverflowMenu } from "./editor/WorkbenchOverflowMenu";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 /**
- * Tabler：
- * - WaveSine：波形总览条
- * - Crop：适配语段（选区框入视口）
- * - ArrowsHorizontal：整段横向铺满
+ * Tabler（波形底栏右簇）：
+ * - LayoutBottombar：波形总览条（底栏开关）
+ * - BoxMargin：适配语段（选区框入视口）
+ * - ArrowAutofitWidth：整段横向铺满
+ * - ZoomOut / ZoomIn：缩放（纯放大镜，避免 Area 虚框与选区语义撞车）
+ * - ZoomReset：重置缩放（非页面刷新）
  */
-const MinimapIcon = IconWaveSine;
-const FitSelectionIcon = IconCrop;
-const FitAllIcon = IconArrowsHorizontal;
-const ZoomOutIcon = IconZoomOutArea;
-const ZoomInIcon = IconZoomInArea;
-const ResetZoomIcon = IconRefresh;
+const MinimapIcon = IconLayoutBottombar;
+const FitSelectionIcon = IconBoxMargin;
+const FitAllIcon = IconArrowAutofitWidth;
+const ZoomOutIcon = IconZoomOut;
+const ZoomInIcon = IconZoomIn;
+const ResetZoomIcon = IconZoomReset;
 
 function ZoomBarIcon({ Icon, size }: { Icon: TablerIcon; size: "md" | "lg" }) {
   return (
