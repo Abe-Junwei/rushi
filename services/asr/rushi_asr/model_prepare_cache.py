@@ -38,19 +38,40 @@ def model_dir_candidates(root: Path, model_id: str) -> list[Path]:
         return []
     owner, name = parts
     escaped = name.replace(".", "___")
-    candidates = [
+    # modelscope_hub (≥ modelscope 1.38) uses HF-style: models/{owner}--{name}/snapshots/{rev}
+    dashed = f"{owner}--{name}"
+    dashed_escaped = f"{owner}--{escaped}"
+    bases = [
+        root / "models" / dashed,
+        root / "models" / dashed_escaped,
         root / "models" / owner / name,
         root / "models" / owner / escaped,
         root / "hub" / "models" / owner / name,
         root / "hub" / "models" / owner / escaped,
         root / "hub" / owner / name,
         root / "hub" / owner / escaped,
+        root / owner / name,
+        root / owner / escaped,
     ]
 
     unique: list[Path] = []
-    for p in candidates:
-        if p not in unique:
-            unique.append(p)
+    for base in bases:
+        if base not in unique:
+            unique.append(base)
+        snapshots = base / "snapshots"
+        if not snapshots.is_dir():
+            continue
+        try:
+            rev_dirs = sorted(
+                (p for p in snapshots.iterdir() if p.is_dir()),
+                key=lambda p: p.name,
+                reverse=True,
+            )
+        except OSError:
+            continue
+        for rev_dir in rev_dirs:
+            if rev_dir not in unique:
+                unique.append(rev_dir)
     return unique
 
 

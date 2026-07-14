@@ -194,24 +194,31 @@ def test_required_models_cached_guess_requires_punc_for_paraformer(monkeypatch, 
     assert required_models_cached_guess(para) is False
 
 
-def test_required_models_cached_guess_uses_explicit_model_env(monkeypatch, tmp_path: Path) -> None:
+def test_required_models_cached_guess_accepts_modelscope_hub_snapshot_layout(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """modelscope ≥1.38 / modelscope_hub: models/{owner}--{name}/snapshots/{rev}/…"""
     ms = tmp_path / "modelscope"
-    custom_dir = ms / "models" / "acme" / "custom-sensevoice"
-    vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    para_name = "speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+    para_dir = ms / "models" / f"iic--{para_name}" / "snapshots" / "master"
+    vad_dir = ms / "models" / "iic--speech_fsmn_vad_zh-cn-16k-common-pytorch" / "snapshots" / "master"
+    punc_dir = (
+        ms / "models" / "iic--punc_ct-transformer_zh-cn-common-vocab272727-pytorch" / "snapshots" / "master"
+    )
 
-    custom_dir.mkdir(parents=True)
-    (custom_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
-    (custom_dir / "config.yaml").write_text("ok")
-    (custom_dir / "tokens.json").write_text("{}")
+    para_dir.mkdir(parents=True)
+    (para_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
+    (para_dir / "config.yaml").write_text("ok")
+    (para_dir / "tokens.json").write_text("{}")
 
     vad_dir.mkdir(parents=True)
     (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
 
-    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
-    monkeypatch.setenv("RUSHI_FUNASR_MODEL", "acme/custom-sensevoice")
+    punc_dir.mkdir(parents=True)
+    (punc_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
+    (punc_dir / "config.yaml").write_text("ok")
 
-    assert default_model_cached_guess() is False
-    assert vad_model_cached_guess() is True
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
     assert required_models_cached_guess() is True
 
 
