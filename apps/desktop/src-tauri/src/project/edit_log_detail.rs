@@ -290,6 +290,7 @@ mod tests {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
+            frozen: false,
         }];
         let detail = build_save_segments_edit_detail(&conn, &file_id, &segments, t, &[]).unwrap();
         assert_eq!(detail.text_changes.len(), 1);
@@ -344,6 +345,7 @@ mod tests {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
+            frozen: false,
         }];
         let detail =
             build_restore_from_edit_log_detail(&conn, &file_id, source_id, &restored, 2).unwrap();

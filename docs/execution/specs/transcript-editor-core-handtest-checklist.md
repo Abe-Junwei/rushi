@@ -25,6 +25,21 @@
 
 ---
 
+## 0b. 筛选全链路修复冒烟（2026-07-14）
+
+关联：[`segment-filter-chain-remediation-acceptance.md`](./segment-filter-chain-remediation-acceptance.md)
+
+| # | 步骤 | 期望 | 过 |
+|---|------|------|----|
+| SF-1 | 筛冻结/阶段 → 滚列表 → 点可见行打字 | 无回跳；条纹/gutter 无残影；输入流畅 | [ ] |
+| SF-2 | 选一隐藏 primary（筛选后） | banner + 波形 chrome；不可拖边界/右键/lasso | [ ] |
+| SF-3 | 筛选下 merge/split/delete | 无错藏；可见性立即正确 | [ ] |
+| SF-4 | 波形 lasso / 空白点击 | 不命中隐藏段；重叠约束仍认全量 | [ ] |
+| SF-5 | 冻结多选（非 primary） | 文本弱 callout + 条纹；与波形一致 | [ ] |
+| SF-6 | 清筛选 | 行/band/交互立即恢复 | [ ] |
+
+---
+
 ## 1. 编辑—聚焦矩阵（E-1..E-7）
 
 | # | 步骤 | 期望 | 过 |

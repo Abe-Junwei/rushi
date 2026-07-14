@@ -155,6 +155,7 @@ mod tests {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
+            frozen: false,
         }
     }
 

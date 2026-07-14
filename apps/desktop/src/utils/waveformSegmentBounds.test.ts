@@ -336,4 +336,37 @@ describe("waveformSegmentBounds", () => {
     });
     expect(idx).toBe(1);
   });
+
+  it("resolveSegmentIndexAtWaveformPointer skips indices outside listVisibleIndexSet", () => {
+    const segments = [
+      { idx: 0, start_sec: 0, end_sec: 5, text: "hidden" },
+      { idx: 1, start_sec: 5, end_sec: 10, text: "visible" },
+    ];
+    expect(
+      resolveSegmentIndexAtWaveformPointer({
+        segments,
+        timeSec: 2,
+        pointerClientY: 40,
+        overlayClientTop: 0,
+        layoutHeightPx: 96,
+        laneByIndex: [0, 0],
+        laneCount: 1,
+        selectedIdx: -1,
+        listVisibleIndexSet: new Set([1]),
+      }),
+    ).toBe(-1);
+    expect(
+      resolveSegmentIndexAtWaveformPointer({
+        segments,
+        timeSec: 7,
+        pointerClientY: 40,
+        overlayClientTop: 0,
+        layoutHeightPx: 96,
+        laneByIndex: [0, 0],
+        laneCount: 1,
+        selectedIdx: -1,
+        listVisibleIndexSet: new Set([1]),
+      }),
+    ).toBe(1);
+  });
 });

@@ -91,3 +91,17 @@ pub(crate) fn migrate_segments_text_stage(conn: &Connection) -> rusqlite::Result
     }
     Ok(())
 }
+
+pub(crate) fn migrate_segments_frozen(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "segments")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "frozen") {
+        conn.execute(
+            "ALTER TABLE segments ADD COLUMN frozen INTEGER NOT NULL DEFAULT 0",
+            [],
+        )?;
+    }
+    Ok(())
+}

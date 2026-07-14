@@ -59,6 +59,7 @@ export function useStableTranscriptionLayerInput({
       closeFile: c.closeFile,
       openEnvironment,
       openSegmentAnnotationDialog: c.openSegmentAnnotationDialog,
+      toggleSegmentFrozen: c.toggleSegmentFrozen,
       openManualCorrectionMemoryDialog: c.openManualCorrectionMemoryDialog,
       onOpenSegmentContextMenu,
     };
@@ -106,6 +107,7 @@ export function useStableTranscriptionLayerInput({
   input.closeFile = c.closeFile;
   input.openEnvironment = openEnvironment;
   input.openSegmentAnnotationDialog = c.openSegmentAnnotationDialog;
+  input.toggleSegmentFrozen = c.toggleSegmentFrozen;
   input.openManualCorrectionMemoryDialog = c.openManualCorrectionMemoryDialog;
   input.onOpenSegmentContextMenu = onOpenSegmentContextMenu;
 

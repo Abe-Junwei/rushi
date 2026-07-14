@@ -88,7 +88,8 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     durationSec,
   } = props;
 
-  const { view: selectionView } = useWaveformSelectionChromeViewContext();
+  const { view: selectionView, filterExcludesPrimary, listVisibleIndexSet } =
+    useWaveformSelectionChromeViewContext();
 
   const segmentIndices = useMemo(
     () =>
@@ -131,6 +132,10 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
+        const visualOnly =
+          Boolean(filterExcludesPrimary) &&
+          listVisibleIndexSet != null &&
+          !listVisibleIndexSet.has(idx);
         return (
           <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}
@@ -140,6 +145,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
             endSec={bounds.endSec}
             isDraftSegment={idx === segmentDraftIdx}
             multiSelectActive={multiSelectActive}
+            visualOnly={visualOnly}
             timelineWidthPx={timelineWidthPx}
             durationSec={durationSec}
             lane={laneByIndex[idx] ?? 0}

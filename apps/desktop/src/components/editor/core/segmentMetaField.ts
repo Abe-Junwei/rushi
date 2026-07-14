@@ -11,6 +11,10 @@ export type SegmentMeta = {
   finalizeVia: SegmentFinalizeVia | null;
   /** Reserved for diarization; product UI has no speaker field yet. */
   speakerId: string | null;
+  /** Frozen: skip in global play; body read-only. */
+  frozen: boolean;
+  /** Annotation presence for list filter (not full annotation text). */
+  hasAnnotation: boolean;
   rowHeight?: number | null;
 };
 
@@ -71,6 +75,8 @@ export const segmentMetaField = StateField.define<SegmentMeta[]>({
         stage: null,
         finalizeVia: null,
         speakerId: null,
+        frozen: false,
+        hasAnnotation: false,
       });
     }
     return value.concat(pad);

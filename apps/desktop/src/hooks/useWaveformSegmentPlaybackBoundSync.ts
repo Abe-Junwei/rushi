@@ -17,6 +17,8 @@ import {
   nextSegmentPlaybackPhase,
   type SegmentPlaybackPhase,
 } from "../services/waveform/segmentPlaybackPhase";
+import { resolveFrozenPlaybackSkipTargetSec } from "../utils/frozenPlaybackSkip";
+import type { SegmentDto } from "../tauri/projectApi";
 
 export type WaveformSegmentPlaybackBoundSyncArgs = {
   wsRef: React.MutableRefObject<WaveSurfer | null>;
@@ -45,6 +47,8 @@ export type WaveformSegmentPlaybackBoundSyncArgs = {
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   /** Keep React currentTime aligned with the display latch. */
   commitSeekUi?: (timeSec: number) => void;
+  /** Live segments for global-play frozen skip. */
+  latestSegmentsRef: React.MutableRefObject<SegmentDto[]>;
 };
 
 /**
@@ -79,9 +83,56 @@ export function useWaveformSegmentPlaybackBoundSync(
     resolveNaturalEndReplayIdx,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
+    latestSegmentsRef,
   } = args;
 
   const phaseRef = useRef<SegmentPlaybackPhase>("idle");
+  const frozenSkipInFlightRef = useRef(false);
+
+  /**
+   * During global continuous play, seek-jump out of frozen windows.
+   * Scoped segment playback keeps auditioning frozen segments.
+   */
+  const enforceFrozenPlaybackSkip = useCallback(
+    (playheadTimeSec?: number) => {
+      if (frozenSkipInFlightRef.current) return;
+      if (globalPlayGenRef.current !== playGenerationRef.current) return;
+      if (isActiveSegmentPlaybackBound(segmentPlaybackBoundRef.current, playGenerationRef.current)) {
+        return;
+      }
+      const host = resolveMediaPlaybackHost(wsRef.current, transportRef?.current, {
+        requireTransport,
+      });
+      if (!host || !isReady || !host.isPlaying()) return;
+      const currentSec =
+        typeof playheadTimeSec === "number" && Number.isFinite(playheadTimeSec)
+          ? playheadTimeSec
+          : resolvePlayheadSec();
+      const target = resolveFrozenPlaybackSkipTargetSec(currentSec, latestSegmentsRef.current);
+      if (target == null) return;
+      frozenSkipInFlightRef.current = true;
+      void Promise.resolve(host.setTime(target))
+        .catch(() => undefined)
+        .finally(() => {
+          syncDisplayPlayheadAfterSeekRef?.current?.(target);
+          commitSeekUi?.(target);
+          frozenSkipInFlightRef.current = false;
+        });
+    },
+    [
+      commitSeekUi,
+      globalPlayGenRef,
+      isReady,
+      latestSegmentsRef,
+      playGenerationRef,
+      requireTransport,
+      resolvePlayheadSec,
+      segmentPlaybackBoundRef,
+      syncDisplayPlayheadAfterSeekRef,
+      transportRef,
+      wsRef,
+    ],
+  );
 
   /**
    * Stop at segment end. Driven by native TimeUpdate / playback-frame events.
@@ -277,16 +328,18 @@ export function useWaveformSegmentPlaybackBoundSync(
 
   useEffect(() => {
     return subscribePlaybackFrame((timeSec) => {
+      enforceFrozenPlaybackSkip(timeSec);
       enforceSegmentPlaybackBound(timeSec);
       syncSelectedSegmentPlayingUi(timeSec);
     });
-  }, [enforceSegmentPlaybackBound, syncSelectedSegmentPlayingUi]);
+  }, [enforceFrozenPlaybackSkip, enforceSegmentPlaybackBound, syncSelectedSegmentPlayingUi]);
 
   useEffect(() => {
     const transport = transportRef?.current;
     if (transport?.kind === "native") {
       if (!isReady) return;
       const onAudio = () => {
+        enforceFrozenPlaybackSkip();
         enforceSegmentPlaybackBound();
         syncSelectedSegmentPlayingUi();
       };
@@ -307,6 +360,7 @@ export function useWaveformSegmentPlaybackBoundSync(
     const ws = wsRef.current;
     if (!ws || !isReady) return;
     const onAudio = () => {
+      enforceFrozenPlaybackSkip();
       enforceSegmentPlaybackBound();
       syncSelectedSegmentPlayingUi();
     };
@@ -314,7 +368,16 @@ export function useWaveformSegmentPlaybackBoundSync(
     return () => {
       unsubAudio();
     };
-  }, [enforceSegmentPlaybackBound, isReady, requireTransport, syncSelectedSegmentPlayingUi, transportEpoch, transportRef, wsRef]);
+  }, [
+    enforceFrozenPlaybackSkip,
+    enforceSegmentPlaybackBound,
+    isReady,
+    requireTransport,
+    syncSelectedSegmentPlayingUi,
+    transportEpoch,
+    transportRef,
+    wsRef,
+  ]);
 
   useEffect(() => {
     const transport = transportRef?.current;

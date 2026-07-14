@@ -26,6 +26,10 @@ import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
 import { transcriptSegmentLoopExtensions } from "./segmentLoopField";
 import { transcriptClipboardFilters } from "./transcriptClipboard";
+import {
+  transcriptFrozenLineDecorations,
+  transcriptFrozenLineTheme,
+} from "./frozenLineDecorations";
 
 export type TranscriptEditorCoreExtensionsOptions = {
   persistence?: TransactionPersistenceBridgeHandlers;
@@ -53,6 +57,8 @@ export function transcriptEditorCoreExtensions(
   return [
     // multi-selection field is installed by buildTranscriptEditorState
     transcriptSelectionDecorations,
+    transcriptFrozenLineDecorations,
+    transcriptFrozenLineTheme,
     ...transcriptClipboardFilters,
     ...transcriptHoverExtensions,
     ...transcriptPlaybackFocusExtensions,

@@ -5,9 +5,13 @@ import type { SegmentDto } from "../tauri/projectApi";
 import {
   computeFilteredSegmentIndices,
   DEFAULT_SEGMENT_LIST_FILTER,
+  deriveSegmentListFilterProjection,
   formatSegmentListFilterTriggerLabel,
   isDefaultSegmentListFilter,
   resetSegmentListFilter,
+  resolveTranscriptFilterVisibleSet,
+  segmentMatchesListFilterInput,
+  segmentMetaToListFilterMatchInput,
   toggleSegmentStageFilter,
   parseStoredSegmentListFilter,
   readStoredSegmentListFilter,
@@ -38,6 +42,7 @@ function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "idx">): SegmentDto
     low_confidence: partial.low_confidence ?? false,
     text_stage: partial.text_stage ?? "auto_transcribe",
     annotation: partial.annotation ?? null,
+    frozen: partial.frozen ?? false,
   };
 }
 
@@ -49,7 +54,7 @@ describe("segmentListFilter", () => {
 
   it("defaults pass all segments", () => {
     const segments = [
-      seg({ idx: 0, text_stage: "finalized", annotation: "note" }),
+      seg({ idx: 0, text_stage: "finalized", annotation: "note", frozen: true }),
       seg({ idx: 1, low_confidence: true }),
     ];
     expect(isDefaultSegmentListFilter(DEFAULT_SEGMENT_LIST_FILTER)).toBe(true);
@@ -80,10 +85,25 @@ describe("segmentListFilter", () => {
     expect(computeFilteredSegmentIndices(segments, withoutOnly)).toEqual([1, 2]);
   });
 
+  it("filters by frozen state", () => {
+    const segments = [
+      seg({ idx: 0, frozen: true }),
+      seg({ idx: 1, frozen: false }),
+      seg({ idx: 2 }),
+    ];
+    expect(
+      computeFilteredSegmentIndices(segments, { ...DEFAULT_SEGMENT_LIST_FILTER, frozen: "frozen" }),
+    ).toEqual([0]);
+    expect(
+      computeFilteredSegmentIndices(segments, { ...DEFAULT_SEGMENT_LIST_FILTER, frozen: "unfrozen" }),
+    ).toEqual([1, 2]);
+  });
+
   it("reset restores defaults", () => {
     const dirty = {
       ...DEFAULT_SEGMENT_LIST_FILTER,
       annotation: "with" as const,
+      frozen: "frozen" as const,
       stages: toggleSegmentStageFilter(DEFAULT_SEGMENT_LIST_FILTER.stages, "finalized"),
     };
     expect(isDefaultSegmentListFilter(resetSegmentListFilter())).toBe(true);
@@ -96,8 +116,11 @@ describe("segmentListFilter", () => {
       ...DEFAULT_SEGMENT_LIST_FILTER,
       stages: toggleSegmentStageFilter(DEFAULT_SEGMENT_LIST_FILTER.stages, "finalized"),
       annotation: "with" as const,
+      frozen: "frozen" as const,
     };
-    expect(formatSegmentListFilterTriggerLabel(partial)).toBe("筛选 · 阶段 3/4 · 有备注");
+    expect(formatSegmentListFilterTriggerLabel(partial)).toBe(
+      "筛选 · 阶段 3/4 · 有备注 · 已冻结",
+    );
     expect(
       formatSegmentListFilterTriggerLabel(DEFAULT_SEGMENT_LIST_FILTER, {
         filteredCount: 12,
@@ -111,9 +134,56 @@ describe("segmentListFilter", () => {
       ...DEFAULT_SEGMENT_LIST_FILTER,
       stages: toggleSegmentStageFilter(DEFAULT_SEGMENT_LIST_FILTER.stages, "finalized"),
       annotation: "with" as const,
+      frozen: "unfrozen" as const,
     };
     writeStoredSegmentListFilter(filter);
     expect(readStoredSegmentListFilter()).toEqual(filter);
     expect(parseStoredSegmentListFilter(JSON.stringify(filter))).toEqual(filter);
+  });
+
+  it("upgrades legacy persisted filters missing frozen to all", () => {
+    const legacy = {
+      stages: DEFAULT_SEGMENT_LIST_FILTER.stages,
+      annotation: "with",
+    };
+    expect(parseStoredSegmentListFilter(JSON.stringify(legacy))).toEqual({
+      stages: DEFAULT_SEGMENT_LIST_FILTER.stages,
+      annotation: "with",
+      frozen: "all",
+    });
+  });
+
+  it("matches CM meta projection the same as DTO fields", () => {
+    const filter = { ...DEFAULT_SEGMENT_LIST_FILTER, annotation: "with" as const, frozen: "frozen" as const };
+    expect(
+      segmentMatchesListFilterInput(
+        segmentMetaToListFilterMatchInput({
+          stage: "finalized",
+          frozen: true,
+          hasAnnotation: true,
+        }),
+        filter,
+      ),
+    ).toBe(true);
+    expect(
+      segmentMatchesListFilterInput(
+        segmentMetaToListFilterMatchInput({
+          stage: "finalized",
+          frozen: true,
+          hasAnnotation: false,
+        }),
+        filter,
+      ),
+    ).toBe(false);
+  });
+
+  it("derives visibleIndexSet / displayPosition / isTrueSubset", () => {
+    const derived = deriveSegmentListFilterProjection([1, 3], 5, true);
+    expect(derived.isTrueSubset).toBe(true);
+    expect(derived.visibleIndexSet?.has(1)).toBe(true);
+    expect(derived.displayPositionByIndex?.get(3)).toBe(1);
+    expect(resolveTranscriptFilterVisibleSet(true, [0, 1, 2, 3, 4], 5)).toBeNull();
+    expect(resolveTranscriptFilterVisibleSet(true, [], 5)?.size).toBe(0);
+    expect(deriveSegmentListFilterProjection([0, 1], 2, false).visibleIndexSet).toBeNull();
   });
 });

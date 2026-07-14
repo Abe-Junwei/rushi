@@ -39,6 +39,15 @@ describe("segmentListHelpers", () => {
     expect(isPlaceholderSegment(merged, 10)).toBe(false);
   });
 
+  it("mergeTwoSegments spans the min/max times even when index-order is inverted", () => {
+    const merged = mergeTwoSegments(
+      seg({ uid: "later", start_sec: 30, end_sec: 40, text: "later" }),
+      seg({ uid: "earlier", start_sec: 10, end_sec: 20, text: "earlier" }),
+    );
+    expect(merged.start_sec).toBe(10);
+    expect(merged.end_sec).toBe(40);
+  });
+
   it("mergeTwoSegments downgrades to the least confirmed stage", () => {
     const merged = mergeTwoSegments(
       seg({

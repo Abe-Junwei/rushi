@@ -5,7 +5,9 @@ import {
   formatSegmentListFilterTriggerLabel,
   SEGMENT_TEXT_STAGES,
   segmentListFilterAnnotationLabel,
+  segmentListFilterFrozenLabel,
   type SegmentAnnotationFilter,
+  type SegmentFrozenFilter,
   type SegmentListFilterState,
 } from "../../services/segmentListFilter";
 import {
@@ -24,15 +26,58 @@ type Props = {
   isActive: boolean;
   onToggleStage: (stage: SegmentTextStage) => void;
   onAnnotationChange: (value: SegmentAnnotationFilter) => void;
+  onFrozenChange: (value: SegmentFrozenFilter) => void;
   onReset: () => void;
 };
 
 const ANNOTATION_OPTIONS: SegmentAnnotationFilter[] = ["all", "with", "without"];
+const FROZEN_OPTIONS: SegmentFrozenFilter[] = ["all", "frozen", "unfrozen"];
 
 function stageOptionClass(selected: boolean): string {
   return ["segment-filter-menu-option", selected ? "segment-filter-menu-option--on" : ""]
     .filter(Boolean)
     .join(" ");
+}
+
+function FilterRadioSection<T extends string>(props: {
+  headId: string;
+  title: string;
+  hint: string;
+  name: string;
+  options: readonly T[];
+  value: T;
+  busy: boolean;
+  labelFor: (value: T) => string;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <section className="segment-filter-menu-section" aria-labelledby={props.headId}>
+      <header id={props.headId} className="segment-filter-menu-section-head">
+        <span>{props.title}</span>
+        <span className="segment-filter-menu-section-hint">{props.hint}</span>
+      </header>
+      <ul className="segment-filter-menu-list">
+        {props.options.map((option) => {
+          const selected = props.value === option;
+          return (
+            <li key={option}>
+              <label className={stageOptionClass(selected)}>
+                <input
+                  type="radio"
+                  name={props.name}
+                  className="segment-filter-menu-control"
+                  checked={selected}
+                  disabled={props.busy}
+                  onChange={() => props.onChange(option)}
+                />
+                <span className="segment-filter-menu-option-label">{props.labelFor(option)}</span>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
 }
 
 export function EditorSegmentListFilterMenu({
@@ -43,6 +88,7 @@ export function EditorSegmentListFilterMenu({
   isActive,
   onToggleStage,
   onAnnotationChange,
+  onFrozenChange,
   onReset,
 }: Props) {
   if (totalCount === 0) return null;
@@ -99,34 +145,31 @@ export function EditorSegmentListFilterMenu({
 
           <div className="segment-filter-menu-divider" role="separator" />
 
-          <section className="segment-filter-menu-section" aria-labelledby="segment-filter-note-head">
-            <header id="segment-filter-note-head" className="segment-filter-menu-section-head">
-              <span>备注</span>
-              <span className="segment-filter-menu-section-hint">单选</span>
-            </header>
-            <ul className="segment-filter-menu-list">
-              {ANNOTATION_OPTIONS.map((value) => {
-                const selected = filter.annotation === value;
-                return (
-                  <li key={value}>
-                    <label className={stageOptionClass(selected)}>
-                      <input
-                        type="radio"
-                        name="segment-list-annotation-filter"
-                        className="segment-filter-menu-control"
-                        checked={selected}
-                        disabled={busy}
-                        onChange={() => onAnnotationChange(value)}
-                      />
-                      <span className="segment-filter-menu-option-label">
-                        {segmentListFilterAnnotationLabel(value)}
-                      </span>
-                    </label>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
+          <FilterRadioSection
+            headId="segment-filter-frozen-head"
+            title="冻结"
+            hint="单选"
+            name="segment-list-frozen-filter"
+            options={FROZEN_OPTIONS}
+            value={filter.frozen}
+            busy={busy}
+            labelFor={segmentListFilterFrozenLabel}
+            onChange={onFrozenChange}
+          />
+
+          <div className="segment-filter-menu-divider" role="separator" />
+
+          <FilterRadioSection
+            headId="segment-filter-note-head"
+            title="备注"
+            hint="单选"
+            name="segment-list-annotation-filter"
+            options={ANNOTATION_OPTIONS}
+            value={filter.annotation}
+            busy={busy}
+            labelFor={segmentListFilterAnnotationLabel}
+            onChange={onAnnotationChange}
+          />
 
           {isActive ? (
             <footer className="segment-filter-menu-footer">

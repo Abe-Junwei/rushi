@@ -10,6 +10,7 @@ import {
 } from "../components/editor/core/transcriptEditorViewHandle";
 import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
 import { finalizeStructureChangeSelection } from "./finalizeStructureChangeSelection";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -91,8 +92,15 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
   const splitAtSelection = useCallback(
     (selectedIdx: number) => {
       const playheadSec = getPlayheadSec?.() ?? 0;
+      const segs0 = segmentPublish.getCurrentSegmentsSnapshot();
+      if (segs0.length === 0) return;
+      const i0 = Math.min(selectedIdx, segs0.length - 1);
+      if (isSegmentFrozen(segs0[i0])) {
+        setError("请先解冻语段后再合并、拆分或删除");
+        return;
+      }
       if (readTranscriptEditorCoreEnabled()) {
-        const segs = segmentPublish.getCurrentSegmentsSnapshot();
+        const segs = segs0;
         if (segs.length === 0) return;
         const i = Math.min(selectedIdx, segs.length - 1);
         const orig = segs[i];
@@ -140,8 +148,17 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
       const playheadSec = Number.isFinite(timeSec) ? timeSec : (getPlayheadSec?.() ?? 0);
+      const segsProbe = segmentPublish.getCurrentSegmentsSnapshot();
+      const tProbe = roundSec3(playheadSec);
+      const iProbe = segsProbe.findIndex(
+        (s) => tProbe > s.start_sec + 0.02 && tProbe < s.end_sec - 0.02,
+      );
+      if (iProbe >= 0 && isSegmentFrozen(segsProbe[iProbe])) {
+        setError("请先解冻语段后再合并、拆分或删除");
+        return;
+      }
       if (readTranscriptEditorCoreEnabled()) {
-        const segs = segmentPublish.getCurrentSegmentsSnapshot();
+        const segs = segsProbe;
         if (dispatchTranscriptSplitAtTime(segs, playheadSec) && persistCore(segs, playheadSec)) {
           setError("");
           return;

@@ -76,6 +76,7 @@ export function resolveWaveformSegmentFillState(input: {
 
 /**
  * 波形语段 overlay 填充 — 引用 tokens.css `--segment-fill-*`，随壳层 / 主题色即时更新。
+ * 冻结段：对齐文本区 — 无 saffron 高亮；选中用 callout 浅底（与 cm-transcript-frozen-selected 一致）。
  */
 export function waveformRegionFillColor(
   seg: SegmentDto,
@@ -84,6 +85,14 @@ export function waveformRegionFillColor(
   playheadSec?: number,
   options?: { multiSelectActive?: boolean },
 ): string {
+  if (seg.frozen) {
+    if (seg.low_confidence) return segmentFillCssVar("lowConfidence");
+    // Match `.cm-transcript-frozen-line.cm-transcript-frozen-selected` callout wash.
+    if (selected || inSelection) {
+      return "color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)";
+    }
+    return segmentFillCssVar("idle");
+  }
   if (options?.multiSelectActive && (selected || inSelection)) {
     return segmentFillCssVar("inSelectionWaveform");
   }

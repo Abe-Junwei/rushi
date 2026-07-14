@@ -28,9 +28,11 @@ import {
   type TranscriptPanelHighlight,
 } from "./panelHighlightField";
 import {
+  setTranscriptFilterCriteriaEffect,
   setTranscriptFilterVisibleEffect,
   type TranscriptFilterVisibleSet,
 } from "./filterLineVisibility";
+import type { SegmentListFilterState } from "../../../services/segmentListFilter";
 
 let activeView: EditorView | null = null;
 
@@ -228,9 +230,19 @@ export function dispatchTranscriptPanelHighlight(
 
 export function dispatchTranscriptFilterVisible(
   visible: TranscriptFilterVisibleSet,
+  criteria?: SegmentListFilterState | null,
 ): boolean {
   return withView((view) => {
-    view.dispatch({ effects: setTranscriptFilterVisibleEffect.of(visible) });
+    if (criteria !== undefined) {
+      view.dispatch({
+        effects: [
+          setTranscriptFilterVisibleEffect.of(visible),
+          setTranscriptFilterCriteriaEffect.of(criteria),
+        ],
+      });
+    } else {
+      view.dispatch({ effects: setTranscriptFilterVisibleEffect.of(visible) });
+    }
     return true;
   });
 }

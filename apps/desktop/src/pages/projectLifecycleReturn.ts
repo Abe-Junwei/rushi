@@ -50,6 +50,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     fileMutation,
     projectMutation,
     segmentAnnotation,
+    segmentFreeze,
     batchTranscribe,
   } = input;
 
@@ -236,5 +237,6 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     setSegmentAnnotationDraft: segmentAnnotation.setSegmentAnnotationDraft,
     saveSegmentAnnotation: segmentAnnotation.saveSegmentAnnotation,
     clearSegmentAnnotation: segmentAnnotation.clearSegmentAnnotation,
+    toggleSegmentFrozen: segmentFreeze.toggleSegmentFrozen,
   };
 }

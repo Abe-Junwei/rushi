@@ -4,16 +4,21 @@ import {
   type SegmentTextStage,
 } from "./segmentTextStage";
 import { segmentHasAnnotation } from "../utils/segmentAnnotation";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
 /** 语段列表视图筛选（仅控制 EditorSegmentList 可见行；不改 selectedIdx / 波形选中）。 */
 
 export type SegmentAnnotationFilter = "all" | "with" | "without";
+
+/** 冻结状态：全部 / 仅冻结 / 仅未冻结。 */
+export type SegmentFrozenFilter = "all" | "frozen" | "unfrozen";
 
 export type SegmentStageFilterMap = Record<SegmentTextStage, boolean>;
 
 export type SegmentListFilterState = {
   stages: SegmentStageFilterMap;
   annotation: SegmentAnnotationFilter;
+  frozen: SegmentFrozenFilter;
 };
 
 export const SEGMENT_TEXT_STAGES: readonly SegmentTextStage[] = [
@@ -33,26 +38,71 @@ const DEFAULT_SEGMENT_STAGE_FILTER: SegmentStageFilterMap = {
 export const DEFAULT_SEGMENT_LIST_FILTER: SegmentListFilterState = {
   stages: DEFAULT_SEGMENT_STAGE_FILTER,
   annotation: "all",
+  frozen: "all",
 };
 
 export function isDefaultSegmentListFilter(filter: SegmentListFilterState): boolean {
   return (
     filter.annotation === "all" &&
+    filter.frozen === "all" &&
     SEGMENT_TEXT_STAGES.every((stage) => filter.stages[stage])
   );
 }
 
-function segmentMatchesListFilter(
-  seg: SegmentDto,
+/** Minimal fields shared by SegmentDto and CM SegmentMeta for list filtering. */
+export type SegmentListFilterMatchInput = {
+  stage: SegmentTextStage | null | undefined;
+  frozen: boolean;
+  hasAnnotation: boolean;
+};
+
+export function segmentDtoToListFilterMatchInput(seg: SegmentDto): SegmentListFilterMatchInput {
+  return {
+    stage: seg.text_stage,
+    frozen: isSegmentFrozen(seg),
+    hasAnnotation: segmentHasAnnotation(seg),
+  };
+}
+
+export function segmentMetaToListFilterMatchInput(meta: {
+  stage: SegmentTextStage | null | undefined;
+  frozen: boolean;
+  hasAnnotation: boolean;
+}): SegmentListFilterMatchInput {
+  return {
+    stage: meta.stage,
+    frozen: Boolean(meta.frozen),
+    hasAnnotation: Boolean(meta.hasAnnotation),
+  };
+}
+
+/** Pure matcher — consume DTO or CM meta projection without copying full SegmentDto. */
+export function segmentMatchesListFilterInput(
+  input: SegmentListFilterMatchInput,
   filter: SegmentListFilterState,
 ): boolean {
-  const stage = normalizeSegmentTextStage(seg.text_stage);
+  const stage = normalizeSegmentTextStage(input.stage);
   if (!filter.stages[stage]) return false;
 
-  if (filter.annotation === "with" && !segmentHasAnnotation(seg)) return false;
-  if (filter.annotation === "without" && segmentHasAnnotation(seg)) return false;
+  if (filter.annotation === "with" && !input.hasAnnotation) return false;
+  if (filter.annotation === "without" && input.hasAnnotation) return false;
+
+  if (filter.frozen === "frozen" && !input.frozen) return false;
+  if (filter.frozen === "unfrozen" && input.frozen) return false;
 
   return true;
+}
+
+export function computeFilteredSegmentIndicesFromMatchInputs(
+  items: readonly SegmentListFilterMatchInput[],
+  filter: SegmentListFilterState,
+): number[] {
+  const indices: number[] = [];
+  for (let i = 0; i < items.length; i += 1) {
+    const item = items[i];
+    if (item && segmentMatchesListFilterInput(item, filter)) indices.push(i);
+  }
+  return indices;
 }
 
 export function computeFilteredSegmentIndices(
@@ -61,9 +111,58 @@ export function computeFilteredSegmentIndices(
 ): number[] {
   const indices: number[] = [];
   for (let i = 0; i < segments.length; i += 1) {
-    if (segmentMatchesListFilter(segments[i], filter)) indices.push(i);
+    const seg = segments[i];
+    if (seg && segmentMatchesListFilterInput(segmentDtoToListFilterMatchInput(seg), filter)) {
+      indices.push(i);
+    }
   }
   return indices;
+}
+
+/**
+ * Derived filter projections shared by list / CM6 / waveform / nav.
+ * `visibleIndexSet` is null when filter is inactive (paint/hit all).
+ * When active, it is the matching index Set (may be empty).
+ */
+export type SegmentListFilterDerived = {
+  filteredIndices: number[];
+  visibleIndexSet: ReadonlySet<number> | null;
+  displayPositionByIndex: ReadonlyMap<number, number> | null;
+  isTrueSubset: boolean;
+};
+
+export function deriveSegmentListFilterProjection(
+  filteredIndices: readonly number[],
+  segmentCount: number,
+  filterActive: boolean,
+): Omit<SegmentListFilterDerived, "filteredIndices"> {
+  if (!filterActive) {
+    return {
+      visibleIndexSet: null,
+      displayPositionByIndex: null,
+      isTrueSubset: false,
+    };
+  }
+  const isTrueSubset =
+    segmentCount > 0 && filteredIndices.length < segmentCount;
+  const visibleIndexSet = new Set(filteredIndices);
+  const displayPositionByIndex = new Map<number, number>();
+  for (let i = 0; i < filteredIndices.length; i += 1) {
+    const idx = filteredIndices[i];
+    if (idx !== undefined) displayPositionByIndex.set(idx, i);
+  }
+  return { visibleIndexSet, displayPositionByIndex, isTrueSubset };
+}
+
+/** CM6 visibility: null = show all; Set (possibly empty) when filter hides any/all. */
+export function resolveTranscriptFilterVisibleSet(
+  filterActive: boolean,
+  filteredIndices: readonly number[],
+  segmentCount: number,
+): ReadonlySet<number> | null {
+  if (!filterActive) return null;
+  if (segmentCount > 0 && filteredIndices.length >= segmentCount) return null;
+  return new Set(filteredIndices);
 }
 
 export function toggleSegmentStageFilter(
@@ -77,6 +176,7 @@ export function resetSegmentListFilter(): SegmentListFilterState {
   return {
     stages: { ...DEFAULT_SEGMENT_STAGE_FILTER },
     annotation: "all",
+    frozen: "all",
   };
 }
 
@@ -89,14 +189,27 @@ function isSegmentStageFilterMap(value: unknown): value is SegmentStageFilterMap
   );
 }
 
+function parseTriState<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  fallback: T,
+): T {
+  return typeof value === "string" && (allowed as readonly string[]).includes(value)
+    ? (value as T)
+    : fallback;
+}
+
 export function parseStoredSegmentListFilter(raw: string | null): SegmentListFilterState | null {
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<SegmentListFilterState>;
     if (!isSegmentStageFilterMap(parsed.stages)) return null;
-    const annotation = parsed.annotation;
-    if (annotation !== "all" && annotation !== "with" && annotation !== "without") return null;
-    return { stages: parsed.stages, annotation };
+    return {
+      stages: parsed.stages,
+      annotation: parseTriState(parsed.annotation, ["all", "with", "without"] as const, "all"),
+      // Older persisted filters omit frozen — default to "all".
+      frozen: parseTriState(parsed.frozen, ["all", "frozen", "unfrozen"] as const, "all"),
+    };
   } catch {
     return null;
   }
@@ -131,6 +244,12 @@ const ANNOTATION_FILTER_LABELS: Record<SegmentAnnotationFilter, string> = {
   without: "无备注",
 };
 
+const FROZEN_FILTER_LABELS: Record<SegmentFrozenFilter, string> = {
+  all: "全部",
+  frozen: "已冻结",
+  unfrozen: "未冻结",
+};
+
 /** 筛选下拉触发器文案（默认「筛选」；有筛选时摘要 + 可选 n/m）。 */
 export function formatSegmentListFilterTriggerLabel(
   filter: SegmentListFilterState,
@@ -144,6 +263,9 @@ export function formatSegmentListFilterTriggerLabel(
     }
     if (filter.annotation !== "all") {
       parts.push(ANNOTATION_FILTER_LABELS[filter.annotation]);
+    }
+    if (filter.frozen !== "all") {
+      parts.push(FROZEN_FILTER_LABELS[filter.frozen]);
     }
   }
   const filteredCount = opts?.filteredCount;
@@ -162,4 +284,8 @@ export function formatSegmentListFilterTriggerLabel(
 
 export function segmentListFilterAnnotationLabel(value: SegmentAnnotationFilter): string {
   return ANNOTATION_FILTER_LABELS[value];
+}
+
+export function segmentListFilterFrozenLabel(value: SegmentFrozenFilter): string {
+  return FROZEN_FILTER_LABELS[value];
 }

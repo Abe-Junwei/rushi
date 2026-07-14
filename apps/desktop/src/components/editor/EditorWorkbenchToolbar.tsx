@@ -46,6 +46,7 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
         isActive={segmentFilter.isActive}
         onToggleStage={segmentFilter.toggleStage}
         onAnnotationChange={segmentFilter.setAnnotation}
+        onFrozenChange={segmentFilter.setFrozen}
         onReset={segmentFilter.resetFilter}
       />
     ) : null;
@@ -181,6 +182,7 @@ function areEditorWorkbenchToolbarPropsEqual(
   if (prev.segmentFilter.isActive !== next.segmentFilter.isActive) return false;
   if (prev.segmentFilter.toggleStage !== next.segmentFilter.toggleStage) return false;
   if (prev.segmentFilter.setAnnotation !== next.segmentFilter.setAnnotation) return false;
+  if (prev.segmentFilter.setFrozen !== next.segmentFilter.setFrozen) return false;
   if (prev.segmentFilter.resetFilter !== next.segmentFilter.resetFilter) return false;
   return (
     projectControllerShellRenderEqual(prev.controller, next.controller) &&

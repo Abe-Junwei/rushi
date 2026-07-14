@@ -104,6 +104,7 @@
 - **已删**：`EditorSegmentListViewport`、虚拟窗 scroll 栈、`SegmentTextListRow` / `SegmentRowTextField` / `useSegmentRowTextField*`、`useReconcileSelectionChromeFromReact` + service reconcile、textarea focus 重试链。
 - **暂留（P9b）**：`selectedIdx` / `useSelectedIdxCommitter` / `runSelectSegmentAt` / `selectionChromeStore` / `flushSegmentTextDrafts` / `useSegmentDraftStore`。
 - **文档**：`desktop-waveform-engine.md` §点选契约改写；`selection-chrome-bus-research.md` 顶部取代横幅。
+- **本修复收口（2026-07-14）**：筛选投影/结构同 TX、热路径 O(n)/O(k)、单一 reveal 调度、波形 `visibleIndexSet` 契约 — 见 [`segment-filter-chain-remediation-plan.md`](./segment-filter-chain-remediation-plan.md)。
 
 ### P9b1 — Overlay/手势改读 projection（2026-07-11 ✅）
 - `useSegmentRowSelection` / overlay region 高亮订阅 `transcriptProjection`（不再读 SC2）。

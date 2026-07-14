@@ -16,6 +16,11 @@ import { transcriptHoverSegmentField } from "./hoverSegmentField";
 import { transcriptPlaybackFocusField } from "./playbackFocusField";
 import { transcriptScopedPlayingField } from "./scopedPlayingField";
 import { transcriptSegmentLoopField } from "./segmentLoopField";
+import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
+import {
+  isTranscriptSegmentVisible,
+  transcriptFilterVisibilityChanged,
+} from "./filterLineVisibility";
 
 /** Compact Lucide-like strokes for stage chips (no React mount in gutter DOM). */
 const STAGE_ICON_SVG: Record<string, string> = {
@@ -199,6 +204,7 @@ export function createTranscriptStageGutter(
     renderEmptyElements: true,
     lineMarker(view, line) {
       const idx = view.state.doc.lineAt(line.from).number - 1;
+      if (!isTranscriptSegmentVisible(view.state, idx)) return null;
       const primary = primarySegmentIdx(view.state);
       const multi = view.state.field(transcriptMultiSelectionField);
       const hoverIdx = view.state.field(transcriptHoverSegmentField);
@@ -233,6 +239,7 @@ export function createTranscriptStageGutter(
       return (
         lineCountChanged ||
         primaryChanged ||
+        transcriptFilterVisibilityChanged(update) ||
         update.startState.field(segmentMetaField) !== update.state.field(segmentMetaField) ||
         !transcriptMultiSelectionEqual(
           update.startState.field(transcriptMultiSelectionField),
@@ -272,6 +279,21 @@ export function createTranscriptStageGutter(
           mouse.preventDefault();
           mouse.stopPropagation();
           opts.onToggleSegmentPlay?.(idx);
+          return true;
+        }
+        const multi = view.state.field(transcriptMultiSelectionField);
+        if (mouse.button !== 0) {
+          mouse.preventDefault();
+          if (
+            shouldApplyContextMenuSelection({
+              segmentIdx: idx,
+              isIndexInSelection: (i) => multi.selectedSet.has(i),
+              selectionCount: multi.selectedSet.size,
+            })
+          ) {
+            selectSegmentCommand(view, idx, { scrollIntoView: false });
+            opts.onSelectSegment?.(idx, { toggle: false, shiftKey: false });
+          }
           return true;
         }
         const toggle = mouse.metaKey || mouse.ctrlKey;

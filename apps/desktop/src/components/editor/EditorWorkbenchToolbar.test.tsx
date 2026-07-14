@@ -51,11 +51,16 @@ function makeSegmentFilter() {
         finalized: true,
       },
       annotation: "all" as const,
+      frozen: "all" as const,
     },
     filteredIndices: [],
+    visibleIndexSet: null,
+    displayPositionByIndex: null,
+    isTrueSubset: false,
     isActive: false,
     toggleStage: vi.fn(),
     setAnnotation: vi.fn(),
+    setFrozen: vi.fn(),
     resetFilter: vi.fn(),
   };
 }

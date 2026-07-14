@@ -18,24 +18,29 @@ export function WaveformSelectionChromeViewProvider({
   input,
   filterActive,
   filteredIndices,
+  visibleIndexSet,
   children,
 }: {
   input: WaveformSelectionChromeReactInput;
   filterActive: boolean;
   filteredIndices: readonly number[];
+  /** Prefer shared projection from useSegmentListFilter when provided. */
+  visibleIndexSet?: ReadonlySet<number> | null;
   children: ReactNode;
 }) {
   const view = useWaveformSelectionChromeView(input);
+  const listVisibleIndexSet = useMemo((): ReadonlySet<number> | null => {
+    if (visibleIndexSet !== undefined) return visibleIndexSet;
+    if (!filterActive) return null;
+    return new Set(filteredIndices);
+  }, [filterActive, filteredIndices, visibleIndexSet]);
   const filterExcludesPrimary = isSegmentListFilterHidingPrimary({
     filterActive,
     filteredIndices,
     primaryIdx: view.selectedIdx,
     segmentCount: input.segmentCount ?? 0,
+    visibleIndexSet: listVisibleIndexSet,
   });
-  const listVisibleIndexSet = useMemo((): ReadonlySet<number> | null => {
-    if (!filterActive) return null;
-    return new Set(filteredIndices);
-  }, [filterActive, filteredIndices]);
   const value = useMemo(
     (): WaveformSelectionChromeViewContextValue => ({
       view,
@@ -58,4 +63,13 @@ export function useWaveformSelectionChromeViewContext(): WaveformSelectionChrome
     throw new Error("useWaveformSelectionChromeViewContext requires WaveformSelectionChromeViewProvider");
   }
   return ctx;
+}
+
+/** Safe for hooks that also run in unit tests without the provider. */
+export function useOptionalWaveformListVisibleIndexSet(): ReadonlySet<number> | null {
+  return useContext(WaveformSelectionChromeViewContext)?.listVisibleIndexSet ?? null;
+}
+
+export function useOptionalWaveformFilterExcludesPrimary(): boolean {
+  return useContext(WaveformSelectionChromeViewContext)?.filterExcludesPrimary ?? false;
 }

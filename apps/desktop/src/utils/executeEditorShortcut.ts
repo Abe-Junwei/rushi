@@ -152,6 +152,13 @@ export function executeEditorShortcut(
       }
       return true;
     }
+    case "segment.freezeToggle": {
+      if (ctx.segments.length === 0) return true;
+      void ctx.toggleSegmentFrozen(
+        ctx.isMultiSegmentSelection ? undefined : resolveSelectedSegmentIdx(ctx),
+      );
+      return true;
+    }
     case "playback.toggle": {
       if (!ctx.mediaUrl) return true;
       // Space（正文外）/ ⇧Space（正文内）：会话粘性 togglePlay（非语段 scoped 钮；段播见波形浮层）。

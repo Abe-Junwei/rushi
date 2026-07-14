@@ -1,12 +1,11 @@
-import {
-  querySegmentListScrollRoot,
-  readSegmentListFilterIndices,
-} from "./segmentListVirtualWindow";
-
 /** 列表筛选快照（由 EditorSegmentList 同步；键盘 ↑↓ 导航真源）。 */
 export type SegmentListFilterNavState = {
   active: boolean;
   indices: readonly number[];
+  /** Optional O(1) idx→display position; populated by useSegmentListFilter. */
+  displayPositionByIndex?: ReadonlyMap<number, number> | null;
+  /** Optional visible set; when active, prefer `.has` over `indices.includes`. */
+  visibleIndexSet?: ReadonlySet<number> | null;
 };
 
 export function createEmptySegmentListFilterNavState(): SegmentListFilterNavState {
@@ -29,8 +28,15 @@ export function isSegmentListFilterHidingPrimary(input: {
   filteredIndices: readonly number[];
   primaryIdx: number;
   segmentCount: number;
+  visibleIndexSet?: ReadonlySet<number> | null;
 }): boolean {
   if (!input.filterActive || input.primaryIdx < 0) return false;
+  if (input.visibleIndexSet) {
+    if (input.segmentCount > 0 && input.visibleIndexSet.size >= input.segmentCount) {
+      return false;
+    }
+    return !input.visibleIndexSet.has(input.primaryIdx);
+  }
   const effective = resolveEffectiveFilteredIndices(
     { active: true, indices: input.filteredIndices },
     input.segmentCount,
@@ -39,16 +45,16 @@ export function isSegmentListFilterHidingPrimary(input: {
   return !effective.includes(input.primaryIdx);
 }
 
+/**
+ * Keyboard nav reads filterNavRef only — DOM attribute bus removed.
+ * Kept for API compatibility; ignores scrollRoot.
+ */
 export function readSegmentListFilterNavIndices(
   navState: SegmentListFilterNavState,
   segmentCount: number,
-  scrollRoot: HTMLElement | null = querySegmentListScrollRoot(),
+  _scrollRoot?: HTMLElement | null,
 ): readonly number[] | null {
   const fromRef = resolveEffectiveFilteredIndices(navState, segmentCount);
   if (fromRef !== null) return fromRef.length === 0 ? [] : fromRef;
-
-  const fromDom = readSegmentListFilterIndices(scrollRoot);
-  if (!fromDom) return null;
-  if (segmentCount > 0 && fromDom.length >= segmentCount) return null;
-  return fromDom;
+  return null;
 }

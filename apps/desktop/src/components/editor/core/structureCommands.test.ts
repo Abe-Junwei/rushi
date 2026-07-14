@@ -16,6 +16,7 @@ import {
   insertSegmentAtCommand,
   mergeProjectedStructureWithBaseline,
   primarySegmentIdx,
+  replaceTranscriptSegmentsTransaction,
 } from "./index";
 
 function makeSegments(n: number): SegmentDto[] {
@@ -94,6 +95,18 @@ describe("P6 structureCommands", () => {
     expect(out[0].text).not.toMatch(/[\n\r\u240A]/);
     expect(v.state.doc.line(1).text).not.toMatch(/[\n\r\u240A]/);
     expect(primarySegmentIdx(v.state)).toBe(0);
+  });
+
+  it("structure replace does not request CM scrollIntoView (avoids tall-merge jump)", () => {
+    const segs = makeSegments(2);
+    const state = buildTranscriptEditorState(segs, {
+      extensions: [
+        ...transcriptEditorCoreExtensions({ withProjection: false, withMetaGutter: false }),
+        transcriptLineCountGuard,
+      ],
+    });
+    const tr = replaceTranscriptSegmentsTransaction(state, segs.slice(0, 1), 0);
+    expect(tr?.scrollIntoView).toBe(false);
   });
 
   it("deletes a segment and clamps primary", () => {

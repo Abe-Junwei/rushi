@@ -61,6 +61,7 @@ export type TranscriptionLayerInput = {
   closeFile: () => void;
   openEnvironment: () => void;
   openSegmentAnnotationDialog: (segmentIdx: number) => void;
+  toggleSegmentFrozen: (segmentIdx?: number) => void | Promise<boolean>;
   openManualCorrectionMemoryDialog: (wrong: string) => void;
   onOpenSegmentContextMenu?: (menu: import("../utils/segmentContextMenuModel").SegmentContextMenuOpen) => void;
 };

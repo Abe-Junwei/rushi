@@ -132,7 +132,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
     let mut stmt = conn
         .prepare(
             "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, \
-             text_stage, finalize_via, annotation \
+             text_stage, finalize_via, annotation, frozen \
              FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -144,6 +144,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
             let text_stage: String = r.get(9)?;
             let finalize_via: Option<String> = r.get(10)?;
             let annotation: String = r.get(11)?;
+            let frozen: i64 = r.get(12)?;
             Ok(SegmentDto {
                 uid: if uid.trim().is_empty() {
                     None
@@ -173,6 +174,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
                 } else {
                     Some(annotation)
                 },
+                frozen: frozen != 0,
             })
         })
         .map_err(|e| e.to_string())?;

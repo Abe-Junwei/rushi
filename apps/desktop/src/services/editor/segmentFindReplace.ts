@@ -67,7 +67,9 @@ export function collectLiteralFindMatches(segments: SegmentDto[], query: string)
   const out: FindMatch[] = [];
   let globalIndex = 0;
   for (let segmentIdx = 0; segmentIdx < segments.length; segmentIdx++) {
-    const text = segments[segmentIdx]?.text ?? "";
+    const seg = segments[segmentIdx];
+    if (!seg || seg.frozen) continue;
+    const text = seg.text ?? "";
     let start = 0;
     while (start <= text.length) {
       const at = text.indexOf(query, start);
@@ -111,7 +113,7 @@ export function applyReplaceAllToSegments(
   const next = [...segments];
   for (const [segmentIdx, segMatches] of bySegment) {
     const row = next[segmentIdx];
-    if (!row) continue;
+    if (!row || row.frozen) continue;
     const sorted = [...segMatches].sort((a, b) => b.charStart - a.charStart);
     let text = row.text;
     for (const m of sorted) {

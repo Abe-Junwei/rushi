@@ -14,6 +14,8 @@ export type WaveformSegmentRegionItemProps = {
   endSec: number;
   isDraftSegment?: boolean;
   multiSelectActive?: boolean;
+  /** Filtered-out primary: keep chrome, block pointer interaction. */
+  visualOnly?: boolean;
   timelineWidthPx: number;
   durationSec: number;
   lane: number;
@@ -33,6 +35,7 @@ export const WaveformSegmentRegionItem = memo(
     endSec,
     isDraftSegment = false,
     multiSelectActive = false,
+    visualOnly = false,
     timelineWidthPx,
     durationSec,
     lane,
@@ -44,7 +47,9 @@ export const WaveformSegmentRegionItem = memo(
     onSegmentDoubleClick,
   }: WaveformSegmentRegionItemProps) {
     const { selected, inSelection } = useSegmentRowSelection(idx);
-    const showHandles = isDraftSegment || selected;
+    // Frozen segments are boundary-locked: no drag handles even when selected.
+    // Visual-only (hidden primary) also drops handles.
+    const showHandles = !visualOnly && !seg.frozen && (isDraftSegment || selected);
 
     const geom = useMemo(
       () =>
@@ -78,23 +83,26 @@ export const WaveformSegmentRegionItem = memo(
           width: geom.widthPx,
           top: geom.topPx,
           height: geom.heightPx,
-          background: waveformRegionFillColor(seg, selected, inSelection, undefined, {
+          // backgroundColor (not shorthand) so .waveform-segment-region-frozen hatch shows.
+          backgroundColor: waveformRegionFillColor(seg, selected, inSelection, undefined, {
             multiSelectActive,
           }),
         }}
         className={[
           "waveform-segment-region",
           seg.low_confidence ? "waveform-segment-region-low-confidence" : "",
+          seg.frozen ? "waveform-segment-region-frozen" : "",
           selected ? "waveform-segment-region-selected" : "",
           inSelection ? "waveform-segment-region-in-selection" : "",
+          visualOnly ? "pointer-events-none" : "",
         ]
           .filter(Boolean)
           .join(" ")}
-        onPointerDown={(ev) => onSegmentPointerDown(idx, ev)}
-        onClick={(ev) => onSegmentClick(idx, ev)}
-        onDoubleClick={(ev) => onSegmentDoubleClick(idx, ev)}
+        onPointerDown={visualOnly ? undefined : (ev) => onSegmentPointerDown(idx, ev)}
+        onClick={visualOnly ? undefined : (ev) => onSegmentClick(idx, ev)}
+        onDoubleClick={visualOnly ? undefined : (ev) => onSegmentDoubleClick(idx, ev)}
       >
-        {showHandles || selected ? (
+        {showHandles ? (
           <>
             <span className="waveform-segment-handle waveform-segment-handle-start" aria-hidden />
             <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
@@ -110,6 +118,7 @@ export const WaveformSegmentRegionItem = memo(
     prev.endSec === next.endSec &&
     prev.isDraftSegment === next.isDraftSegment &&
     prev.multiSelectActive === next.multiSelectActive &&
+    prev.visualOnly === next.visualOnly &&
     prev.timelineWidthPx === next.timelineWidthPx &&
     prev.durationSec === next.durationSec &&
     prev.lane === next.lane &&

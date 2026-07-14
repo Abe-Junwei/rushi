@@ -23,6 +23,7 @@ import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 import { createSegmentMergeDeleteActions } from "./segmentMutationMergeDelete";
 import { createSegmentInsertActions } from "./segmentMutationInsert";
 import { reindexSegments } from "./segmentListHelpers";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -237,6 +238,16 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const deleteIndices = options?.deleteIndices ?? [];
       const eatMode = neighborPatches.length > 0 || deleteIndices.length > 0;
 
+      const frozenTouched =
+        isSegmentFrozen(s) ||
+        neighborPatches.some((p) => isSegmentFrozen(prev[p.idx])) ||
+        deleteIndices.some((i) => isSegmentFrozen(prev[i]));
+      if (frozenTouched) {
+        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        if (phase !== "live") setError("请先解冻语段后再调整边界");
+        return;
+      }
+
       if (!eatMode) {
         const prevSeg = prev[idx - 1];
         const nextSeg = prev[idx + 1];
@@ -324,6 +335,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       selectedIdxRef,
       setSelectedIdx,
       onSelectionCollapsed,
+      setError,
     ],
   );
 

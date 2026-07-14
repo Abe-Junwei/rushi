@@ -62,6 +62,10 @@ _Avoid_: fallbackWaveFile（UI 兜底，非配对真源）, 无脑打开最新 F
 带起止时间与说话人标签的转写文本单元；Editor 中编辑与波形绑定的基本粒度。
 _Avoid_: 句子, clip, block（未定义时）
 
+**Frozen segment**（冻结语段）:
+保留分段与正文；全局通读 seek 跳过；正文与结构编辑锁定；斜纹视觉提示；交付导出排除；可解冻恢复。字段 `SegmentDto.frozen`。
+_Avoid_: Ignore（Descript 构图语义）, Mute（时钟仍走）, 定稿（text_stage）
+
 **Dirty state**（脏状态）:
 语段相对上次保存有未落库修改；由 `useSegmentDirtyState` 驱动 Close Gate 与自动保存提示。
 _Avoid_: 未保存 flag, modified bit

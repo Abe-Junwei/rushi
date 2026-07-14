@@ -57,6 +57,20 @@ describe("segmentSelection", () => {
     expect([...outcome.indices].sort()).toEqual([0, 1]);
   });
 
+  it("computeSegmentLassoOutcome skips indices outside listVisibleIndexSet", () => {
+    const segments = [seg(0, 2), seg(2, 4), seg(4, 6)];
+    const outcome = computeSegmentLassoOutcome(
+      segments,
+      1,
+      3.5,
+      6,
+      new Set(),
+      new Set([1]),
+    );
+    expect(outcome.mode).toBe("select");
+    expect([...outcome.indices]).toEqual([1]);
+  });
+
   it("toggleSegmentIndex seeds from primary when set is empty", () => {
     expect(toggleSegmentIndex(new Set(), 0, 2)).toEqual({
       indices: new Set([0, 2]),

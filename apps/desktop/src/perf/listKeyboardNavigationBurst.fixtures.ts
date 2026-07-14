@@ -54,6 +54,7 @@ export function makeCtx(segmentCount: number, selectedIdx = 0): TranscriptionLay
     closeFile: vi.fn(),
     openEnvironment: vi.fn(),
     openSegmentAnnotationDialog: vi.fn(),
+    toggleSegmentFrozen: vi.fn(),
     openManualCorrectionMemoryDialog: vi.fn(),
   };
 }

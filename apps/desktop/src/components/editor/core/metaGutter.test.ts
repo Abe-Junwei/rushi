@@ -9,7 +9,6 @@ import {
   selectSegmentCommand,
   selectSegmentTransaction,
   revealSegmentInView,
-  revealSegmentTransaction,
   primarySegmentIdx,
   segmentMetaField,
   buildTranscriptMetaMarker,
@@ -142,7 +141,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(tr?.scrollIntoView).toBe(true);
   });
 
-  it("revealSegmentInView dispatches scrollIntoView effect", () => {
+  it("revealSegmentInView scrolls via scrollDOM (not CM scrollIntoView effect)", () => {
     const parent = document.createElement("div");
     document.body.appendChild(parent);
     const state = buildTranscriptEditorState(makeSegments(30), {
@@ -155,10 +154,12 @@ describe("P4 meta gutter + reveal + stage", () => {
       ],
     });
     view = new EditorView({ state, parent });
+    Object.defineProperty(view.scrollDOM, "clientHeight", { configurable: true, value: 120 });
+    Object.defineProperty(view.scrollDOM, "scrollHeight", { configurable: true, value: 4000 });
+    Object.defineProperty(view.scrollDOM, "scrollTop", { configurable: true, writable: true, value: 0 });
     selectSegmentCommand(view, 0, { scrollIntoView: false });
-    const before = revealSegmentTransaction(view.state, 25);
-    expect(before?.effects).toBeTruthy();
-    expect(revealSegmentInView(view, 25)).toBe(true);
+    expect(revealSegmentInView(view, 25, { y: "center" })).toBe(true);
+    expect(view.scrollDOM.scrollTop).toBeGreaterThan(0);
     expect(revealSegmentInView(view, 999)).toBe(false);
   });
 });

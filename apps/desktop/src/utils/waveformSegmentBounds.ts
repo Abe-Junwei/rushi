@@ -80,6 +80,12 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
   layoutYScale?: number;
   /** When set with durationSec, expand narrow segments to {@link WAVEFORM_SEGMENT_MIN_HIT_WIDTH_PX}. */
   timelineWidthPx?: number;
+  /**
+   * When filter is active: only these indices are hittable on the blank shell.
+   * Selected DOM overlays still receive their own pointer events.
+   * null = all segments hittable.
+   */
+  listVisibleIndexSet?: ReadonlySet<number> | null;
 }): number {
   const {
     segments,
@@ -91,6 +97,7 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
     durationSec = 0,
     selectedIdx,
     timelineWidthPx = 0,
+    listVisibleIndexSet: listVisible = null,
   } = input;
   if (segments.length === 0) return -1;
 
@@ -110,6 +117,7 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
   const timeHits: number[] = [];
   const canExpand = durationSec > 0 && timelineWidthPx > 0;
 
+  // Packable list sorted by time — iterate once (O(n)), not findIndex per segment (O(n²)).
   const orderedPackable = canExpand
     ? packableIndices
         .map((i) => {
@@ -125,29 +133,34 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
         .sort((a, b) => a.start - b.start || a.end - b.end)
     : null;
 
-  for (let i = 0; i < segments.length; i += 1) {
-    const seg = segments[i];
-    if (!seg) continue;
-    if (dominantSet?.has(i)) continue;
-    const start = Math.min(seg.start_sec, seg.end_sec);
-    const end = Math.max(seg.start_sec, seg.end_sec);
-    if (!orderedPackable) {
-      if (timeSec >= start && timeSec <= end) timeHits.push(i);
-      continue;
+  if (orderedPackable) {
+    for (let pos = 0; pos < orderedPackable.length; pos += 1) {
+      const cur = orderedPackable[pos];
+      if (!cur) continue;
+      if (listVisible && !listVisible.has(cur.i)) continue;
+      if (dominantSet?.has(cur.i)) continue;
+      const prev = pos > 0 ? orderedPackable[pos - 1] : null;
+      const next = pos < orderedPackable.length - 1 ? orderedPackable[pos + 1] : null;
+      const hit = resolveExpandedSegmentHitBoundsSec({
+        startSec: cur.start,
+        endSec: cur.end,
+        durationSec,
+        timelineWidthPx,
+        prevPaintedEndSec: prev?.end ?? null,
+        nextPaintedStartSec: next?.start ?? null,
+      });
+      if (timeSec >= hit.startSec && timeSec <= hit.endSec) timeHits.push(cur.i);
     }
-    const pos = orderedPackable.findIndex((x) => x.i === i);
-    if (pos < 0) continue;
-    const prev = pos > 0 ? orderedPackable[pos - 1] : null;
-    const next = pos < orderedPackable.length - 1 ? orderedPackable[pos + 1] : null;
-    const hit = resolveExpandedSegmentHitBoundsSec({
-      startSec: start,
-      endSec: end,
-      durationSec,
-      timelineWidthPx,
-      prevPaintedEndSec: prev?.end ?? null,
-      nextPaintedStartSec: next?.start ?? null,
-    });
-    if (timeSec >= hit.startSec && timeSec <= hit.endSec) timeHits.push(i);
+  } else {
+    for (let i = 0; i < segments.length; i += 1) {
+      const seg = segments[i];
+      if (!seg) continue;
+      if (listVisible && !listVisible.has(i)) continue;
+      if (dominantSet?.has(i)) continue;
+      const start = Math.min(seg.start_sec, seg.end_sec);
+      const end = Math.max(seg.start_sec, seg.end_sec);
+      if (timeSec >= start && timeSec <= end) timeHits.push(i);
+    }
   }
   if (timeHits.length === 0) return -1;
   if (timeHits.includes(selectedIdx)) return selectedIdx;

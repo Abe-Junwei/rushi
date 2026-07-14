@@ -38,6 +38,13 @@ describe("segmentFindReplace", () => {
     expect(matches.map((m) => m.charStart)).toEqual([0, 2, 4]);
   });
 
+  it("skips frozen segments when collecting matches", () => {
+    const frozen: SegmentDto = { ...seg("制控", 1), frozen: true };
+    const matches = collectLiteralFindMatches([seg("制控", 0), frozen], "制");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]?.segmentIdx).toBe(0);
+  });
+
   it("replace all updates each segment once per batch", () => {
     const segments = [seg("制控概讲"), seg("制控练习", 1)];
     const query = "制控";

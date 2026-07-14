@@ -140,7 +140,14 @@ export function finishWaveformLassoDrag(input: {
   const baseIndices = drag.baseIndices ?? new Set<number>();
   const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
 
-  const outcome = computeSegmentLassoOutcome(a.segments, lo, hi, a.durationSec, baseIndices);
+  const outcome = computeSegmentLassoOutcome(
+    a.segments,
+    lo,
+    hi,
+    a.durationSec,
+    baseIndices,
+    a.listVisibleIndexSet ?? null,
+  );
   if (outcome.mode === "select" && outcome.indices.size > 0) {
     suppressClickAfterPointer();
     a.onSelectSegmentIndices?.(

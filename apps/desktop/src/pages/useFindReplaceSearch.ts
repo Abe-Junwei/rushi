@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   buildFindMatchListItems,
@@ -58,6 +58,18 @@ export function useFindReplaceSearch(args: Args) {
     () => buildFindMatchListItems(segments, matches),
     [matches, segments],
   );
+
+  // Matches can shrink when segments change out-of-band (e.g. a match segment is
+  // frozen mid-search); keep the active index inside bounds so the highlight and
+  // "n / total" label stay valid.
+  useEffect(() => {
+    setActiveMatchIndex((prev) => {
+      if (prev < 0) return prev;
+      if (matches.length === 0) return -1;
+      if (prev >= matches.length) return matches.length - 1;
+      return prev;
+    });
+  }, [matches.length]);
 
   const scrollToMatchSegment = useCallback((segmentIdx: number) => {
     scheduleScrollSegmentListIndexToView(segmentIdx);

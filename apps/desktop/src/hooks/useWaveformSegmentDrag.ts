@@ -24,6 +24,7 @@ import {
   updateWaveformOverlayDragMove,
 } from "./waveformSegmentDragHelpers";
 import type { WaveformSelectionGesture } from "../services/waveform/waveformSelectionGesture";
+import { useOptionalWaveformListVisibleIndexSet } from "./WaveformSelectionChromeViewContext";
 
 export type WaveformSegmentDragArgs = {
   disabled: boolean;
@@ -65,6 +66,8 @@ export type WaveformSegmentDragArgs = {
   suppressPlaybackFollowForSelectionSeek?: () => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
+  /** Filter-visible indices; null = all hittable/selectable via lasso. */
+  listVisibleIndexSet?: ReadonlySet<number> | null;
 };
 
 export function useWaveformSegmentDrag(
@@ -77,6 +80,10 @@ export function useWaveformSegmentDrag(
     tapGesture?: SegmentOverlayTapGesture,
   ) => void,
 ) {
+  const listVisibleIndexSet = useOptionalWaveformListVisibleIndexSet();
+  const listVisibleIndexSetRef = useRef(listVisibleIndexSet);
+  listVisibleIndexSetRef.current = listVisibleIndexSet;
+
   const dragRef = useRef<OverlayDragState | null>(null);
   const interactionStateRef = useRef<WaveformSegmentInteractionState>({ phase: "idle" });
   const suppressClickUntilRef = useRef(0);
@@ -112,7 +119,7 @@ export function useWaveformSegmentDrag(
         finishWaveformLassoDrag({
           drag,
           timeSec,
-          args: a,
+          args: { ...a, listVisibleIndexSet: listVisibleIndexSetRef.current },
           snapEnabled,
           modifiers,
           suppressClickAfterPointer,
@@ -138,6 +145,9 @@ export function useWaveformSegmentDrag(
     (idx: number, ev: ReactPointerEvent<HTMLElement>) => {
       const a = argsRef.current;
       if (a.disabled || ev.button !== 0) return;
+      const visible = listVisibleIndexSetRef.current;
+      // Hidden-by-filter primary keeps visual chrome but is non-interactive.
+      if (visible && !visible.has(idx)) return;
       const seg = a.segments[idx];
       if (!seg) return;
       ev.stopPropagation();
@@ -208,6 +218,7 @@ export function useWaveformSegmentDrag(
         selectedIdx: effectivePrimary >= 0 ? effectivePrimary : a.selectedIdx,
         durationSec: a.durationSec,
         timelineWidthPx: a.timelineWidthPx,
+        listVisibleIndexSet: listVisibleIndexSetRef.current,
       });
       if (hitIdx >= 0) {
         onSegmentPointerDown(hitIdx, ev);

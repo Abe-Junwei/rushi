@@ -14,6 +14,7 @@ import {
 } from "../components/editor/core/transcriptEditorViewHandle";
 import { persistTranscriptStructureFromView } from "../components/editor/core/persistTranscriptStructureFromView";
 import { finalizeStructureChangeSelection } from "./finalizeStructureChangeSelection";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
 export type SegmentMergeDeleteDeps = {
   segmentPublish: SegmentPublishApi;
@@ -36,6 +37,20 @@ function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB:
   );
 }
 
+function rejectIfAnyFrozen(
+  deps: SegmentMergeDeleteDeps,
+  segments: readonly SegmentDto[],
+  indices: readonly number[],
+): boolean {
+  for (const i of indices) {
+    if (isSegmentFrozen(segments[i])) {
+      deps.setError("请先解冻语段后再合并、拆分或删除");
+      return true;
+    }
+  }
+  return false;
+}
+
 type StructureSelectionOpts = {
   affectedBounds?: { startSec: number; endSec: number };
   fallbackIdx?: number;
@@ -47,13 +62,17 @@ function mergeBounds(
   from: number,
   to: number,
 ): { startSec: number; endSec: number } | undefined {
-  const a = base[from];
-  const b = base[to];
-  if (!a || !b) return undefined;
-  return {
-    startSec: Math.min(a.start_sec, b.start_sec),
-    endSec: Math.max(a.end_sec, b.end_sec),
-  };
+  if (from < 0 || to < from || to >= base.length) return undefined;
+  let startSec = Number.POSITIVE_INFINITY;
+  let endSec = Number.NEGATIVE_INFINITY;
+  for (let i = from; i <= to; i += 1) {
+    const s = base[i];
+    if (!s) continue;
+    startSec = Math.min(startSec, s.start_sec, s.end_sec);
+    endSec = Math.max(endSec, s.start_sec, s.end_sec);
+  }
+  if (!Number.isFinite(startSec) || !Number.isFinite(endSec)) return undefined;
+  return { startSec, endSec };
 }
 
 function applyPlayheadSelection(deps: SegmentMergeDeleteDeps, opts?: StructureSelectionOpts): void {
@@ -122,8 +141,10 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
 
   function mergeWithPrevAt(idx: number) {
     if (idx <= 0) return;
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    if (rejectIfAnyFrozen(deps, snap, [idx - 1, idx])) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       const opts = { affectedBounds: mergeBounds(base, idx - 1, idx), fallbackIdx: idx - 1 };
       if (dispatchTranscriptMergeWithPrev(base, idx) && persistMergeStructure(base, deps, opts)) {
         return;
@@ -145,8 +166,10 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function mergeWithNextAt(idx: number) {
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    if (rejectIfAnyFrozen(deps, snap, [idx, idx + 1])) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       const opts = { affectedBounds: mergeBounds(base, idx, idx + 1), fallbackIdx: idx };
       if (dispatchTranscriptMergeWithNext(base, idx) && persistMergeStructure(base, deps, opts)) {
         return;
@@ -176,8 +199,12 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function mergeSegmentRange(lo: number, hi: number) {
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    const indices: number[] = [];
+    for (let i = lo; i <= hi; i++) indices.push(i);
+    if (rejectIfAnyFrozen(deps, snap, indices)) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       const opts = { affectedBounds: mergeBounds(base, lo, hi), fallbackIdx: lo };
       if (dispatchTranscriptMergeRange(base, lo, hi) && persistMergeStructure(base, deps, opts)) {
         return;
@@ -215,8 +242,10 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentAt(idx: number) {
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    if (rejectIfAnyFrozen(deps, snap, [idx])) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       if (dispatchTranscriptDeleteAt(base, idx) && persistDeleteStructure(base, deps)) {
         return;
       }
@@ -226,8 +255,12 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentRange(lo: number, hi: number) {
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    const indices: number[] = [];
+    for (let i = lo; i <= hi; i++) indices.push(i);
+    if (rejectIfAnyFrozen(deps, snap, indices)) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       if (dispatchTranscriptDeleteRange(base, lo, hi) && persistDeleteStructure(base, deps)) {
         return;
       }
@@ -251,8 +284,10 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentIndices(rawIndices: number[]) {
+    const snap = segmentPublish.getCurrentSegmentsSnapshot();
+    if (rejectIfAnyFrozen(deps, snap, rawIndices)) return;
     if (readTranscriptEditorCoreEnabled()) {
-      const base = segmentPublish.getCurrentSegmentsSnapshot();
+      const base = snap;
       const prevSelected = selectedIdxRef.current;
       if (
         dispatchTranscriptDeleteIndices(base, rawIndices, prevSelected) &&

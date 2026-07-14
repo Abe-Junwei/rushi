@@ -880,6 +880,27 @@
   border-right-color: transparent;
 }
 
+/* Soft content hatch — match text frozen (no saffron wash, no thick start edge). */
+.waveform-segment-region-frozen {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 5px,
+    color-mix(in srgb, var(--accent-action) 22%, transparent) 5px,
+    color-mix(in srgb, var(--accent-action) 22%, transparent) 6px
+  );
+  cursor: default;
+  /* Drop segment start/end borders — text frozen has no thick leading edge. */
+  border-left: none;
+  border-right: none;
+}
+
+/* Selected frozen: same callout wash as text; no inset hairline (reads as a thick bar on thin bands). */
+.waveform-segment-region-frozen.waveform-segment-region-selected,
+.waveform-segment-region-frozen.waveform-segment-region-in-selection {
+  box-shadow: none;
+}
+
 .waveform-segment-handle {
   position: absolute;
   top: 0;
@@ -917,7 +938,6 @@
   align-items: center;
   justify-content: center;
   gap: 2px;
-  z-index: 8;
   overflow: visible;
   pointer-events: none;
 }

@@ -60,6 +60,7 @@ fn seg(uid: &str, idx: i32, text: &str) -> SegmentDto {
         text_stage: "auto_transcribe".to_string(),
         finalize_via: None,
         annotation: None,
+        frozen: false,
     }
 }
 

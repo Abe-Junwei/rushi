@@ -4,6 +4,7 @@ import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptContro
 import { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
 import { useProjectSaveController } from "./useProjectSaveController";
 import { useSegmentAnnotationController } from "./useSegmentAnnotationController";
+import { useSegmentFreezeController } from "./useSegmentFreezeController";
 import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { useSegmentMutationController } from "./useSegmentMutationController";
@@ -68,7 +69,8 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   const onSelectionCollapsed = useCallback(
     (idx: number) => {
-      segmentSelection.collapseTo(idx);
+      // Structure ops reveal explicitly; avoid CM default scrollIntoView jump.
+      segmentSelection.collapseTo(idx, { scrollIntoView: false });
     },
     [segmentSelection],
   );
@@ -76,7 +78,7 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
   const onSegmentsStructureRestored = useCallback(() => {
     const segs = getCurrentSegmentsSnapshot();
     const idx = clampSegmentIndex(selectedIdxRef.current, segs.length);
-    segmentSelection.collapseTo(idx);
+    segmentSelection.collapseTo(idx, { scrollIntoView: false });
   }, [getCurrentSegmentsSnapshot, segmentSelection, selectedIdxRef]);
 
   const clearMultiSelectionWithChrome = useCallback(() => {
@@ -153,6 +155,21 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     setError,
   });
 
+  const segmentFreeze = useSegmentFreezeController({
+    busy,
+    segmentPublish,
+    saveSegments,
+    saveInFlightRef,
+    pushUndo: mutations.pushUndo,
+    setError,
+    getTargetIndices: () => {
+      // Prefer multi-select; else primary selectedIdx from selection controller.
+      const sel = segmentSelection;
+      if (sel.isMultiSegmentSelection) return sel.selectedIndicesArray;
+      return [sel.selectedIdx];
+    },
+  });
+
   /* eslint-disable react-hooks/exhaustive-deps -- clearAutoSaveRef is a stable ref; assigning .current does not need dep */
   const registerClearScheduled = useCallback((fn: () => void) => {
     clearAutoSaveRef.current = fn;
@@ -194,6 +211,7 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     saveController,
     saveSegments,
     segmentAnnotation,
+    segmentFreeze,
     autoSave,
     clearScheduledAutoSave,
     getCurrentSegmentsSnapshot,

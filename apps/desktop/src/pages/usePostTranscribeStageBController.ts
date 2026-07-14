@@ -13,6 +13,7 @@ import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingR
 import { toast } from "../services/ui/toast";
 import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 import { findSegmentIndexByUid } from "./segmentListHelpers";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 import { applyAiRevisedStageToUids } from "../services/segmentStagePersist";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import type { BusyReason } from "./useProjectCrudController";
@@ -215,6 +216,7 @@ export function usePostTranscribeStageBController(args: Args) {
       if (idx < 0) continue;
       const row = next[idx];
       if (!row) continue;
+      if (isSegmentFrozen(row)) continue;
       if (row.text !== ch.afterText) {
         const uid = row.uid?.trim();
         if (uid) changedUids.add(uid);

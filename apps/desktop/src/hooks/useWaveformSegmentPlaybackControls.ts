@@ -227,6 +227,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     resolveNaturalEndReplayIdx,
     syncDisplayPlayheadAfterSeekRef,
     commitSeekUi,
+    latestSegmentsRef,
   });
 
   useWaveformSegmentLoopReplay({

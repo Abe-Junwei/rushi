@@ -50,6 +50,7 @@ pub fn parse_srt(content: &str) -> Result<Vec<SegmentDto>, String> {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
+            frozen: false,
         });
     }
     Ok(segments)
@@ -84,6 +85,7 @@ pub fn parse_txt(content: &str) -> Vec<SegmentDto> {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
+            frozen: false,
         });
         current_sec = end_sec;
     }

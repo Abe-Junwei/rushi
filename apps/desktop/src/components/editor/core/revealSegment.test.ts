@@ -46,6 +46,44 @@ describe("revealSegmentInScrollDOM", () => {
     expect(scrollDOM.scrollTop).toBe(100);
   });
 
+  it("does not jump to bottom of oversized nearest line (merge wrap case)", () => {
+    const state = EditorState.create({ doc: "merged-tall-line\nb\nc" });
+    const scrollDOM = document.createElement("div");
+    Object.defineProperty(scrollDOM, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(scrollDOM, "scrollHeight", { configurable: true, value: 2000 });
+    // Line start still inside viewport; only the wrapped bottom overflows.
+    Object.defineProperty(scrollDOM, "scrollTop", { configurable: true, writable: true, value: 40 });
+    const view = {
+      state,
+      scrollDOM,
+      lineBlockAt() {
+        return { from: 0, to: 16, top: 50, bottom: 900, height: 850, type: "text" };
+      },
+    } as unknown as EditorView;
+
+    expect(revealSegmentInScrollDOM(view, 0, { y: "nearest" })).toBe(true);
+    // Keep current scroll — do not snap to bottom (900 - 200 = 700).
+    expect(scrollDOM.scrollTop).toBe(40);
+  });
+
+  it("nearest oversized line scrolls up only when top is above viewport", () => {
+    const state = EditorState.create({ doc: "merged-tall-line\nb" });
+    const scrollDOM = document.createElement("div");
+    Object.defineProperty(scrollDOM, "clientHeight", { configurable: true, value: 200 });
+    Object.defineProperty(scrollDOM, "scrollHeight", { configurable: true, value: 2000 });
+    Object.defineProperty(scrollDOM, "scrollTop", { configurable: true, writable: true, value: 400 });
+    const view = {
+      state,
+      scrollDOM,
+      lineBlockAt() {
+        return { from: 0, to: 16, top: 50, bottom: 900, height: 850, type: "text" };
+      },
+    } as unknown as EditorView;
+
+    expect(revealSegmentInScrollDOM(view, 0, { y: "nearest" })).toBe(true);
+    expect(scrollDOM.scrollTop).toBe(50);
+  });
+
   it("rejects missing segment indices", () => {
     const { view } = makeView();
 

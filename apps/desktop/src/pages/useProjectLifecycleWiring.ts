@@ -84,6 +84,7 @@ export function useProjectLifecycleWiring(
     saveController,
     saveSegments,
     segmentAnnotation,
+    segmentFreeze,
     autoSave,
     clearScheduledAutoSave,
     getCurrentSegmentsSnapshot,
@@ -289,6 +290,7 @@ export function useProjectLifecycleWiring(
     fileMutation,
     projectMutation,
     segmentAnnotation,
+    segmentFreeze,
     batchTranscribe,
   });
 }

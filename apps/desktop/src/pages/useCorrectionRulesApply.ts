@@ -4,6 +4,7 @@ import { findSegmentIndexByUid } from "./segmentListHelpers";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import { readTranscriptEditorCoreEnabled } from "../components/editor/core/transcriptEditorCoreFlag";
 import { dispatchTranscriptApplyTextsBulk } from "../components/editor/core/transcriptEditorViewHandle";
+import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
 type Args = {
   dialog: CorrectionRulesDialogState;
@@ -42,6 +43,7 @@ export function useCorrectionRulesApply(args: Args) {
       if (idx < 0) continue;
       const row = next[idx];
       if (!row) continue;
+      if (isSegmentFrozen(row)) continue;
       next[idx] = { ...row, text: ch.afterText };
       updates.push({ segmentIdx: idx, text: ch.afterText });
       applied += 1;

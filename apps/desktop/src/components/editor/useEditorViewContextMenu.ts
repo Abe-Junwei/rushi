@@ -52,6 +52,7 @@ export function useEditorViewContextMenu({
             selectionHi: c.selectionHi,
             selectionCount: c.selectionCount,
             isContiguousSelection: c.isContiguousSelection,
+            selectedIndices: c.selectedIndicesArray,
             appearance: {
               appearanceDisabled: appearance.transcriptFontControlDisabled,
               transcriptFontFamily: appearance.transcriptFontFamily,
@@ -71,6 +72,7 @@ export function useEditorViewContextMenu({
       c.isContiguousSelection,
       c.selectionLo,
       c.selectionHi,
+      c.selectedIndicesArray,
       appearance.transcriptFontControlDisabled,
       appearance.transcriptFontFamily,
       appearance.transcriptFontWeight,
@@ -110,6 +112,14 @@ export function useEditorViewContextMenu({
 
       if (key === "editAnnotation") {
         c.openSegmentAnnotationDialog(segmentCtxMenu.segmentIdx);
+        return;
+      }
+
+      if (key === "toggleFreeze") {
+        // Multi-select: omit idx so controller freezes the full selection set.
+        void c.toggleSegmentFrozen(
+          c.isMultiSegmentSelection ? undefined : segmentCtxMenu.segmentIdx,
+        );
         return;
       }
 

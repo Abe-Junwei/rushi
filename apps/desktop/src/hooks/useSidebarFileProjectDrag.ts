@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 
 export type SidebarFileDragPayload = {
   fileId: string;
@@ -43,7 +44,7 @@ export function useSidebarFileProjectDrag(options: {
           suppressOpenClickRef.current = true;
           draggingRef.current = payload;
           setDragging(payload);
-          document.body.style.userSelect = "none";
+          setDirectLayoutStyle(document.body, { userSelect: "none" });
         }
         if (!started) return;
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
@@ -57,7 +58,7 @@ export function useSidebarFileProjectDrag(options: {
         window.removeEventListener("pointermove", onMovePointer);
         window.removeEventListener("pointerup", finish);
         window.removeEventListener("pointercancel", finish);
-        if (started) document.body.style.userSelect = "";
+        if (started) setDirectLayoutStyle(document.body, { userSelect: "" });
         const drag = draggingRef.current;
         const dest = dropTargetRef.current;
         draggingRef.current = null;

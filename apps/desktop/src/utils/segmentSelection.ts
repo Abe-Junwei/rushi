@@ -72,6 +72,7 @@ export function computeSegmentLassoOutcome(
   t1: number,
   durationSec: number,
   baseIndices: ReadonlySet<number>,
+  listVisibleIndexSet?: ReadonlySet<number> | null,
 ): SegmentLassoOutcome {
   const loT = Math.min(t0, t1);
   const hiT = Math.max(t0, t1);
@@ -79,6 +80,7 @@ export function computeSegmentLassoOutcome(
   const indices = new Set(baseIndices);
   const hits: number[] = [];
   for (const idx of packableIndices) {
+    if (listVisibleIndexSet && !listVisibleIndexSet.has(idx)) continue;
     const seg = segments[idx];
     if (!seg) continue;
     const segLo = Math.min(seg.start_sec, seg.end_sec);

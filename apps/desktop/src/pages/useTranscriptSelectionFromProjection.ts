@@ -83,10 +83,14 @@ export function useTranscriptSelectionFromProjection(args: Args) {
   );
 
   const collapseTo = useCallback(
-    (idx: number) => {
+    (idx: number, opts?: { scrollIntoView?: boolean }) => {
       if (segmentCount <= 0) return;
       const clamped = Math.max(0, Math.min(idx, segmentCount - 1));
-      dispatchTranscriptEditorSelection(clamped);
+      // Structure merge/split already reveals with y:"start". Default CM
+      // scrollIntoView can re-jump a tall merged line to its bottom.
+      dispatchTranscriptEditorSelection(clamped, {
+        scrollIntoView: opts?.scrollIntoView === true,
+      });
       selectedIdxRef.current = clamped;
     },
     [segmentCount, selectedIdxRef],

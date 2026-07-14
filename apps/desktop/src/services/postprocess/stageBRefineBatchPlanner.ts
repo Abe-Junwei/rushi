@@ -42,11 +42,13 @@ export function resolveStageBRefineBatchLimits(runtime: PostprocessRuntimeBridge
   };
 }
 
-/** 收集有正文语段的下标；Stage B 处理全部 eligible。 */
+/** 收集有正文语段的下标；Stage B 处理全部 eligible（跳过冻结）。 */
 export function collectStageBEligibleSegmentIndices(segments: SegmentDto[]): number[] {
   const eligibleIdxs: number[] = [];
   for (let i = 0; i < segments.length; i++) {
-    const text = (segments[i]?.text ?? "").trim();
+    const seg = segments[i];
+    if (!seg || seg.frozen) continue;
+    const text = (seg.text ?? "").trim();
     if (text) eligibleIdxs.push(i);
   }
   return eligibleIdxs;

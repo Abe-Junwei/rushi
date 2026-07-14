@@ -309,4 +309,5 @@ export interface ProjectLifecycleApi {
   setSegmentAnnotationDraft: (draft: string) => void;
   saveSegmentAnnotation: () => Promise<boolean>;
   clearSegmentAnnotation: () => Promise<boolean>;
+  toggleSegmentFrozen: (segmentIdx?: number) => void | Promise<boolean>;
 }

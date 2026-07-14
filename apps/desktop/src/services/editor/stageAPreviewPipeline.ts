@@ -15,7 +15,7 @@ export function buildStageAPreviewChanges(
   const out: SegmentCorrectionChange[] = [];
   for (let segmentIdx = 0; segmentIdx < segments.length; segmentIdx++) {
     const seg = segments[segmentIdx];
-    if (!seg) continue;
+    if (!seg || seg.frozen) continue;
     const beforeText = seg.text ?? "";
     const hygienedText = applySegmentTextHygiene(beforeText);
     const hygieneTouched = segmentTextHygieneChanged(beforeText, hygienedText);

@@ -90,6 +90,7 @@ pub(crate) fn segments_fingerprint_from_db(
                 text_stage: String::new(),
                 finalize_via: None,
                 annotation: None,
+                frozen: false,
             })
         })
         .map_err(|e| e.to_string())?;

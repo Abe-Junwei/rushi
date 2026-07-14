@@ -13,6 +13,7 @@ export type WaveformSegmentContextMenuHitInput = {
   selectedIdx: number;
   durationSec?: number;
   timelineWidthPx?: number;
+  listVisibleIndexSet?: ReadonlySet<number> | null;
 };
 
 /** Hit-test a waveform pointer for segment context menu (no DOM queries). */
@@ -31,5 +32,6 @@ export function resolveWaveformSegmentContextMenuIndex(
     selectedIdx: input.selectedIdx,
     durationSec: input.durationSec ?? 0,
     timelineWidthPx: input.timelineWidthPx ?? 0,
+    listVisibleIndexSet: input.listVisibleIndexSet ?? null,
   });
 }

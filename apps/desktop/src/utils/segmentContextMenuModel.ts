@@ -3,10 +3,10 @@ import type { EditorShortcutId } from "./editorShortcutRegistry";
 import { editorShortcutMenuHint } from "./editorShortcutMenuHint";
 
 function menuItemWithShortcut(
-  item: Omit<SegmentContextMenuItem, "shortcutHint">,
+  item: Omit<SegmentContextMenuItem, "shortcutHint" | "disabled"> & { disabled?: boolean },
   shortcutId: EditorShortcutId,
 ): SegmentContextMenuItem {
-  return { ...item, shortcutHint: editorShortcutMenuHint(shortcutId) };
+  return { ...item, disabled: item.disabled ?? false, shortcutHint: editorShortcutMenuHint(shortcutId) };
 }
 
 export function pointerTimeFromSegmentCard(
@@ -41,10 +41,17 @@ export type SegmentContextMenuKey =
 export type SegmentContextMenuItem = {
   key: SegmentContextMenuKey;
   label: string;
+  /** Kept for ContextMenuItem compat; builders omit unavailable actions instead of greying. */
   disabled: boolean;
   shortcutHint?: string;
 };
 
+/**
+ * Structure ops for waveform / list menus.
+ * Unavailable actions are omitted (not greyed out).
+ *
+ * Order: 定稿 → 合并 → 删除 →（波形）拆分
+ */
 export function buildSegmentContextMenuItems(args: {
   segmentIdx: number;
   segments: SegmentDto[];
@@ -56,6 +63,8 @@ export function buildSegmentContextMenuItems(args: {
   selectionHi?: number;
   selectionCount?: number;
   isContiguousSelection?: boolean;
+  /** True when any segment in the current selection is frozen. */
+  frozenInSelection?: boolean;
 }): SegmentContextMenuItem[] {
   const {
     segmentIdx: i,
@@ -72,63 +81,64 @@ export function buildSegmentContextMenuItems(args: {
   const n = segments.length;
   const seg = segments[i];
   const multi = selectionCount > 1;
+  const targetFrozen = Boolean(seg?.frozen);
+  const structureLocked = Boolean(args.frozenInSelection) || targetFrozen;
+
+  if (busy) return [];
 
   if (multi) {
-    const items: SegmentContextMenuItem[] = [
-      menuItemWithShortcut(
-        { key: "markFinalized", label: "标记定稿", disabled: true },
-        "workflow.confirmAdvance",
-      ),
-      menuItemWithShortcut(
-        {
-          key: "mergeRange",
-          label: `合并 ${selectionCount} 条语段`,
-          disabled: busy || selectionLo >= selectionHi || !isContiguousSelection,
-        },
-        "segment.mergeNext",
-      ),
-      menuItemWithShortcut(
-        {
-          key: "delete",
-          label: `删除 ${selectionCount} 条语段`,
-          disabled: busy || n === 0,
-        },
-        "segment.delete",
-      ),
-    ];
-    if (origin === "waveform") {
-      items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: true });
+    const items: SegmentContextMenuItem[] = [];
+    if (
+      !structureLocked &&
+      selectionLo < selectionHi &&
+      isContiguousSelection
+    ) {
+      items.push(
+        menuItemWithShortcut(
+          { key: "mergeRange", label: `合并 ${selectionCount} 条语段` },
+          "segment.mergeNext",
+        ),
+      );
+    }
+    if (!structureLocked && n > 0) {
+      items.push(
+        menuItemWithShortcut(
+          { key: "delete", label: `删除 ${selectionCount} 条语段` },
+          "segment.delete",
+        ),
+      );
     }
     return items;
   }
 
-  const canMergePrev = i >= 0 && i > 0 && !busy;
-  const canMergeNext = i >= 0 && i < n - 1 && !busy;
-  const items: SegmentContextMenuItem[] = [
-    menuItemWithShortcut(
-      { key: "markFinalized", label: "标记定稿", disabled: busy || !canFinalize },
-      "workflow.confirmAdvance",
-    ),
-    menuItemWithShortcut(
-      { key: "delete", label: "删除", disabled: busy || n === 0 },
-      "segment.delete",
-    ),
-    menuItemWithShortcut(
-      { key: "mergePrev", label: "与上一条合并", disabled: !canMergePrev },
-      "segment.mergePrev",
-    ),
-    menuItemWithShortcut(
-      { key: "mergeNext", label: "与下一条合并", disabled: !canMergeNext },
-      "segment.mergeNext",
-    ),
-  ];
-  if (origin !== "waveform") return items;
+  if (structureLocked || targetFrozen) return [];
 
-  let canSplit = i >= 0 && Boolean(seg) && !busy && n > 0;
-  if (canSplit && seg) {
-    const t = pointerTimeSec;
-    canSplit = t > seg.start_sec + 0.02 && t < seg.end_sec - 0.02;
+  const items: SegmentContextMenuItem[] = [];
+  if (canFinalize) {
+    items.push(
+      menuItemWithShortcut({ key: "markFinalized", label: "标记定稿" }, "workflow.confirmAdvance"),
+    );
   }
-  items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: !canSplit });
+  if (i > 0 && !segments[i - 1]?.frozen) {
+    items.push(
+      menuItemWithShortcut({ key: "mergePrev", label: "与上一条合并" }, "segment.mergePrev"),
+    );
+  }
+  if (i < n - 1 && !segments[i + 1]?.frozen) {
+    items.push(
+      menuItemWithShortcut({ key: "mergeNext", label: "与下一条合并" }, "segment.mergeNext"),
+    );
+  }
+  if (n > 0) {
+    items.push(menuItemWithShortcut({ key: "delete", label: "删除" }, "segment.delete"));
+  }
+
+  if (origin === "waveform" && seg) {
+    const t = pointerTimeSec;
+    const canSplit = t > seg.start_sec + 0.02 && t < seg.end_sec - 0.02;
+    if (canSplit) {
+      items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: false });
+    }
+  }
   return items;
 }

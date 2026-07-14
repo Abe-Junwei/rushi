@@ -156,6 +156,7 @@ export function useTranscriptionLayerSelection(opts: {
     laneByIndex: segmentLaneLayout.laneByIndex,
     laneCount: segmentLaneLayout.laneCount,
     selectSegmentAt,
+    segmentListFilterNavRef,
   });
 
   return {

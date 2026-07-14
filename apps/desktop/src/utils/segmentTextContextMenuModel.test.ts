@@ -20,10 +20,10 @@ const appearanceArgs = {
 };
 
 describe("buildSegmentRowContextMenuItems", () => {
-  it("shows correction memory and segment ops when text is deliberately selected", () => {
+  it("orders freeze → annotation → clipboard → memory → structure when text is selected", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
-      segments: [seg(0, 10)],
+      segments: [seg(0, 10), seg(10, 20)],
       busy: false,
       pointerTimeSec: 5,
       origin: "segmentList",
@@ -31,22 +31,23 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
+      "toggleFreeze",
+      "editAnnotation",
       "copyText",
       "cutText",
       "pasteText",
-      "editAnnotation",
       "addCorrectionMemory",
       "markFinalized",
-      "delete",
-      "mergePrev",
       "mergeNext",
+      "delete",
     ]);
+    expect(items.every((i) => !i.disabled)).toBe(true);
   });
 
-  it("merges segment ops and text appearance without selection", () => {
+  it("orders freeze → annotation → paste → structure → appearance without selection", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
-      segments: [seg(0, 10)],
+      segments: [seg(0, 10), seg(10, 20)],
       busy: false,
       pointerTimeSec: 5,
       origin: "segmentList",
@@ -54,19 +55,17 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
-      "copyText",
-      "cutText",
-      "pasteText",
+      "toggleFreeze",
       "editAnnotation",
+      "pasteText",
       "markFinalized",
-      "delete",
-      "mergePrev",
       "mergeNext",
+      "delete",
       "appearance",
     ]);
   });
 
-  it("waveform menu keeps split and omits text appearance", () => {
+  it("waveform menu keeps freeze first and omits text appearance", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
       segments: [seg(0, 10)],
@@ -76,16 +75,46 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "",
       appearance: appearanceArgs,
     });
+    expect(items.map((i) => i.key)[0]).toBe("toggleFreeze");
     expect(items.map((i) => i.key)).toContain("splitAtPointer");
     expect(items.map((i) => i.key)).not.toContain("appearance");
     expect(items.map((i) => i.key)).not.toContain("editAnnotation");
     expect(items.map((i) => i.key)).not.toContain("copyText");
   });
 
+  it("hides structure and edit actions when segment is frozen", () => {
+    const frozen = { ...seg(0, 10), frozen: true };
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [frozen],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "",
+      appearance: appearanceArgs,
+    });
+    expect(items.map((i) => i.key)).toEqual(["toggleFreeze", "editAnnotation"]);
+    expect(items.find((i) => i.key === "toggleFreeze")?.label).toBe("解冻语段");
+  });
+
+  it("keeps copy but hides cut/paste when frozen with a text selection", () => {
+    const frozen = { ...seg(0, 10), frozen: true };
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [frozen],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "保留",
+      appearance: appearanceArgs,
+    });
+    expect(items.map((i) => i.key)).toEqual(["toggleFreeze", "editAnnotation", "copyText"]);
+  });
+
   it("shows shortcut hints on annotation and correction memory items", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
-      segments: [seg(0, 10)],
+      segments: [seg(0, 10), seg(10, 20)],
       busy: false,
       pointerTimeSec: 5,
       origin: "segmentList",
@@ -113,7 +142,7 @@ describe("buildSegmentRowContextMenuItems", () => {
     expect(items.find((i) => i.key === "editAnnotation")?.label).toBe("编辑备注…");
   });
 
-  it("disables copy and cut when there is no text selection", () => {
+  it("omits copy and cut when there is no text selection", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
       segments: [seg(0, 10)],
@@ -123,8 +152,8 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "",
       appearance: appearanceArgs,
     });
-    expect(items.find((i) => i.key === "copyText")?.disabled).toBe(true);
-    expect(items.find((i) => i.key === "cutText")?.disabled).toBe(true);
+    expect(items.find((i) => i.key === "copyText")).toBeUndefined();
+    expect(items.find((i) => i.key === "cutText")).toBeUndefined();
     expect(items.find((i) => i.key === "pasteText")?.disabled).toBe(false);
   });
 });

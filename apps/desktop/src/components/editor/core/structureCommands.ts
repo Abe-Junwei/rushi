@@ -7,6 +7,11 @@ import {
   reindexSegments,
 } from "../../../pages/segmentListHelpers";
 import { resolveSelectedIdxAfterIndexRemoval } from "../../../utils/segmentSelection";
+import {
+  computeFilteredSegmentIndices,
+  isDefaultSegmentListFilter,
+  resolveTranscriptFilterVisibleSet,
+} from "../../../services/segmentListFilter";
 import { encodeSegmentTextForDocLine } from "./segmentNewlineCodec";
 import { serializeTranscriptEditorState } from "./serializeTranscriptEditorState";
 import { setSegmentMetaEffect, type SegmentMeta } from "./segmentMetaField";
@@ -14,6 +19,16 @@ import {
   setTranscriptMultiSelectionEffect,
 } from "./selectionField";
 import { transcriptStructureEditAnnotation } from "./transcriptEditorKeymap";
+import {
+  getTranscriptFilterCriteria,
+  setTranscriptFilterCriteriaEffect,
+  setTranscriptFilterVisibleEffect,
+} from "./filterLineVisibility";
+import {
+  readSegmentViewportAnchorOffsetPx,
+  revealSegmentAfterStructureChange,
+} from "./revealSegmentAfterStructure";
+import { segmentHasAnnotation } from "../../../utils/segmentAnnotation";
 
 export function segmentDtoToMeta(s: SegmentDto, i: number): SegmentMeta {
   return {
@@ -23,7 +38,31 @@ export function segmentDtoToMeta(s: SegmentDto, i: number): SegmentMeta {
     stage: s.text_stage ?? null,
     finalizeVia: s.finalize_via ?? null,
     speakerId: null,
+    frozen: Boolean(s.frozen),
+    hasAnnotation: segmentHasAnnotation(s),
   };
+}
+
+function filterEffectsForStructure(
+  state: EditorState,
+  nextSegments: readonly SegmentDto[],
+): Array<
+  | ReturnType<typeof setTranscriptFilterVisibleEffect.of>
+  | ReturnType<typeof setTranscriptFilterCriteriaEffect.of>
+> {
+  const criteria = getTranscriptFilterCriteria(state);
+  if (criteria == null || isDefaultSegmentListFilter(criteria)) {
+    return [
+      setTranscriptFilterCriteriaEffect.of(null),
+      setTranscriptFilterVisibleEffect.of(null),
+    ];
+  }
+  const filtered = computeFilteredSegmentIndices(nextSegments as SegmentDto[], criteria);
+  const visible = resolveTranscriptFilterVisibleSet(true, filtered, nextSegments.length);
+  return [
+    setTranscriptFilterCriteriaEffect.of(criteria),
+    setTranscriptFilterVisibleEffect.of(visible),
+  ];
 }
 
 /** Overlay CM6 live texts onto baseline DTOs (same length). */
@@ -62,6 +101,7 @@ export function replaceTranscriptSegmentsTransaction(
           selectedSet: new Set(),
           rangeAnchor: 0,
         }),
+        ...filterEffectsForStructure(state, []),
       ],
       selection: EditorSelection.single(0),
     };
@@ -82,9 +122,13 @@ export function replaceTranscriptSegmentsTransaction(
         selectedSet: new Set([primary]),
         rangeAnchor: primary,
       }),
+      ...filterEffectsForStructure(state, nextSegments),
     ],
     selection: EditorSelection.single(anchor),
-    scrollIntoView: true,
+    // Merged lines often wrap taller than the viewport. CM `scrollIntoView: true`
+    // (and nearest-to-bottom) can jump the scroller to the block end — looks like
+    // the segment fled the current viewport. Reveal start deliberately below.
+    scrollIntoView: false,
   };
 }
 
@@ -95,7 +139,13 @@ export function applyTranscriptSegmentsStructure(
 ): boolean {
   const tr = replaceTranscriptSegmentsTransaction(view.state, nextSegments, primaryIdx);
   if (!tr) return false;
+  const anchorIdx = Math.max(0, Math.min(primaryIdx, Math.max(0, view.state.doc.lines - 1)));
+  const priorAnchorOffsetPx = readSegmentViewportAnchorOffsetPx(view, anchorIdx);
   view.dispatch(tr);
+  const primary = Math.max(0, Math.min(primaryIdx, Math.max(0, nextSegments.length - 1)));
+  if (nextSegments.length > 0) {
+    revealSegmentAfterStructureChange(view, primary, { priorAnchorOffsetPx });
+  }
   return true;
 }
 

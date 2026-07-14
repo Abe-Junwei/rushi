@@ -7,6 +7,7 @@ import {
   type SegmentListFilterNavState,
 } from "../../utils/segmentListFilterNav";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
+import type { SegmentListFilterState } from "../../services/segmentListFilter";
 import { TranscriptEditorCore } from "./core/TranscriptEditorCore";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
 import { dispatchSegmentLoopButtonClick } from "../../utils/dispatchSegmentLoopButtonClick";
@@ -23,6 +24,9 @@ interface EditorSegmentListProps {
   filterNavRef: React.MutableRefObject<SegmentListFilterNavState>;
   filteredIndices: number[];
   filterActive: boolean;
+  filterCriteria?: SegmentListFilterState | null;
+  visibleIndexSet?: ReadonlySet<number> | null;
+  displayPositionByIndex?: ReadonlyMap<number, number> | null;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
@@ -35,14 +39,22 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   filterNavRef,
   filteredIndices,
   filterActive,
+  filterCriteria = null,
+  visibleIndexSet = null,
+  displayPositionByIndex = null,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
   const displayCount = filteredIndices.length;
 
   useEffect(() => {
-    filterNavRef.current = { active: filterActive, indices: filteredIndices };
-  }, [filterActive, filteredIndices, filterNavRef]);
+    filterNavRef.current = {
+      active: filterActive,
+      indices: filteredIndices,
+      visibleIndexSet,
+      displayPositionByIndex,
+    };
+  }, [filterActive, filteredIndices, visibleIndexSet, displayPositionByIndex, filterNavRef]);
 
   if (c.segments.length === 0) {
     return (
@@ -70,6 +82,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
     filteredIndices,
     primaryIdx: c.selectedIdx,
     segmentCount: c.segments.length,
+    visibleIndexSet,
   });
 
   return (
@@ -103,6 +116,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         panelHighlight={panelHighlight}
         filterActive={filterActive}
         filteredIndices={filteredIndices}
+        filterCriteria={filterCriteria}
         listRef={segmentListRef}
         onOpenContextMenu={({ x, y, segmentIdx, pointerTimeSec, selectionText }) => {
           onOpenSegmentContextMenu({
@@ -158,6 +172,9 @@ function areEditorSegmentListPropsEqual(
   if (prev.controller.selectedIdx !== next.controller.selectedIdx) return false;
   if (prev.filteredIndices !== next.filteredIndices) return false;
   if (prev.filterActive !== next.filterActive) return false;
+  if (prev.filterCriteria !== next.filterCriteria) return false;
+  if (prev.visibleIndexSet !== next.visibleIndexSet) return false;
+  if (prev.displayPositionByIndex !== next.displayPositionByIndex) return false;
   if (prev.controller.findReplaceEditorHighlight !== next.controller.findReplaceEditorHighlight) {
     return false;
   }

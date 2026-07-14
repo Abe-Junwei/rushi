@@ -40,6 +40,15 @@ describe("segmentChrome", () => {
     expect(fill).toBe(`var(${SEGMENT_FILL_CSS_VAR.selected})`);
   });
 
+  it("uses callout wash for selected frozen segments (aligned with text frozen-selected)", () => {
+    const s = seg({ start_sec: 0, end_sec: 2, frozen: true });
+    const selected = waveformRegionFillColor(s, true, false, 2);
+    expect(selected).toContain("notion-callout-bg");
+    expect(
+      waveformRegionFillColor(s, false, false, 0),
+    ).toBe(`var(${SEGMENT_FILL_CSS_VAR.idle})`);
+  });
+
   it("uses waveform in-selection fill token for secondary multi-select overlay", () => {
     const s = seg({ start_sec: 0, end_sec: 2 });
     const fill = waveformRegionFillColor(s, false, true, 0);

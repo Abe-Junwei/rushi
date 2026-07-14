@@ -1,10 +1,8 @@
-import type { SegmentListFilterNavState } from "./segmentListFilterNav";
-import { readSegmentListFilterNavIndices } from "./segmentListFilterNav";
-import {
-  querySegmentListScrollRoot,
-  readSegmentListFilterIndices,
-} from "./segmentListVirtualWindow";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
+import {
+  resolveEffectiveFilteredIndices,
+  type SegmentListFilterNavState,
+} from "./segmentListFilterNav";
 
 /** ↑↓ anchor: CM6 projection primary, else React SC1 bridge. */
 export function resolveListSelectionNavAnchor(fallbackIdx: number): number {
@@ -17,6 +15,7 @@ export function resolveAdjacentVisibleSegmentIdx(
   direction: -1 | 1,
   segmentCount: number,
   filteredIndices: readonly number[] | null,
+  displayPositionByIndex?: ReadonlyMap<number, number> | null,
 ): number | null {
   if (segmentCount <= 0 || segmentIdx < 0) return null;
 
@@ -27,7 +26,17 @@ export function resolveAdjacentVisibleSegmentIdx(
 
   if (filteredIndices.length === 0) return null;
 
-  const pos = filteredIndices.indexOf(segmentIdx);
+  let pos = displayPositionByIndex?.get(segmentIdx);
+  if (pos == null) {
+    pos = -1;
+    for (let i = 0; i < filteredIndices.length; i += 1) {
+      if (filteredIndices[i] === segmentIdx) {
+        pos = i;
+        break;
+      }
+    }
+  }
+
   if (pos < 0) {
     if (direction > 0) {
       for (const idx of filteredIndices) {
@@ -37,7 +46,7 @@ export function resolveAdjacentVisibleSegmentIdx(
     }
     for (let i = filteredIndices.length - 1; i >= 0; i -= 1) {
       const idx = filteredIndices[i];
-      if (idx < segmentIdx) return idx;
+      if (idx !== undefined && idx < segmentIdx) return idx;
     }
     return null;
   }
@@ -47,15 +56,22 @@ export function resolveAdjacentVisibleSegmentIdx(
   return filteredIndices[nextPos] ?? null;
 }
 
-/** Global ↑↓ shortcut target (filter ref 优先，DOM attr 兜底)。 */
+/** Global ↑↓ shortcut target — keyboard nav only reads filterNavRef (no DOM attribute bus). */
 export function resolveKeyboardAdvanceTarget(
   selectedIdx: number,
   direction: -1 | 1,
   segmentCount: number,
   filterState?: SegmentListFilterNavState,
 ): number | null {
-  const filtered = filterState
-    ? readSegmentListFilterNavIndices(filterState, segmentCount)
-    : readSegmentListFilterIndices(querySegmentListScrollRoot());
-  return resolveAdjacentVisibleSegmentIdx(selectedIdx, direction, segmentCount, filtered);
+  if (!filterState) {
+    return resolveAdjacentVisibleSegmentIdx(selectedIdx, direction, segmentCount, null);
+  }
+  const filtered = resolveEffectiveFilteredIndices(filterState, segmentCount);
+  return resolveAdjacentVisibleSegmentIdx(
+    selectedIdx,
+    direction,
+    segmentCount,
+    filtered,
+    filterState.displayPositionByIndex,
+  );
 }

@@ -10,6 +10,7 @@ import type { useProjectImportDuplicateController } from "./useProjectImportDupl
 import type { useProjectFileMutationController } from "./useProjectFileMutationController";
 import type { useProjectMutationController } from "./useProjectMutationController";
 import type { useSegmentAnnotationController } from "./useSegmentAnnotationController";
+import type { useSegmentFreezeController } from "./useSegmentFreezeController";
 import type { useBatchTranscribeQueueController } from "./useBatchTranscribeQueueController";
 import type { useProjectCrudController } from "./useProjectCrudController";
 import type { useProjectSaveController } from "./useProjectSaveController";
@@ -29,6 +30,7 @@ type ImportDuplicate = ReturnType<typeof useProjectImportDuplicateController>;
 type FileMutation = ReturnType<typeof useProjectFileMutationController>;
 type ProjectMutation = ReturnType<typeof useProjectMutationController>;
 type SegmentAnnotation = ReturnType<typeof useSegmentAnnotationController>;
+type SegmentFreeze = ReturnType<typeof useSegmentFreezeController>;
 type BatchTranscribe = ReturnType<typeof useBatchTranscribeQueueController>;
 type Crud = ReturnType<typeof useProjectCrudController>;
 type SaveController = ReturnType<typeof useProjectSaveController>;
@@ -79,5 +81,6 @@ export type ProjectLifecycleReturnInput = {
   fileMutation: FileMutation;
   projectMutation: ProjectMutation;
   segmentAnnotation: SegmentAnnotation;
+  segmentFreeze: SegmentFreeze;
   batchTranscribe: BatchTranscribe;
 };

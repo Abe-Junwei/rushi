@@ -104,7 +104,8 @@ export function segmentsEqualForPersist(a: SegmentDto[], b: SegmentDto[]): boole
       (s.kind ?? null) === (t.kind ?? null) &&
       (s.text_stage ?? "auto_transcribe") === (t.text_stage ?? "auto_transcribe") &&
       (s.finalize_via ?? null) === (t.finalize_via ?? null) &&
-      (s.annotation ?? null) === (t.annotation ?? null)
+      (s.annotation ?? null) === (t.annotation ?? null) &&
+      Boolean(s.frozen) === Boolean(t.frozen)
     );
   });
 }
@@ -118,7 +119,7 @@ export function segmentsPersistSignature(segs: SegmentDto[]): string {
   return reindexSegments(segs)
     .map(
       (s) =>
-        `${s.uid ?? ""}|${s.start_sec}|${s.end_sec}|${s.text}|${s.confidence ?? ""}|${Boolean(s.low_confidence)}|${s.detail ?? ""}|${s.kind ?? ""}|${s.text_stage ?? "auto_transcribe"}|${s.finalize_via ?? ""}|${s.annotation ?? ""}`,
+        `${s.uid ?? ""}|${s.start_sec}|${s.end_sec}|${s.text}|${s.confidence ?? ""}|${Boolean(s.low_confidence)}|${s.detail ?? ""}|${s.kind ?? ""}|${s.text_stage ?? "auto_transcribe"}|${s.finalize_via ?? ""}|${s.annotation ?? ""}|${Boolean(s.frozen)}`,
     )
     .join("\n");
 }
@@ -130,8 +131,8 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
   return {
     uid: a.uid,
     idx: a.idx,
-    start_sec: a.start_sec,
-    end_sec: b.end_sec,
+    start_sec: Math.min(a.start_sec, b.start_sec),
+    end_sec: Math.max(a.end_sec, b.end_sec),
     text: joinMergedSegmentTexts(a.text ?? "", b.text ?? ""),
     confidence:
       confA != null && confB != null ? Math.min(confA, confB) : (confA ?? confB ?? null),

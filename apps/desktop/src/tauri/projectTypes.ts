@@ -43,6 +43,8 @@ export interface SegmentDto {
   finalize_via?: SegmentFinalizeVia | null;
   /** 语段备注（与正文独立，经 file_save_segments 持久化） */
   annotation?: string | null;
+  /** 冻结：保留分段/正文；全局通读跳过；正文不可编辑。缺省=false */
+  frozen?: boolean;
 }
 
 export interface FileSummary {

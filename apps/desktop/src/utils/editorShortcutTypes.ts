@@ -8,6 +8,7 @@ export type EditorShortcutId =
   | "segment.splitPlayhead"
   | "segment.focusText"
   | "segment.delete"
+  | "segment.freezeToggle"
   | "playback.toggle"
   | "playback.toggleSegmentLoop"
   | "edit.undo"

@@ -10,6 +10,11 @@ import {
 import { selectSegmentCommand } from "./selectionCommands";
 import { transcriptPlaybackFocusField } from "./playbackFocusField";
 import { transcriptGutterChromeBaseTheme } from "./transcriptGutterChromeTheme";
+import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
+import {
+  isTranscriptSegmentVisible,
+  transcriptFilterVisibilityChanged,
+} from "./filterLineVisibility";
 
 export type TranscriptRowSelectionKind = "primary" | "in" | "playback" | null;
 
@@ -25,6 +30,8 @@ export class TranscriptMetaMarker extends GutterMarker {
     readonly selectionKind: TranscriptRowSelectionKind,
     /** True when this row is the current playback-focus line (may coexist with primary). */
     readonly isPlaybackFocus: boolean = false,
+    /** Frozen primary uses a muted accent bar instead of saffron. */
+    readonly frozen: boolean = false,
   ) {
     super();
   }
@@ -39,7 +46,8 @@ export class TranscriptMetaMarker extends GutterMarker {
       this.indexLabel === other.indexLabel &&
       this.timeLabel === other.timeLabel &&
       this.selectionKind === other.selectionKind &&
-      this.isPlaybackFocus === other.isPlaybackFocus
+      this.isPlaybackFocus === other.isPlaybackFocus &&
+      this.frozen === other.frozen
     );
   }
 
@@ -55,10 +63,17 @@ export class TranscriptMetaMarker extends GutterMarker {
             : this.selectionKind === "playback"
               ? "cm-transcript-meta-marker--playback"
               : "";
-    el.className = ["cm-transcript-meta-marker", kindClass].filter(Boolean).join(" ");
+    el.className = [
+      "cm-transcript-meta-marker",
+      kindClass,
+      this.frozen ? "cm-transcript-meta-marker--frozen" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
     el.title = `${this.indexLabel} ${this.timeLabel}`;
 
-    if (this.selectionKind === "primary") {
+    // Frozen rows omit the left accent bar (selection is the soft callout wash only).
+    if (this.selectionKind === "primary" && !this.frozen) {
       const bar = document.createElement("span");
       bar.className = "cm-transcript-meta-accent";
       bar.setAttribute("aria-hidden", "true");
@@ -100,6 +115,7 @@ export function buildTranscriptMetaMarker(
     formatTranscriptTimestamp(meta.startSec),
     selectionKind,
     opts.isPlaybackFocus === true,
+    Boolean(meta.frozen),
   );
 }
 
@@ -128,6 +144,9 @@ export function createTranscriptMetaGutter(
     lineMarker(view, line) {
       const lineNo = view.state.doc.lineAt(line.from).number;
       const idx = lineNo - 1;
+      // Filter-hidden lines collapse via display:none; keep gutter empty so
+      // zero-height marker DOM does not overflow and stack onto visible rows.
+      if (!isTranscriptSegmentVisible(view.state, idx)) return null;
       const primary = primarySegmentIdx(view.state);
       const multi = view.state.field(transcriptMultiSelectionField);
       const playbackIdx = view.state.field(transcriptPlaybackFocusField);
@@ -148,6 +167,7 @@ export function createTranscriptMetaGutter(
       return (
         lineCountChanged ||
         primaryChanged ||
+        transcriptFilterVisibilityChanged(update) ||
         update.startState.field(segmentMetaField) !== update.state.field(segmentMetaField) ||
         !transcriptMultiSelectionEqual(
           update.startState.field(transcriptMultiSelectionField),
@@ -162,6 +182,21 @@ export function createTranscriptMetaGutter(
       mousedown(view, line, event) {
         const mouse = event as MouseEvent;
         const idx = view.state.doc.lineAt(line.from).number - 1;
+        const multi = view.state.field(transcriptMultiSelectionField);
+        if (mouse.button !== 0) {
+          mouse.preventDefault();
+          if (
+            shouldApplyContextMenuSelection({
+              segmentIdx: idx,
+              isIndexInSelection: (i) => multi.selectedSet.has(i),
+              selectionCount: multi.selectedSet.size,
+            })
+          ) {
+            selectSegmentCommand(view, idx, { scrollIntoView: false });
+            opts.onSelectSegment?.(idx, { toggle: false, shiftKey: false });
+          }
+          return true;
+        }
         const toggle = mouse.metaKey || mouse.ctrlKey;
         const shiftKey = mouse.shiftKey;
         selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });

@@ -303,9 +303,10 @@ pub(super) fn import_project_bundle_from_path(
             };
             let finalize_via = s.finalize_via.as_deref().filter(|v| !v.trim().is_empty());
             let annotation = s.annotation.as_deref().unwrap_or("").trim();
+            let frozen = if s.frozen { 1i64 } else { 0i64 };
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     &file_id,
                     uid.as_str(),
@@ -320,6 +321,7 @@ pub(super) fn import_project_bundle_from_path(
                     text_stage,
                     finalize_via,
                     annotation,
+                    frozen,
                 ],
             )
             .map_err(CommandError::from)?;

@@ -14,6 +14,11 @@ export function segmentBandFillStyle(
   palette: WaveformSegmentBandPalette = readWaveformSegmentBandPalette(),
   options?: { inSelection?: boolean; multiSelectActive?: boolean },
 ): string {
+  // Frozen: never paint saffron selected / in-selection washes.
+  if (seg.frozen) {
+    if (seg.low_confidence) return palette.lowConfidence;
+    return palette.idle;
+  }
   if (options?.multiSelectActive && (selected || options.inSelection)) {
     return palette.inSelection;
   }

@@ -25,13 +25,27 @@ import {
   registerTranscriptEditorView,
 } from "./transcriptEditorViewHandle";
 import type { TranscriptPanelHighlight } from "./panelHighlightField";
-import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
+import { setTranscriptFilterVisibleEffect, setTranscriptFilterCriteriaEffect, isTranscriptSegmentVisible } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
+import { revealSegmentAfterStructureChange } from "./revealSegmentAfterStructure";
 import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
 import { setTranscriptSegmentLoopEffect } from "./segmentLoopField";
 import { peekFileViewRestoreForFile } from "../../../services/fileViewStateBridge";
 import { findSegmentIndexByUid } from "../../../pages/segmentListHelpers";
+import {
+  isDefaultSegmentListFilter,
+  resolveTranscriptFilterVisibleSet,
+  type SegmentListFilterState,
+} from "../../../services/segmentListFilter";
+
+function resolveFilterVisibleForCore(
+  filterActive: boolean,
+  filteredIndices: readonly number[],
+  segmentCount: number,
+): ReturnType<typeof resolveTranscriptFilterVisibleSet> {
+  return resolveTranscriptFilterVisibleSet(filterActive, filteredIndices, segmentCount);
+}
 
 export type TranscriptEditorCoreProps = {
   segments: readonly SegmentDto[];
@@ -68,6 +82,8 @@ export type TranscriptEditorCoreProps = {
   /** When filter active: visible segment indices; inactive → show all. */
   filterActive?: boolean;
   filteredIndices?: readonly number[];
+  /** React filter criteria SoT — stored in CM for structure TX recompute. */
+  filterCriteria?: SegmentListFilterState | null;
   listRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
 };
@@ -100,6 +116,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     panelHighlight = null,
     filterActive = false,
     filteredIndices = [],
+    filterCriteria = null,
     listRef,
     className,
   } = props;
@@ -204,7 +221,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
           Math.abs(m.endSec - seg.end_sec) > 0.0005 ||
           (m.stage ?? null) !== (seg.text_stage ?? null) ||
           (m.finalizeVia ?? null) !== (seg.finalize_via ?? null) ||
-          m.uid !== (seg.uid ?? `idx-${i}`)
+          m.uid !== (seg.uid ?? `idx-${i}`) ||
+          Boolean(m.frozen) !== Boolean(seg.frozen) ||
+          Boolean(m.hasAnnotation) !== Boolean(seg.annotation?.trim())
         ) {
           metaDrift = true;
         }
@@ -219,7 +238,10 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     if (!lengthDrift && !textDrift) return;
     if (view.hasFocus && !lengthDrift) return;
 
-    // External structure/text sync (e.g. undo). Prefer P6/P7 CM6 commands for live edits.
+    // External structure/text sync (e.g. undo / React publish after merge).
+    // Prefer P6/P7 CM6 commands for live edits — but when this path runs,
+    // setState resets scrollTop while selection stays on primary (waveform
+    // still highlights). Restore filter first, then one reveal.
     const prevPrimary = primarySegmentIdx(view.state);
     const prevMulti = getTranscriptMultiSelection(view.state);
     view.setState(
@@ -230,6 +252,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     view.dom.setAttribute(TRANSCRIPT_EDITOR_CORE_ATTR, "1");
     view.contentDOM.setAttribute("aria-label", "语段正文");
     const lineCount = view.state.doc.lines;
+    const criteria =
+      filterCriteria && !isDefaultSegmentListFilter(filterCriteria) ? filterCriteria : null;
+    const visible = resolveFilterVisibleForCore(filterActive, filteredIndices, segments.length);
     if (lineCount > 0) {
       const primary = Math.max(0, Math.min(prevPrimary < 0 ? 0 : prevPrimary, lineCount - 1));
       const selectedSet = new Set<number>();
@@ -241,18 +266,29 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       const line = view.state.doc.line(primary + 1);
       view.dispatch({
         selection: EditorSelection.single(line.from),
-        effects: setTranscriptMultiSelectionEffect.of({ selectedSet, rangeAnchor }),
+        effects: [
+          setTranscriptMultiSelectionEffect.of({ selectedSet, rangeAnchor }),
+          setTranscriptFilterCriteriaEffect.of(criteria),
+          setTranscriptFilterVisibleEffect.of(visible),
+        ],
+        scrollIntoView: false,
       });
+      syncTranscriptProjectionFromView(view);
+      // Only reveal when primary remains visible. Revealing a filter-collapsed
+      // (0-height) primary fights manual scroll and looks like forced snap-back.
+      if (isTranscriptSegmentVisible(view.state, primary)) {
+        revealSegmentAfterStructureChange(view, primary);
+      }
+    } else {
+      view.dispatch({
+        effects: [
+          setTranscriptFilterCriteriaEffect.of(criteria),
+          setTranscriptFilterVisibleEffect.of(visible),
+        ],
+      });
+      syncTranscriptProjectionFromView(view);
     }
-    syncTranscriptProjectionFromView(view);
-    const visible =
-      filterActive && filteredIndices.length > 0 && filteredIndices.length < segments.length
-        ? new Set(filteredIndices)
-        : filterActive && filteredIndices.length === 0
-          ? new Set<number>()
-          : null;
-    view.dispatch({ effects: setTranscriptFilterVisibleEffect.of(visible) });
-  }, [segments, filterActive, filteredIndices]);
+  }, [segments, filterActive, filteredIndices, filterCriteria]);
 
   useEffect(() => {
     const view = viewRef.current;
@@ -301,14 +337,11 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   }, [panelHighlight]);
 
   useEffect(() => {
-    const visible =
-      filterActive && filteredIndices.length > 0 && filteredIndices.length < segments.length
-        ? new Set(filteredIndices)
-        : filterActive && filteredIndices.length === 0
-          ? new Set<number>()
-          : null;
-    dispatchTranscriptFilterVisible(visible);
-  }, [filterActive, filteredIndices, segments.length]);
+    const criteria =
+      filterCriteria && !isDefaultSegmentListFilter(filterCriteria) ? filterCriteria : null;
+    const visible = resolveFilterVisibleForCore(filterActive, filteredIndices, segments.length);
+    dispatchTranscriptFilterVisible(visible, criteria);
+  }, [filterActive, filteredIndices, filterCriteria, segments.length]);
 
   return (
     <div

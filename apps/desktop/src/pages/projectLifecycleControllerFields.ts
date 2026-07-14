@@ -235,6 +235,7 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     segmentAnnotationDialog: lifecycle.segmentAnnotationDialog,
     segmentAnnotationSaving: lifecycle.segmentAnnotationSaving,
     openSegmentAnnotationDialog: lifecycle.openSegmentAnnotationDialog,
+    toggleSegmentFrozen: lifecycle.toggleSegmentFrozen,
     closeSegmentAnnotationDialog: lifecycle.closeSegmentAnnotationDialog,
     setSegmentAnnotationDraft: lifecycle.setSegmentAnnotationDraft,
     saveSegmentAnnotation: lifecycle.saveSegmentAnnotation,

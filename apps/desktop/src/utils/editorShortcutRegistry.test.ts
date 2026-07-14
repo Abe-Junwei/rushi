@@ -127,6 +127,9 @@ describe("editorShortcutRegistry", () => {
 
   it("matches segment annotation on Cmd+N", () => {
     expect(matchEditorShortcut(keyEvent({ key: "n", metaKey: true }))).toBe("workflow.segmentAnnotation");
+    expect(
+      matchEditorShortcut(keyEvent({ key: "f", metaKey: true, shiftKey: true })),
+    ).toBe("segment.freezeToggle");
   });
 
   it("matches segment loop on Cmd+L and correction memory on Shift+Cmd+L", () => {

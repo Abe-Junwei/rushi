@@ -45,6 +45,7 @@ function makeController(selectedIdx: number): ProjectControllerApi {
     triggerFindReplaceShortcut: () => {},
     closeFile: () => {},
     openSegmentAnnotationDialog: () => {},
+    toggleSegmentFrozen: () => {},
     openManualCorrectionMemoryDialog: () => {},
   } as never;
 }

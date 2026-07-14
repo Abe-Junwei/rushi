@@ -13,6 +13,7 @@ pub(super) fn run_incremental(conn: &Connection) -> rusqlite::Result<()> {
     segments::migrate_segments_kind(conn)?;
     segments::migrate_segments_text_stage(conn)?;
     segments::migrate_segments_annotation(conn)?;
+    segments::migrate_segments_frozen(conn)?;
     glossary::migrate_glossary_p2(conn)?;
     glossary::migrate_glossary_gly2(conn)?;
     glossary::migrate_glossary_gly3(conn)?;

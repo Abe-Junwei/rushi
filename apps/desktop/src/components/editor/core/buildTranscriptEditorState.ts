@@ -41,6 +41,8 @@ export function buildTranscriptEditorState(
     stage: s.text_stage ?? null,
     finalizeVia: s.finalize_via ?? null,
     speakerId: null,
+    frozen: Boolean(s.frozen),
+    hasAnnotation: Boolean(s.annotation?.trim()),
   }));
 
   // multi-selection field must precede decorations that read it.

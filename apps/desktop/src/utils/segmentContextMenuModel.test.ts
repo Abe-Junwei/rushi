@@ -18,12 +18,13 @@ describe("pointerTimeFromSegmentCard", () => {
   it("segment list menu omits split at pointer", () => {
     const items = buildSegmentContextMenuItems({
       segmentIdx: 0,
-      segments: [seg(0, 10)],
+      segments: [seg(0, 10), seg(10, 20)],
       busy: false,
       pointerTimeSec: 5,
       origin: "segmentList",
     });
-    expect(items.map((i) => i.key)).toEqual(["markFinalized", "delete", "mergePrev", "mergeNext"]);
+    expect(items.map((i) => i.key)).toEqual(["mergeNext", "delete"]);
+    expect(items.every((i) => !i.disabled)).toBe(true);
   });
 
   it("waveform menu includes split at pointer when in range", () => {
@@ -67,7 +68,19 @@ describe("pointerTimeFromSegmentCard", () => {
       selectionHi: 3,
       selectionCount: 3,
     });
-    expect(items.map((i) => i.key)).toEqual(["markFinalized", "mergeRange", "delete"]);
+    expect(items.map((i) => i.key)).toEqual(["mergeRange", "delete"]);
     expect(items.find((i) => i.key === "delete")?.label).toBe("删除 3 条语段");
+  });
+
+  it("omits structure actions when the target segment is frozen", () => {
+    const items = buildSegmentContextMenuItems({
+      segmentIdx: 0,
+      segments: [{ ...seg(0, 10), frozen: true }],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "waveform",
+      frozenInSelection: true,
+    });
+    expect(items.map((i) => i.key)).toEqual([]);
   });
 });

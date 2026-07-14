@@ -298,12 +298,13 @@ pub(crate) fn copy_file_to_project_inner(
         String,
         Option<String>,
         String,
+        i64,
     );
     let segs: Vec<SegRow> = {
         let mut stmt = conn
             .prepare(
                 "SELECT idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, \
-                 text_stage, finalize_via, annotation FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
+                 text_stage, finalize_via, annotation, frozen FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -320,6 +321,7 @@ pub(crate) fn copy_file_to_project_inner(
                     r.get::<_, String>(8)?,
                     r.get::<_, Option<String>>(9)?,
                     r.get::<_, String>(10)?,
+                    r.get::<_, i64>(11)?,
                 ))
             })
             .map_err(|e| e.to_string())?;
@@ -380,13 +382,14 @@ pub(crate) fn copy_file_to_project_inner(
             text_stage,
             finalize_via,
             annotation,
+            frozen,
         ) in &segs
         {
             let uid = Uuid::new_v4().to_string();
             tx.execute(
                 "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, \
-                 low_confidence, detail, kind, text_stage, finalize_via, annotation) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+                 low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
                 params![
                     &new_file_id,
                     &uid,
@@ -401,6 +404,7 @@ pub(crate) fn copy_file_to_project_inner(
                     text_stage,
                     finalize_via,
                     annotation,
+                    frozen,
                 ],
             )
             .map_err(|e| e.to_string())?;

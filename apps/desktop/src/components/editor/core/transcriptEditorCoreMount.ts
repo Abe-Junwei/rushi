@@ -13,10 +13,12 @@ import {
   createTranscriptEditorKeymap,
   transcriptLineCountGuard,
 } from "./transcriptEditorKeymap";
+import { transcriptFrozenLineGuard } from "./frozenLineGuard";
 import { segmentMetaField } from "./segmentMetaField";
-import { primarySegmentIdx } from "./selectionField";
+import { primarySegmentIdx, transcriptMultiSelectionField } from "./selectionField";
 import { readTranscriptEditorSelectionText } from "./textEditCommands";
 import { createTranscriptTextDragClamp } from "./transcriptTextDragClamp";
+import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
 
 export function buildTranscriptAppearanceTheme(args: {
   fontPx: number;
@@ -175,6 +177,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
       },
     }),
     transcriptLineCountGuard,
+    transcriptFrozenLineGuard,
     createTranscriptEditorKeymap({
       onPrimaryMoved: (idx, opts) => bridgePrimaryMoved(idx, opts),
     }),
@@ -232,6 +235,33 @@ export function buildTranscriptEditorCoreExtensions(args: {
         const toggle = event.metaKey || event.ctrlKey;
         const shiftKey = event.shiftKey;
         const primary = primarySegmentIdx(view.state);
+        const multi = view.state.field(transcriptMultiSelectionField);
+
+        // Right/middle button: preserve multi-select when the target is already
+        // in the set (mousedown runs before contextmenu and would otherwise collapse).
+        if (event.button !== 0) {
+          event.preventDefault();
+          if (
+            shouldApplyContextMenuSelection({
+              segmentIdx: idx,
+              isIndexInSelection: (i) => multi.selectedSet.has(i),
+              selectionCount: multi.selectedSet.size,
+            })
+          ) {
+            selectSegmentCommand(view, idx, { scrollIntoView: false });
+            bridgePrimaryMoved(idx, { toggle: false, shiftKey: false });
+          }
+          return true;
+        }
+
+        const frozen = Boolean(view.state.field(segmentMetaField, false)?.[idx]?.frozen);
+        // Frozen rows are selection-only: never enter text-edit caret placement.
+        if (frozen && !shiftKey && !toggle) {
+          event.preventDefault();
+          selectSegmentCommand(view, idx, { scrollIntoView: false });
+          bridgePrimaryMoved(idx, { toggle: false, shiftKey: false });
+          return true;
+        }
         // Same-row plain click: let CM place caret / drag-select text.
         if (
           !shouldConsumeTranscriptContentMousedown({

@@ -1,8 +1,9 @@
-import { useCallback, type RefObject } from "react";
+import { useCallback, type MutableRefObject, type RefObject } from "react";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
 import { applyContextMenuSelectionBeforeOpen } from "../services/selection/segmentContextMenuSelection";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
+import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
@@ -13,6 +14,7 @@ export function useWaveformSegmentContextMenuController(args: {
   laneByIndex: number[];
   laneCount: number;
   selectSegmentAt: (idx: number, source?: SegmentSelectSource) => void;
+  segmentListFilterNavRef?: MutableRefObject<SegmentListFilterNavState>;
 }) {
   return useCallback(
     (input: {
@@ -25,6 +27,9 @@ export function useWaveformSegmentContextMenuController(args: {
       const c = args.ctxRef.current;
       if (c.busy || !c.onOpenSegmentContextMenu) return;
       const pointerTimeSec = args.timeline.wfApiRef.current.clientXToTimeSec(input.clientX);
+      const nav = args.segmentListFilterNavRef?.current;
+      const listVisibleIndexSet =
+        nav?.active ? (nav.visibleIndexSet ?? new Set(nav.indices)) : null;
       const segmentIdx = resolveWaveformSegmentContextMenuIndex({
         segments: c.segments,
         timeSec: pointerTimeSec,
@@ -37,6 +42,7 @@ export function useWaveformSegmentContextMenuController(args: {
         selectedIdx: c.selectedIdx,
         durationSec: args.timeline.timelineMetrics.mediaDurationSec,
         timelineWidthPx: args.timeline.timelineWidthPx,
+        listVisibleIndexSet,
       });
       if (segmentIdx < 0) return;
       applyContextMenuSelectionBeforeOpen(

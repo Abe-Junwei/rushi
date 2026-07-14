@@ -69,6 +69,7 @@ function makeCtx(selectedIdx = 0): TranscriptionLayerInput {
     closeFile: vi.fn(),
     openEnvironment: vi.fn(),
     openSegmentAnnotationDialog: vi.fn(),
+    toggleSegmentFrozen: vi.fn(),
     openManualCorrectionMemoryDialog: vi.fn(),
   };
 }

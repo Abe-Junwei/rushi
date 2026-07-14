@@ -88,6 +88,7 @@ export function EditorViewLayout({
       input={chromeViewInput}
       filterActive={segmentFilter.isActive}
       filteredIndices={segmentFilter.filteredIndices}
+      visibleIndexSet={segmentFilter.visibleIndexSet}
     >
     <div className="flex h-0 min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-notion-bg" data-purpose="editor-workspace">
       <EditorToolbar
@@ -137,6 +138,9 @@ export function EditorViewLayout({
           appearance={appearance}
           filteredIndices={segmentFilter.filteredIndices}
           filterActive={segmentFilter.isActive}
+          filterCriteria={segmentFilter.filter}
+          visibleIndexSet={segmentFilter.visibleIndexSet}
+          displayPositionByIndex={segmentFilter.displayPositionByIndex}
           onResetSegmentListFilter={segmentFilter.resetFilter}
           onOpenSegmentContextMenu={tx.openSegmentContextMenu}
         />

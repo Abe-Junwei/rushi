@@ -100,6 +100,14 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
+    id: "segment.freezeToggle",
+    bindings: [BINDING.mod("f", { shift: true })],
+    keysLabel: "⇧⌘/Ctrl+Shift + F",
+    footerAction: "冻结/解冻语段",
+    panelAction: "冻结或解冻当前选中语段（全局通读跳过；正文不可改）",
+    allowInTextarea: true,
+  },
+  {
     id: "playback.toggle",
     // Dual binding (global-vs-segment UX research): bare Space outside transcript
     // edit targets; Shift+Space inside so Space still types a space in CM6/textarea.

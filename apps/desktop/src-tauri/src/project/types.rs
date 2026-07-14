@@ -139,6 +139,9 @@ pub struct SegmentDto {
     /// 用户语段标注（与 ASR `detail` 正交）；空串视为无标注。
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub annotation: Option<String>,
+    /// 冻结：保留分段/正文；全局通读跳过；正文不可编辑。
+    #[serde(default)]
+    pub frozen: bool,
 }
 
 fn default_segment_text_stage() -> String {

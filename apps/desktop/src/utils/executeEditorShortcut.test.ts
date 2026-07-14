@@ -53,6 +53,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     closeFile: vi.fn(),
     openEnvironment: vi.fn(),
     openSegmentAnnotationDialog: vi.fn(),
+    toggleSegmentFrozen: vi.fn(),
     openManualCorrectionMemoryDialog: vi.fn(),
     ...overrides,
   };
@@ -267,6 +268,13 @@ describe("executeEditorShortcut", () => {
 
     expect(openSegmentAnnotationDialog).toHaveBeenCalledWith(0);
     document.body.innerHTML = "";
+  });
+
+  it("toggles freeze for selectedIdx", () => {
+    const toggleSegmentFrozen = vi.fn();
+    const ctx = makeCtx({ toggleSegmentFrozen, selectedIdx: 1 });
+    executeEditorShortcut("segment.freezeToggle", makeDeps({ ctx }));
+    expect(toggleSegmentFrozen).toHaveBeenCalledWith(1);
   });
 
   it("confirmAdvance uses listKeyboard after save", async () => {

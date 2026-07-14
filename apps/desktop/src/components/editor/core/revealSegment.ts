@@ -1,5 +1,7 @@
 import { EditorView } from "@codemirror/view";
 import type { EditorState, TransactionSpec } from "@codemirror/state";
+import { primarySegmentIdx } from "./selectionField";
+import { isTranscriptSegmentVisible } from "./filterLineVisibility";
 
 /**
  * Scroll a segment line into the CM6 viewport (replaces legacy list virtual reveal).
@@ -17,10 +19,15 @@ export function revealSegmentTransaction(
 }
 
 export function revealSegmentInView(
-  view: { state: EditorState; dispatch: (tr: TransactionSpec) => void },
+  view: EditorView | { state: EditorState; dispatch: (tr: TransactionSpec) => void },
   segmentIdx: number,
   opts?: { y?: "nearest" | "start" | "end" | "center" },
 ): boolean {
+  // Prefer DOM scroll. CM `scrollIntoView` mis-reads filter collapse height maps
+  // (thousands of hidden lines) and jumps the list backward on click / ↑↓.
+  if (view instanceof EditorView) {
+    return revealSegmentInScrollDOM(view, segmentIdx, opts);
+  }
   const tr = revealSegmentTransaction(view.state, segmentIdx, opts);
   if (!tr) return false;
   view.dispatch(tr);
@@ -58,6 +65,12 @@ export function revealSegmentInScrollDOM(
       nextTop = block.bottom - scroller.clientHeight;
       break;
     case "nearest":
+      // Oversized line (common after multi-segment merge): scrolling so the
+      // bottom sits on the viewport edge jumps the user to later wrapped text.
+      if (block.height > scroller.clientHeight) {
+        if (block.top < viewportTop) nextTop = block.top;
+        break;
+      }
       if (block.top < viewportTop) {
         nextTop = block.top;
       } else if (block.bottom > viewportBottom) {
@@ -69,4 +82,151 @@ export function revealSegmentInScrollDOM(
   const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight);
   scroller.scrollTop = Math.round(Math.min(maxTop, Math.max(0, nextTop)));
   return true;
+}
+
+function revealSegmentPreservingViewportOffsetInline(
+  view: EditorView,
+  primaryIdx: number,
+  priorAnchorOffsetPx?: number,
+): boolean {
+  if (primaryIdx < 0 || primaryIdx >= view.state.doc.lines) return false;
+  const scroller = view.scrollDOM;
+  const line = view.state.doc.line(primaryIdx + 1);
+  const block = view.lineBlockAt(line.from);
+  const viewportH = Math.max(1, scroller.clientHeight);
+  const maxTop = Math.max(0, scroller.scrollHeight - viewportH);
+
+  if (priorAnchorOffsetPx == null || !Number.isFinite(priorAnchorOffsetPx)) {
+    return revealSegmentInScrollDOM(view, primaryIdx, { y: "nearest" });
+  }
+
+  let nextTop = block.top - priorAnchorOffsetPx;
+  if (block.height > viewportH) {
+    nextTop = Math.min(nextTop, block.top);
+  }
+  if (block.top > nextTop + viewportH - 1) {
+    nextTop = block.top;
+  }
+  if (block.top < nextTop) {
+    nextTop = block.top;
+  }
+
+  scroller.scrollTop = Math.round(Math.min(maxTop, Math.max(0, nextTop)));
+  return true;
+}
+
+type RevealScheduleState = {
+  generation: number;
+  cleanup: (() => void) | null;
+};
+
+const revealScheduleByView = new WeakMap<EditorView, RevealScheduleState>();
+
+function getRevealSchedule(view: EditorView): RevealScheduleState {
+  let state = revealScheduleByView.get(view);
+  if (!state) {
+    state = { generation: 0, cleanup: null };
+    revealScheduleByView.set(view, state);
+  }
+  return state;
+}
+
+/** Cancel pending reveal tasks for a view (tests / unmount). */
+export function cancelScheduledReveal(view: EditorView): void {
+  const state = revealScheduleByView.get(view);
+  if (!state) return;
+  state.generation += 1;
+  state.cleanup?.();
+  state.cleanup = null;
+}
+
+export type ScheduleRevealSegmentOpts = {
+  y?: "nearest" | "start" | "end" | "center";
+  priorAnchorOffsetPx?: number;
+  /** When set, apply preserving-offset reveal instead of nearest. */
+  preserveAnchor?: boolean;
+  /** Re-check primary + visibility before each run. */
+  validateTarget?: boolean;
+  /** After layout rAF passes (default true for structure). */
+  deferLayout?: boolean;
+};
+
+/**
+ * Single cancellable reveal chain. Later calls bump generation and cancel prior
+ * sync+rAF+rAF work. Trusted wheel/pointer on scrollDOM aborts remaining runs.
+ */
+export function scheduleRevealSegment(
+  view: EditorView,
+  segmentIdx: number,
+  opts: ScheduleRevealSegmentOpts = {},
+): number {
+  const state = getRevealSchedule(view);
+  state.cleanup?.();
+  state.cleanup = null;
+  const generation = state.generation + 1;
+  state.generation = generation;
+
+  let userInterrupted = false;
+  const markInterrupted = (ev: Event) => {
+    if (ev.isTrusted) userInterrupted = true;
+  };
+  const scroller = view.scrollDOM;
+  scroller.addEventListener("wheel", markInterrupted, { passive: true });
+  scroller.addEventListener("pointerdown", markInterrupted, { passive: true });
+
+  const cleanup = () => {
+    scroller.removeEventListener("wheel", markInterrupted);
+    scroller.removeEventListener("pointerdown", markInterrupted);
+    if (revealScheduleByView.get(view)?.cleanup === cleanup) {
+      state.cleanup = null;
+    }
+  };
+  state.cleanup = cleanup;
+
+  const run = (): boolean => {
+    if (getRevealSchedule(view).generation !== generation) return false;
+    if (userInterrupted) {
+      cleanup();
+      return false;
+    }
+    if (opts.validateTarget) {
+      if (primarySegmentIdx(view.state) !== segmentIdx) {
+        cleanup();
+        return false;
+      }
+      if (!isTranscriptSegmentVisible(view.state, segmentIdx)) {
+        cleanup();
+        return false;
+      }
+    }
+    if (opts.preserveAnchor) {
+      revealSegmentPreservingViewportOffsetInline(view, segmentIdx, opts.priorAnchorOffsetPx);
+    } else {
+      revealSegmentInScrollDOM(view, segmentIdx, { y: opts.y ?? "nearest" });
+    }
+    return true;
+  };
+
+  run();
+  if (!opts.deferLayout) {
+    cleanup();
+    return generation;
+  }
+  if (typeof requestAnimationFrame !== "function") {
+    cleanup();
+    return generation;
+  }
+  requestAnimationFrame(() => {
+    if (!run()) return;
+    requestAnimationFrame(() => {
+      run();
+      cleanup();
+    });
+  });
+  return generation;
+}
+
+/** Test helper: current reveal generation for a view. */
+export function getRevealScheduleGenerationForTests(view: EditorView): number {
+  return revealScheduleByView.get(view)?.generation ?? 0;
 }

@@ -17,6 +17,7 @@ import { toast } from "../services/ui/toast";
 import { pushExportFailureActivity } from "../services/ui/pushActivity";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import type { BusyReason } from "./useProjectCrudController";
+import { segmentsForDeliveryExport } from "../utils/frozenPlaybackSkip";
 
 export type DeliveryDocxExportRequest = {
   mode: DocxExportMode;
@@ -96,7 +97,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
-    const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+    const rows: ExportSegment[] = segmentsForDeliveryExport(
+      getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
+    );
     try {
       await p1.exportTextFile(exportDefaultBasename("txt"), formatTxt(rows));
       syncOnboardingExport();
@@ -109,7 +112,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
-    const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+    const rows: ExportSegment[] = segmentsForDeliveryExport(
+      getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
+    );
     try {
       await p1.exportTextFile(exportDefaultBasename("srt"), formatSrt(rows));
       syncOnboardingExport();
@@ -140,7 +145,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
       if (!current) return;
       setError("");
       flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+      const normalized: SegmentDto[] = segmentsForDeliveryExport(
+        getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
+      );
       try {
         await exportDocxImpl(exportDefaultBasename("docx"), exportContextLabel(), mode, normalized, {
           exportMetaLine: docxExportMetaLine(false),
@@ -167,7 +174,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
       if (!current) return;
       setError("");
       flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+      const normalized: SegmentDto[] = segmentsForDeliveryExport(
+        getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
+      );
       beginBusy("export");
       try {
         let editLogRows: Awaited<ReturnType<typeof p1.projectListEditLog>> = [];

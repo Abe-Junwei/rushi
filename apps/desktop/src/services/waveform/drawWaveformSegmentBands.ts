@@ -88,6 +88,36 @@ type BandGeom = {
   multiSelectActive: boolean;
 };
 
+/** Diagonal hatch overlay for frozen segments (matches CM `.cm-transcript-frozen-line`). */
+function paintFrozenBandHatch(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  palette: WaveformSegmentBandPalette,
+): void {
+  if (!(width > 0) || !(height > 0)) return;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(left, top, width, height);
+  ctx.clip();
+  ctx.strokeStyle = palette.selectedBorder;
+  // Soft accent hatch — low alpha so body/peaks stay readable.
+  ctx.globalAlpha = 0.35;
+  ctx.lineWidth = 1;
+  const step = 8;
+  const x0 = left - height;
+  const x1 = left + width + height;
+  for (let x = x0; x < x1; x += step) {
+    ctx.beginPath();
+    ctx.moveTo(x, top + height);
+    ctx.lineTo(x + height, top);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
 export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): void {
   const {
     ctx,
@@ -162,15 +192,27 @@ export function drawWaveformSegmentBands(input: DrawWaveformSegmentBandsInput): 
 
   const fillBand = (geom: BandGeom) => {
     const { idx, leftViewportPx, bandWidthPx, selected, inSelection, multiSelectActive } = geom;
-    if (dominant.has(idx) || skip.has(idx)) return;
-    if (listVisible && !listVisible.has(idx)) return;
     const seg = segments[idx];
     if (!seg) return;
+    if (dominant.has(idx) || skip.has(idx)) {
+      // `skip` indices always have an interactive DOM overlay node that renders the
+      // frozen hatch via CSS (.waveform-segment-region-frozen); painting it here too
+      // would double-hatch. Only dominant spans without a DOM node need the canvas
+      // hatch so the selection wash does not erase the freeze cue.
+      if (seg.frozen && !skip.has(idx)) {
+        paintFrozenBandHatch(ctx, leftViewportPx, insetTop, bandWidthPx, bandHeight, palette);
+      }
+      return;
+    }
+    if (listVisible && !listVisible.has(idx)) return;
     ctx.fillStyle = segmentBandFillStyle(seg, selected, playheadSec, palette, {
       inSelection,
       multiSelectActive,
     });
     ctx.fillRect(leftViewportPx, insetTop, bandWidthPx, bandHeight);
+    if (seg.frozen) {
+      paintFrozenBandHatch(ctx, leftViewportPx, insetTop, bandWidthPx, bandHeight, palette);
+    }
   };
 
   const canPaintCanvasBand = (idx: number): boolean => {

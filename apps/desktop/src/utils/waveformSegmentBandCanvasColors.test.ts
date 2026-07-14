@@ -49,4 +49,12 @@ describe("segmentBandFillStyle", () => {
   it("keeps selected tint over visited", () => {
     expect(segmentBandFillStyle(seg, true, 1, palette)).toBe("sel");
   });
+
+  it("keeps frozen segments on idle fill even when selected", () => {
+    const frozen = { ...seg, frozen: true };
+    expect(segmentBandFillStyle(frozen, true, 1, palette)).toBe("idle");
+    expect(
+      segmentBandFillStyle(frozen, true, 0, palette, { multiSelectActive: true, inSelection: false }),
+    ).toBe("idle");
+  });
 });

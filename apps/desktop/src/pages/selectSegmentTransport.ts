@@ -139,7 +139,14 @@ export function selectSegmentTransport(
   dispatchTranscriptEditorSelection(idx, {
     shiftKey: opts?.shiftKey,
     toggle: opts?.toggle,
-    scrollIntoView: shouldReveal,
+    // List pointer already landed on the row. CM transaction scrollIntoView
+    // fights filter-collapse geometry and yanks the viewport backward.
+    // listKeyboard uses revealSegmentInView (DOM) below / in burst path.
+    scrollIntoView:
+      shouldReveal &&
+      source !== "list" &&
+      source !== "listAdvance" &&
+      source !== "listKeyboard",
   });
   if (selectedIdxRef) selectedIdxRef.current = idx;
   if (c.selectedIdxRef) c.selectedIdxRef.current = idx;
@@ -219,6 +226,10 @@ export function selectSegmentTransport(
       // Deferring this by rAF/timeout paints the new highlight once in the old
       // viewport, then again after centering, which is the visible ↑↓ jitter.
       revealSelectedSegmentNow(idx);
+      if (source === "listKeyboard") {
+        const view = getTranscriptEditorView();
+        if (view) revealSegmentInView(view, idx);
+      }
     }
     if (source === "waveform") {
       flushTierScrollFrame({ force: true });

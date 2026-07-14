@@ -4,6 +4,7 @@ import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
+import type { SegmentListFilterState } from "../../services/segmentListFilter";
 import { EditorSegmentList } from "./EditorSegmentList";
 
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -13,6 +14,9 @@ interface EditorSegmentWorkbenchProps {
   appearance: AppearanceApi;
   filteredIndices: number[];
   filterActive: boolean;
+  filterCriteria?: SegmentListFilterState | null;
+  visibleIndexSet?: ReadonlySet<number> | null;
+  displayPositionByIndex?: ReadonlyMap<number, number> | null;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
@@ -22,6 +26,9 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   appearance: a,
   filteredIndices,
   filterActive,
+  filterCriteria = null,
+  visibleIndexSet = null,
+  displayPositionByIndex = null,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
 }: EditorSegmentWorkbenchProps) {
@@ -35,6 +42,9 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         filterNavRef={tx.segmentListFilterNavRef}
         filteredIndices={filteredIndices}
         filterActive={filterActive}
+        filterCriteria={filterCriteria}
+        visibleIndexSet={visibleIndexSet}
+        displayPositionByIndex={displayPositionByIndex}
         onResetSegmentListFilter={onResetSegmentListFilter}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       />
@@ -58,6 +68,9 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.segments.length === next.controller.segments.length &&
     prev.filteredIndices === next.filteredIndices &&
     prev.filterActive === next.filterActive &&
+    prev.filterCriteria === next.filterCriteria &&
+    prev.visibleIndexSet === next.visibleIndexSet &&
+    prev.displayPositionByIndex === next.displayPositionByIndex &&
     prev.onResetSegmentListFilter === next.onResetSegmentListFilter &&
     prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
     prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&
