@@ -3,20 +3,24 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useProjectFileMutationController } from "./useProjectFileMutationController";
 
 vi.mock("../tauri/fileApi", () => ({
-  renameFile: vi.fn(async () => {}),
-  deleteFile: vi.fn(async () => {}),
-  moveFileToProject: vi.fn(async () => ({
-    fileId: "f1",
-    finalName: "clip.wav",
-    renamed: false,
-  })),
-  copyFileToProject: vi.fn(async () => ({
-    fileId: "f2",
-    finalName: "clip.wav",
-    renamed: false,
-  })),
-  revealProjectInFileManager: vi.fn(async () => {}),
-  revealFileInFileManager: vi.fn(async () => {}),
+  renameFile: vi.fn(() => Promise.resolve()),
+  deleteFile: vi.fn(() => Promise.resolve()),
+  moveFileToProject: vi.fn(() =>
+    Promise.resolve({
+      fileId: "f1",
+      finalName: "clip.wav",
+      renamed: false,
+    }),
+  ),
+  copyFileToProject: vi.fn(() =>
+    Promise.resolve({
+      fileId: "f2",
+      finalName: "clip.wav",
+      renamed: false,
+    }),
+  ),
+  revealProjectInFileManager: vi.fn(() => Promise.resolve()),
+  revealFileInFileManager: vi.fn(() => Promise.resolve()),
 }));
 
 vi.mock("../services/ui/toast", () => ({
@@ -31,9 +35,9 @@ describe("useProjectFileMutationController move", () => {
   });
 
   it("confirmMove closes open file then moves and invalidates caches", async () => {
-    const refreshProjectHub = vi.fn(async () => {});
-    const refreshProjects = vi.fn(async () => {});
-    const closeOpenFileIfNeeded = vi.fn(async () => {});
+    const refreshProjectHub = vi.fn(() => Promise.resolve());
+    const refreshProjects = vi.fn(() => Promise.resolve());
+    const closeOpenFileIfNeeded = vi.fn(() => Promise.resolve());
     const invalidateProjectFilesCaches = vi.fn();
     const setError = vi.fn();
 
@@ -73,17 +77,17 @@ describe("useProjectFileMutationController move", () => {
   });
 
   it("clears move dialog when close gate cancels", async () => {
-    const closeOpenFileIfNeeded = vi.fn(async () => {
-      throw new Error("已取消移动：文件仍处于打开状态。");
-    });
+    const closeOpenFileIfNeeded = vi.fn(() =>
+      Promise.reject(new Error("已取消移动：文件仍处于打开状态。")),
+    );
     const setError = vi.fn();
 
     const { result } = renderHook(() =>
       useProjectFileMutationController({
         projectId: "src",
         busy: false,
-        refreshProjectHub: vi.fn(async () => {}),
-        refreshProjects: vi.fn(async () => {}),
+        refreshProjectHub: vi.fn(() => Promise.resolve()),
+        refreshProjects: vi.fn(() => Promise.resolve()),
         closeOpenFileIfNeeded,
         setError,
       }),

@@ -11,7 +11,7 @@ function seg(start: number, end: number, i = 0): SegmentDto {
     start_sec: start,
     end_sec: end,
     text: "",
-  } as SegmentDto;
+  };
 }
 
 describe("resolveSegmentIdxContainingPlayhead", () => {

@@ -51,7 +51,7 @@ export function useProjectLifecycleHubStack(args: UseProjectLifecycleHubStackArg
     refreshProjects: args.refreshProjects,
     closeOpenFileIfNeeded: async (fileId) => {
       if (args.currentFileId !== fileId) return;
-      const ok = await args.closeGate.runWithUnsavedNavigateGate(async () => {
+      const ok = await args.closeGate.runWithUnsavedNavigateGate(() => {
         args.closeGate.closeFileWrapped();
       });
       if (!ok) throw new Error("已取消移动：文件仍处于打开状态。");

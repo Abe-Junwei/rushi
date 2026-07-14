@@ -3,7 +3,8 @@ use tauri::State;
 
 use crate::project::audio_container_normalize::normalize_project_audio_in_place;
 use crate::project::utils::{
-    append_desktop_log_line, canonicalize_audio_storage_path, open_db, resolve_audio_path_under_root,
+    append_desktop_log_line, canonicalize_audio_storage_path, open_db,
+    resolve_audio_path_under_root,
 };
 use crate::DbState;
 use rusqlite::params;
@@ -57,9 +58,10 @@ pub async fn native_audio_load(
                         .unwrap_or("?")
                 ),
             );
-            return Err(format!(
+            return Err(
                 "音频已重封装为 WAV，但数据库路径未更新（未匹配到记录）。请重新导入该文件。"
-            ));
+                    .to_string(),
+            );
         }
     }
 

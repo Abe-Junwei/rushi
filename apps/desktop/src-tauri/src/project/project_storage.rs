@@ -34,9 +34,7 @@ pub fn relocate_file_storage_between_projects(
     dest_project_id: &str,
     audio_path: Option<&str>,
 ) -> Result<Option<String>, String> {
-    use super::waveform_peaks::{
-        peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS,
-    };
+    use super::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 
     let src_project_dir = project_storage_dir(&st.root, source_project_id);
     let dest_project_dir = project_storage_dir(&st.root, dest_project_id);
@@ -48,19 +46,25 @@ pub fn relocate_file_storage_between_projects(
             let from = peak_file_path(&src_peaks, file_id, level);
             if from.is_file() {
                 let to = peak_file_path(&dest_peaks, file_id, level);
-                fs::rename(&from, &to).or_else(|_| {
-                    fs::copy(&from, &to).map(|_| ()).and_then(|_| fs::remove_file(&from))
-                }).map_err(|e| format!("搬迁 peaks L{level} 失败: {e}"))?;
+                fs::rename(&from, &to)
+                    .or_else(|_| {
+                        fs::copy(&from, &to)
+                            .map(|_| ())
+                            .and_then(|_| fs::remove_file(&from))
+                    })
+                    .map_err(|e| format!("搬迁 peaks L{level} 失败: {e}"))?;
             }
         }
         let meta_from = peak_meta_path(&src_peaks, file_id);
         if meta_from.is_file() {
             let meta_to = peak_meta_path(&dest_peaks, file_id);
-            fs::rename(&meta_from, &meta_to).or_else(|_| {
-                fs::copy(&meta_from, &meta_to)
-                    .map(|_| ())
-                    .and_then(|_| fs::remove_file(&meta_from))
-            }).map_err(|e| format!("搬迁 peaks meta 失败: {e}"))?;
+            fs::rename(&meta_from, &meta_to)
+                .or_else(|_| {
+                    fs::copy(&meta_from, &meta_to)
+                        .map(|_| ())
+                        .and_then(|_| fs::remove_file(&meta_from))
+                })
+                .map_err(|e| format!("搬迁 peaks meta 失败: {e}"))?;
         }
     }
 
@@ -88,11 +92,13 @@ pub fn relocate_file_storage_between_projects(
         .file_name()
         .ok_or_else(|| "音频路径无效".to_string())?;
     let dest_audio = dest_project_dir.join(file_name);
-    fs::rename(&audio_can, &dest_audio).or_else(|_| {
-        fs::copy(&audio_can, &dest_audio)
-            .map(|_| ())
-            .and_then(|_| fs::remove_file(&audio_can))
-    }).map_err(|e| format!("搬迁音频失败: {e}"))?;
+    fs::rename(&audio_can, &dest_audio)
+        .or_else(|_| {
+            fs::copy(&audio_can, &dest_audio)
+                .map(|_| ())
+                .and_then(|_| fs::remove_file(&audio_can))
+        })
+        .map_err(|e| format!("搬迁音频失败: {e}"))?;
     let new_path = super::utils::canonicalize_audio_storage_path(&dest_audio)?;
     Ok(Some(new_path))
 }

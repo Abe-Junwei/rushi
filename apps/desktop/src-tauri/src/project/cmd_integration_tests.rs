@@ -232,7 +232,12 @@ fn move_file_to_project_relocates_db_and_managed_audio() {
     assert!(new_audio_path.is_file());
     assert!(new_audio_path.starts_with(&dest_dir));
     assert!(!audio.is_file());
-    assert!(peak_file_path(&peaks_dir(&project_storage_dir(&st.root, &dest_id)), &file_id, 0).is_file());
+    assert!(peak_file_path(
+        &peaks_dir(&project_storage_dir(&st.root, &dest_id)),
+        &file_id,
+        0
+    )
+    .is_file());
     let seg_count: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM segments WHERE file_id = ?1",
@@ -386,11 +391,7 @@ fn move_file_to_project_auto_renames_when_other_project_holds_name() {
     let file_other = Uuid::new_v4().to_string();
     let t = now_ms();
     let conn = open_db(&st).unwrap();
-    for (id, name) in [
-        (&src_id, "Src"),
-        (&dest_id, "Dest"),
-        (&other_id, "Other"),
-    ] {
+    for (id, name) in [(&src_id, "Src"), (&dest_id, "Dest"), (&other_id, "Other")] {
         conn.execute(
             "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
             params![id, name, t, t],

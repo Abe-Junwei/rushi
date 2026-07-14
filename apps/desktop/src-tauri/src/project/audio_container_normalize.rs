@@ -38,10 +38,7 @@ pub fn normalize_project_audio_in_place(
         return Err(format!("音频不存在: {}", path.display()));
     }
 
-    let basename = path
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("audio");
+    let basename = path.file_name().and_then(|s| s.to_str()).unwrap_or("audio");
 
     let working = path.to_path_buf();
 
@@ -61,7 +58,10 @@ pub fn normalize_project_audio_in_place(
         Ok(SanitizeOutcome::Fixed) => {
             changed = true;
             stage = "header";
-            log_normalize(log, &format!("audio_normalize stage=header ok file={basename}"));
+            log_normalize(
+                log,
+                &format!("audio_normalize stage=header ok file={basename}"),
+            );
         }
         Ok(SanitizeOutcome::Unchanged | SanitizeOutcome::NotApplicable) => {}
         Err(e) => {
@@ -102,16 +102,11 @@ pub fn normalize_project_audio_in_place(
     let _ = fs::remove_file(&tmp);
 
     let timeout = ffmpeg_remux_timeout_for(&working);
-    remux_audio_to_pcm_wav_with_options(
-        &working,
-        &tmp,
-        timeout,
-        RemuxChannelMode::Preserve,
-    )
-    .map_err(|e| {
-        let _ = fs::remove_file(&tmp);
-        format!("音频容器损坏且自动修复失败（ffmpeg remux）: {e}")
-    })?;
+    remux_audio_to_pcm_wav_with_options(&working, &tmp, timeout, RemuxChannelMode::Preserve)
+        .map_err(|e| {
+            let _ = fs::remove_file(&tmp);
+            format!("音频容器损坏且自动修复失败（ffmpeg remux）: {e}")
+        })?;
 
     if let Err(e) = probe_symphonia_readable(&tmp) {
         let _ = fs::remove_file(&tmp);

@@ -92,10 +92,7 @@ pub fn remux_audio_to_pcm_wav_with_options(
                 if Instant::now() >= deadline {
                     let _ = child.kill();
                     let _ = child.wait();
-                    return Err(format!(
-                        "ffmpeg remux 超时（{} 秒）",
-                        timeout.as_secs()
-                    ));
+                    return Err(format!("ffmpeg remux 超时（{} 秒）", timeout.as_secs()));
                 }
                 thread::sleep(Duration::from_millis(100));
             }

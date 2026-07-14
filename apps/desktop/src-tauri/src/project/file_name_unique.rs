@@ -16,11 +16,9 @@ pub fn name_taken(
             )
             .unwrap_or(false),
         None => conn
-            .query_row(
-                "SELECT 1 FROM files WHERE name = ?1",
-                params![name],
-                |_| Ok(true),
-            )
+            .query_row("SELECT 1 FROM files WHERE name = ?1", params![name], |_| {
+                Ok(true)
+            })
             .unwrap_or(false),
     };
     Ok(taken)

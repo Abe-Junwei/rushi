@@ -243,6 +243,16 @@ pub(crate) fn copy_file_to_project_inner(
         return Err("目标项目不存在。".into());
     }
 
+    type CopySourceRow = (
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<i64>,
+        Option<i64>,
+    );
     let (
         source_project_id,
         name,
@@ -252,16 +262,7 @@ pub(crate) fn copy_file_to_project_inner(
         import_content_sha256,
         import_source_size,
         import_source_modified_ms,
-    ): (
-        String,
-        String,
-        String,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<i64>,
-        Option<i64>,
-    ) = conn
+    ): CopySourceRow = conn
         .query_row(
             "SELECT project_id, name, file_type, audio_path, import_source_path, import_content_sha256, \
              import_source_size, import_source_modified_ms FROM files WHERE id = ?1",

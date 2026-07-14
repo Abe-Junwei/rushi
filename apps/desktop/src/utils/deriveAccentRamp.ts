@@ -71,18 +71,12 @@ function rgbToHsl(
   if (max === min) return { h: 0, s: 0, l };
   const d = max - min;
   const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
-  let h = 0;
-  switch (max) {
-    case rn:
-      h = ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6;
-      break;
-    case gn:
-      h = ((bn - rn) / d + 2) / 6;
-      break;
-    default:
-      h = ((rn - gn) / d + 4) / 6;
-      break;
-  }
+  const h =
+    max === rn
+      ? ((gn - bn) / d + (gn < bn ? 6 : 0)) / 6
+      : max === gn
+        ? ((bn - rn) / d + 2) / 6
+        : ((rn - gn) / d + 4) / 6;
   return { h: h * 360, s, l };
 }
 
