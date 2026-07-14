@@ -52,6 +52,8 @@ function isFloatingEditorPanelOpen(): boolean {
 }
 
 function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean {
+  // Space / loop must NOT steal from find-replace and other panel inputs.
+  // Bare Space only toggles play when the target is not an editable field.
   return (
     shortcutId === "edit.undo" ||
     shortcutId === "edit.redo" ||
@@ -64,8 +66,6 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "workflow.closeFile" ||
     shortcutId === "workflow.segmentAnnotation" ||
     shortcutId === "workflow.addCorrectionMemory" ||
-    shortcutId === "playback.toggle" ||
-    shortcutId === "playback.toggleSegmentLoop" ||
     shortcutId === "segment.delete" ||
     shortcutId === "segment.advancePrev" ||
     shortcutId === "segment.advanceNext" ||

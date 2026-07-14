@@ -306,14 +306,14 @@ fn ensure_waveform_peaks_sync_with_depth(
         && !all_peak_levels_exist(&peaks_root, file_id)
     {
         // Lock vanished between try_acquire and now (abandoned holder) — retry once.
-        return ensure_waveform_peaks_sync_with_depth(
+        ensure_waveform_peaks_sync_with_depth(
             st,
             project_id,
             file_id,
             true,
             media_duration_sec,
             depth + 1,
-        );
+        )
     } else {
         // Live holder: soft-join. Do not block spawn_blocking for up to 15m —
         // frontend polls `waveform_peaks_status` with a duration-scaled budget.
