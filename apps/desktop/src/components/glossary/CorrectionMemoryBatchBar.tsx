@@ -1,4 +1,6 @@
-import { Trash2 } from "lucide-react";
+import {
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { PRODUCT_ICON } from "../../config/productIcons";
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";

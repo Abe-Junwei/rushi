@@ -1,4 +1,6 @@
-import { RotateCcw } from "lucide-react";
+import {
+  IconRotate as RotateCcw,
+} from "@tabler/icons-react";
 import {
   formatSegmentListFilterTriggerLabel,
   SEGMENT_TEXT_STAGES,

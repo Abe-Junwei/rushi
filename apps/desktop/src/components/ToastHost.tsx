@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
+import {
+  IconAlertCircle as AlertCircle,
+  IconCircleCheck as CheckCircle2,
+  IconInfoCircle as Info,
+  IconAlertTriangle as TriangleAlert,
+} from "@tabler/icons-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
   dismissToast,

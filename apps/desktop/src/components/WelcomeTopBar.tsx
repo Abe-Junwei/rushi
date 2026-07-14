@@ -5,7 +5,9 @@ import { requestCloseActivityInbox } from "../services/ui/activityInboxEvents";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
-import { Search } from "lucide-react";
+import {
+  IconSearch as Search,
+} from "@tabler/icons-react";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { WelcomeActivityBell } from "./WelcomeActivityBell";

@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { ChevronsLeftRight, Crosshair, type LucideIcon } from "lucide-react";
 import {
   CONTROL_BTN_SECONDARY,
   CONTROL_TEXT_INPUT,
@@ -17,6 +16,10 @@ import {
   WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS,
 } from "../utils/waveformPlaybackRate";
 import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
+import {
+  WAVEFORM_PLAYBACK_SCROLL_FOLLOW_GROUP_LABEL,
+  WAVEFORM_PLAYBACK_SCROLL_FOLLOW_UI_MODES,
+} from "../utils/waveformPlaybackScrollFollowUi";
 import {
   clampTranscriptFontPx,
   listTranscriptFontPxOptions,
@@ -45,26 +48,6 @@ import { EnvPanelSelect } from "./EnvPanelSelect";
 import { EnvPrefGroupShell } from "./EnvPrefGroupShell";
 import { EnvPrefSwitchRow } from "./EnvPrefSwitchRow";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-
-const SCROLL_FOLLOW_MODES: Array<{
-  id: WaveformPlaybackScrollFollowMode;
-  label: string;
-  hint: string;
-  Icon: LucideIcon;
-}> = [
-  {
-    id: "edge",
-    label: "跟随",
-    hint: "播放头在视口内移动，接近左右边缘时自动滚屏",
-    Icon: ChevronsLeftRight,
-  },
-  {
-    id: "center",
-    label: "居中",
-    hint: "播放头固定在视口中央，波形随播放平移",
-    Icon: Crosshair,
-  },
-];
 
 const PLAYBACK_RATE_PRESETS = [
   ...[...WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS].reverse(),
@@ -203,13 +186,13 @@ export function EnvPreferencesPanel() {
           />
 
           <div className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className={PANEL_TYPOGRAPHY.fieldLabel}>播放滚屏</span>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>播放头滚屏</span>
             <div
               className="grid max-w-md grid-cols-2 gap-2"
               role="radiogroup"
-              aria-label="播放滚屏方式"
+              aria-label={WAVEFORM_PLAYBACK_SCROLL_FOLLOW_GROUP_LABEL}
             >
-              {SCROLL_FOLLOW_MODES.map(({ id, label, hint, Icon }) => {
+              {WAVEFORM_PLAYBACK_SCROLL_FOLLOW_UI_MODES.map(({ id, label, title, hint, Icon }) => {
                 const active = playbackScrollFollow === id;
                 return (
                   <button
@@ -217,7 +200,7 @@ export function EnvPreferencesPanel() {
                     type="button"
                     role="radio"
                     aria-checked={active}
-                    title={hint}
+                    title={title}
                     className={[
                       "flex flex-col items-start gap-1 rounded-md px-3 py-2.5 text-left shadow-none transition-colors",
                       "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30",
@@ -228,7 +211,7 @@ export function EnvPreferencesPanel() {
                     onClick={() => setPlaybackScrollFollow(id)}
                   >
                     <span className="inline-flex items-center gap-1.5 text-body font-medium text-inherit">
-                      <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                      <Icon className={LUCIDE_ICON_SIZE_MD} stroke={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                       {label}
                     </span>
                     <span className="text-label leading-snug text-notion-text-muted">{hint}</span>

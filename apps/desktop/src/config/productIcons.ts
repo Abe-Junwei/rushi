@@ -1,34 +1,34 @@
 import {
-  ArrowDownUp,
-  BarChart3,
-  BookMarked,
-  BookOpen,
-  Bot,
-  Brain,
-  Check,
-  CirclePlay,
-  Cloud,
-  Cpu,
-  FileSpreadsheet,
-  Info,
-  Keyboard,
-  ListChecks,
-  MessageSquare,
-  Mic,
-  Palette,
-  Pause,
-  PenLine,
-  Play,
-  Replace,
-  SpellCheck2,
-  Target,
-  Wand2,
-  type LucideIcon,
-} from "lucide-react";
+  IconArrowsUpDown as ArrowDownUp,
+  IconChartBar as BarChart3,
+  IconBookmarks as BookMarked,
+  IconBook as BookOpen,
+  IconRobot as Bot,
+  IconBrain as Brain,
+  IconCheck as Check,
+  IconCircleCaretRight as CirclePlay,
+  IconCloud as Cloud,
+  IconCpu as Cpu,
+  IconFileSpreadsheet as FileSpreadsheet,
+  IconInfoCircle as Info,
+  IconKeyboard as Keyboard,
+  IconListCheck as ListChecks,
+  IconMessage as MessageSquare,
+  IconMicrophone as Mic,
+  IconPalette as Palette,
+  IconPlayerPause as Pause,
+  IconEdit as PenLine,
+  IconPlayerPlay as Play,
+  IconReplace as Replace,
+  IconTextSpellcheck as SpellCheck2,
+  IconTarget as Target,
+  IconWand as Wand2,
+  type TablerIcon,
+} from "@tabler/icons-react";
 
 /**
- * 产品语义图标真源 — 按能力域分配 Lucide 形，避免 Sparkles/Play 等跨域混用。
- * 平台动词（Trash2、RefreshCw、Chevron*）仍可在业务文件直接 import。
+ * 产品语义图标真源 — 按能力域分配 Tabler 形，避免 Sparkles/Play 等跨域混用。
+ * 平台动词（Trash、Refresh、Chevron*）仍可在业务文件直接 import。
  * 尺寸 / 描边：一律叠加 lucideIconSpec（LUCIDE_ICON_SIZE_*、LUCIDE_ICON_STROKE_WIDTH）。
  */
 export const PRODUCT_ICON = {
@@ -86,4 +86,4 @@ export const PRODUCT_ICON = {
 
   /** 语段行备注（非导入文本 FileText） */
   segmentAnnotation: MessageSquare,
-} as const satisfies Record<string, LucideIcon>;
+} as const satisfies Record<string, TablerIcon>;

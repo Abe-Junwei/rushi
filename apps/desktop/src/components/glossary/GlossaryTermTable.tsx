@@ -1,5 +1,7 @@
 import type { RefObject } from "react";
-import { Flame } from "lucide-react";
+import {
+  IconFlame as Flame,
+} from "@tabler/icons-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { GlossaryTermDto } from "../../tauri/glossaryApi";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

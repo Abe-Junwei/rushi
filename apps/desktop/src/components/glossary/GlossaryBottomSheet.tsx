@@ -1,6 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { X } from "lucide-react";
+import {
+  IconX as X,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_ICON_GHOST } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

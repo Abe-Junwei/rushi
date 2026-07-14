@@ -1,4 +1,6 @@
-import { X } from "lucide-react";
+import {
+  IconX as X,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";

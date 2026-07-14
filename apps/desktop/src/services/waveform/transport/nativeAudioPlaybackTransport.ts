@@ -17,6 +17,51 @@ import type {
 /** Must cover Rust PREBUFFER_MS (120) plus IPC slack. */
 const STATE_ACK_TIMEOUT_MS = 2_000;
 
+/** Display smoothing time constant (s); FPS-decoupled convergence window. */
+const DISPLAY_SMOOTH_TAU_SEC = 0.1;
+/** Forward mismatch beyond this (s) is a genuine catch-up (underrun/resume) → jump. */
+const DISPLAY_SMOOTH_MAX_DRIFT_SEC = 0.05;
+
+/**
+ * First-order low-pass tracking of the authority-projected time, with an
+ * anti-rebound monotonic clamp. Converts the periodic high-water freeze
+ * (on lagging `timeUpdate` re-anchors) into a smooth deceleration / plateau
+ * so the `edge` playhead never micro-stutters or regresses.
+ *
+ * - `tvPrev` inertially advances at `rate`, then converges toward `taProjected`
+ *   with an FPS-decoupled factor `1 − exp(−Δt/τ)` (zero steady-state error).
+ * - Backward authority (stall) → `max(tvPrev, …)` plateaus, never rewinds.
+ *   Genuine backward seeks re-anchor via the `seeked` event, not here.
+ * - Forward mismatch > maxDrift (underrun/resume lag / suspended rAF) → jump
+ *   forward to authority (monotonic-safe).
+ * See docs/execution/specs/waveform-visual-clock-smoothing-research.md.
+ */
+export function computeSmoothDisplayStep(input: {
+  tvPrev: number;
+  taProjected: number;
+  deltaSec: number;
+  rate: number;
+  tau?: number;
+  maxDriftSec?: number;
+}): number {
+  const { tvPrev, taProjected, deltaSec, rate } = input;
+  const tau = input.tau ?? DISPLAY_SMOOTH_TAU_SEC;
+  const maxDrift = input.maxDriftSec ?? DISPLAY_SMOOTH_MAX_DRIFT_SEC;
+  // First frame / background-suspended rAF: forward-safe re-anchor.
+  if (deltaSec <= 0 || deltaSec > 0.1) {
+    return Math.max(taProjected, tvPrev);
+  }
+  const tPredict = tvPrev + deltaSec * rate;
+  // Fell behind (underrun / resume): jump forward to authority (monotonic-safe).
+  if (taProjected - tPredict > maxDrift) {
+    return Math.max(tvPrev, taProjected);
+  }
+  const alpha = 1 - Math.exp(-deltaSec / tau);
+  const tFiltered = tPredict + alpha * (taProjected - tPredict);
+  // Anti-rebound monotonic clamp: lagging authority → plateau, never regress.
+  return Math.max(tvPrev, tFiltered);
+}
+
 type EventWaiter = {
   cancel: () => void;
   promise: Promise<void>;
@@ -39,18 +84,24 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
   let lastEventSec = 0;
   let lastEventAtMs = 0;
   let lastDisplaySec = 0;
+  /** performance.now() of the last display smoothing evaluation. */
+  let lastEvaluationTimeMs = 0;
 
   const emit = (fn: (h: PlaybackTransportEvents) => void) => {
     for (const h of listeners) fn(h);
   };
 
+  /** Authority latch only — display smoothing converges toward the projection. */
   const anchorTime = (sec: number) => {
     currentTimeSec = sec;
     lastEventSec = sec;
     lastEventAtMs = performance.now();
-    if (sec >= lastDisplaySec) {
-      lastDisplaySec = sec;
-    }
+  };
+
+  /** Hard-reset the smooth display clock (ready/resume/seek/rate/end). */
+  const resetDisplayClock = (sec: number) => {
+    lastDisplaySec = sec;
+    lastEvaluationTimeMs = performance.now();
   };
 
   const emitReady = (sec: number) => {
@@ -58,6 +109,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
     readyEmitted = true;
     durationSec = sec > 0 ? sec : durationSec;
     anchorTime(currentTimeSec);
+    resetDisplayClock(currentTimeSec);
     emit((h) => h.onReady?.(durationSec));
   };
 
@@ -67,16 +119,26 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       // lagging TimeUpdate latch (that caused playhead rewind on pause/resume).
       return Math.max(currentTimeSec, lastDisplaySec);
     }
-    const elapsedSec = ((performance.now() - lastEventAtMs) / 1000) * rate;
-    let next = lastEventSec + elapsedSec;
+    const now = performance.now();
+    // Authority projection: the true audio line, extended at rate between the
+    // jittery TimeUpdate anchors. The smoothing filter tracks this, absorbing
+    // the sawtooth that a late/lagging re-anchor would otherwise inject.
+    let taProjected = lastEventSec + ((now - lastEventAtMs) / 1000) * rate;
+    if (durationSec > 0) {
+      taProjected = Math.min(taProjected, durationSec);
+    }
+    const deltaSec = lastEvaluationTimeMs > 0 ? (now - lastEvaluationTimeMs) / 1000 : 0;
+    let next = computeSmoothDisplayStep({
+      tvPrev: lastDisplaySec,
+      taProjected,
+      deltaSec,
+      rate,
+    });
     if (durationSec > 0) {
       next = Math.min(next, durationSec);
     }
-    // Monotonic clamp: never let display jump backwards between anchors.
-    if (next < lastDisplaySec) {
-      return lastDisplaySec;
-    }
     lastDisplaySec = next;
+    lastEvaluationTimeMs = now;
     return next;
   };
 
@@ -143,7 +205,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         currentTimeSec = resumeSec;
         lastEventSec = resumeSec;
         lastEventAtMs = performance.now();
-        lastDisplaySec = resumeSec;
+        resetDisplayClock(resumeSec);
         emit((h) => h.onPlay?.());
         break;
       }
@@ -155,13 +217,13 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         currentTimeSec = freezeSec;
         lastEventSec = freezeSec;
         lastEventAtMs = performance.now();
-        lastDisplaySec = freezeSec;
+        resetDisplayClock(freezeSec);
         emit((h) => h.onPause?.());
         break;
       }
       case "seeked": {
         anchorTime(ev.data.sec);
-        lastDisplaySec = ev.data.sec;
+        resetDisplayClock(ev.data.sec);
         emit((h) => h.onSeeked?.(currentTimeSec));
         emit((h) => h.onTimeUpdate?.(currentTimeSec));
         break;
@@ -175,7 +237,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         playing = false;
         if (durationSec > 0) {
           anchorTime(durationSec);
-          lastDisplaySec = durationSec;
+          resetDisplayClock(durationSec);
         }
         emit((h) => h.onPause?.());
         emit((h) => h.onFinish?.());
@@ -215,7 +277,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       playing = snap.playing;
       rate = snap.rate > 0 ? snap.rate : 1;
       anchorTime(snap.currentTimeSec);
-      lastDisplaySec = snap.currentTimeSec;
+      resetDisplayClock(snap.currentTimeSec);
       if (snap.durationSec > 0) {
         durationSec = snap.durationSec;
       }
@@ -277,7 +339,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         rate = nextRate;
         lastEventSec = currentTimeSec;
         lastEventAtMs = performance.now();
-        lastDisplaySec = Math.max(lastDisplaySec, currentTimeSec);
+        resetDisplayClock(Math.max(lastDisplaySec, currentTimeSec));
       } else {
         rate = nextRate;
       }

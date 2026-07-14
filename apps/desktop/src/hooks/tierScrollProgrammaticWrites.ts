@@ -44,7 +44,11 @@ export function createTierScrollProgrammaticWrites(): TierScrollProgrammaticWrit
   };
 
   const markPlaybackFollowScrollWrite = () => {
-    playbackFollowScrollWriteUntilRef.current = performance.now() + 32;
+    // WKWebView may deliver the programmatic scroll event well after the write.
+    // 32ms was too short: a late scroll event armed 2.5s follow-suppress, freezing
+    // the center float offset while the played-tint kept tracking media time
+    // (playhead appeared stuck, wash kept advancing).
+    playbackFollowScrollWriteUntilRef.current = performance.now() + 250;
   };
 
   const markDeferredLayoutCommit = () => {

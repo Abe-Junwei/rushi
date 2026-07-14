@@ -1,5 +1,8 @@
 import { useCallback, useState } from "react";
-import { Download, Upload } from "lucide-react";
+import {
+  IconDownload as Download,
+  IconUpload as Upload,
+} from "@tabler/icons-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_TOOLS_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";

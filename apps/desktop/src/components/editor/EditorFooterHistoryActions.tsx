@@ -1,4 +1,8 @@
-import { History, Redo2, Undo2 } from "lucide-react";
+import {
+  IconHistory as History,
+  IconArrowForwardUp as Redo2,
+  IconArrowBackUp as Undo2,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_COMPACT_SECONDARY } from "../../config/controlStyles";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

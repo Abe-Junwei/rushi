@@ -6,7 +6,12 @@ import {
   useState,
 } from "react";
 import { createPortal } from "react-dom";
-import { Download, ListPlus, MoreHorizontal, Upload } from "lucide-react";
+import {
+  IconDownload as Download,
+  IconList as ListPlus,
+  IconDots as MoreHorizontal,
+  IconUpload as Upload,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_ICON } from "../../config/controlStyles";
 import { CspLayout } from "../CspLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

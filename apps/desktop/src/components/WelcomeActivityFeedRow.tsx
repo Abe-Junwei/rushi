@@ -1,4 +1,6 @@
-import { Check } from "lucide-react";
+import {
+  IconCheck as Check,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK } from "../config/controlStyles";
 import type { ActivityFeedItem } from "../services/ui/activityFeed";
 import {

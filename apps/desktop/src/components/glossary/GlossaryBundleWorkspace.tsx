@@ -1,4 +1,6 @@
-import { Download } from "lucide-react";
+import {
+  IconDownload as Download,
+} from "@tabler/icons-react";
 import { PRODUCT_ICON } from "../../config/productIcons";
 import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";

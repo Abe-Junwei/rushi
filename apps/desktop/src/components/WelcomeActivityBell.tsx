@@ -1,4 +1,6 @@
-import { Bell } from "lucide-react";
+import {
+  IconBell as Bell,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_TOOLBAR_GHOST, CONTROL_BTN_WELCOME_ICON } from "../config/controlStyles";
 import { useWelcomeActivityController } from "../hooks/useWelcomeActivityController";
 import type { ProjectControllerApi } from "../pages/useProjectController";

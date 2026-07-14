@@ -27,6 +27,23 @@ let pendingPlaybackTimeSec: number | null = null;
 let pendingPlaybackScheduledAtMs: number | null = null;
 let playbackTimeDuringFrame: number | null = null;
 
+/**
+ * SPIKE (center-follow subpixel): shared sub-pixel residual of the playback
+ * follow target. `scrollLeft` lands on `round(target)` (integer, browser-quantized);
+ * this holds `target - round(target)` ∈ [-0.5, 0.5] so viewport readers can add the
+ * fractional part back as a GPU transform. Non-zero only while center + playing.
+ * See docs/execution/specs/waveform-center-follow-subpixel-plan.md.
+ */
+let playbackFractionalPx = 0;
+
+export function setPlaybackFractionalPx(px: number): void {
+  playbackFractionalPx = Number.isFinite(px) ? px : 0;
+}
+
+export function readPlaybackFractionalPx(): number {
+  return playbackFractionalPx;
+}
+
 export type TierViewportMetricsSnapshot = {
   scrollLeftPx: number;
   viewportWidthPx: number;
@@ -64,6 +81,7 @@ export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
   pendingPlaybackTimeSec = null;
   pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
+  playbackFractionalPx = 0;
 }
 
 import {
@@ -227,4 +245,5 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
   pendingPlaybackTimeSec = null;
   pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
+  playbackFractionalPx = 0;
 }

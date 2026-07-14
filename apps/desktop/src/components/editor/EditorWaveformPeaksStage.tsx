@@ -14,6 +14,7 @@ import {
   WAVEFORM_TIER_VIEWPORT_WIDTH_VAR,
 } from "../../utils/waveformViewport";
 import { useWaveformScrollPinnedLayers } from "../../utils/waveformScrollPinnedLayers";
+import { useWaveformSubpixelContentShift } from "../../utils/waveformPlaybackSubpixel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { editorWaveformPanePropsEqual } from "./editorShellRenderCompare";
@@ -72,6 +73,13 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
     tierScrollLive: tierScrollProps.tierScrollLive,
     layoutScrollLeftPx: tierScrollProps.tierScrollLayout.scrollLeftPx,
   });
+
+  // SPIKE center-follow subpixel (A2): the content layer rides native scroll (-S);
+  // this adds translate3d(-fraction) so the current sample lands at vw/2. One shift
+  // covers peaks/band/overlay/ruler; the playhead (separate pin layer) uses effective
+  // scroll. See waveform-center-follow-subpixel-plan.md.
+  const overlayContentLayerRef = useRef<HTMLDivElement | null>(null);
+  useWaveformSubpixelContentShift(overlayContentLayerRef);
 
   return (
     <CspLayout
@@ -145,7 +153,8 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
               </CspLayout>
             </CspLayout>
             <CspLayout
-              className="waveform-timeline-overlay-layer absolute left-0 top-0 z-[3] h-full"
+              ref={overlayContentLayerRef}
+              className="waveform-timeline-overlay-layer absolute left-0 top-0 z-[3] h-full will-change-transform"
               layout={{ width: tx.timelineWidthPx }}
             >
               <WaveformViewportPeaksCanvas
@@ -289,8 +298,8 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                   currentTimeSec={tx.currentTime}
                   getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
                   subscribePlayheadFrame={tx.subscribePlayheadFrame}
-                  playbackFollowMode={tx.playbackScrollFollowMode}
                   playheadChromeMode={tx.playheadChromeMode}
+                  playbackFollowMode={tx.playbackScrollFollowMode}
                 />
               </CspLayout>
             </CspLayout>

@@ -114,6 +114,7 @@
 | **WR-4** | `data.resample()` 主线程 1–4s | Worker + transferable；CSP `worker-src` spike | `resample=3984ms @33px/s` |
 | **SEL-1** | 点语段仍慢（脏区后 62 段 ~300–550ms） | 见 [`waveform-selection-click-latency-research.md`](./waveform-selection-click-latency-research.md) | `bandPaint≈0`；慢在 SC1 React commit |
 | **WS-FPS** | VRP 后 fps 仍 10–30 | 见 [`waveform-ws-canvas-fps-research.md`](./waveform-ws-canvas-fps-research.md) | `scrollW` 可达 40960；先 spike 冻 progress |
+| **CF-SUB** | VRP 后播放头顺、center 内容仍整数步进 | 见 [`waveform-center-follow-subpixel-research.md`](./waveform-center-follow-subpixel-research.md) | 根因 = 每帧写整数 `scrollLeft`；引入共享浮点残差 |
 
 ---
 

@@ -1,6 +1,11 @@
 import type { RefObject } from "react";
 import { logRuntimeParity } from "../services/runtimeParity";
-import { isTierScrollFrameActive, readTierViewportMetricsDuringScrollFrame } from "./tierScrollFrameCoordinator";
+import {
+  isTierScrollFrameActive,
+  readPlaybackFractionalPx,
+  readTierViewportMetricsDuringScrollFrame,
+} from "./tierScrollFrameCoordinator";
+import { PLAYBACK_SUBPIXEL_ENABLED } from "./waveformPlaybackSubpixel";
 import { setCspLayoutRules } from "./cspElementLayout";
 
 export type TierScrollLiveRefs = {
@@ -110,7 +115,33 @@ export function resolveTierViewportMetrics(input: {
 /** Scroll-frame subscribers: prefer per-frame snapshot; fall back to DOM-first read. */
 let devWarnedMissingScrollFrameSnapshot = false;
 
+/**
+ * `scrollLeftPx` stays the integer, browser-quantized native scroll (S) — feed it to
+ * window/slice computation so `computeWaveformViewportPeaksWindow` never rewindows on
+ * sub-pixel jitter. `effectiveScrollLeftPx = S + fraction` (T) is the full-precision
+ * horizontal truth for time→viewport readers (playhead) — center-follow subpixel (A2).
+ */
 export function resolveTierViewportMetricsDuringScrollFrame(input: {
+  tierScrollEl?: HTMLElement | null;
+  tierScrollLive?: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
+}): {
+  scrollLeftPx: number;
+  viewportWidthPx: number;
+  effectiveScrollLeftPx: number;
+  fraction: number;
+} {
+  const base = resolveTierViewportMetricsDuringScrollFrameBase(input);
+  const fraction = PLAYBACK_SUBPIXEL_ENABLED ? readPlaybackFractionalPx() : 0;
+  return {
+    scrollLeftPx: base.scrollLeftPx,
+    viewportWidthPx: base.viewportWidthPx,
+    effectiveScrollLeftPx: base.scrollLeftPx + fraction,
+    fraction,
+  };
+}
+
+function resolveTierViewportMetricsDuringScrollFrameBase(input: {
   tierScrollEl?: HTMLElement | null;
   tierScrollLive?: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;

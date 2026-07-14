@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+import type { TablerIcon } from "@tabler/icons-react";
 import type { ReactNode } from "react";
 import { PRODUCT_ICON } from "../config/productIcons";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
@@ -14,7 +14,7 @@ function envNavStatusDotClass(tone: EnvStatusTone): string {
   return ENV_STATUS_DOT_CLASS[tone];
 }
 
-function EnvNavIcon({ icon: Icon }: { icon: LucideIcon }) {
+function EnvNavIcon({ icon: Icon }: { icon: TablerIcon }) {
   return <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />;
 }
 

@@ -1,5 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import { FileAudio, FileText } from "lucide-react";
+import {
+  IconFileMusic as FileAudio,
+  IconFileText as FileText,
+} from "@tabler/icons-react";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";

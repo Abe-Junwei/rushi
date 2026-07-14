@@ -1,4 +1,7 @@
-import { ChevronLeft, PanelLeftOpen } from "lucide-react";
+import {
+  IconChevronLeft as ChevronLeft,
+  IconLayoutSidebarLeftExpand as PanelLeftOpen,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_BREADCRUMB, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

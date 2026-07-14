@@ -1,4 +1,8 @@
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import {
+  IconChevronDown as ChevronDown,
+  IconChevronUp as ChevronUp,
+  IconSearch as Search,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { FindReplaceDialogState } from "../pages/useFindReplaceController";

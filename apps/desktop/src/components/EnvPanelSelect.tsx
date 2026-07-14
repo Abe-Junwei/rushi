@@ -8,7 +8,10 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { Check, ChevronDown } from "lucide-react";
+import {
+  IconCheck as Check,
+  IconChevronDown as ChevronDown,
+} from "@tabler/icons-react";
 import { CspLayout } from "./CspLayout";
 import { PANEL_CONTROL_TYPOGRAPHY } from "../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

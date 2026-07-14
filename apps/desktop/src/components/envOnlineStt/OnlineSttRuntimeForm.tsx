@@ -1,4 +1,6 @@
-import { Info } from "lucide-react";
+import {
+  IconInfoCircle as Info,
+} from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import {
   CONTROL_BTN_PRIMARY,

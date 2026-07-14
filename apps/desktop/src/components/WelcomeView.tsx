@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import {
+  IconPlus as Plus,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_PRIMARY_PROMINENT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import {

@@ -1,5 +1,9 @@
 import { useCallback, useState } from "react";
-import { Download, FileUp, RefreshCw } from "lucide-react";
+import {
+  IconDownload as Download,
+  IconFileUpload as FileUp,
+  IconRefresh as RefreshCw,
+} from "@tabler/icons-react";
 import { PRODUCT_ICON } from "../config/productIcons";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {

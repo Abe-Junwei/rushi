@@ -1,7 +1,38 @@
-import { Focus, Map, Maximize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import {
+  IconArrowsHorizontal,
+  IconCrop,
+  IconRefresh,
+  IconWaveSine,
+  IconZoomInArea,
+  IconZoomOutArea,
+  type TablerIcon,
+} from "@tabler/icons-react";
 import { workbenchDropdownItemActiveClass } from "./editor/editorSegmentToolbarStyles";
 import { WorkbenchOverflowMenu } from "./editor/WorkbenchOverflowMenu";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+
+/**
+ * Tabler：
+ * - WaveSine：波形总览条
+ * - Crop：适配语段（选区框入视口）
+ * - ArrowsHorizontal：整段横向铺满
+ */
+const MinimapIcon = IconWaveSine;
+const FitSelectionIcon = IconCrop;
+const FitAllIcon = IconArrowsHorizontal;
+const ZoomOutIcon = IconZoomOutArea;
+const ZoomInIcon = IconZoomInArea;
+const ResetZoomIcon = IconRefresh;
+
+function ZoomBarIcon({ Icon, size }: { Icon: TablerIcon; size: "md" | "lg" }) {
+  return (
+    <Icon
+      className={size === "lg" ? LUCIDE_ICON_SIZE_LG : LUCIDE_ICON_SIZE_MD}
+      stroke={LUCIDE_ICON_STROKE_WIDTH}
+      aria-hidden
+    />
+  );
+}
 
 export type WaveformZoomBarControlsProps = {
   compact: boolean;
@@ -74,7 +105,7 @@ export function WaveformZoomBarControls({
                     onToggleMinimap();
                   }}
                 >
-                  <Map className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  <ZoomBarIcon Icon={MinimapIcon} size="md" />
                   {minimapEnabled ? "关闭波形总览" : "波形总览"}
                 </button>
               ) : null}
@@ -89,7 +120,7 @@ export function WaveformZoomBarControls({
                   onFitSelection();
                 }}
               >
-                <Focus className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <ZoomBarIcon Icon={FitSelectionIcon} size="md" />
                 适配语段
               </button>
               <button
@@ -103,7 +134,7 @@ export function WaveformZoomBarControls({
                   onFitAll();
                 }}
               >
-                <Maximize2 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <ZoomBarIcon Icon={FitAllIcon} size="md" />
                 整段可见
               </button>
               <button
@@ -117,7 +148,7 @@ export function WaveformZoomBarControls({
                   onResetDefaultZoom();
                 }}
               >
-                <RotateCcw className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <ZoomBarIcon Icon={ResetZoomIcon} size="md" />
                 重置缩放
               </button>
             </>
@@ -131,7 +162,7 @@ export function WaveformZoomBarControls({
           aria-label="缩小"
           onClick={onZoomOut}
         >
-          <ZoomOut className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <ZoomBarIcon Icon={ZoomOutIcon} size="lg" />
         </button>
         <button
           type="button"
@@ -141,7 +172,7 @@ export function WaveformZoomBarControls({
           aria-label="放大"
           onClick={onZoomIn}
         >
-          <ZoomIn className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <ZoomBarIcon Icon={ZoomInIcon} size="lg" />
         </button>
       </>
     );
@@ -160,7 +191,7 @@ export function WaveformZoomBarControls({
           title={minimapEnabled ? "关闭波形总览条" : "显示波形总览条"}
           onClick={onToggleMinimap}
         >
-          <Map className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <ZoomBarIcon Icon={MinimapIcon} size="lg" />
         </button>
       ) : null}
       <button
@@ -172,7 +203,7 @@ export function WaveformZoomBarControls({
         aria-pressed={atFitSelectionZoom}
         onClick={onFitSelection}
       >
-        <Focus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ZoomBarIcon Icon={FitSelectionIcon} size="lg" />
       </button>
       <button
         type="button"
@@ -183,7 +214,7 @@ export function WaveformZoomBarControls({
         aria-pressed={atFitAllZoom}
         onClick={onFitAll}
       >
-        <Maximize2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ZoomBarIcon Icon={FitAllIcon} size="lg" />
       </button>
       <button
         type="button"
@@ -193,7 +224,7 @@ export function WaveformZoomBarControls({
         aria-label="缩小"
         onClick={onZoomOut}
       >
-        <ZoomOut className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ZoomBarIcon Icon={ZoomOutIcon} size="lg" />
       </button>
       <button
         type="button"
@@ -203,7 +234,7 @@ export function WaveformZoomBarControls({
         aria-label="放大"
         onClick={onZoomIn}
       >
-        <ZoomIn className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ZoomBarIcon Icon={ZoomInIcon} size="lg" />
       </button>
       <button
         type="button"
@@ -214,7 +245,7 @@ export function WaveformZoomBarControls({
         aria-pressed={atDefaultZoom}
         onClick={onResetDefaultZoom}
       >
-        <RotateCcw className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ZoomBarIcon Icon={ResetZoomIcon} size="lg" />
       </button>
     </>
   );

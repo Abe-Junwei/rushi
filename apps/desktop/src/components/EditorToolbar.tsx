@@ -1,6 +1,10 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import { FileInput, FileOutput, Settings } from "lucide-react";
+import {
+  IconFileDownload as FileOutput,
+  IconFileUpload as FileInput,
+  IconSettings as Settings,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";

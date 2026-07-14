@@ -1,4 +1,7 @@
-import { NotebookText, Trash2 } from "lucide-react";
+import {
+  IconNotebook as NotebookText,
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

@@ -1,4 +1,6 @@
-import { RefreshCw } from "lucide-react";
+import {
+  IconRefresh as RefreshCw,
+} from "@tabler/icons-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_STATUS_BANNER_SHELL_CLASS } from "../utils/environmentPanelNav";
 import {

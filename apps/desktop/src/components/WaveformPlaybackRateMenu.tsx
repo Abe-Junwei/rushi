@@ -9,7 +9,9 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import {
+  IconChevronDown as ChevronDown,
+} from "@tabler/icons-react";
 import { CspLayout } from "./CspLayout";
 import { LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {

@@ -1,4 +1,6 @@
-import { Info } from "lucide-react";
+import {
+  IconInfoCircle as Info,
+} from "@tabler/icons-react";
 import type { Ref } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { sttKeychainReferenceMessage } from "../services/stt/sttConnectionUi";

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
-import { List, Settings } from "lucide-react";
+import {
+  IconList as List,
+  IconSettings as Settings,
+} from "@tabler/icons-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";

@@ -1,5 +1,8 @@
 import { useState, type MouseEvent as ReactMouseEvent } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import {
+  IconPencil as Pencil,
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_FILE_ROW_CLASS } from "../config/workspaceShellLayout";

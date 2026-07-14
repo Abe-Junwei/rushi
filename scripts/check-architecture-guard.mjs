@@ -196,27 +196,34 @@ function checkTsFile(fullPath) {
     }
   }
 
-  const usesLucide = /from\s+['"]lucide-react['"]/.test(source);
+  const usesTablerIcons = /from\s+['"]@tabler\/icons-react['"]/.test(source);
   const lucideIconSpecAllowlist = new Set([
     'apps/desktop/src/config/productIcons.ts',
     'apps/desktop/src/config/productIcons.test.ts',
+    'apps/desktop/src/utils/waveformPlaybackScrollFollowUi.ts',
   ]);
-  if (usesLucide && !lucideIconSpecAllowlist.has(rel)) {
+  if (usesTablerIcons && !lucideIconSpecAllowlist.has(rel)) {
     const hasIconSpecImport = /from\s+['"][./]+lucideIconSpec['"]/.test(source);
     if (!hasIconSpecImport) {
-      errors.push(`${rel}: 使用 lucide-react 时必须引入 lucideIconSpec 统一尺寸与描边常量`);
+      errors.push(`${rel}: 使用 @tabler/icons-react 时必须引入 lucideIconSpec 统一尺寸与描边常量`);
     }
 
-    const nonStandardStroke = source.match(/strokeWidth=\{(?!LUCIDE_ICON_STROKE_WIDTH\})[^}]+\}/g) ?? [];
-    if (nonStandardStroke.length > 0) {
-      errors.push(`${rel}: Lucide strokeWidth 必须使用 LUCIDE_ICON_STROKE_WIDTH（发现 ${nonStandardStroke.length} 处非规范写法）`);
+    const nonStandardStroke =
+      source.match(/strokeWidth=\{(?!LUCIDE_ICON_STROKE_WIDTH\})[^}]+\}/g) ?? [];
+    const nonStandardTablerStroke =
+      source.match(/\bstroke=\{(?!LUCIDE_ICON_STROKE_WIDTH\})[^}]+\}/g) ?? [];
+    const badStroke = nonStandardStroke.length + nonStandardTablerStroke.length;
+    if (badStroke > 0) {
+      errors.push(
+        `${rel}: Tabler 描边必须使用 LUCIDE_ICON_STROKE_WIDTH（发现 ${badStroke} 处非规范写法）`,
+      );
     }
 
     const rawIconSizes = source.match(
-      /<[A-Z][A-Za-z0-9]*[^>]*className=[^>]*(h-\[18px\]\s+w-\[18px\]|h-3\.5\s+w-3\.5|h-5\s+w-5)[^>]*strokeWidth=\{[^}]+\}[^>]*>/g
+      /<[A-Z][A-Za-z0-9]*[^>]*className=[^>]*(h-\[18px\]\s+w-\[18px\]|h-3\.5\s+w-3\.5|h-5\s+w-5)[^>]*(?:strokeWidth|stroke)=\{[^}]+\}[^>]*>/g
     ) ?? [];
     if (rawIconSizes.length > 0) {
-      errors.push(`${rel}: Lucide 图标尺寸必须使用 LUCIDE_ICON_SIZE_SM/MD/LG（发现 ${rawIconSizes.length} 处硬编码尺寸）`);
+      errors.push(`${rel}: Tabler 图标尺寸必须使用 LUCIDE_ICON_SIZE_SM/MD/LG（发现 ${rawIconSizes.length} 处硬编码尺寸）`);
     }
   }
 
@@ -983,40 +990,40 @@ function checkControlBtnGhostDuplicates() {
   });
 }
 
-/** 已登记语义图标 — components/pages 须走 PRODUCT_ICON，禁止直接 lucide import */
-const PRODUCT_SEMANTIC_LUCIDE_NAMES = new Set([
-  'ArrowDownUp',
-  'BarChart3',
-  'BookMarked',
-  'BookOpen',
-  'Bot',
-  'Brain',
-  'CirclePlay',
-  'Cloud',
-  'Cpu',
-  'FileSpreadsheet',
-  'Keyboard',
-  'ListChecks',
-  'MessageSquare',
-  'Mic',
-  'Palette',
-  'Pause',
-  'PenLine',
-  'Play',
-  'Replace',
-  'SpellCheck2',
-  'Target',
-  'Wand2',
-  'Sparkles',
+/** 已登记语义图标 — components/pages 须走 PRODUCT_ICON，禁止直接 Tabler import */
+const PRODUCT_SEMANTIC_TABLER_NAMES = new Set([
+  'IconArrowsUpDown',
+  'IconChartBar',
+  'IconBookmarks',
+  'IconBook',
+  'IconRobot',
+  'IconBrain',
+  'IconCircleCaretRight',
+  'IconCloud',
+  'IconCpu',
+  'IconFileSpreadsheet',
+  'IconKeyboard',
+  'IconListCheck',
+  'IconMessage',
+  'IconMicrophone',
+  'IconPalette',
+  'IconPlayerPause',
+  'IconEdit',
+  'IconPlayerPlay',
+  'IconReplace',
+  'IconTextSpellcheck',
+  'IconTarget',
+  'IconWand',
+  'IconSparkles',
 ]);
 
-function checkProductSemanticLucideImports() {
+function checkProductSemanticTablerImports() {
   const allowlist = new Set([
     'apps/desktop/src/config/productIcons.ts',
     'apps/desktop/src/config/productIcons.test.ts',
   ]);
   const srcRoot = path.join(ROOT, 'apps/desktop/src');
-  const importRe = /import\s+(?:type\s+)?\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g;
+  const importRe = /import\s+(?:type\s+)?\{([^}]+)\}\s*from\s*['"]@tabler\/icons-react['"]/g;
   walk(srcRoot, (fullPath) => {
     if (!/\.(ts|tsx)$/.test(fullPath)) return;
     const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
@@ -1032,9 +1039,9 @@ function checkProductSemanticLucideImports() {
         .map((s) => s.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim())
         .filter(Boolean);
       for (const name of specifiers) {
-        if (PRODUCT_SEMANTIC_LUCIDE_NAMES.has(name)) {
+        if (PRODUCT_SEMANTIC_TABLER_NAMES.has(name)) {
           errors.push(
-            `${rel}: 禁止直接 import lucide ${name}（产品语义图标须用 config/productIcons PRODUCT_ICON）`,
+            `${rel}: 禁止直接 import Tabler ${name}（产品语义图标须用 config/productIcons PRODUCT_ICON）`,
           );
         }
       }
@@ -1053,7 +1060,7 @@ checkTauriStyleNonceProbe();
 checkTauriInvokeAcl();
 checkSegmentListRapidSelectGuard();
 checkControlBtnGhostDuplicates();
-checkProductSemanticLucideImports();
+checkProductSemanticTablerImports();
 checkPerfGateEnvGuard();
 checkTranscriptEditorCoreSelectionWriteGuard();
 checkTranscriptEditorCoreRetiredSoTGuard();

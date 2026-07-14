@@ -3,7 +3,9 @@ import type { TranscribeProgress } from "../pages/transcribePreviewState";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import { formatTranscribeDiagSummary, shouldShowTranscribeEnvAction, transcribeFailureBannerTitle } from "../services/transcribeDiag";
 import { createPortal } from "react-dom";
-import { TriangleAlert } from "lucide-react";
+import {
+  IconAlertTriangle as TriangleAlert,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_PRIMARY } from "../config/controlStyles";
 import { ENV_NAV } from "../config/environmentNavCopy";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

@@ -1,4 +1,6 @@
-import { FileAudio } from "lucide-react";
+import {
+  IconFileMusic as FileAudio,
+} from "@tabler/icons-react";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { formatMediaTime } from "../utils/formatMediaTime";

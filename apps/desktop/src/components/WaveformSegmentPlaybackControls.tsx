@@ -1,5 +1,8 @@
 import { memo, useLayoutEffect, useRef, type RefObject } from "react";
-import { Repeat, Square } from "lucide-react";
+import {
+  IconRepeat as Repeat,
+  IconSquare as Square,
+} from "@tabler/icons-react";
 import { PRODUCT_ICON } from "../config/productIcons";
 import type { SegmentDto } from "../tauri/projectApi";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";

@@ -1,4 +1,6 @@
-import { ChevronRight } from "lucide-react";
+import {
+  IconChevronRight as ChevronRight,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

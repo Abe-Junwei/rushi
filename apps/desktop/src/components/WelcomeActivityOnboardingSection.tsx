@@ -1,4 +1,6 @@
-import { Circle } from "lucide-react";
+import {
+  IconCircle as Circle,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import {
   ACTIVITY_FEED_MARK_CELL_CLASS,

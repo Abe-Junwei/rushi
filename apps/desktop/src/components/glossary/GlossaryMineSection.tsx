@@ -1,4 +1,6 @@
-import { RefreshCw } from "lucide-react";
+import {
+  IconRefresh as RefreshCw,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { useGlossaryMineController } from "../../pages/useGlossaryMineController";

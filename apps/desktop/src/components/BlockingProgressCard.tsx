@@ -1,4 +1,6 @@
-import { LoaderCircle } from "lucide-react";
+import {
+  IconLoader as LoaderCircle,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { FLAT_SHELL_ELEVATION_CLASS, OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

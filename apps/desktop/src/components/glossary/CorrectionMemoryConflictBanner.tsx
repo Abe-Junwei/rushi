@@ -1,4 +1,6 @@
-import { AlertTriangle } from "lucide-react";
+import {
+  IconAlertTriangle as AlertTriangle,
+} from "@tabler/icons-react";
 import type { CorrectionMemoryConflictGroup } from "../../services/correctionMemoryConflicts";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

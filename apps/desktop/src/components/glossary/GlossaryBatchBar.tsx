@@ -1,4 +1,6 @@
-import { Trash2 } from "lucide-react";
+import {
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";

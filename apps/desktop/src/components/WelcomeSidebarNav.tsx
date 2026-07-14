@@ -1,8 +1,8 @@
 import {
-  ChevronRight,
-  List,
-  Pencil,
-} from "lucide-react";
+  IconChevronRight as ChevronRight,
+  IconList as List,
+  IconPencil as Pencil,
+} from "@tabler/icons-react";
 import { PRODUCT_ICON } from "../config/productIcons";
 import { BrandLockup } from "./BrandLockup";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

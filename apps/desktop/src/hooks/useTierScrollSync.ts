@@ -92,15 +92,19 @@ export function useTierScrollSync(args: {
       const tier = a.tierScrollRef.current;
       if (!tier) return;
       const vw = tier.clientWidth;
+      // Playback-follow (deferLayoutCommit) must chase subpixel targets so center
+      // mode does not freeze scroll for several frames under a 0.5px gate.
+      const epsilonPx =
+        options?.deferLayoutCommit === true ? 0 : WAVEFORM_SCROLL_SYNC_EPSILON_PX;
       if (
-        Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
-        Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
+        Math.abs(committedScrollLeftRef.current - sl) <= epsilonPx &&
+        Math.abs(tier.scrollLeft - sl) <= epsilonPx
       ) {
         a.wfApiRef.current?.syncWaveSurferScrollFromTier?.(sl);
         scheduleViewportChromeFrame();
         return;
       }
-      if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
+      if (Math.abs(tier.scrollLeft - sl) > epsilonPx) {
         if (source === "program") {
           if (options?.deferLayoutCommit) {
             programmaticWrites.markPlaybackFollowScrollWrite();

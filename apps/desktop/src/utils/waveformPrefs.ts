@@ -238,7 +238,7 @@ export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
   }
 }
 
-/** 播放跟随：center = 居中固定（历史默认）；edge = 边缘跟随。 */
+/** 播放头滚屏：center = 居中（锁中线）；edge = 翻页（近边缘才滚）。 */
 export function readStoredWaveformPlaybackScrollFollowMode(): WaveformPlaybackScrollFollowMode {
   try {
     const raw = localStorage.getItem(LS_PLAYBACK_SCROLL_FOLLOW);

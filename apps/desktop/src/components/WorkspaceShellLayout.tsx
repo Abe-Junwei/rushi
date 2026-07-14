@@ -1,6 +1,8 @@
 import { useCallback, useRef, type ReactNode } from "react";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
-import { ChevronLeft } from "lucide-react";
+import {
+  IconChevronLeft as ChevronLeft,
+} from "@tabler/icons-react";
 import { usePanelAutoCollapse } from "../hooks/usePanelAutoCollapse";
 import {
   WORKSPACE_EDITOR_SHELL_PURPOSE,

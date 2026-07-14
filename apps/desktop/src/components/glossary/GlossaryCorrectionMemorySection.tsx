@@ -1,4 +1,8 @@
-import { Plus, RefreshCw, Search } from "lucide-react";
+import {
+  IconPlus as Plus,
+  IconRefresh as RefreshCw,
+  IconSearch as Search,
+} from "@tabler/icons-react";
 import {
   CONTROL_BTN_COMPACT_SECONDARY,
   CONTROL_BTN_ICON,

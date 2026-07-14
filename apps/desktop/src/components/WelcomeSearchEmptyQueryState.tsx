@@ -1,4 +1,6 @@
-import { History } from "lucide-react";
+import {
+  IconHistory as History,
+} from "@tabler/icons-react";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { WelcomeSearchNavItem } from "../services/welcome/welcomeSearchNav";
 

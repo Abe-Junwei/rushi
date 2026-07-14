@@ -1,5 +1,8 @@
 import { useState, type MouseEvent as ReactMouseEvent } from "react";
-import { ChevronRight, FolderOpen } from "lucide-react";
+import {
+  IconChevronRight as ChevronRight,
+  IconFolderOpen as FolderOpen,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_SIDEBAR_EMPTY_HINT_BTN, WORKSPACE_SIDEBAR_ROW_SURFACE } from "../config/workspaceShellLayout";

@@ -128,7 +128,7 @@
 
 - 背景：`notion-sidebar` 88% mix + 顶内阴影；与 minimap `zen-paper` 以色块区分。
 - **左簇：** 播放 30px 圆钮（**统一 Lucide 风格**）、时间 `tabular-nums`、倍速、跳转输入 4.25rem。
-- **右簇：** 波形总览 switch | `Focus` 适配语段 | `Maximize2` 整段可见 | sep | ZoomOut | ZoomIn | 重置（文本）。
+- **右簇：** 波形总览 switch | `Crop` 适配语段 | `ArrowsHorizontal` 整段可见 | sep | ZoomOutArea | ZoomInArea | 重置（Tabler）。
 - Active zoom 模式：`icon-btn-active`（saffron 18% 底）；`layoutIntent` 驱动互斥（`manual` 时三者均不亮）。
 
 ---
@@ -172,7 +172,7 @@ Structure top to bottom:
 2) Main waveform tier (~240px tall, horizontally scrollable): white canvas with gray vertical peak bars; played portion slightly darker/warmer; FULL-HEIGHT vertical playhead line in saffron-mid (2px).
 3) Segment overlays: full-height translucent vertical bands with LEFT/RIGHT borders only (no top/bottom border). Selected segment: saffron edge accents + visible 3px resize grips on left/right. Floating mini transport pill centered on selected segment, just above the time ruler.
 4) Embedded time ruler (22px) overlaid on bottom of waveform—transparent background, ticks growing upward from bottom edge, tabular-nums labels.
-5) Bottom toolbar (40px, notion-sidebar tint): left = play/pause, timecode, speed, go-to-time; right = minimap toggle, Focus icon fit-segment, Maximize2 icon fit-all, zoom in/out, reset text.
+5) Bottom toolbar (40px, notion-sidebar tint): left = play/pause, timecode, speed, go-to-time; right = minimap toggle (`WaveSine`), Crop fit-segment, ArrowsHorizontal fit-all, zoom in/out/reset — Tabler MIT.
 
 Deliver frames: default, zoomed-in selected segment with handles, loading state, narrow window.
 

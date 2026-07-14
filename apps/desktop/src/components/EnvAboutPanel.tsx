@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { Copy, ExternalLink, RefreshCw } from "lucide-react";
+import {
+  IconCopy as Copy,
+  IconExternalLink as ExternalLink,
+  IconRefresh as RefreshCw,
+} from "@tabler/icons-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";

@@ -1,4 +1,6 @@
-import { LoaderCircle } from "lucide-react";
+import {
+  IconLoader as LoaderCircle,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

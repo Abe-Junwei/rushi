@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { FileAudio, FileInput, FileText } from "lucide-react";
+import {
+  IconFileMusic as FileAudio,
+  IconFileUpload as FileInput,
+  IconFileText as FileText,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_WORKSPACE_IMPORT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";

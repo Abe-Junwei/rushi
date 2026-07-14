@@ -1,5 +1,8 @@
 import { useMemo } from "react";
-import { Check, CircleAlert } from "lucide-react";
+import {
+  IconCheck as Check,
+  IconAlertCircle as CircleAlert,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";

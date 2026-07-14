@@ -1,4 +1,7 @@
-import { Save, Trash2 } from "lucide-react";
+import {
+  IconDeviceFloppy as Save,
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import {
   CONTROL_BTN_DANGER,
   CONTROL_BTN_PRIMARY,

@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useRef } from "react";
-import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
 import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
@@ -8,6 +7,11 @@ import {
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
+import { PLAYBACK_SUBPIXEL_ENABLED, isCenterFollowDriving, isEdgeFollowDriving } from "../utils/waveformPlaybackSubpixel";
+import {
+  WAVEFORM_EDGE_FOLLOW,
+  type WaveformPlaybackScrollFollowMode,
+} from "../utils/waveformPlaybackScrollFollow";
 
 type WaveformViewportPlayheadProps = {
   durationSec: number;
@@ -22,15 +26,19 @@ type WaveformViewportPlayheadProps = {
   getDisplayPlayheadTimeSec: () => number;
   /** Single playback tick bus; playhead transform runs here instead of its own rAF. */
   subscribePlayheadFrame: (cb: (timeSec: number) => void, priority?: number) => () => void;
-  playbackFollowMode: WaveformPlaybackScrollFollowMode;
   /** Segment = accent playhead; global = fixed cool slate. */
   playheadChromeMode?: "segment" | "global";
+  /**
+   * P0: while follow is driving, hard-pin (center → vw/2; edge page-drive →
+   * anchorFrac×vw). Mid-band edge / paused keep time→viewport mapping.
+   */
+  playbackFollowMode?: WaveformPlaybackScrollFollowMode;
 };
 
 /**
- * Full-height playhead in sticky viewport coordinates (same path dev + release).
- * Center follow (Audacity pinned / Logic scroll-in-play): playhead stays fixed at
- * viewport center while tier scroll moves the timeline underneath.
+ * Full-height playhead in viewport coordinates.
+ * Driving follow: hard-pinned (center mid / edge anchor); content moves under it.
+ * Otherwise: time → viewport x from effectiveScrollLeftPx (S + shared float offset).
  */
 export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   durationSec,
@@ -43,8 +51,8 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   currentTimeSec,
   getDisplayPlayheadTimeSec,
   subscribePlayheadFrame,
-  playbackFollowMode,
   playheadChromeMode = "segment",
+  playbackFollowMode = "edge",
 }: WaveformViewportPlayheadProps) {
   const playheadRef = useRef<HTMLDivElement | null>(null);
   const lastTransformRef = useRef("");
@@ -54,8 +62,8 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollLayout,
     tierScrollLive,
     tierScrollRef,
-    isPlaying,
     getDisplayPlayheadTimeSec,
+    isPlaying,
     playbackFollowMode,
   });
   argsRef.current = {
@@ -64,8 +72,8 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollLayout,
     tierScrollLive,
     tierScrollRef,
-    isPlaying,
     getDisplayPlayheadTimeSec,
+    isPlaying,
     playbackFollowMode,
   };
 
@@ -78,12 +86,28 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
       tierScrollLive: args.tierScrollLive,
       tierScrollLayout: args.tierScrollLayout,
     });
-    const leftPx =
-      args.isPlaying && args.playbackFollowMode === "center"
-        ? metrics.viewportWidthPx / 2
+    // P0: hard-pin only while follow is actively driving the float offset.
+    // If user-scroll suppress freezes follow, fall back to effectiveScroll mapping
+    // so the needle stays locked to the played-tint edge (same time source).
+    const pinCenter =
+      PLAYBACK_SUBPIXEL_ENABLED &&
+      args.isPlaying &&
+      args.playbackFollowMode === "center" &&
+      isCenterFollowDriving() &&
+      metrics.viewportWidthPx > 0;
+    const pinEdge =
+      PLAYBACK_SUBPIXEL_ENABLED &&
+      args.isPlaying &&
+      args.playbackFollowMode === "edge" &&
+      isEdgeFollowDriving() &&
+      metrics.viewportWidthPx > 0;
+    const leftPx = pinCenter
+      ? metrics.viewportWidthPx / 2
+      : pinEdge
+        ? metrics.viewportWidthPx * WAVEFORM_EDGE_FOLLOW.anchorFrac
         : playheadViewportLeftPx(
             timeSec,
-            metrics.scrollLeftPx,
+            metrics.effectiveScrollLeftPx,
             args.timelineWidthPx,
             args.durationSec,
           );

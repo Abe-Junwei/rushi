@@ -1,4 +1,6 @@
-import { FileText } from "lucide-react";
+import {
+  IconFileText as FileText,
+} from "@tabler/icons-react";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { formatWelcomeFileMatchLabel } from "../services/welcome/welcomeSearch";
 import { formatWorkspaceFileTime } from "../utils/projectFileDisplay";

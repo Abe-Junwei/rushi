@@ -8,6 +8,12 @@ import {
   resetTierScrollFrameCoordinatorForTests,
   scheduleTierScrollFrame,
 } from "../utils/tierScrollFrameCoordinator";
+import {
+  clearPlaybackFollowDriving,
+  setCenterFollowDriving,
+  setEdgeFollowDriving,
+} from "../utils/waveformPlaybackSubpixel";
+import { WAVEFORM_EDGE_FOLLOW } from "../utils/waveformPlaybackScrollFollow";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
 
 /** Imperative playhead transform is a direct CSP-legal inline style write (setDirectLayoutStyle). */
@@ -29,7 +35,6 @@ function makePlayheadProps(overrides: Partial<ComponentProps<typeof WaveformView
     currentTimeSec: 50,
     getDisplayPlayheadTimeSec: () => 50,
     subscribePlayheadFrame: (_cb: (timeSec: number) => void) => () => {},
-    playbackFollowMode: "edge" as const,
     ...overrides,
   };
 }
@@ -82,12 +87,54 @@ describe("WaveformViewportPlayhead", () => {
     expect(playheadTransform(line)).toContain("333.333px");
   });
 
-  it("pins playhead at viewport center while playing in center follow mode", () => {
+  it("absorbs scroll residual instead of hard-pinning center while playing", () => {
+    const tierScroll = document.createElement("div");
+    // Ideal center for t=50 / tw=1000 / vw=800 is scrollLeft=100; lag by 0.4px.
+    Object.defineProperty(tierScroll, "scrollLeft", {
+      value: 100.4,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
     const { container } = render(
       <WaveformViewportPlayhead
         {...makePlayheadProps({
           isPlaying: true,
-          getDisplayPlayheadTimeSec: () => 12.345,
+          durationSec: 100,
+          timelineWidthPx: 1000,
+          currentTimeSec: 50,
+          getDisplayPlayheadTimeSec: () => 50,
+          tierScrollRef: { current: tierScroll },
+          tierScrollLayout: { scrollLeftPx: 100.4, clientWidthPx: 800 },
+          // Edge (default): still maps via effective scroll — residual stays in leftPx.
+          playbackFollowMode: "edge",
+        })}
+      />,
+    );
+
+    const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
+    expect(playheadTransform(line)).toContain("399.600px");
+  });
+
+  it("P0: hard-pins to viewport center while center-follow is driving", () => {
+    const tierScroll = document.createElement("div");
+    Object.defineProperty(tierScroll, "scrollLeft", {
+      value: 100.4,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
+    setCenterFollowDriving(true);
+    const { container } = render(
+      <WaveformViewportPlayhead
+        {...makePlayheadProps({
+          isPlaying: true,
+          durationSec: 100,
+          timelineWidthPx: 1000,
+          currentTimeSec: 50,
+          getDisplayPlayheadTimeSec: () => 50,
+          tierScrollRef: { current: tierScroll },
+          tierScrollLayout: { scrollLeftPx: 100.4, clientWidthPx: 800 },
           playbackFollowMode: "center",
         })}
       />,
@@ -95,6 +142,37 @@ describe("WaveformViewportPlayhead", () => {
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     expect(playheadTransform(line)).toContain("400.000px");
+    clearPlaybackFollowDriving();
+  });
+
+  it("P0: hard-pins to edge anchor while edge page-drive is active", () => {
+    const tierScroll = document.createElement("div");
+    Object.defineProperty(tierScroll, "scrollLeft", {
+      value: 100.4,
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
+    setEdgeFollowDriving(true);
+    const { container } = render(
+      <WaveformViewportPlayhead
+        {...makePlayheadProps({
+          isPlaying: true,
+          durationSec: 100,
+          timelineWidthPx: 1000,
+          currentTimeSec: 50,
+          getDisplayPlayheadTimeSec: () => 50,
+          tierScrollRef: { current: tierScroll },
+          tierScrollLayout: { scrollLeftPx: 100.4, clientWidthPx: 800 },
+          playbackFollowMode: "edge",
+        })}
+      />,
+    );
+
+    const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
+    const expected = (800 * WAVEFORM_EDGE_FOLLOW.anchorFrac).toFixed(3);
+    expect(playheadTransform(line)).toContain(`${expected}px`);
+    clearPlaybackFollowDriving();
   });
 
   it("applies global playhead chrome class", () => {

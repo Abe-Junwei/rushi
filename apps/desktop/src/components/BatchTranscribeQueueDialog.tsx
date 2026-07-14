@@ -1,4 +1,10 @@
-import { CheckCircle2, Circle, CircleAlert, Loader2, MinusCircle } from "lucide-react";
+import {
+  IconCircleCheck as CheckCircle2,
+  IconCircle as Circle,
+  IconAlertCircle as CircleAlert,
+  IconLoader2 as Loader2,
+  IconCircleMinus as MinusCircle,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";

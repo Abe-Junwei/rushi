@@ -1,5 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { createNativeAudioPlaybackTransport } from "./nativeAudioPlaybackTransport";
+import {
+  computeSmoothDisplayStep,
+  createNativeAudioPlaybackTransport,
+} from "./nativeAudioPlaybackTransport";
 import { resolveMediaPlaybackHost } from "./resolveMediaPlaybackHost";
 import { transportAsMediaSink } from "./playbackTransport";
 import type { NativeAudioEvent } from "../../../tauri/nativeAudioApi";
@@ -257,6 +260,40 @@ describe("nativeAudioPlaybackTransport", () => {
     vi.restoreAllMocks();
   });
 
+  it("keeps display monotonic while authority freezes then re-anchors below it (stall)", async () => {
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 30 });
+    await t.play();
+    emitEngine({ event: "timeUpdate", data: { sec: 5.0 } });
+
+    // Advance ~200ms of frames at 60fps; display climbs smoothly, monotonic.
+    const samples: number[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      now += 16;
+      samples.push(t.getDisplayTime());
+    }
+    // Simulate a late/lagging TimeUpdate that re-anchors authority BELOW the
+    // running display (the exact condition that used to hard-freeze the clock).
+    const beforeAnchor = t.getDisplayTime();
+    emitEngine({ event: "timeUpdate", data: { sec: beforeAnchor - 0.05 } });
+    for (let i = 0; i < 12; i += 1) {
+      now += 16;
+      samples.push(t.getDisplayTime());
+    }
+
+    // Never regresses across the whole window (no forward-then-backward).
+    for (let i = 1; i < samples.length; i += 1) {
+      expect(samples[i]).toBeGreaterThanOrEqual(samples[i - 1] - 1e-9);
+    }
+    // And it keeps making forward progress overall (not permanently frozen).
+    expect(samples[samples.length - 1]).toBeGreaterThan(samples[0]);
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
   it("does not resolve seek from ordinary timeUpdate events", async () => {
     vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
     const t = createNativeAudioPlaybackTransport();
@@ -379,5 +416,87 @@ describe("resolveMediaPlaybackHost", () => {
     await host!.setTime(2.5);
     expect(nativeAudioSeek).toHaveBeenCalledWith(2.5);
     expect(t.getCurrentTime()).toBe(2.5);
+  });
+});
+
+describe("computeSmoothDisplayStep", () => {
+  const DT = 1 / 60;
+
+  it("plateaus (never regresses) when authority projection drops below display", () => {
+    let tv = 5.0;
+    const outputs: number[] = [];
+    // Authority frozen 0.05s behind the current display for 10 frames.
+    for (let i = 0; i < 10; i += 1) {
+      tv = computeSmoothDisplayStep({
+        tvPrev: tv,
+        taProjected: 4.95,
+        deltaSec: DT,
+        rate: 1,
+      });
+      outputs.push(tv);
+    }
+    for (let i = 1; i < outputs.length; i += 1) {
+      expect(outputs[i]).toBeGreaterThanOrEqual(outputs[i - 1]);
+    }
+    // Held near the high-water, not snapped back to the lagging authority.
+    expect(tv).toBeGreaterThanOrEqual(5.0);
+    expect(tv).toBeLessThan(5.05);
+  });
+
+  it("tracks a linear authority forward with steady advance", () => {
+    let tv = 5.0;
+    let ta = 5.0;
+    for (let i = 0; i < 30; i += 1) {
+      ta += DT; // authority advances at rate 1
+      const nextTv = computeSmoothDisplayStep({
+        tvPrev: tv,
+        taProjected: ta,
+        deltaSec: DT,
+        rate: 1,
+      });
+      expect(nextTv).toBeGreaterThanOrEqual(tv); // monotonic
+      tv = nextTv;
+    }
+    // Converged onto the authority line (zero steady-state error, sub-ms).
+    expect(tv).toBeCloseTo(ta, 2);
+  });
+
+  it("jumps forward immediately when it fell far behind authority", () => {
+    const tv = computeSmoothDisplayStep({
+      tvPrev: 5.0,
+      taProjected: 5.5,
+      deltaSec: DT,
+      rate: 1,
+    });
+    expect(tv).toBeCloseTo(5.5, 6);
+  });
+
+  it("re-anchors forward on anomalous frame gaps (suspended rAF)", () => {
+    expect(
+      computeSmoothDisplayStep({ tvPrev: 5.0, taProjected: 8.0, deltaSec: 0.5, rate: 1 }),
+    ).toBe(8.0);
+    // Never regress even if the projection is behind after a gap.
+    expect(
+      computeSmoothDisplayStep({ tvPrev: 8.0, taProjected: 7.9, deltaSec: 0.5, rate: 1 }),
+    ).toBe(8.0);
+  });
+
+  it("is frame-rate decoupled: 15Hz and 60Hz converge to matching output", () => {
+    const run = (dt: number) => {
+      let tv = 0;
+      let ta = 0;
+      const steps = Math.round(1 / dt); // ~1s of playback
+      for (let i = 0; i < steps; i += 1) {
+        ta += dt;
+        tv = computeSmoothDisplayStep({ tvPrev: tv, taProjected: ta, deltaSec: dt, rate: 1 });
+      }
+      return { tv, ta };
+    };
+    const hi = run(1 / 60);
+    const lo = run(1 / 15);
+    // Both land on ~1s and agree within a couple ms despite 4x frame-rate gap.
+    expect(hi.tv).toBeCloseTo(hi.ta, 2);
+    expect(lo.tv).toBeCloseTo(lo.ta, 2);
+    expect(Math.abs(hi.tv - lo.tv)).toBeLessThan(0.01);
   });
 });

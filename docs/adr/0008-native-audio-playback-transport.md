@@ -35,8 +35,8 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 | 层 | 角色 | 规则 |
 |----|------|------|
 | 权威 | Rust `SharedClock.position_us` → Channel `TimeUpdate`/`Seeked` | 唯一真源；命令 ACK = 状态事件（Playing/Paused/Seeked） |
-| 显示 | `getDisplayTime()` 插值 | 最后一次权威锚点 + `performance.now()` × rate；仅填事件间隙 |
-| 单调 | visual / display | 新值 < 上一帧则丢弃，避免 underrun/暂停回跳 |
+| 显示 | `getDisplayTime()` 插值 | 追踪「权威投影」（`currentTimeSec + elapsed × rate`）的**一阶低通临界阻尼平滑**（`computeSmoothDisplayStep`，τ≈0.1s，`α=1−e^(−Δt/τ)` 与帧率解耦）；仅填事件间隙，不外推领先真实 media |
+| 单调 | visual / display | 平滑输出经 `max(上一帧, …)` 钳制：滞后权威 → 平滑减速/plateau，**绝不回退**（消除 `edge` 播放头「前进又后退」抖动）；underrun/resume 落后则前向瞬跳；真实 seek 由 `seeked` 事件重锚 |
 | Latch | pause | 冻结为当时 display（`max(权威, 插值高水位)`），禁止回跳到滞后 TimeUpdate |
 | Latch | seek | 落到 Seeked 权威值并停止插值；**用户 seek 输入**不得使用插值时间 |
 
@@ -60,4 +60,4 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 
 ## 状态
 
-**accepted** — 2026-07-12（S1 击穿后进入实现；2026-07-12 maturity：Channel 事件流 + 移除桌面 MediaElement 回退；2026-07-13 hardening：受控显示插值、cpal 0.18、状态 ACK、native gate gap=0）
+**accepted** — 2026-07-12（S1 击穿后进入实现；2026-07-12 maturity：Channel 事件流 + 移除桌面 MediaElement 回退；2026-07-13 hardening：受控显示插值、cpal 0.18、状态 ACK、native gate gap=0；2026-07-14：显示钟改为临界阻尼低通平滑 + 单调钳制，消除 `edge` 播放头抖动，见 [`waveform-visual-clock-smoothing-research.md`](../execution/specs/waveform-visual-clock-smoothing-research.md)）

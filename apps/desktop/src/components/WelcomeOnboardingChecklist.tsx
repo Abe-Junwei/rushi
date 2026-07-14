@@ -1,4 +1,8 @@
-import { Check, Circle, X } from "lucide-react";
+import {
+  IconCheck as Check,
+  IconCircle as Circle,
+  IconX as X,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { ENV_NAV } from "../config/environmentNavCopy";
 import {

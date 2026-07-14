@@ -1,4 +1,8 @@
-import { FileAudio, FileText, ListOrdered } from "lucide-react";
+import {
+  IconFileMusic as FileAudio,
+  IconFileText as FileText,
+  IconListNumbers as ListOrdered,
+} from "@tabler/icons-react";
 import { CONTROL_BTN_WORKSPACE_IMPORT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
