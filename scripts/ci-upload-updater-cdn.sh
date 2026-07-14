@@ -76,6 +76,9 @@ export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
 export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
 export AWS_DEFAULT_REGION="${R2_REGION:-auto}"
 export AWS_EC2_METADATA_DISABLED=true
+# awscli 2.23+ default checksums break many S3-compatible backends (R2).
+export AWS_REQUEST_CHECKSUM_CALCULATION="${AWS_REQUEST_CHECKSUM_CALCULATION:-when_required}"
+export AWS_RESPONSE_CHECKSUM_VALIDATION="${AWS_RESPONSE_CHECKSUM_VALIDATION:-when_required}"
 
 S3=(aws --endpoint-url "$R2_ENDPOINT" s3)
 

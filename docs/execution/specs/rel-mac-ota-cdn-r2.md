@@ -24,11 +24,13 @@ https://updates.rushi.app/<tag>/windows-portable-x64.zip
 
 | Secret | 说明 |
 |--------|------|
-| `R2_ACCESS_KEY_ID` | R2 API token |
+| `R2_ACCESS_KEY_ID` | R2 API token（须 **Object Read & Write**，勿用只读） |
 | `R2_SECRET_ACCESS_KEY` | Secret |
-| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com` |
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`（勿带桶名路径） |
 | `R2_BUCKET` | 可选，默认 `rushi-updates` |
 | `TAURI_SIGNING_*` | OTA 签名（不变） |
+
+上传大文件走 multipart：`CreateMultipartUpload` 报 `AccessDenied` 时优先检查 API token 权限与桶名，而不是重打 sidecar。
 
 ## 脚本
 
