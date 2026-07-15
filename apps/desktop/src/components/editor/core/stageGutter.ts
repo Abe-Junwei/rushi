@@ -195,6 +195,7 @@ export class TranscriptStageMarker extends GutterMarker {
       note.type = "button";
       note.className = "cm-transcript-annotation-icon";
       note.setAttribute(CM_SEGMENT_ANNOTATION_ATTR, "1");
+      note.tabIndex = -1;
       note.title = "查看并编辑备注";
       note.setAttribute("aria-label", "查看并编辑备注");
       note.innerHTML = ANNOTATION_DOC_ICON_SVG;
@@ -237,6 +238,7 @@ export type TranscriptStageGutterOptions = {
   onToggleSegmentPlay?: (idx: number) => void;
   onToggleSegmentLoop?: (idx: number) => void;
   onOpenSegmentAnnotationDialog?: (idx: number) => void;
+  isBusy?: () => boolean;
 };
 
 type StageGutterMousedownView = {
@@ -256,10 +258,12 @@ export function handleTranscriptStageGutterMousedown(
 ): boolean {
   const target = event.target as HTMLElement | null;
   const idx = view.state.doc.lineAt(lineFrom).number - 1;
-  if (target?.closest(`[${CM_SEGMENT_ANNOTATION_ATTR}]`)) {
+  if (event.button === 0 && target?.closest(`[${CM_SEGMENT_ANNOTATION_ATTR}]`)) {
     event.preventDefault();
     event.stopPropagation();
-    opts.onOpenSegmentAnnotationDialog?.(idx);
+    if (!opts.isBusy?.()) {
+      opts.onOpenSegmentAnnotationDialog?.(idx);
+    }
     return true;
   }
   if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
@@ -555,6 +559,12 @@ export const transcriptStageGutterTheme = EditorView.theme({
     pointerEvents: "none",
   },
   ".cm-transcript-annotation-icon:hover": {
+    color: "var(--accent-action)",
+    opacity: "1",
+  },
+  ".cm-transcript-annotation-icon:focus-visible": {
+    outline: "2px solid color-mix(in srgb, var(--accent-action) 45%, transparent)",
+    outlineOffset: "1px",
     color: "var(--accent-action)",
     opacity: "1",
   },

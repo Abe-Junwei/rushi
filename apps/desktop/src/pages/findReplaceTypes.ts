@@ -22,6 +22,10 @@ export type FindReplaceDialogState =
   | {
       phase: "panel";
       findText: string;
+      /** 已提交查询；空结果文案与 matches 对齐，勿用输入草稿。 */
+      committedFindQuery: string;
+      /** 输入草稿与已提交查询不一致（debounce 等待中）。 */
+      searchPending: boolean;
       replaceText: string;
       activeMatchIndex: number;
       matchCount: number;

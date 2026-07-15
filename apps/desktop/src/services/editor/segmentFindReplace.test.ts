@@ -63,7 +63,7 @@ describe("segmentFindReplace", () => {
     expect(replaceOnceInText("城市", 0, "城市", "乡镇")).toBe("乡镇");
   });
 
-  it("buildFindMatchListItems includes segment number and time", () => {
+  it("buildFindMatchListItems includes segment number and time fields", () => {
     const segments = [seg("制控", 0), seg("其他", 1)];
     segments[0].start_sec = 65;
     segments[0].end_sec = 70;
@@ -76,6 +76,18 @@ describe("segmentFindReplace", () => {
     expect(items[0]?.displayText).toBe("制控");
     expect(items[0]?.highlightStart).toBe(0);
     expect(items[0]?.highlightEnd).toBe(1);
+  });
+
+  it("buildFindMatchListItems places end-of-segment matches near the display front", () => {
+    const prefix = "甲".repeat(DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS + 20);
+    const segments = [seg(`${prefix}驾驭`, 0)];
+    const matches = collectLiteralFindMatches(segments, "驾驭");
+    const items = buildFindMatchListItems(segments, matches);
+    expect(items[0]?.displayText.startsWith("…")).toBe(true);
+    expect(items[0]?.highlightStart).toBe(1);
+    expect(
+      items[0]?.displayText.slice(items[0]?.highlightStart ?? 0, items[0]?.highlightEnd ?? 0),
+    ).toBe("驾驭");
   });
 
   it("buildMatchDisplaySnippet centers match at end of long segment", () => {

@@ -96,7 +96,8 @@ describe("stage gutter mousedown → onSelectSegment bridge", () => {
       },
     };
 
-    const annotationIcon = document.createElement("span");
+    const annotationIcon = document.createElement("button");
+    annotationIcon.type = "button";
     annotationIcon.setAttribute("data-cm-segment-annotation", "1");
     const lineFrom = state.doc.line(3).from; // idx 2
     const handled = handleTranscriptStageGutterMousedown(
@@ -110,5 +111,60 @@ describe("stage gutter mousedown → onSelectSegment bridge", () => {
     expect(onOpenSegmentAnnotationDialog).toHaveBeenCalledWith(2);
     expect(onSelectSegment).not.toHaveBeenCalled();
     expect(primarySegmentIdx(state)).toBe(0);
+  });
+
+  it("right-click on annotation icon falls through to context-menu selection, not dialog", () => {
+    const onOpenSegmentAnnotationDialog = vi.fn();
+    const onSelectSegment = vi.fn();
+    let state = buildTranscriptEditorState(makeSegments(4), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+
+    const annotationIcon = document.createElement("button");
+    annotationIcon.type = "button";
+    annotationIcon.setAttribute("data-cm-segment-annotation", "1");
+    const lineFrom = state.doc.line(3).from; // idx 2
+    const handled = handleTranscriptStageGutterMousedown(
+      view,
+      lineFrom,
+      makeMouseEvent(2, annotationIcon),
+      { onSelectSegment, onOpenSegmentAnnotationDialog },
+    );
+
+    expect(handled).toBe(true);
+    expect(onOpenSegmentAnnotationDialog).not.toHaveBeenCalled();
+    expect(primarySegmentIdx(state)).toBe(2);
+  });
+
+  it("does not open annotation dialog when busy", () => {
+    const onOpenSegmentAnnotationDialog = vi.fn();
+    const annotationIcon = document.createElement("button");
+    annotationIcon.type = "button";
+    annotationIcon.setAttribute("data-cm-segment-annotation", "1");
+    let state = buildTranscriptEditorState(makeSegments(2), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+    const lineFrom = state.doc.line(2).from;
+    handleTranscriptStageGutterMousedown(view, lineFrom, makeMouseEvent(0, annotationIcon), {
+      onOpenSegmentAnnotationDialog,
+      isBusy: () => true,
+    });
+    expect(onOpenSegmentAnnotationDialog).not.toHaveBeenCalled();
   });
 });

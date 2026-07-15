@@ -136,11 +136,7 @@ export function FindReplaceDialog({
             <FloatingPanelSegmentList rowCount={state.rows.length}>
               {state.rows.map((row) => (
                 <li key={`${row.segmentIdx}-${row.globalIndex}`} className="list-none">
-                  <FloatingPanelSegmentRow
-                    segmentNumber={row.segmentNumber}
-                    timeLabel={row.startTimeLabel}
-                    suffix={`#${row.globalIndex + 1}`}
-                  >
+                  <FloatingPanelSegmentRow segmentNumber={row.segmentNumber}>
                     <span className="inline text-sm leading-snug text-notion-text">
                       <FindReplaceMatchText
                         variant="snippet"

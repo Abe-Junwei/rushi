@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import {
   IconChevronDown as ChevronDown,
   IconChevronUp as ChevronUp,
@@ -29,7 +29,37 @@ const findBarActionClass =
 
 type PanelState = Extract<FindReplaceDialogState, { phase: "panel" }>;
 
-function FindResultList({
+const FindResultRow = memo(function FindResultRow({
+  item,
+  active,
+  onSelectMatch,
+}: {
+  item: PanelState["resultItems"][number];
+  active: boolean;
+  onSelectMatch: (globalIndex: number) => void;
+}) {
+  return (
+    <li
+      id={`find-replace-match-${item.globalIndex}`}
+      className="list-none"
+    >
+      <FloatingPanelSegmentRow
+        segmentNumber={item.segmentNumber}
+        active={active}
+        onClick={() => onSelectMatch(item.globalIndex)}
+      >
+        <FindReplaceMatchText
+          variant="snippet"
+          text={item.displayText}
+          charStart={item.highlightStart}
+          charEnd={item.highlightEnd}
+        />
+      </FloatingPanelSegmentRow>
+    </li>
+  );
+});
+
+const FindResultList = memo(function FindResultList({
   items,
   activeMatchIndex,
   onSelectMatch,
@@ -50,34 +80,17 @@ function FindResultList({
 
   return (
     <FloatingPanelSegmentList rowCount={items.length}>
-      {items.map((item) => {
-        const active = item.globalIndex === activeMatchIndex;
-        return (
-          <li
-            key={`${item.segmentIdx}-${item.globalIndex}`}
-            id={`find-replace-match-${item.globalIndex}`}
-            className="list-none"
-          >
-            <FloatingPanelSegmentRow
-              segmentNumber={item.segmentNumber}
-              timeLabel=""
-              suffix={`#${item.globalIndex + 1}`}
-              active={active}
-              onClick={() => onSelectMatch(item.globalIndex)}
-            >
-              <FindReplaceMatchText
-                variant="snippet"
-                text={item.displayText}
-                charStart={item.highlightStart}
-                charEnd={item.highlightEnd}
-              />
-            </FloatingPanelSegmentRow>
-          </li>
-        );
-      })}
+      {items.map((item) => (
+        <FindResultRow
+          key={`${item.segmentIdx}-${item.globalIndex}`}
+          item={item}
+          active={item.globalIndex === activeMatchIndex}
+          onSelectMatch={onSelectMatch}
+        />
+      ))}
     </FloatingPanelSegmentList>
   );
-}
+});
 
 export type FindReplaceDialogBodyProps = {
   state: PanelState;
@@ -149,9 +162,11 @@ export function FindReplaceDialogBody({
   onReplaceCurrent,
   onReplaceAndNext,
 }: FindReplaceDialogBodyProps) {
-  const position = state.searchCommitted
-    ? matchPositionLabel(state.matchCount, state.activeMatchIndex)
-    : "尚未查找";
+  const position = state.searchPending
+    ? "搜索中…"
+    : state.searchCommitted
+      ? matchPositionLabel(state.matchCount, state.activeMatchIndex)
+      : "尚未查找";
   const canSearch = state.findText.length > 0 && !busy;
   const canAct = state.searchCommitted && state.matchCount > 0 && !busy;
 
@@ -244,9 +259,9 @@ export function FindReplaceDialogBody({
           {position}
           {state.searchCommitted && state.matchCount > 0 ? " · 点击行定位语段" : null}
         </p>
-        {state.searchCommitted && state.matchCount === 0 ? (
+        {state.searchCommitted && !state.searchPending && state.matchCount === 0 ? (
           <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-            未找到匹配「{state.findText}」的语段。
+            未找到匹配「{state.committedFindQuery}」的语段。
           </p>
         ) : null}
       </FloatingPanelDialogHeader>

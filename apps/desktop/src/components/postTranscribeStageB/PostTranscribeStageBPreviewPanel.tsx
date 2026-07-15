@@ -92,14 +92,6 @@ export function PostTranscribeStageBPreviewPanel({
             const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
             const focused = previewFocusSegmentIdx === ch.segmentIdx;
             const rowDisplay = resolveTextChangeRowDisplay(ch.beforeText, ch.afterText, { focused });
-            const isHomophoneGuess = ch.evidenceSummary?.includes("同音推测") ?? false;
-            const changeLabel = isHomophoneGuess
-              ? "同音推测"
-              : ch.punctuateTouched && ch.typoTouched
-                ? "标点+改字"
-                : ch.punctuateTouched
-                  ? "标点"
-                  : "改字";
             return (
               <li
                 key={ch.uid || String(ch.segmentIdx)}
@@ -108,8 +100,6 @@ export function PostTranscribeStageBPreviewPanel({
               >
                 <FloatingPanelSegmentRow
                   segmentNumber={ch.segmentNumber}
-                  timeLabel={ch.timeLabel}
-                  suffix={changeLabel}
                   bodyLayout={focused ? "wrap" : "truncate"}
                   active={focused}
                   disabled={busy}

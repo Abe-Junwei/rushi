@@ -22,13 +22,15 @@ export function FindReplaceMatchText({
   variant = "block",
   textStyle,
   className,
-  highlightClassName = "rounded-sm bg-accent-action/20 px-0.5 text-inherit",
+  highlightClassName = "inline-block whitespace-nowrap rounded-sm bg-accent-action/20 px-0.5 text-inherit",
 }: Props) {
   const safeStart = Math.max(0, Math.min(charStart, text.length));
   const safeEnd = Math.max(safeStart, Math.min(charEnd, text.length));
   const display = text || "（空）";
   const blockClass = "m-0 whitespace-pre-wrap break-words text-inherit";
   const inlineClass = "m-0 inline truncate whitespace-nowrap text-sm leading-snug text-notion-text";
+  // Parent row truncates; keep the mark inline so an early highlight (align:start
+  // snippets) is not swallowed by trailing context overflow.
   const snippetClass = "m-0 inline whitespace-nowrap text-sm leading-snug text-notion-text";
   const bodyClass = [
     variant === "snippet" ? snippetClass : variant === "inline" ? inlineClass : blockClass,

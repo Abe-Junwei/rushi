@@ -97,6 +97,8 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
       setDialog({
         phase: "panel",
         findText: seed,
+        committedFindQuery: "",
+        searchPending: false,
         replaceText: repl,
         activeMatchIndex: -1,
         matchCount: 0,
@@ -134,6 +136,8 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     setDialog({
       phase: "panel",
       findText: search.findText,
+      committedFindQuery: search.committedFindQuery,
+      searchPending: search.findText !== search.committedFindQuery,
       replaceText: search.replaceText,
       activeMatchIndex: clampMatchIndex(search.activeMatchIndex, search.matches.length),
       matchCount: search.matches.length,
@@ -252,6 +256,8 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
         : {
             phase: "panel",
             findText: search.findText,
+            committedFindQuery: search.committedFindQuery,
+            searchPending: search.findText !== search.committedFindQuery,
             replaceText: search.replaceText,
             activeMatchIndex: search.activeMatchIndex,
             matchCount: search.matches.length,

@@ -17,6 +17,7 @@ const POST_TRANSCRIBE_STAGE_B_LAYOUT_REV = 2;
 
 /** consent 默认宽度（说明短，较预览略窄） */
 const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
+const STAGE_B_CONSENT_MIN_WIDTH = 400;
 
 function resolveStageBPanelBounds() {
   const previewBounds = resolveEditorPreviewPanelBounds();
@@ -24,6 +25,7 @@ function resolveStageBPanelBounds() {
   const { width: vw, height: vh } = readFloatingPanelViewport();
   return {
     minWidth: previewBounds.minWidth,
+    consentMinWidth: STAGE_B_CONSENT_MIN_WIDTH,
     minHeight: 320,
     maxWidth: previewBounds.maxWidth,
     maxHeight: previewBounds.maxHeight,
@@ -142,7 +144,7 @@ export function PostTranscribeStageBDialog({
       onOverlayClose={() => {}}
       fallbackHeight={isConsent ? 360 : panelBounds.fallbackHeight}
       defaultWidth={isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : panelBounds.defaultWidth}
-      minWidth={panelBounds.minWidth}
+      minWidth={isConsent ? panelBounds.consentMinWidth : panelBounds.minWidth}
       minHeight={200}
       maxWidth={isConsent ? panelBounds.consentMaxWidth : panelBounds.maxWidth}
       maxHeight={isConsent ? panelBounds.consentMaxHeight : panelBounds.maxHeight}

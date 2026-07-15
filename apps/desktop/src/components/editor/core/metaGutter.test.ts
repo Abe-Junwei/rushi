@@ -84,6 +84,9 @@ describe("P4 meta gutter + reveal + stage", () => {
     const chip = dom.querySelector(".cm-transcript-stage-chip");
     const note = dom.querySelector(".cm-transcript-annotation-icon");
     expect(note).toBeTruthy();
+    expect(note?.tagName).toBe("BUTTON");
+    expect((note as HTMLButtonElement).type).toBe("button");
+    expect((note as HTMLButtonElement).tabIndex).toBe(-1);
     expect(note?.getAttribute("aria-label")).toBe("查看并编辑备注");
     expect(note?.querySelector("svg")).toBeTruthy();
     const children = [...dom.children];

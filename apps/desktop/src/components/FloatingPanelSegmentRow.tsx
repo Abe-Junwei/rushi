@@ -1,24 +1,25 @@
 import type { ReactNode } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 
-/** 浮窗匹配列表：左侧固定精简元信息，右侧单行正文（由调用方提供 truncate 内容）。 */
-const META_COL_CLASS =
-  "w-[7.5rem] shrink-0 truncate text-left text-xs leading-4 tabular-nums text-notion-text-muted";
-
 function FloatingPanelSegmentMeta({
   segmentNumber,
   timeLabel,
   suffix,
 }: {
   segmentNumber: number;
-  timeLabel: string;
+  timeLabel?: string;
   /** 如「3处」「#2」 */
   suffix?: string;
 }) {
-  const hasTime = timeLabel.length > 0;
+  const hasTime = Boolean(timeLabel && timeLabel.length > 0);
+  const metaOnly = !hasTime && !suffix;
+  // Number-only (find/replace): shrink so the match snippet gets the row width.
+  const metaClass = metaOnly
+    ? "w-auto shrink-0 whitespace-nowrap text-left text-xs leading-4 tabular-nums text-notion-text-muted"
+    : "w-[7.5rem] shrink-0 truncate text-left text-xs leading-4 tabular-nums text-notion-text-muted";
   const title = `语段 ${segmentNumber}${hasTime ? ` · ${timeLabel}` : ""}${suffix ? ` · ${suffix}` : ""}`;
   return (
-    <span className={META_COL_CLASS} title={title}>
+    <span className={metaClass} title={title}>
       <span className="font-semibold text-notion-text">语段{segmentNumber}</span>
       {hasTime ? (
         <>
@@ -42,7 +43,8 @@ function FloatingPanelSegmentMeta({
 
 type RowProps = {
   segmentNumber: number;
-  timeLabel: string;
+  /** Omit or pass "" to hide the timestamp (find/replace result list). */
+  timeLabel?: string;
   suffix?: string;
   active?: boolean;
   disabled?: boolean;
@@ -97,4 +99,3 @@ export function FloatingPanelSegmentRow({
     </button>
   );
 }
-

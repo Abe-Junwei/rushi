@@ -206,6 +206,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
         onToggleSegmentLoop: (idx) => args.onToggleSegmentLoopRef.current?.(idx),
         onOpenSegmentAnnotationDialog: (idx) =>
           args.onOpenSegmentAnnotationDialogRef?.current?.(idx),
+        isBusy: () => args.busyRef.current,
       },
     }),
     transcriptLineCountGuard,

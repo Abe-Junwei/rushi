@@ -228,8 +228,6 @@ export function CorrectionRulesPreviewDialog({
                   >
                     <FloatingPanelSegmentRow
                       segmentNumber={ch.segmentNumber}
-                      timeLabel={ch.startTimeLabel}
-                      suffix={`${ch.replacementCount}处`}
                       bodyLayout={focused ? "wrap" : "truncate"}
                       active={focused}
                       disabled={busy}
