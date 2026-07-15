@@ -269,6 +269,11 @@ fn move_file_to_project_auto_renames_on_conflict() {
         params![&dest_id, "Dest", t, t],
     )
     .unwrap();
+    // `files.name` is globally UNIQUE in the real schema, so this pre-existing
+    // duplicate can only be constructed here by bypassing the index — the app
+    // layer itself never creates duplicates (see `unique_file_name`). Dropping
+    // it is test-only setup; the move logic under test still runs unmodified.
+    conn.execute("DROP INDEX idx_files_name_unique", []).unwrap();
     conn.execute(
         "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -398,6 +403,9 @@ fn move_file_to_project_auto_renames_when_other_project_holds_name() {
         )
         .unwrap();
     }
+    // See comment in `move_file_to_project_auto_renames_on_conflict` re: why
+    // the unique index must be dropped to construct this test-only duplicate.
+    conn.execute("DROP INDEX idx_files_name_unique", []).unwrap();
     conn.execute(
         "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",

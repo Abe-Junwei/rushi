@@ -20,6 +20,7 @@ pub(super) fn run_incremental(conn: &Connection) -> rusqlite::Result<()> {
     correction_memory::migrate_correction_memory_p2(conn)?;
     edit_log::migrate_edit_log_snapshots(conn)?;
     files::migrate_files_import_provenance(conn)?;
+    files::migrate_files_name_unique(conn)?;
     projects::migrate_projects_metadata(conn)?;
     Ok(())
 }

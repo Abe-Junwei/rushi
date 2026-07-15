@@ -4,14 +4,25 @@ use super::project_storage::{
     relocate_file_storage_between_projects,
 };
 use super::types::{FileDetail, FileSummary};
-use super::utils::{file_detail_from_conn, now_ms, open_db};
+use super::utils::{file_detail_from_conn, now_ms, open_db, resolve_audio_path_under_root};
 use crate::DbState;
-use rusqlite::params;
+use rusqlite::{params, Error};
 use serde::Serialize;
 use std::ops::Deref;
-use std::path::PathBuf;
 use tauri::State;
 use uuid::Uuid;
+
+fn project_exists(conn: &rusqlite::Connection, project_id: &str) -> Result<bool, String> {
+    match conn.query_row(
+        "SELECT 1 FROM projects WHERE id = ?1",
+        params![project_id],
+        |_| Ok(()),
+    ) {
+        Ok(()) => Ok(true),
+        Err(Error::QueryReturnedNoRows) => Ok(false),
+        Err(e) => Err(e.to_string()),
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -144,13 +155,7 @@ pub(crate) fn move_file_to_project_inner(
 ) -> Result<FilePlacementResult, String> {
     let mut conn = open_db(st)?;
 
-    let dest_exists: bool = conn
-        .query_row(
-            "SELECT 1 FROM projects WHERE id = ?1",
-            params![dest_project_id],
-            |_| Ok(true),
-        )
-        .unwrap_or(false);
+    let dest_exists = project_exists(&conn, dest_project_id)?;
     if !dest_exists {
         return Err("目标项目不存在。".into());
     }
@@ -174,7 +179,7 @@ pub(crate) fn move_file_to_project_inner(
     let final_name = unique_file_name(&conn, &name, Some(file_id))?;
     let renamed = final_name != name;
 
-    // Disk first, then one DB transaction for project_id + name + audio_path.
+    // Disk first, then DB transaction; roll back storage if commit fails.
     let new_audio = relocate_file_storage_between_projects(
         st,
         file_id,
@@ -185,29 +190,45 @@ pub(crate) fn move_file_to_project_inner(
     let effective_audio = new_audio.as_deref().or(audio_path.as_deref());
 
     let t = now_ms();
-    let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute(
-        "UPDATE files SET project_id = ?1, name = ?2, audio_path = ?3, updated_at_ms = ?4 WHERE id = ?5",
-        params![
+    let tx_result = (|| -> Result<(), String> {
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE files SET project_id = ?1, name = ?2, audio_path = ?3, updated_at_ms = ?4 WHERE id = ?5",
+            params![
+                dest_project_id,
+                &final_name,
+                effective_audio,
+                t,
+                file_id
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
+            params![t, &source_project_id],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
+            params![t, dest_project_id],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(())
+    })();
+
+    if let Err(e) = tx_result {
+        if let Err(rb) = relocate_file_storage_between_projects(
+            st,
+            file_id,
             dest_project_id,
-            &final_name,
+            &source_project_id,
             effective_audio,
-            t,
-            file_id
-        ],
-    )
-    .map_err(|e| e.to_string())?;
-    tx.execute(
-        "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
-        params![t, &source_project_id],
-    )
-    .map_err(|e| e.to_string())?;
-    tx.execute(
-        "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
-        params![t, dest_project_id],
-    )
-    .map_err(|e| e.to_string())?;
-    tx.commit().map_err(|e| e.to_string())?;
+        ) {
+            return Err(format!("{e}（且存储回滚失败: {rb}）"));
+        }
+        return Err(e);
+    }
 
     Ok(FilePlacementResult {
         file_id: file_id.to_string(),
@@ -232,13 +253,7 @@ pub(crate) fn copy_file_to_project_inner(
 ) -> Result<FilePlacementResult, String> {
     let mut conn = open_db(st)?;
 
-    let dest_exists: bool = conn
-        .query_row(
-            "SELECT 1 FROM projects WHERE id = ?1",
-            params![dest_project_id],
-            |_| Ok(true),
-        )
-        .unwrap_or(false);
+    let dest_exists = project_exists(&conn, dest_project_id)?;
     if !dest_exists {
         return Err("目标项目不存在。".into());
     }
@@ -444,13 +459,8 @@ pub fn reveal_project_in_file_manager(
     project_id: String,
 ) -> Result<(), String> {
     let st = state.deref();
-    let exists: bool = open_db(st)?
-        .query_row(
-            "SELECT 1 FROM projects WHERE id = ?1",
-            params![&project_id],
-            |_| Ok(true),
-        )
-        .unwrap_or(false);
+    let conn = open_db(st)?;
+    let exists = project_exists(&conn, &project_id)?;
     if !exists {
         return Err("项目不存在。".into());
     }
@@ -471,8 +481,7 @@ pub fn reveal_file_in_file_manager(state: State<DbState>, file_id: String) -> Re
         .map_err(|_| "文件不存在。".to_string())?;
 
     if let Some(path) = audio_path.filter(|p| !p.is_empty()) {
-        let pb = PathBuf::from(&path);
-        if pb.is_file() {
+        if let Ok(pb) = resolve_audio_path_under_root(&st.root, &path) {
             return super::export_cmd::reveal_file_selected_in_file_manager(&pb);
         }
     }

@@ -1,27 +1,36 @@
 //! Unique display names across the whole workspace (Finder-style `name (2).ext`).
 
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, Error};
+
+fn row_exists(
+    conn: &Connection,
+    sql: &str,
+    params: &[&dyn rusqlite::ToSql],
+) -> Result<bool, String> {
+    match conn.query_row(sql, params, |_| Ok(())) {
+        Ok(()) => Ok(true),
+        Err(Error::QueryReturnedNoRows) => Ok(false),
+        Err(e) => Err(e.to_string()),
+    }
+}
 
 pub fn name_taken(
     conn: &Connection,
     name: &str,
     exclude_file_id: Option<&str>,
 ) -> Result<bool, String> {
-    let taken: bool = match exclude_file_id {
-        Some(id) => conn
-            .query_row(
-                "SELECT 1 FROM files WHERE name = ?1 AND id != ?2",
-                params![name, id],
-                |_| Ok(true),
-            )
-            .unwrap_or(false),
-        None => conn
-            .query_row("SELECT 1 FROM files WHERE name = ?1", params![name], |_| {
-                Ok(true)
-            })
-            .unwrap_or(false),
-    };
-    Ok(taken)
+    match exclude_file_id {
+        Some(id) => row_exists(
+            conn,
+            "SELECT 1 FROM files WHERE name = ?1 AND id != ?2",
+            &[&name as &dyn rusqlite::ToSql, &id],
+        ),
+        None => row_exists(
+            conn,
+            "SELECT 1 FROM files WHERE name = ?1",
+            &[&name as &dyn rusqlite::ToSql],
+        ),
+    }
 }
 
 /// Split `clip.wav` → (`clip`, `.wav`); `clip` → (`clip`, ``).

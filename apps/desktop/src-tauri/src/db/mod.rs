@@ -251,6 +251,123 @@ mod tests {
     }
 
     #[test]
+    fn migrate_files_name_unique_creates_index_when_no_duplicates() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES ('p', 'P', 0, 0)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES ('f1', 'p', 'unique-name', 'text', 0, 0)",
+            [],
+        )
+        .unwrap();
+
+        let index_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_files_name_unique'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(index_count, 1);
+
+        let result = conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES ('f2', 'p', 'unique-name', 'text', 1, 1)",
+            [],
+        );
+        assert!(result.is_err(), "duplicate name insert should be rejected by unique index");
+    }
+
+    #[test]
+    fn migrate_files_name_unique_dedupes_pre_existing_duplicates_and_logs_edit_log() {
+        use crate::db::migrations::files::migrate_files_name_unique;
+
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            r#"
+            PRAGMA foreign_keys = ON;
+            CREATE TABLE projects (
+                id TEXT PRIMARY KEY NOT NULL,
+                name TEXT NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL
+            );
+            CREATE TABLE files (
+                id TEXT PRIMARY KEY NOT NULL,
+                project_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                file_type TEXT NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL
+            );
+            CREATE TABLE edit_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL,
+                at_ms INTEGER NOT NULL,
+                kind TEXT NOT NULL,
+                detail TEXT NOT NULL
+            );
+            "#,
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES ('p', 'P', 0, 0)",
+            [],
+        )
+        .unwrap();
+        // Two pre-existing rows already share the same name (historical race / bug).
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES ('f1', 'p', 'dup', 'text', 100, 100)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
+             VALUES ('f2', 'p', 'dup', 'text', 200, 200)",
+            [],
+        )
+        .unwrap();
+
+        migrate_files_name_unique(&conn).unwrap();
+
+        let f1_name: String = conn
+            .query_row("SELECT name FROM files WHERE id = 'f1'", [], |r| r.get(0))
+            .unwrap();
+        let f2_name: String = conn
+            .query_row("SELECT name FROM files WHERE id = 'f2'", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(f1_name, "dup", "earliest-created row keeps its original name");
+        assert_eq!(f2_name, "dup (2)", "later row is renamed to a Finder-style suffix");
+
+        let log_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM edit_log WHERE kind = 'migration_dedupe_file_name'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(log_count, 1);
+
+        let index_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_files_name_unique'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(index_count, 1);
+
+        // Idempotent: running again with the index already present is a no-op.
+        migrate_files_name_unique(&conn).unwrap();
+    }
+
+    #[test]
     fn migrate_segments_uid_backfills_two_rows_same_file_before_unique_index() {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch(

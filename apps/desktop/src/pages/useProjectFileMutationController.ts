@@ -206,9 +206,14 @@ export function useProjectFileMutationController(deps: Deps): ProjectFileMutatio
   const runMove = useCallback(
     async (fileId: string, sourceProjectId: string, destProjectId: string) => {
       await deps.closeOpenFileIfNeeded(fileId);
-      const result = await fileApi.moveFileToProject(fileId, destProjectId);
-      notifyPlacement(result, "移动");
-      await refreshAfterPlacement(sourceProjectId, destProjectId);
+      try {
+        const result = await fileApi.moveFileToProject(fileId, destProjectId);
+        notifyPlacement(result, "移动");
+        await refreshAfterPlacement(sourceProjectId, destProjectId);
+      } catch (e) {
+        await refreshAfterPlacement(sourceProjectId, destProjectId);
+        throw e;
+      }
     },
     [deps, refreshAfterPlacement],
   );
