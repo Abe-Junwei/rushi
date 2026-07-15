@@ -5,6 +5,25 @@ import { isTauriRuntime } from "../config/env";
 /** OTA 链起点：v0.1.1 须手动首装 v0.1.2（见 rel-mac-ota-intent）。 */
 export const APP_UPDATE_OTA_BASELINE_VERSION = "0.1.2";
 
+/**
+ * 后台周期性检查间隔（启动检查之后）。
+ * 对齐 VS Code 默认自动模式（启动后 ~30s 起算，之后每 1h）；
+ * 比 Electron `update-electron-app` 默认 10min 更省 CDN（单次只拉 `latest.json`）。
+ */
+export const APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+
+export type AppUpdateBackgroundCheckGate = {
+  dialogOpen: boolean;
+  downloadBusy: boolean;
+};
+
+/** 对话框已开或下载中时跳过后台轮询，避免叠弹与重复 download。 */
+export function shouldRunBackgroundAppUpdateCheck(
+  gate: AppUpdateBackgroundCheckGate,
+): boolean {
+  return !gate.dialogOpen && !gate.downloadBusy;
+}
+
 export type AppUpdateCheckResult =
   | { kind: "unsupported" }
   | { kind: "upToDate" }
