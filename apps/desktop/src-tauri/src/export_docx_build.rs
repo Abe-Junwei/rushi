@@ -89,34 +89,45 @@ pub(crate) fn build_docx_to_path(
     polish_track_author: Option<&str>,
     layout: &DocxExportLayout,
 ) -> Result<(), String> {
-    let file = std::fs::File::create(path).map_err(|e| format!("创建 DOCX 文件失败: {e}"))?;
-    let mut writer = std::io::BufWriter::new(file);
-    build_docx_into_writer(
-        &mut writer,
-        title,
-        export_mode,
-        segments,
-        export_meta_line,
-        appendix_lines,
-        polished_paragraphs,
-        polish_before_joined,
-        polish_corrected_lines,
-        polish_track_changes,
-        polish_track_author,
-        layout,
-    )?;
-    writer.flush().map_err(|e| format!("写入 DOCX 失败: {e}"))?;
-    if should_use_polish_track_changes(
-        polish_track_changes,
-        polished_paragraphs,
-        polish_before_joined,
-        polish_corrected_lines,
-    ) {
-        let bytes = std::fs::read(path).map_err(|e| format!("读取 DOCX 失败: {e}"))?;
-        let patched = inject_track_revisions_flag(&bytes)?;
-        std::fs::write(path, &patched).map_err(|e| format!("写入修订轨 DOCX 失败: {e}"))?;
+    // Write to a sibling `.tmp` file and `rename` into place at the end, so a
+    // crash/interrupt mid-write can never leave a corrupted DOCX at `path`.
+    let tmp_path = path.with_extension("docx.tmp");
+    let result = (|| -> Result<(), String> {
+        let file =
+            std::fs::File::create(&tmp_path).map_err(|e| format!("创建 DOCX 临时文件失败: {e}"))?;
+        let mut writer = std::io::BufWriter::new(file);
+        build_docx_into_writer(
+            &mut writer,
+            title,
+            export_mode,
+            segments,
+            export_meta_line,
+            appendix_lines,
+            polished_paragraphs,
+            polish_before_joined,
+            polish_corrected_lines,
+            polish_track_changes,
+            polish_track_author,
+            layout,
+        )?;
+        writer.flush().map_err(|e| format!("写入 DOCX 失败: {e}"))?;
+        drop(writer);
+        if should_use_polish_track_changes(
+            polish_track_changes,
+            polished_paragraphs,
+            polish_before_joined,
+            polish_corrected_lines,
+        ) {
+            let bytes = std::fs::read(&tmp_path).map_err(|e| format!("读取 DOCX 失败: {e}"))?;
+            let patched = inject_track_revisions_flag(&bytes)?;
+            std::fs::write(&tmp_path, &patched).map_err(|e| format!("写入修订轨 DOCX 失败: {e}"))?;
+        }
+        std::fs::rename(&tmp_path, path).map_err(|e| format!("重命名 DOCX 文件失败: {e}"))
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp_path);
     }
-    Ok(())
+    result
 }
 
 #[cfg(test)]

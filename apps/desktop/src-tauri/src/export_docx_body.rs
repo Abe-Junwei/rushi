@@ -204,7 +204,7 @@ pub(crate) fn segments_have_annotations(segments: &[SegmentDto]) -> bool {
 }
 
 fn annotation_comment_date() -> String {
-    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string()
 }
 
 fn flatten_for_annotation_map(s: &str) -> String {
@@ -306,8 +306,8 @@ fn build_body_paragraph_with_comments(text: &str, notes: &[String], comments: &m
             .highlight(ANNOTATION_HIGHLIGHT)
             .add_text(sanitize_docx_text(text)),
     );
-    for id in ids {
-        para = para.add_comment_end(id);
+    for id in ids.iter().rev() {
+        para = para.add_comment_end(*id);
     }
     para
 }

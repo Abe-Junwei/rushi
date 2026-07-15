@@ -59,6 +59,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> 
   return {
     current,
     currentFileId: "file-1",
+    audioStoragePath: "/tmp/访谈录音.wav",
     getCurrentSegmentsSnapshot: () => segments,
     setError: vi.fn(),
     flushSegmentTextDrafts: vi.fn(),
@@ -193,6 +194,48 @@ describe("useExportController", () => {
         expect.objectContaining({ text: "甲", annotation: "存疑" }),
       ]),
       expect.any(Object),
+    );
+  });
+
+  it("exportDeliveryDocx uses the real audio file name for the DOCX footer, not the file label", async () => {
+    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
+    const deps = makeDeps({ audioStoragePath: "/Users/x/recordings/raw_2026-07-15.wav" });
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportDeliveryDocx({
+        mode: "verbatim",
+        includeRevisionAppendix: false,
+      });
+    });
+
+    expect(exportDocxImpl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "verbatim",
+      expect.any(Array),
+      expect.objectContaining({ recordingFileName: "raw_2026-07-15.wav" }),
+    );
+  });
+
+  it("exportDeliveryDocx falls back to the file label when no audio is attached", async () => {
+    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
+    const deps = makeDeps({ audioStoragePath: null });
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportDeliveryDocx({
+        mode: "verbatim",
+        includeRevisionAppendix: false,
+      });
+    });
+
+    expect(exportDocxImpl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "verbatim",
+      expect.any(Array),
+      expect.objectContaining({ recordingFileName: "访谈录音" }),
     );
   });
 });

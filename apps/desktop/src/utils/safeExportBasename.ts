@@ -35,3 +35,11 @@ export function docxExportBasename(recordingName: string, mode: DocxExportMode):
   const stem = recordingName.trim() || "export";
   return safeExportBasename(`${stem}-${resolveDocxExportModeLabel(mode)}`, "docx");
 }
+
+/** 从音频文件绝对路径中取文件名（含扩展名），兼容 Windows `\` 与 POSIX `/` 分隔符。 */
+export function recordingFileNameFromAudioPath(audioPath: string | null | undefined): string {
+  const trimmed = (audioPath ?? "").trim();
+  if (!trimmed) return "";
+  const parts = trimmed.split(/[\\/]/).filter(Boolean);
+  return parts.length > 0 ? parts[parts.length - 1] : "";
+}

@@ -19,7 +19,11 @@ import {
   resolveExportPolishBlockReason,
   type ExportPolishResult,
 } from "../services/exportDocxPolish";
-import { safeExportBasename, docxExportBasename } from "../utils/safeExportBasename";
+import {
+  safeExportBasename,
+  docxExportBasename,
+  recordingFileNameFromAudioPath,
+} from "../utils/safeExportBasename";
 import { toast } from "../services/ui/toast";
 import { pushExportFailureActivity } from "../services/ui/pushActivity";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
@@ -49,6 +53,8 @@ export interface ExportApi {
 export interface ExportDeps {
   current: ProjectDetail | null;
   currentFileId: string | null;
+  /** 当前打开文件的真实音频路径；用于 DOCX 文末「录音文件名」。 */
+  audioStoragePath: string | null;
   getCurrentSegmentsSnapshot: () => SegmentDto[];
   setError: (msg: string) => void;
   flushSegmentTextDrafts: () => void;
@@ -62,6 +68,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
   const {
     current,
     currentFileId,
+    audioStoragePath,
     getCurrentSegmentsSnapshot,
     setError,
     flushSegmentTextDrafts,
@@ -81,6 +88,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
   const exportDefaultBasename = useCallback(
     (ext: "txt" | "srt" | "docx" | "zip") => safeExportBasename(exportContextLabel(), ext),
     [exportContextLabel],
+  );
+
+  /** DOCX 文末「录音文件名」：优先取当前文件的真实音频文件名，无音频时回退为文件/项目名。 */
+  const recordingFileName = useCallback(
+    () => recordingFileNameFromAudioPath(audioStoragePath) || exportContextLabel(),
+    [audioStoragePath, exportContextLabel],
   );
 
   const reportExportFailure = useCallback(
@@ -231,7 +244,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
           mode: request.mode,
           segments: normalized,
           allSegments,
-          recordingFileName: exportContextLabel(),
+          recordingFileName: recordingFileName(),
           transcriber: current.transcriber,
           includeProjectMetadata: Boolean(request.includeProjectMetadata),
           polishBlockUnitCounts,
@@ -269,6 +282,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       getCurrentSegmentsSnapshot,
       reportExportFailure,
       exportContextLabel,
+      recordingFileName,
       exportDefaultBasename,
       flushSegmentTextDrafts,
       beginBusy,

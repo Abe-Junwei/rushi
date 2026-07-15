@@ -234,6 +234,7 @@ export function useProjectLifecycleWiring(
   const exports = useExportController({
     current,
     currentFileId,
+    audioStoragePath,
     getCurrentSegmentsSnapshot,
     setError,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,

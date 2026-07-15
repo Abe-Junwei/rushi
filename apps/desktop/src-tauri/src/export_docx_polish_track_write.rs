@@ -3,6 +3,9 @@
 use std::io::{Cursor, Read, Write};
 
 use docx_rs::*;
+use quick_xml::events::{BytesStart, Event};
+use quick_xml::name::QName;
+use quick_xml::{Reader, Writer};
 use zip::read::ZipArchive;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
@@ -22,7 +25,7 @@ use super::diff::{
 pub const POLISH_TRACK_AUTHOR: &str = "如是我闻";
 
 fn polish_revision_date() -> String {
-    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string()
 }
 
 fn track_body_run() -> Run {
@@ -153,8 +156,8 @@ fn paragraph_from_diff_pieces_with_comments(
             DiffPiece::Same(_) => {}
         }
     }
-    for id in comment_ids {
-        para = para.add_comment_end(id);
+    for id in comment_ids.iter().rev() {
+        para = para.add_comment_end(*id);
     }
     para
 }
@@ -212,6 +215,7 @@ fn accumulate_line_diffs_into_paragraphs(
 }
 
 /// 修订轨：逐行对比；展示用 `display_paragraphs`。`corrected_lines` 行数须与 `before_joined` 拆行一致。
+#[allow(clippy::too_many_arguments)]
 pub fn append_polished_with_track_changes(
     mut doc: Docx,
     annotation_comments: &mut DocxAnnotationComments,
@@ -353,39 +357,82 @@ pub fn append_polished_with_track_changes(
     }
     doc
 }
+fn track_revisions_element() -> BytesStart<'static> {
+    let mut el = BytesStart::new("w:trackRevisions");
+    el.push_attribute(("w:val", "true"));
+    el
+}
+
+fn revision_view_element() -> BytesStart<'static> {
+    let mut el = BytesStart::new("w:revisionView");
+    el.push_attribute(("w:markup", "true"));
+    el.push_attribute(("w:insDel", "true"));
+    el.push_attribute(("w:formatting", "true"));
+    el
+}
+
+/// Programmatically toggles `<w:trackRevisions>`/injects `<w:revisionView>` via
+/// an XML event stream instead of string patching, so it cannot be broken by
+/// attribute-order or self-closing-tag variance from `docx-rs`.
 fn patch_settings_track_and_markup(xml: Vec<u8>) -> Result<Vec<u8>, String> {
-    let mut s = String::from_utf8(xml).map_err(|e| format!("settings.xml 非 UTF-8: {e}"))?;
-    let Some(idx) = s.rfind("</w:settings>") else {
-        return Err("settings.xml 缺少 </w:settings>".into());
-    };
-    if s.contains("<w:trackRevisions") {
-        s = s
-            .replace(
-                "<w:trackRevisions w:val=\"false\"/>",
-                "<w:trackRevisions w:val=\"true\"/>",
-            )
-            .replace(
-                "<w:trackRevisions w:val=\"false\"></w:trackRevisions>",
-                "<w:trackRevisions w:val=\"true\"/>",
-            );
+    let mut reader = Reader::from_reader(xml.as_slice());
+    let mut writer = Writer::new(Vec::with_capacity(xml.len() + 128));
+    let mut seen_track_revisions = false;
+    let mut seen_revision_view = false;
+    let mut buf = Vec::new();
+
+    loop {
+        let event = reader
+            .read_event_into(&mut buf)
+            .map_err(|e| format!("解析 settings.xml 失败: {e}"))?;
+        match event {
+            Event::Eof => break,
+            Event::Empty(e) if e.name() == QName(b"w:trackRevisions") => {
+                seen_track_revisions = true;
+                writer
+                    .write_event(Event::Empty(track_revisions_element()))
+                    .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+            }
+            Event::Start(e) if e.name() == QName(b"w:trackRevisions") => {
+                seen_track_revisions = true;
+                reader
+                    .read_to_end_into(e.name(), &mut Vec::new())
+                    .map_err(|e| format!("解析 settings.xml 失败: {e}"))?;
+                writer
+                    .write_event(Event::Empty(track_revisions_element()))
+                    .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+            }
+            Event::Empty(e) if e.name() == QName(b"w:revisionView") => {
+                seen_revision_view = true;
+                writer
+                    .write_event(Event::Empty(e.into_owned()))
+                    .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+            }
+            Event::End(e) if e.name() == QName(b"w:settings") => {
+                if !seen_track_revisions {
+                    writer
+                        .write_event(Event::Empty(track_revisions_element()))
+                        .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+                }
+                if !seen_revision_view {
+                    writer
+                        .write_event(Event::Empty(revision_view_element()))
+                        .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+                }
+                writer
+                    .write_event(Event::End(e.into_owned()))
+                    .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+            }
+            other => {
+                writer
+                    .write_event(other.into_owned())
+                    .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
+            }
+        }
+        buf.clear();
     }
-    let mut inject = String::new();
-    if !s.contains("<w:trackRevisions") {
-        inject.push_str("<w:trackRevisions w:val=\"true\"/>");
-    }
-    if !s.contains("revisionView") {
-        inject.push_str(
-            "<w:revisionView w:markup=\"true\" w:insDel=\"true\" w:formatting=\"true\"/>",
-        );
-    }
-    if inject.is_empty() {
-        return Ok(s.into_bytes());
-    }
-    let mut out = String::with_capacity(s.len() + inject.len());
-    out.push_str(&s[..idx]);
-    out.push_str(&inject);
-    out.push_str(&s[idx..]);
-    Ok(out.into_bytes())
+
+    Ok(writer.into_inner())
 }
 
 pub fn inject_track_revisions_flag(bytes: &[u8]) -> Result<Vec<u8>, String> {
@@ -434,5 +481,35 @@ mod tests {
         let paras = vec!["你好，世界。".into()];
         let buckets = accumulate_line_diffs_into_paragraphs(&before, &after, &paras);
         assert!(pieces_have_markup(&buckets[0]));
+    }
+
+    #[test]
+    fn patch_settings_injects_when_absent() {
+        let xml = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="ns"><w:zoom w:percent="100"/></w:settings>"#.to_vec();
+        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
+        let s = String::from_utf8(out).unwrap();
+        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
+        assert!(s.contains("w:revisionView"));
+        assert!(s.contains(r#"w:markup="true""#));
+        assert!(s.ends_with("</w:settings>"));
+    }
+
+    #[test]
+    fn patch_settings_flips_existing_false_flag() {
+        let xml = br#"<w:settings xmlns:w="ns"><w:trackRevisions w:val="false"/></w:settings>"#.to_vec();
+        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
+        let s = String::from_utf8(out).unwrap();
+        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
+        assert!(!s.contains(r#"w:val="false""#));
+        assert_eq!(s.matches("trackRevisions").count(), 1);
+    }
+
+    #[test]
+    fn patch_settings_does_not_duplicate_existing_revision_view() {
+        let xml = br#"<w:settings xmlns:w="ns"><w:revisionView w:markup="false"/></w:settings>"#.to_vec();
+        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
+        let s = String::from_utf8(out).unwrap();
+        assert_eq!(s.matches("w:revisionView").count(), 1);
+        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
     }
 }

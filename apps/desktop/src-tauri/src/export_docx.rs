@@ -899,6 +899,76 @@ mod tests {
         assert!(doc_xml.contains("已截断"));
     }
 
+    #[test]
+    fn build_docx_to_path_writes_atomically_and_cleans_tmp_file() {
+        use super::export_docx_build::build_docx_to_path;
+
+        let path = std::env::temp_dir().join(format!(
+            "rushi-test-atomic-{}-{:?}.docx",
+            std::process::id(),
+            std::time::SystemTime::now()
+        ));
+        let _ = std::fs::remove_file(&path);
+
+        build_docx_to_path(
+            &path,
+            "原子写入测试",
+            "verbatim",
+            &[seg("正文。", false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            None,
+            &default_layout(),
+        )
+        .expect("build docx to path should succeed");
+
+        assert!(path.is_file(), "target docx should exist after success");
+        let bytes = std::fs::read(&path).expect("read produced docx");
+        assert_eq!(&bytes[0..2], b"PK");
+
+        let tmp_path = path.with_extension("docx.tmp");
+        assert!(!tmp_path.exists(), "tmp file must be renamed away on success");
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn build_docx_to_path_leaves_no_target_when_write_fails() {
+        use super::export_docx_build::build_docx_to_path;
+
+        // Parent directory intentionally does not exist, so creating the `.tmp`
+        // file fails before anything is ever written or renamed to `path`.
+        let dir = std::env::temp_dir().join(format!(
+            "rushi-test-missing-dir-{}-{:?}",
+            std::process::id(),
+            std::time::SystemTime::now()
+        ));
+        let path = dir.join("out.docx");
+
+        let result = build_docx_to_path(
+            &path,
+            "失败测试",
+            "verbatim",
+            &[seg("正文。", false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            None,
+            &default_layout(),
+        );
+
+        assert!(result.is_err());
+        assert!(!path.exists());
+        assert!(!path.with_extension("docx.tmp").exists());
+    }
+
     /// R9 strict: export clean DOCX from live app DB (`RUSHI_APP_DB`, optional `RUSHI_STRICT_DOCX_OUT`).
     #[test]
     fn r9_strict_export_docx_from_app_db() {

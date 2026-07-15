@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { safeExportBasename, docxExportBasename } from "./safeExportBasename";
+import {
+  safeExportBasename,
+  docxExportBasename,
+  recordingFileNameFromAudioPath,
+} from "./safeExportBasename";
 
 describe("safeExportBasename", () => {
   it("保留正常中文/英文文件名", () => {
@@ -49,5 +53,25 @@ describe("docxExportBasename", () => {
 
   it("sanitizes illegal characters in the combined stem", () => {
     expect(docxExportBasename("a/b", "verbatim")).toBe("a_b-逐字稿.docx");
+  });
+});
+
+describe("recordingFileNameFromAudioPath", () => {
+  it("extracts the basename from a POSIX path", () => {
+    expect(recordingFileNameFromAudioPath("/Users/x/recordings/访谈录音.wav")).toBe(
+      "访谈录音.wav",
+    );
+  });
+
+  it("extracts the basename from a Windows path", () => {
+    expect(recordingFileNameFromAudioPath("C:\\Users\\x\\recordings\\raw.wav")).toBe(
+      "raw.wav",
+    );
+  });
+
+  it("returns empty string for null/undefined/blank input", () => {
+    expect(recordingFileNameFromAudioPath(null)).toBe("");
+    expect(recordingFileNameFromAudioPath(undefined)).toBe("");
+    expect(recordingFileNameFromAudioPath("   ")).toBe("");
   });
 });
