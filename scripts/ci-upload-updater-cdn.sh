@@ -8,12 +8,14 @@ usage() {
 Usage:
   $0 --tag <vX.Y.Z> --mode macos-ota [--bundle-root PATH]
   $0 --tag <vX.Y.Z> --mode macos-dmg [--bundle-root PATH]
-  $0 --tag <vX.Y.Z> --mode windows [--bundle-root PATH]
+  $0 --tag <vX.Y.Z> --mode manifest --manifest-path PATH
 
 Modes:
-  macos-ota  app.tar.gz + .sig + latest.json → CDN root + /<tag>/
-  macos-dmg  *.dmg + *.sha256 → /<tag>/
-  windows    windows-portable-x64.zip(+sha) and optional NSIS → /<tag>/
+  macos-ota     app.tar.gz + .sig → CDN /<tag>/ (manifest merged separately)
+  macos-dmg     *.dmg + *.sha256 → /<tag>/
+  windows       windows-portable-x64.zip(+sha) and optional NSIS → /<tag>/
+  windows-ota   rushi-desktop-setup.exe + .sig → CDN /<tag>/
+  manifest      latest.json → CDN root + /<tag>/
 EOF
   exit 1
 }
@@ -23,6 +25,7 @@ MODE=""
 BUNDLE_ROOT="apps/desktop/src-tauri/target/release/bundle"
 CDN_BASE="${RUSHI_UPDATER_CDN_BASE:-https://updates.rushi.app}"
 BUCKET="${R2_BUCKET:-rushi-updates}"
+MANIFEST_PATH=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -44,6 +47,10 @@ while [ $# -gt 0 ]; do
       ;;
     --bucket)
       BUCKET="${2:-}"
+      shift 2
+      ;;
+    --manifest-path)
+      MANIFEST_PATH="${2:-}"
       shift 2
       ;;
     -h | --help)
@@ -99,12 +106,8 @@ case "$MODE" in
     MACOS_DIR="${BUNDLE_ROOT}/macos"
     TAR_GZ="${MACOS_DIR}/app.tar.gz"
     SIG_FILE="${TAR_GZ}.sig"
-    LATEST_JSON="${MACOS_DIR}/latest.json"
     upload_file "$TAR_GZ" "${TAG}/app.tar.gz" "application/gzip"
     upload_file "$SIG_FILE" "${TAG}/app.tar.gz.sig" "text/plain"
-    upload_file "$LATEST_JSON" "latest.json" "application/json"
-    upload_file "$LATEST_JSON" "${TAG}/latest.json" "application/json"
-    echo "CDN latest.json: ${CDN_BASE}/latest.json"
     echo "CDN package:     ${CDN_BASE}/${TAG}/app.tar.gz"
     ;;
   macos-dmg)
@@ -134,20 +137,46 @@ case "$MODE" in
       fi
     fi
     shopt -s nullglob
-    nsis_files=("${BUNDLE_ROOT}/nsis/"*-setup.exe)
-    for exe in "${nsis_files[@]}"; do
-      base="$(basename "$exe")"
-      upload_file "$exe" "${TAG}/${base}" "application/vnd.microsoft.portable-executable"
+    if [ -f "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe" ]; then
+      upload_file "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe" "${TAG}/rushi-desktop-setup.exe" "application/vnd.microsoft.portable-executable"
       uploaded=1
-      if [ -f "${exe}.sha256" ]; then
-        upload_file "${exe}.sha256" "${TAG}/${base}.sha256" "text/plain"
+      if [ -f "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe.sha256" ]; then
+        upload_file "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe.sha256" "${TAG}/rushi-desktop-setup.exe.sha256" "text/plain"
       fi
-    done
+    else
+      nsis_files=("${BUNDLE_ROOT}/nsis/"*-setup.exe)
+      for exe in "${nsis_files[@]}"; do
+        base="$(basename "$exe")"
+        upload_file "$exe" "${TAG}/${base}" "application/vnd.microsoft.portable-executable"
+        uploaded=1
+        if [ -f "${exe}.sha256" ]; then
+          upload_file "${exe}.sha256" "${TAG}/${base}.sha256" "text/plain"
+        fi
+      done
+    fi
     if [ "$uploaded" -eq 0 ]; then
       echo "No Windows release files found to upload." >&2
       exit 1
     fi
     echo "CDN Windows: ${CDN_BASE}/${TAG}/"
+    ;;
+  windows-ota)
+    NSIS_DIR="${BUNDLE_ROOT}/nsis"
+    SETUP_EXE="${NSIS_DIR}/rushi-desktop-setup.exe"
+    SIG_FILE="${SETUP_EXE}.sig"
+    upload_file "$SETUP_EXE" "${TAG}/rushi-desktop-setup.exe" "application/vnd.microsoft.portable-executable"
+    upload_file "$SIG_FILE" "${TAG}/rushi-desktop-setup.exe.sig" "text/plain"
+    echo "CDN Windows OTA: ${CDN_BASE}/${TAG}/rushi-desktop-setup.exe"
+    ;;
+  manifest)
+    MANIFEST="${MANIFEST_PATH:-}"
+    if [ -z "$MANIFEST" ] || [ ! -f "$MANIFEST" ]; then
+      echo "Missing --manifest-path for mode=manifest" >&2
+      exit 1
+    fi
+    upload_file "$MANIFEST" "latest.json" "application/json"
+    upload_file "$MANIFEST" "${TAG}/latest.json" "application/json"
+    echo "CDN latest.json: ${CDN_BASE}/latest.json"
     ;;
   *)
     echo "Unknown mode: $MODE" >&2

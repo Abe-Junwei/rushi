@@ -1,4 +1,4 @@
-# Local Windows release build — portable zip (+ optional NSIS). CI uploads on tag push.
+# Local Windows release build — NSIS installer (OTA) + portable zip. CI uploads on tag push.
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
@@ -52,26 +52,20 @@ if ($env:RUSHI_SKIP_BUNDLED_MODELS_STAGE -ne "1") {
   Write-Host "SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE=1"
 }
 
-Write-Host "== Tauri build (Windows exe) =="
-Push-Location (Join-Path $Root "apps\desktop")
-try {
-  Invoke-Npm @("run", "tauri", "--", "build", "--no-bundle")
-} finally {
-  Pop-Location
-}
-
-Write-Host "== Tauri NSIS (optional) =="
+Write-Host "== Tauri build (NSIS installer + updater artifacts) =="
 Push-Location (Join-Path $Root "apps\desktop")
 try {
   Invoke-Npm @("run", "tauri", "--", "build", "--bundles", "nsis")
-} catch {
-  Write-Warning "NSIS bundle failed or skipped: $_"
 } finally {
   Pop-Location
 }
 
-Write-Host "== portable zip =="
 $TauriRoot = Join-Path $Root "apps\desktop\src-tauri"
+$BundleRoot = Join-Path $TauriRoot "target\release\bundle"
+Write-Host "== normalize NSIS installer name =="
+& bash (Join-Path $Root "scripts/ci-normalize-windows-nsis-name.sh") --bundle-root (Join-Path $Root "apps/desktop/src-tauri/target/release/bundle")
+
+Write-Host "== portable zip =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
 if (-not (Test-Path -LiteralPath $Exe)) { throw "Missing $Exe" }
 
@@ -89,17 +83,17 @@ $HashPath = "$Zip.sha256"
 (Get-FileHash -Algorithm SHA256 -Path $Zip).Hash.ToLower() | Set-Content -Path $HashPath -NoNewline
 Add-Content -Path $HashPath -Value "  windows-portable-x64.zip"
 
-$NsisGlob = Join-Path $TauriRoot "target\release\bundle\nsis\*-setup.exe"
-$NsisFiles = Get-ChildItem -Path $NsisGlob -ErrorAction SilentlyContinue
-foreach ($nsis in $NsisFiles) {
-  $nsisSha = "$($nsis.FullName).sha256"
-  (Get-FileHash -Algorithm SHA256 -Path $nsis.FullName).Hash.ToLower() | Set-Content -Path $nsisSha -NoNewline
-  Add-Content -Path $nsisSha -Value "  $($nsis.Name)"
+$NsisSetup = Join-Path $BundleRoot "nsis\rushi-desktop-setup.exe"
+if (Test-Path -LiteralPath $NsisSetup) {
+  $nsisSha = "$NsisSetup.sha256"
+  (Get-FileHash -Algorithm SHA256 -Path $NsisSetup).Hash.ToLower() | Set-Content -Path $nsisSha -NoNewline
+  Add-Content -Path $nsisSha -Value "  rushi-desktop-setup.exe"
 }
 
 Write-Host ""
 Write-Host "OK: Windows release build finished."
 Get-Item $Zip
-if ($NsisFiles) { $NsisFiles | ForEach-Object { Get-Item $_.FullName } }
+if (Test-Path -LiteralPath $NsisSetup) { Get-Item $NsisSetup }
 Write-Host "Portable: $Zip"
 Write-Host "SHA256:   $HashPath"
+if (Test-Path -LiteralPath $NsisSetup) { Write-Host "NSIS OTA: $NsisSetup" }

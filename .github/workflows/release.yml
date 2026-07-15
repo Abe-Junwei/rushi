@@ -5,7 +5,8 @@
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
-#   Tauri generates .app.tar.gz + .sig; CI uploads latest.json + packages to Cloudflare R2.
+#   Tauri generates .app.tar.gz + .sig (mac) and rushi-desktop-setup.exe + .sig (win);
+#   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the installer.
 # No runtime manifest / OTA sidecar artifacts are produced.
 #
@@ -182,8 +183,8 @@ jobs:
           fi
           echo "Renamed $(basename "$TAR") -> app.tar.gz"
 
-      - name: Generate updater latest.json (macOS release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      - name: Generate updater fragment (macOS release)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: |
           bash scripts/ci-generate-updater-latest-json.sh \
             --tag "${{ github.ref_name }}" \
@@ -202,7 +203,7 @@ jobs:
             ${{ env.BUNDLE_ROOT }}/dmg/*.sha256
             ${{ env.BUNDLE_ROOT }}/macos/app.tar.gz
             ${{ env.BUNDLE_ROOT }}/macos/app.tar.gz.sig
-            ${{ env.BUNDLE_ROOT }}/macos/latest.json
+            ${{ env.BUNDLE_ROOT }}/macos/updater-fragment.json
           if-no-files-found: error
           retention-days: 14
 
@@ -339,23 +340,30 @@ jobs:
         run: npm run asr:stage-bundled-models
         timeout-minutes: 180
 
-      - name: Tauri build binary (Windows)
-        working-directory: apps/desktop
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm run tauri -- build --no-bundle
-        timeout-minutes: 90
-
-      - name: Tauri build (NSIS installer, optional)
-        id: windows_nsis
-        continue-on-error: true
+      - name: Tauri build (NSIS installer + updater artifacts)
         working-directory: apps/desktop
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --bundles nsis
-        timeout-minutes: 60
+        timeout-minutes: 90
+
+      - name: Normalize Windows NSIS installer name
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          bash scripts/ci-normalize-windows-nsis-name.sh \
+            --bundle-root "${{ env.BUNDLE_ROOT }}"
+
+      - name: Generate updater fragment (Windows release)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          bash scripts/ci-generate-updater-latest-json.sh \
+            --tag "${{ github.ref_name }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --platform windows-x86_64
 
       - name: Detect Windows exe signing secret
         id: win_exe_sign
@@ -421,7 +429,7 @@ jobs:
         run: |
           set -euo pipefail
           shopt -s nullglob
-          for f in windows-portable-x64.zip "${{ env.BUNDLE_ROOT }}/nsis/"*-setup.exe; do
+          for f in windows-portable-x64.zip "${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe"; do
             if [ -f "$f" ]; then
               sha256sum "$f" > "$f.sha256"
             fi
@@ -435,9 +443,11 @@ jobs:
           path: |
             windows-portable-x64.zip
             windows-portable-x64.zip.sha256
-            ${{ env.BUNDLE_ROOT }}/nsis/*-setup.exe
-            ${{ env.BUNDLE_ROOT }}/nsis/*.sha256
-          if-no-files-found: warn
+            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe
+            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sha256
+            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig
+            ${{ env.BUNDLE_ROOT }}/nsis/updater-fragment.json
+          if-no-files-found: error
           retention-days: 14
 
       - name: Upload Windows bundles to Cloudflare R2 CDN
@@ -460,6 +470,12 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows-ota \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
 
   verify-cdn-release:
     needs: [tauri-macos, tauri-windows]
@@ -467,6 +483,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: macos-release-bundles
+          path: artifacts/macos
+
+      - uses: actions/download-artifact@v6
+        with:
+          name: windows-release-bundles
+          path: artifacts/windows
+
+      - name: Merge and upload OTA manifest
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
+            exit 1
+          fi
+          sudo apt-get update -qq && sudo apt-get install -y -qq jq
+          python -m pip install --upgrade awscli
+          MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1)"
+          WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1)"
+          if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then
+            echo "::error::Missing updater fragments in workflow artifacts."
+            find artifacts -type f
+            exit 1
+          fi
+          bash scripts/ci-merge-updater-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --fragment "$MAC_FRAGMENT" \
+            --fragment "$WIN_FRAGMENT" \
+            --out dist/updater/latest.json \
+            --upload \
+            --bucket "${R2_BUCKET:-rushi-updates}"
 
       - name: Verify OTA manifest on CDN
         run: |

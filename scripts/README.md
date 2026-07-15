@@ -50,8 +50,10 @@
 | `stage-release-artifacts.sh` | 构建后复制 DMG、根目录 `.app` symlink |
 | `resolve-bundled-sidecar-stamp-in-app.sh` | 解析已安装包内 sidecar stamp |
 | `resolve-bundled-tool-in-app.sh` | 解析包内 bundled 工具路径 |
-| `ci-generate-updater-latest-json.sh` | Release CI 生成 macOS OTA `latest.json` |
-| `ci-verify-updater-manifest.sh` | Release CI 校验 OTA manifest / 签名包 |
+| `ci-generate-updater-latest-json.sh` | Release CI 生成单平台 updater fragment |
+| `ci-merge-updater-manifest.sh` | 合并 mac + win fragment → `latest.json` |
+| `ci-normalize-windows-nsis-name.sh` | NSIS 安装包稳定文件名（OTA/CDN） |
+| `ci-verify-updater-manifest.sh` | Release CI 校验双平台 OTA manifest + CDN 包 |
 | `sign-windows-sidecar.ps1` | Windows 侧车签名 |
 
 ### ASR 侧车 / runtime

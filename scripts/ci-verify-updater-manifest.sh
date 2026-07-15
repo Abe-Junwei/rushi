@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Verify CDN-hosted OTA manifest + package (no GitHub Release assets required).
+# Verify CDN-hosted OTA manifest + packages for macOS and Windows.
 set -euo pipefail
 
 TAG=""
@@ -41,7 +41,6 @@ fi
 CDN_BASE="${CDN_BASE%/}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
-EXPECTED_URL="${CDN_BASE}/${TAG}/app.tar.gz"
 LATEST_URL="${CDN_BASE}/latest.json"
 
 http_code() {
@@ -50,20 +49,13 @@ http_code() {
 }
 
 HTTP_LATEST="$(http_code "$LATEST_URL")"
-HTTP_TAR="$(http_code "$EXPECTED_URL")"
-
 if [ "$HTTP_LATEST" != "200" ]; then
   echo "CDN latest.json not reachable (HTTP ${HTTP_LATEST}): ${LATEST_URL}" >&2
-  exit 1
-fi
-if [ "$HTTP_TAR" != "200" ]; then
-  echo "CDN app.tar.gz not reachable (HTTP ${HTTP_TAR}): ${EXPECTED_URL}" >&2
   exit 1
 fi
 
 JSON="$(curl -fsSL "$LATEST_URL")"
 MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
-TAR_URL="$(echo "$JSON" | jq -r '.platforms["darwin-aarch64"].url // empty')"
 
 if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
   echo "latest.json missing version field." >&2
@@ -77,11 +69,37 @@ if [ "$MANIFEST_VERSION" != "$APP_VERSION" ]; then
   exit 1
 fi
 
-if [ "$TAR_URL" != "$EXPECTED_URL" ]; then
-  echo "latest.json darwin-aarch64.url must be the CDN package URL." >&2
-  echo "  expected: ${EXPECTED_URL}" >&2
-  echo "  got:      ${TAR_URL}" >&2
-  exit 1
-fi
+verify_platform() {
+  local platform="$1"
+  local expected_bundle="$2"
+  local url signature http_pkg
 
-echo "OTA CDN OK: version=${MANIFEST_VERSION} url=${EXPECTED_URL}"
+  url="$(echo "$JSON" | jq -r --arg p "$platform" '.platforms[$p].url // empty')"
+  signature="$(echo "$JSON" | jq -r --arg p "$platform" '.platforms[$p].signature // empty')"
+
+  if [ -z "$url" ] || [ -z "$signature" ]; then
+    echo "latest.json missing platforms.${platform}.url or .signature" >&2
+    exit 1
+  fi
+
+  local expected_url="${CDN_BASE}/${TAG}/${expected_bundle}"
+  if [ "$url" != "$expected_url" ]; then
+    echo "latest.json ${platform}.url must be the CDN package URL." >&2
+    echo "  expected: ${expected_url}" >&2
+    echo "  got:      ${url}" >&2
+    exit 1
+  fi
+
+  http_pkg="$(http_code "$url")"
+  if [ "$http_pkg" != "200" ]; then
+    echo "CDN package not reachable for ${platform} (HTTP ${http_pkg}): ${url}" >&2
+    exit 1
+  fi
+
+  echo "OTA CDN OK [${platform}]: url=${url}"
+}
+
+verify_platform "darwin-aarch64" "app.tar.gz"
+verify_platform "windows-x86_64" "rushi-desktop-setup.exe"
+
+echo "OTA CDN OK: version=${MANIFEST_VERSION}"

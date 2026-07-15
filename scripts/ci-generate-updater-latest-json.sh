@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Generate Tauri static updater manifest (latest.json) for R2 CDN (+ optional GitHub mirror).
-# Requires: jq, macOS app.tar.gz + app.tar.gz.sig (normalized name).
+# Generate a per-platform updater manifest fragment for R2 CDN (merged at release verify).
+# Requires: jq.
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 --tag <vX.Y.Z> [--cdn-base URL] [--bundle-root PATH] [--platform darwin-aarch64]" >&2
+  echo "Usage: $0 --tag <vX.Y.Z> [--cdn-base URL] [--bundle-root PATH] [--platform darwin-aarch64|windows-x86_64] [--out PATH]" >&2
   exit 1
 }
 
@@ -12,7 +12,7 @@ TAG=""
 CDN_BASE="${RUSHI_UPDATER_CDN_BASE:-https://updates.rushi.app}"
 BUNDLE_ROOT="apps/desktop/src-tauri/target/release/bundle"
 PLATFORM="darwin-aarch64"
-UPDATER_BUNDLE_NAME="app.tar.gz"
+OUT=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -30,6 +30,10 @@ while [ $# -gt 0 ]; do
       ;;
     --platform)
       PLATFORM="${2:-}"
+      shift 2
+      ;;
+    --out)
+      OUT="${2:-}"
       shift 2
       ;;
     # Backward-compatible no-op (GitHub repo no longer used for package URL).
@@ -53,29 +57,43 @@ fi
 CDN_BASE="${CDN_BASE%/}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-# OTA compares against tauri.conf.json / package.json — not git tag suffix (e.g. v0.1.8.3 tag → app 0.1.8).
+# OTA compares against tauri.conf.json / package.json — not git tag suffix.
 VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
 
-MACOS_DIR="${BUNDLE_ROOT}/macos"
-TAR_GZ="${MACOS_DIR}/${UPDATER_BUNDLE_NAME}"
-SIG_FILE="${TAR_GZ}.sig"
+case "$PLATFORM" in
+  darwin-aarch64)
+    ARTIFACT_DIR="${BUNDLE_ROOT}/macos"
+    BUNDLE_FILE="${ARTIFACT_DIR}/app.tar.gz"
+    CDN_BUNDLE_NAME="app.tar.gz"
+    ;;
+  windows-x86_64)
+    ARTIFACT_DIR="${BUNDLE_ROOT}/nsis"
+    BUNDLE_FILE="${ARTIFACT_DIR}/rushi-desktop-setup.exe"
+    CDN_BUNDLE_NAME="rushi-desktop-setup.exe"
+    ;;
+  *)
+    echo "Unsupported platform: ${PLATFORM}" >&2
+    exit 1
+    ;;
+esac
 
-if [ ! -f "$TAR_GZ" ] || [ ! -f "$SIG_FILE" ]; then
-  echo "Missing normalized updater bundle:" >&2
-  echo "  expected: ${TAR_GZ}" >&2
+SIG_FILE="${BUNDLE_FILE}.sig"
+
+if [ ! -f "$BUNDLE_FILE" ] || [ ! -f "$SIG_FILE" ]; then
+  echo "Missing updater bundle for ${PLATFORM}:" >&2
+  echo "  expected: ${BUNDLE_FILE}" >&2
   echo "  expected: ${SIG_FILE}" >&2
-  ls -la "$MACOS_DIR" 2>/dev/null || true
+  ls -la "$ARTIFACT_DIR" 2>/dev/null || true
   exit 1
 fi
 
-# Stable layout on updates.rushi.app:
-#   /latest.json
-#   /<tag>/app.tar.gz
-#   /<tag>/app.tar.gz.sig
-URL="${CDN_BASE}/${TAG}/${UPDATER_BUNDLE_NAME}"
+if [ -z "$OUT" ]; then
+  OUT="${ARTIFACT_DIR}/updater-fragment.json"
+fi
+
+URL="${CDN_BASE}/${TAG}/${CDN_BUNDLE_NAME}"
 PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 SIGNATURE="$(tr -d '\n' < "$SIG_FILE")"
-OUT="${MACOS_DIR}/latest.json"
 
 jq -n \
   --arg version "$VERSION" \
@@ -97,6 +115,6 @@ jq -n \
   }' > "$OUT"
 
 echo "Wrote ${OUT}"
-echo "Updater bundle: ${TAR_GZ}"
+echo "Platform: ${PLATFORM}"
+echo "Updater bundle: ${BUNDLE_FILE}"
 echo "Manifest package URL: ${URL}"
-echo "Client endpoint should fetch: ${CDN_BASE}/latest.json"
