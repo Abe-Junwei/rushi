@@ -11,9 +11,15 @@ export const FLOATING_PANEL_DIALOG_FOOTER_CLASS =
   "-mx-5 mt-3 flex shrink-0 flex-wrap items-center gap-2 self-stretch border-t border-notion-divider px-5 pt-3 pb-5";
 
 const SCROLL_FILL_CLASS = "floating-panel-body-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden";
-/** autoFit：列表随内容增高，封顶后区内滚，勿 flex-1 撑满 maxHeight。 */
+/**
+ * autoFit：列表随内容增高；壳层顶到 max-height 时可 shrink，以免顶掉页脚。
+ * max-h 为舒适可见上限；勿用 shrink-0（会导致长列表把 footer 裁切）。
+ */
 const SCROLL_AUTO_FIT_CLASS =
-  "floating-panel-body-scroll min-h-0 max-h-[min(28rem,50vh)] shrink-0 overflow-y-auto overflow-x-hidden";
+  "floating-panel-body-scroll min-h-0 max-h-[min(28rem,50vh)] grow shrink overflow-y-auto overflow-x-hidden";
+/** autoFit + 语段预览列表：更高可见区，仍封顶内滚；可 shrink 保页脚。 */
+const SCROLL_AUTO_FIT_GENEROUS_CLASS =
+  "floating-panel-body-scroll min-h-0 max-h-[min(40rem,65vh)] grow shrink overflow-y-auto overflow-x-hidden";
 const FOOTER_BASE = FLOATING_PANEL_DIALOG_FOOTER_CLASS;
 
 type RootProps = HTMLAttributes<HTMLDivElement> & {
@@ -38,7 +44,7 @@ export function FloatingPanelDialogRoot({
   const paddingClass = hasFooter
     ? FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS
     : `${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS} ${FLOATING_PANEL_DIALOG_BODY_SOLO_BOTTOM_CLASS}`;
-  const heightClass = fitToContent ? "h-auto min-h-0" : "h-full min-h-0";
+  const heightClass = fitToContent ? "h-auto max-h-full min-h-0" : "h-full min-h-0";
   return (
     <div
       className={["flex w-full flex-col overflow-hidden", heightClass, paddingClass, className]
@@ -51,11 +57,19 @@ export function FloatingPanelDialogRoot({
   );
 }
 
+type AutoFitListCap = "standard" | "generous";
+
+function resolveAutoFitScrollClass(cap: AutoFitListCap): string {
+  return cap === "generous" ? SCROLL_AUTO_FIT_GENEROUS_CLASS : SCROLL_AUTO_FIT_CLASS;
+}
+
 type RegionProps = {
   children: ReactNode;
   className?: string;
-  /** autoFit 列表：勿 flex-1 撑满壳层。 */
+  /** autoFit 列表：可 grow/shrink；壳层顶满时收缩保页脚，勿用 shrink-0。 */
   fitToContent?: boolean;
+  /** fitToContent 时列表可见高度上限；generous 用于改稿/纠错预览。 */
+  autoFitListCap?: AutoFitListCap;
 };
 
 /** 固定不滚动区（说明、摘要、提示条、表单输入等）。 */
@@ -68,14 +82,24 @@ export function FloatingPanelDialogHeader({ children, className }: RegionProps) 
 }
 
 /** 唯一可滚动中间区（语段列表、长表单等）：占剩余高度，缩放面板时仅本区内滚。 */
-export function FloatingPanelDialogScroll({ children, className, fitToContent = false }: RegionProps) {
-  const scrollClass = fitToContent ? SCROLL_AUTO_FIT_CLASS : SCROLL_FILL_CLASS;
+export function FloatingPanelDialogScroll({
+  children,
+  className,
+  fitToContent = false,
+  autoFitListCap = "standard",
+}: RegionProps) {
+  const scrollClass = fitToContent ? resolveAutoFitScrollClass(autoFitListCap) : SCROLL_FILL_CLASS;
   return <div className={[scrollClass, className].filter(Boolean).join(" ")}>{children}</div>;
 }
 
 /** 列表容器：占剩余高度并在内部滚动；列表（FloatingPanelSegmentList）自身 intrinsic，不再自带滚动。 */
-export function FloatingPanelDialogListRegion({ children, className, fitToContent = false }: RegionProps) {
-  const scrollClass = fitToContent ? SCROLL_AUTO_FIT_CLASS : SCROLL_FILL_CLASS;
+export function FloatingPanelDialogListRegion({
+  children,
+  className,
+  fitToContent = false,
+  autoFitListCap = "standard",
+}: RegionProps) {
+  const scrollClass = fitToContent ? resolveAutoFitScrollClass(autoFitListCap) : SCROLL_FILL_CLASS;
   return (
     <div className={[scrollClass, className].filter(Boolean).join(" ")}>{children}</div>
   );
