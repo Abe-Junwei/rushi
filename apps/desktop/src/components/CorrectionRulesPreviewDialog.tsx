@@ -1,13 +1,15 @@
+import { useEffect } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { CorrectionRulesDialogState } from "../pages/useCorrectionRulesController";
 import { CORRECTION_RULES_PANEL_ID, CORRECTION_RULES_LAYOUT_REV } from "../pages/correctionRulesPanelTypes";
+import { resolveTextChangeRowDisplay } from "../services/editor/segmentChangePreview";
 import { CorrectionRulesChangeText } from "./CorrectionRulesChangeText";
 import { LexiconHealthPanel } from "./LexiconHealthPanel";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import { useFloatingPanelDetailsExpansion } from "../hooks/useFloatingPanelDetailsExpansion";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
-import { readFloatingPanelViewport } from "./floatingPanelViewport";
+import { EDITOR_PREVIEW_PANEL_LIST_PADDING_CLASS, resolveEditorPreviewPanelBounds } from "./editorPreviewPanelLayout";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import {
@@ -57,9 +59,16 @@ export function CorrectionRulesPreviewDialog({
   const selectedCount = preview?.selectedSegmentIdxs.length ?? 0;
   const totalCount = preview?.changes.length ?? 0;
 
-  const viewport = readFloatingPanelViewport();
-  const panelMargin = 16;
-  const panelMaxHeight = Math.min(720, Math.max(300, viewport.height - panelMargin * 2));
+  useEffect(() => {
+    if (!preview || previewFocusSegmentIdx == null) return;
+    const id = `correction-rules-preview-segment-${previewFocusSegmentIdx}`;
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+    });
+  }, [preview, previewFocusSegmentIdx]);
+
+  const previewBounds = resolveEditorPreviewPanelBounds();
+  const panelMaxHeight = previewBounds.maxHeight;
 
   const hasReadOnlyHints =
     (isEmpty &&
@@ -76,9 +85,12 @@ export function CorrectionRulesPreviewDialog({
   );
   const hintsExpanded = isDetailsExpanded("readOnlyHints", false);
 
-  const defaultPanelWidth = 520;
+  const defaultPanelWidth = previewBounds.defaultWidth;
   const dialogFitKind = preview ? "autoFit" : "staticFit";
-  const fallbackHeight = Math.min(isLoading ? 220 : isEmpty ? 280 : 420, panelMaxHeight);
+  const fallbackHeight = Math.min(
+    isLoading ? 220 : isEmpty ? 280 : previewBounds.fallbackHeight,
+    panelMaxHeight,
+  );
   const persistPhaseKey =
     state.phase === "loading" ? "loading" : state.phase === "preview" ? "preview" : "empty";
 
@@ -120,8 +132,8 @@ export function CorrectionRulesPreviewDialog({
       fallbackHeight={fallbackHeight}
       defaultWidth={defaultPanelWidth}
       layoutRev={CORRECTION_RULES_LAYOUT_REV}
-      minWidth={400}
-      maxWidth={720}
+      minWidth={previewBounds.minWidth}
+      maxWidth={previewBounds.maxWidth}
       maxHeight={panelMaxHeight}
       persistPhaseKey={persistPhaseKey}
       persistState
@@ -198,18 +210,27 @@ export function CorrectionRulesPreviewDialog({
               onExpandedChange={(open) => setDetailsExpanded("readOnlyHints", open)}
             />
           </FloatingPanelDialogHeader>
-          <FloatingPanelDialogListRegion className="min-h-0">
+          <FloatingPanelDialogListRegion
+            fitToContent
+            autoFitListCap="generous"
+            className={`min-h-0 ${EDITOR_PREVIEW_PANEL_LIST_PADDING_CLASS}`}
+          >
             <FloatingPanelSegmentList rowCount={totalCount}>
               {preview.changes.map((ch) => {
                 const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
                 const focused = previewFocusSegmentIdx === ch.segmentIdx;
+                const rowDisplay = resolveTextChangeRowDisplay(ch.beforeText, ch.afterText, { focused });
                 return (
-                  <li key={ch.segmentIdx} className="list-none">
+                  <li
+                    key={ch.segmentIdx}
+                    id={`correction-rules-preview-segment-${ch.segmentIdx}`}
+                    className="list-none"
+                  >
                     <FloatingPanelSegmentRow
                       segmentNumber={ch.segmentNumber}
                       timeLabel={ch.startTimeLabel}
                       suffix={`${ch.replacementCount}处`}
-                      bodyLayout="wrap"
+                      bodyLayout={focused ? "wrap" : "truncate"}
                       active={focused}
                       disabled={busy}
                       onClick={() => onFocusSegment(ch.segmentIdx)}
@@ -226,11 +247,11 @@ export function CorrectionRulesPreviewDialog({
                       }
                     >
                       <CorrectionRulesChangeText
-                        variant="wrap"
-                        beforeText={ch.beforeText}
-                        afterText={ch.afterText}
-                        beforeHighlights={ch.beforeHighlights}
-                        afterHighlights={ch.afterHighlights}
+                        variant={rowDisplay.variant}
+                        beforeText={rowDisplay.beforeText}
+                        afterText={rowDisplay.afterText}
+                        beforeHighlights={rowDisplay.beforeHighlights}
+                        afterHighlights={rowDisplay.afterHighlights}
                       />
                     </FloatingPanelSegmentRow>
                   </li>

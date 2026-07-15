@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyCorrectionRulesToText } from "./segmentCorrectionRulesApply";
+import { applyCorrectionRulesToText, buildSegmentCorrectionChanges } from "./segmentCorrectionRulesApply";
+import type { SegmentDto } from "../../tauri/projectApi";
 
 describe("applyCorrectionRulesToText", () => {
   it("does not apply single-char wrong inside longer word (城市 vs 市)", () => {
@@ -25,7 +26,7 @@ describe("applyCorrectionRulesToText", () => {
     expect(count).toBe(1);
   });
 
-  it("records separate highlight spans for multiple replacements", () => {
+  it("records separate highlight spans for multiple replacements in apply scan", () => {
     const { text, beforeHighlights, afterHighlights, count } = applyCorrectionRulesToText("智控与系统", [
       { wrong: "智控", right: "制控" },
       { wrong: "系统", right: "体系" },
@@ -40,5 +41,13 @@ describe("applyCorrectionRulesToText", () => {
       { startG: 0, endG: 2 },
       { startG: 3, endG: 5 },
     ]);
+  });
+
+  it("buildSegmentCorrectionChanges uses diff-based preview highlights", () => {
+    const segments: SegmentDto[] = [{ uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "第二个要素是智控。" }];
+    const changes = buildSegmentCorrectionChanges(segments, [{ wrong: "智控", right: "制控" }]);
+    expect(changes).toHaveLength(1);
+    expect(changes[0]?.beforeHighlights).toEqual([{ startG: 6, endG: 7 }]);
+    expect(changes[0]?.afterHighlights).toEqual([{ startG: 6, endG: 7 }]);
   });
 });

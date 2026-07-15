@@ -7,7 +7,8 @@ import type { StableCorrectionRuleConflict } from "../services/editor/stableCorr
 export const CORRECTION_RULES_PANEL_ID = "correction-rules-preview-v1";
 
 /** 布局变更时 bump，丢弃旧 persist（如工作条锚点 → 视口居中）。 */
-export const CORRECTION_RULES_LAYOUT_REV = 5;
+/** Bump：autoFit 列表可 shrink 保页脚。 */
+export const CORRECTION_RULES_LAYOUT_REV = 7;
 
 export function isCorrectionRulesPanelOpen(): boolean {
   if (typeof document === "undefined") return false;

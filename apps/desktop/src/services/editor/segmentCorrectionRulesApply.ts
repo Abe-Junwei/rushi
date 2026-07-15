@@ -1,6 +1,7 @@
 import type { SegmentDto } from "../../tauri/projectApi";
 import type { CorrectionRuleRow } from "../../tauri/correctionApi";
 import { splitGraphemes } from "../text/grapheme";
+import { diffToCorrectionHighlights } from "./segmentChangePreview";
 import { formatSegmentStartTimeLabel, formatSegmentTimeLabel } from "./segmentFindReplace";
 
 export type CorrectionRulePair = { wrong: string; right: string };
@@ -92,6 +93,7 @@ export function buildSegmentCorrectionChanges(
     const beforeText = seg.text ?? "";
     const applied = applyCorrectionRulesToText(beforeText, rules);
     if (applied.count <= 0 || applied.text === beforeText) continue;
+    const { beforeHighlights, afterHighlights } = diffToCorrectionHighlights(beforeText, applied.text);
     out.push({
       segmentIdx,
       uid: seg.uid ?? "",
@@ -101,8 +103,8 @@ export function buildSegmentCorrectionChanges(
       beforeText,
       afterText: applied.text,
       replacementCount: applied.count,
-      beforeHighlights: applied.beforeHighlights,
-      afterHighlights: applied.afterHighlights,
+      beforeHighlights,
+      afterHighlights,
     });
   }
   return out;
