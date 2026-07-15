@@ -7,10 +7,9 @@ export const APP_UPDATE_OTA_BASELINE_VERSION = "0.1.2";
 
 /**
  * 后台周期性检查间隔（启动检查之后）。
- * 对齐 VS Code 默认自动模式（启动后 ~30s 起算，之后每 1h）；
- * 比 Electron `update-electron-app` 默认 10min 更省 CDN（单次只拉 `latest.json`）。
+ * 每 3 天一次：单次只拉 `latest.json`，无需更高频率即可保证及时性，同时降低 CDN 请求量。
  */
-export const APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+export const APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS = 3 * 24 * 60 * 60 * 1000;
 
 export type AppUpdateBackgroundCheckGate = {
   dialogOpen: boolean;

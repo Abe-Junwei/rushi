@@ -24,8 +24,8 @@ describe("appUpdate semver", () => {
 });
 
 describe("background update check cadence", () => {
-  it("uses a 1-hour interval like VS Code automatic mode", () => {
-    expect(APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS).toBe(60 * 60 * 1000);
+  it("uses a 3-day interval", () => {
+    expect(APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS).toBe(3 * 24 * 60 * 60 * 1000);
   });
 
   it("skips background checks while dialog is open or downloading", () => {

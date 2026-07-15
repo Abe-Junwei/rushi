@@ -83,7 +83,7 @@ export function useAppUpdateCheckOnLaunch() {
     void (async () => {
       await runCheck("launch");
       if (cancelled) return;
-      // VS Code 式：启动已查过后，每小时再问一次清单。
+      // 启动已查过后，每 3 天再问一次清单。
       intervalId = window.setInterval(() => {
         void runCheck("background");
       }, APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS);
