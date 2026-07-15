@@ -16,7 +16,9 @@ export type DocxExportOptions = {
   /** 与语段一一对应的错字/标点修正行（修订轨真源）。 */
   polishCorrectedLines?: string[];
   /** 为 true 且有成对润色段落时，正文以 Track Changes 呈现并开启 `trackRevisions`。 */
-  polishTrackChanges?: boolean;
+    polishTrackChanges?: boolean;
+    /** 干净稿润色修订轨作者；默认 Rust 侧「如是我闻」。 */
+    polishTrackAuthor?: string;
   /**
    * 讲稿/干净稿：冻结打断时的连续块（仅多块时下发）；`unitCount` 为语段数或润色自然段数。
    */
@@ -55,6 +57,7 @@ export async function exportDocx(
     polishBeforeJoined: options?.polishBeforeJoined ?? null,
     polishCorrectedLines: options?.polishCorrectedLines ?? null,
     polishTrackChanges: options?.polishTrackChanges ?? null,
+    polishTrackAuthor: options?.polishTrackAuthor?.trim() || null,
     deliveryTimeBlocks: options?.deliveryTimeBlocks ?? null,
     recordingFileName: options?.recordingFileName ?? null,
     footerTranscriberName: options?.footerTranscriberName ?? null,

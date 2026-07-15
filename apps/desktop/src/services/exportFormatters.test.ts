@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatSrt, formatSrtTime, formatTxt, type ExportSegment } from "./exportFormatters";
+import {
+  formatSegmentTextWithAnnotation,
+  formatSrt,
+  formatSrtTime,
+  formatTxt,
+  type ExportSegment,
+} from "./exportFormatters";
 
 describe("formatSrtTime", () => {
   it("formats zero", () => {
@@ -30,5 +36,22 @@ describe("formatTxt / formatSrt", () => {
     expect(s).toContain("1\n");
     expect(s).toContain("-->");
     expect(s).toContain("甲");
+  });
+
+  it("appends annotation in parentheses for txt", () => {
+    const withNote: ExportSegment[] = [
+      { idx: 0, start_sec: 0, end_sec: 1, text: "甲", annotation: "存疑" },
+      { idx: 1, start_sec: 1, end_sec: 2, text: "乙" },
+    ];
+    expect(formatTxt(withNote)).toBe("甲（存疑）\n乙");
+    expect(formatSegmentTextWithAnnotation("甲", "  ")).toBe("甲");
+  });
+
+  it("appends annotation in parentheses for srt cue body", () => {
+    const withNote: ExportSegment[] = [
+      { idx: 0, start_sec: 0, end_sec: 1, text: "甲", annotation: "待核对" },
+    ];
+    const s = formatSrt(withNote);
+    expect(s).toContain("甲（待核对）");
   });
 });

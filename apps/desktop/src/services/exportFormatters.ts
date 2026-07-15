@@ -5,10 +5,27 @@ export interface ExportSegment {
   start_sec: number;
   end_sec: number;
   text: string;
+  /** 语段备注；非空时以内联 `（…）` 追加在正文后。 */
+  annotation?: string | null;
 }
 
 function pad(n: number, w: number): string {
   return String(Math.floor(n)).padStart(w, "0");
+}
+
+function trimmedAnnotation(annotation: string | null | undefined): string | null {
+  const t = annotation?.trim();
+  return t ? t : null;
+}
+
+/** 正文 + 可选备注（全角括号，与 DOCX 修订轨展示一致）。 */
+export function formatSegmentTextWithAnnotation(
+  text: string,
+  annotation?: string | null,
+): string {
+  const note = trimmedAnnotation(annotation);
+  if (!note) return text ?? "";
+  return `${text ?? ""}（${note}）`;
 }
 
 /** SRT timestamp `HH:MM:SS,mmm` */
@@ -25,7 +42,9 @@ export function formatSrtTime(seconds: number): string {
 
 /** Plain text: one segment per line (no timestamps). */
 export function formatTxt(segments: ExportSegment[]): string {
-  return segments.map((s) => s.text ?? "").join("\n");
+  return segments
+    .map((s) => formatSegmentTextWithAnnotation(s.text, s.annotation))
+    .join("\n");
 }
 
 /** SubRip: index + timestamps + blank line between cues. */
@@ -36,7 +55,10 @@ export function formatSrt(segments: ExportSegment[]): string {
     const n = i + 1;
     const start = formatSrtTime(s.start_sec);
     const end = formatSrtTime(s.end_sec);
-    parts.push(`${n}\n${start} --> ${end}\n${(s.text ?? "").replace(/\r\n/g, "\n").trimEnd()}\n`);
+    const cueText = formatSegmentTextWithAnnotation(s.text, s.annotation)
+      .replace(/\r\n/g, "\n")
+      .trimEnd();
+    parts.push(`${n}\n${start} --> ${end}\n${cueText}\n`);
   }
   return parts.join("\n");
 }

@@ -14,6 +14,12 @@ pub(crate) struct DocxDeliveryTimeBlock {
 /// Muted meta text — aligns with `COLORS.notionTextMuted` (#6b6b6b).
 pub(crate) const DOCX_COLOR_MUTED: &str = "6B6B6B";
 
+/// Word 批注作者名（右侧修订/批注栏）。
+pub(crate) const ANNOTATION_COMMENT_AUTHOR: &str = "备注";
+
+/// 有备注的语段正文高亮色（Word 具名颜色）。
+const ANNOTATION_HIGHLIGHT: &str = "yellow";
+
 pub(crate) const MAX_LECTURE_BODY_CHARS: usize = 2_000_000;
 const MAX_APPENDIX_LINES: usize = 120;
 
@@ -56,6 +62,12 @@ pub(crate) fn sanitize_title(title: &str) -> String {
     } else {
         t.chars().take(200).collect()
     }
+}
+
+/// Word 修订作者名：去非法字符并截断（干净稿用模型名）。
+pub(crate) fn sanitize_polish_track_author(author: &str) -> String {
+    let s = sanitize_docx_text(author.trim());
+    s.chars().take(80).collect()
 }
 
 pub(crate) fn add_meta_paragraph(doc: Docx, line: &str) -> Docx {
@@ -157,9 +169,153 @@ pub(crate) fn add_body_paragraph(doc: Docx, text: &str) -> Docx {
     )
 }
 
+fn trimmed_segment_annotation(annotation: Option<&str>) -> Option<&str> {
+    annotation.and_then(|a| {
+        let t = a.trim();
+        if t.is_empty() {
+            None
+        } else {
+            Some(t)
+        }
+    })
+}
+
+#[cfg(test)]
+pub(crate) fn segments_have_annotations(segments: &[SegmentDto]) -> bool {
+    segments
+        .iter()
+        .any(|s| trimmed_segment_annotation(s.annotation.as_deref()).is_some())
+}
+
+fn annotation_comment_date() -> String {
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
+}
+
+fn flatten_for_annotation_map(s: &str) -> String {
+    s.chars().filter(|c| *c != '\n' && *c != '\r').collect()
+}
+
+/// 分配 Word 批注 id（`comments.xml` + 正文 `commentRange`）。
+#[derive(Debug, Default)]
+pub(crate) struct DocxAnnotationComments {
+    next_id: usize,
+}
+
+impl DocxAnnotationComments {
+    fn alloc_id(&mut self) -> usize {
+        self.next_id += 1;
+        self.next_id
+    }
+}
+
+/// 润色/合并自然段时，按扁平字符边界将语段行映射到各自然段（避免合并后丢备注）。
+pub(crate) fn line_indices_per_polish_paragraph(
+    lines: &[String],
+    paragraphs: &[String],
+) -> Vec<Vec<usize>> {
+    let mut groups: Vec<Vec<usize>> = paragraphs.iter().map(|_| Vec::new()).collect();
+    if lines.is_empty() || paragraphs.is_empty() {
+        return groups;
+    }
+    let lines_flat: String = lines.iter().map(|s| s.as_str()).collect();
+    let paras_flat: String = paragraphs.iter().map(|s| s.as_str()).collect();
+    if flatten_for_annotation_map(&lines_flat) != flatten_for_annotation_map(&paras_flat) {
+        if lines.len() == paragraphs.len() {
+            return (0..lines.len()).map(|i| vec![i]).collect();
+        }
+        return groups;
+    }
+    let mut line_i = 0usize;
+    for (pi, para) in paragraphs.iter().enumerate() {
+        let need = flatten_for_annotation_map(para).chars().count();
+        let mut got = 0usize;
+        while line_i < lines.len() && (got < need || groups[pi].is_empty()) {
+            groups[pi].push(line_i);
+            got += lines[line_i].chars().count();
+            line_i += 1;
+            if got >= need {
+                break;
+            }
+        }
+    }
+    groups
+}
+
+pub(crate) fn annotations_grouped_by_polish_paragraphs(
+    lines: &[String],
+    paragraphs: &[String],
+    segments: &[SegmentDto],
+) -> Vec<Vec<String>> {
+    line_indices_per_polish_paragraph(lines, paragraphs)
+        .into_iter()
+        .map(|indices| {
+            indices
+                .into_iter()
+                .filter_map(|li| {
+                    segments.get(li).and_then(|s| {
+                        trimmed_segment_annotation(s.annotation.as_deref())
+                            .map(|t| t.to_string())
+                    })
+                })
+                .collect()
+        })
+        .collect()
+}
+
+fn build_body_paragraph_with_comments(text: &str, notes: &[String], comments: &mut DocxAnnotationComments) -> Paragraph {
+    let mut para = Paragraph::new();
+    let mut ids = Vec::with_capacity(notes.len());
+    let date = annotation_comment_date();
+    for note in notes {
+        let id = comments.alloc_id();
+        ids.push(id);
+        let comment = Comment::new(id)
+            .author(ANNOTATION_COMMENT_AUTHOR)
+            .date(&date)
+            .add_paragraph(
+                Paragraph::new().add_run(
+                    Run::new()
+                        .size(20)
+                        .add_text(sanitize_docx_text(note)),
+                ),
+            );
+        para = para.add_comment_start(comment);
+    }
+    para = para.add_run(
+        Run::new()
+            .size(24)
+            .highlight(ANNOTATION_HIGHLIGHT)
+            .add_text(sanitize_docx_text(text)),
+    );
+    for id in ids {
+        para = para.add_comment_end(id);
+    }
+    para
+}
+
+/// 正文段落：有备注时高亮全文，并以 Word 批注显示在右侧修订栏（非内联 w:ins）。
+pub(crate) fn add_body_paragraph_with_comments(
+    doc: Docx,
+    comments: &mut DocxAnnotationComments,
+    text: &str,
+    notes: &[String],
+) -> Docx {
+    if notes.is_empty() {
+        return add_body_paragraph(doc, text);
+    }
+    doc.add_paragraph(build_body_paragraph_with_comments(text, notes, comments))
+}
+
+fn segment_notes(annotation: Option<&str>) -> Vec<String> {
+    trimmed_segment_annotation(annotation)
+        .map(|t| vec![t.to_string()])
+        .unwrap_or_default()
+}
+
 /// 讲稿：连续块右侧标起止时码；块间空行分隔。
 pub(crate) fn append_lecture_segments(
     doc: Docx,
+    comments: &mut DocxAnnotationComments,
     segments: &[SegmentDto],
     blocks: Option<&[DocxDeliveryTimeBlock]>,
 ) -> Docx {
@@ -186,7 +342,12 @@ pub(crate) fn append_lecture_segments(
                 let take = t.chars().count().min(char_budget);
                 let chunk: String = t.chars().take(take).collect();
                 char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph(doc, &chunk);
+                doc = add_body_paragraph_with_comments(
+                    doc,
+                    comments,
+                    &chunk,
+                    &segment_notes(s.annotation.as_deref()),
+                );
                 if take < t.chars().count() {
                     truncated = true;
                     break;
@@ -221,7 +382,12 @@ pub(crate) fn append_lecture_segments(
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk);
+        doc = add_body_paragraph_with_comments(
+            doc,
+            comments,
+            &chunk,
+            &segment_notes(s.annotation.as_deref()),
+        );
         if take < t.chars().count() {
             truncated = true;
             break;
@@ -235,6 +401,7 @@ pub(crate) fn append_lecture_segments(
 
 pub(crate) fn append_clean_segments_with_blocks(
     doc: Docx,
+    comments: &mut DocxAnnotationComments,
     segments: &[SegmentDto],
     blocks: Option<&[DocxDeliveryTimeBlock]>,
 ) -> Docx {
@@ -261,7 +428,12 @@ pub(crate) fn append_clean_segments_with_blocks(
                 let take = t.chars().count().min(char_budget);
                 let chunk: String = t.chars().take(take).collect();
                 char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph(doc, &chunk);
+                doc = add_body_paragraph_with_comments(
+                    doc,
+                    comments,
+                    &chunk,
+                    &segment_notes(s.annotation.as_deref()),
+                );
                 doc = doc.add_paragraph(Paragraph::new());
                 if take < t.chars().count() {
                     truncated = true;
@@ -281,10 +453,14 @@ pub(crate) fn append_clean_segments_with_blocks(
         }
         return doc;
     }
-    append_clean_segments(doc, segments)
+    append_clean_segments(doc, comments, segments)
 }
 
-pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Docx {
+pub(crate) fn append_verbatim_segments(
+    doc: Docx,
+    comments: &mut DocxAnnotationComments,
+    segments: &[SegmentDto],
+) -> Docx {
     let mut doc = doc;
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
@@ -309,7 +485,12 @@ pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Do
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk);
+        doc = add_body_paragraph_with_comments(
+            doc,
+            comments,
+            &chunk,
+            &segment_notes(s.annotation.as_deref()),
+        );
         doc = doc.add_paragraph(Paragraph::new());
         if take < t.chars().count() {
             truncated = true;
@@ -322,7 +503,11 @@ pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Do
     doc
 }
 
-pub(crate) fn append_clean_segments(doc: Docx, segments: &[SegmentDto]) -> Docx {
+pub(crate) fn append_clean_segments(
+    doc: Docx,
+    comments: &mut DocxAnnotationComments,
+    segments: &[SegmentDto],
+) -> Docx {
     let mut doc = doc;
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
@@ -338,7 +523,12 @@ pub(crate) fn append_clean_segments(doc: Docx, segments: &[SegmentDto]) -> Docx 
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk);
+        doc = add_body_paragraph_with_comments(
+            doc,
+            comments,
+            &chunk,
+            &segment_notes(s.annotation.as_deref()),
+        );
         doc = doc.add_paragraph(Paragraph::new());
         if take < t.chars().count() {
             truncated = true;
@@ -354,10 +544,19 @@ pub(crate) fn append_clean_segments(doc: Docx, segments: &[SegmentDto]) -> Docx 
 /// 润色段落：连续块右侧标起止时码；块间空行（干净稿段后亦保留空行）。
 pub(crate) fn append_polished_paragraph_list(
     doc: Docx,
+    comments: &mut DocxAnnotationComments,
     paragraphs: &[String],
+    paragraph_annotations: Option<&[Vec<String>]>,
     spaced: bool,
     blocks: Option<&[DocxDeliveryTimeBlock]>,
 ) -> Docx {
+    let notes_for = |para_i: usize| -> &[String] {
+        paragraph_annotations
+            .and_then(|groups| groups.get(para_i))
+            .map(Vec::as_slice)
+            .unwrap_or(&[])
+    };
+
     if let Some(blocks) = blocks.filter(|b| !b.is_empty()) {
         let mut doc = doc;
         let mut char_budget = MAX_LECTURE_BODY_CHARS;
@@ -382,7 +581,7 @@ pub(crate) fn append_polished_paragraph_list(
                 let take = t.chars().count().min(char_budget);
                 let chunk: String = t.chars().take(take).collect();
                 char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph(doc, &chunk);
+                doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes_for(para_i - 1));
                 if spaced {
                     doc = doc.add_paragraph(Paragraph::new());
                 }
@@ -408,7 +607,7 @@ pub(crate) fn append_polished_paragraph_list(
     let mut doc = doc;
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
-    for p in paragraphs {
+    for (para_i, p) in paragraphs.iter().enumerate() {
         let t = p.trim();
         if t.is_empty() {
             continue;
@@ -420,7 +619,7 @@ pub(crate) fn append_polished_paragraph_list(
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk);
+        doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes_for(para_i));
         if spaced {
             doc = doc.add_paragraph(Paragraph::new());
         }

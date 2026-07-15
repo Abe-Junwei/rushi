@@ -6,9 +6,9 @@ mod export_docx_body;
 mod export_docx_build;
 
 pub(crate) use export_docx_body::{
-    add_body_paragraph, append_delivery_block_separator, append_delivery_block_time_end,
-    append_delivery_block_time_start, append_polished_paragraph_list, sanitize_docx_text,
-    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
+    append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
+    sanitize_docx_text, DocxAnnotationComments, DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
 pub(crate) use export_docx_build::{build_docx_to_path, DocxExportLayout};
 
@@ -53,6 +53,7 @@ pub async fn export_docx(
     polish_before_joined: Option<String>,
     polish_corrected_lines: Option<Vec<String>>,
     polish_track_changes: Option<bool>,
+    polish_track_author: Option<String>,
     delivery_time_blocks: Option<Vec<DocxDeliveryTimeBlockDto>>,
     recording_file_name: Option<String>,
     footer_transcriber_name: Option<String>,
@@ -65,6 +66,7 @@ pub async fn export_docx(
     let polished_owned = polished_paragraphs.filter(|p| !p.is_empty());
     let before_owned = polish_before_joined.filter(|s| !s.trim().is_empty());
     let corrected_owned = polish_corrected_lines.filter(|p| !p.is_empty());
+    let track_author_owned = polish_track_author.filter(|s| !s.trim().is_empty());
     let layout = DocxExportLayout {
         delivery_time_blocks: map_delivery_time_blocks(delivery_time_blocks),
         recording_file_name,
@@ -96,6 +98,7 @@ pub async fn export_docx(
             before_owned.as_deref(),
             corrected_owned.as_deref(),
             track,
+            track_author_owned.as_deref(),
             &layout,
         )?;
         Ok(Some(path.to_string_lossy().to_string()))
@@ -106,7 +109,7 @@ pub async fn export_docx(
 
 #[cfg(test)]
 mod tests {
-    use super::export_docx_body::{format_hms, normalize_export_mode, sanitize_docx_text};
+    use super::export_docx_body::{format_hms, normalize_export_mode, sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, segments_have_annotations};
     use super::export_docx_build::{build_docx_bytes, DocxExportLayout};
     use super::*;
 
@@ -175,6 +178,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -198,6 +202,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -213,6 +218,102 @@ mod tests {
     }
 
     #[test]
+    fn build_docx_bytes_renders_segment_annotation_as_margin_comment() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let mut annotated = seg("正文。", false);
+        annotated.annotation = Some("存疑：待核对人名".to_string());
+        let bytes = build_docx_bytes(
+            "口述史",
+            "verbatim",
+            &[seg("无备注语段。", false), annotated],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            None,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        let mut comments_xml = String::new();
+        archive
+            .by_name("word/comments.xml")
+            .unwrap()
+            .read_to_string(&mut comments_xml)
+            .unwrap();
+        assert!(!doc_xml.contains("附录：语段备注"));
+        assert!(!doc_xml.contains("存疑：待核对人名"));
+        assert!(doc_xml.contains("commentRangeStart"));
+        assert!(doc_xml.contains("commentReference"));
+        assert!(doc_xml.contains("w:highlight"));
+        assert!(comments_xml.contains("存疑：待核对人名"));
+        assert!(comments_xml.contains(ANNOTATION_COMMENT_AUTHOR));
+    }
+
+    #[test]
+    fn build_docx_bytes_omits_comment_when_no_notes() {
+        let bytes = build_docx_bytes(
+            "口述史",
+            "verbatim",
+            &[seg("正文。", false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            None,
+            &default_layout(),
+        )
+        .unwrap();
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(!doc_xml.contains("commentRangeStart"));
+    }
+
+    #[test]
+    fn annotations_grouped_by_polish_paragraphs_preserves_merged_notes() {
+        use super::export_docx_body::annotations_grouped_by_polish_paragraphs;
+
+        let lines = vec!["你好".to_string(), "世界".to_string(), "再见".to_string()];
+        let paragraphs = vec!["你好世界".to_string(), "再见".to_string()];
+        let mut s0 = seg("你好", false);
+        s0.annotation = Some("note-a".into());
+        let mut s2 = seg("再见", false);
+        s2.annotation = Some("note-c".into());
+        let segments = vec![s0, seg("世界", false), s2];
+        let grouped = annotations_grouped_by_polish_paragraphs(&lines, &paragraphs, &segments);
+        assert_eq!(grouped.len(), 2);
+        assert_eq!(grouped[0], vec!["note-a".to_string()]);
+        assert_eq!(grouped[1], vec!["note-c".to_string()]);
+    }
+
+    #[test]
+    fn segments_have_annotations_detects_non_empty_note() {
+        let mut annotated = seg("正文。", false);
+        annotated.annotation = Some("  备注  ".to_string());
+        assert!(segments_have_annotations(&[seg("无。", false), annotated]));
+        assert!(!segments_have_annotations(&[seg("无。", false)]));
+    }
+
+    #[test]
     fn lecture_mode_builds_per_segment() {
         let bytes = build_docx_bytes(
             "讲稿",
@@ -224,6 +325,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -242,6 +344,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -256,6 +359,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -281,6 +385,7 @@ mod tests {
             )),
             Some(&["旧一。改".to_string(), "旧二。改".to_string()]),
             true,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -293,6 +398,37 @@ mod tests {
             .unwrap();
         assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
         assert!(doc_xml.contains(crate::export_docx_polish_track::POLISH_TRACK_AUTHOR));
+    }
+
+    #[test]
+    fn clean_polish_track_uses_model_author_override() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let bytes = build_docx_bytes(
+            "润色",
+            "clean",
+            &[seg("你好世界", false)],
+            None,
+            &[],
+            Some(&["你好，世界。".to_string()]),
+            Some("你好世界"),
+            Some(&["你好，世界。".to_string()]),
+            true,
+            Some("qwen2.5:7b"),
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
+        assert!(doc_xml.contains("qwen2.5:7b"));
+        assert!(!doc_xml.contains(crate::export_docx_polish_track::POLISH_TRACK_AUTHOR));
     }
 
     #[test]
@@ -310,6 +446,7 @@ mod tests {
             Some("你好世界"),
             Some(&["你好，世界。".to_string()]),
             true,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -349,6 +486,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -405,6 +543,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -447,6 +586,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -460,6 +600,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -501,6 +642,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -545,6 +687,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -576,6 +719,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -605,6 +749,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .unwrap();
@@ -642,6 +787,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &layout,
         )
         .unwrap();
@@ -732,6 +878,7 @@ mod tests {
             None,
             None,
             false,
+            None,
             &default_layout(),
         )
         .expect("build docx");

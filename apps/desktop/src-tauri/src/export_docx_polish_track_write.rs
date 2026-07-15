@@ -8,9 +8,9 @@ use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
 use crate::export_docx::{
-    add_body_paragraph, append_delivery_block_separator, append_delivery_block_time_end,
-    append_delivery_block_time_start, append_polished_paragraph_list, sanitize_docx_text,
-    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
+    append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
+    sanitize_docx_text, DocxAnnotationComments, DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
 
 use super::diff::{
@@ -174,18 +174,28 @@ fn accumulate_line_diffs_into_paragraphs(
 /// 修订轨：逐行对比；展示用 `display_paragraphs`。`corrected_lines` 行数须与 `before_joined` 拆行一致。
 pub fn append_polished_with_track_changes(
     mut doc: Docx,
+    annotation_comments: &mut DocxAnnotationComments,
     before_joined: &str,
     corrected_lines: &[String],
     display_paragraphs: &[String],
+    paragraph_annotations: Option<&[Vec<String>]>,
     spaced: bool,
     blocks: Option<&[DocxDeliveryTimeBlock]>,
+    polish_track_author: &str,
 ) -> Docx {
     let before_lines = before_lines_from_joined(before_joined);
     if corrected_lines.len() != before_lines.len() || before_lines.is_empty() {
-        return append_polished_paragraph_list(doc, display_paragraphs, spaced, blocks);
+        return append_polished_paragraph_list(
+            doc,
+            annotation_comments,
+            display_paragraphs,
+            paragraph_annotations,
+            spaced,
+            blocks,
+        );
     }
 
-    let author = POLISH_TRACK_AUTHOR;
+    let author = polish_track_author;
     let date = polish_revision_date();
     let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
     let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
@@ -193,9 +203,15 @@ pub fn append_polished_with_track_changes(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
 
-    let append_para = |doc: Docx, pi: usize, chunk: &str| -> Docx {
+    let mut append_para = |doc: Docx, pi: usize, chunk: &str| -> Docx {
         let bucket = buckets.get(pi).map(Vec::as_slice).unwrap_or(&[]);
-        if pieces_have_markup(bucket) {
+        let notes = paragraph_annotations
+            .and_then(|groups| groups.get(pi))
+            .map(Vec::as_slice)
+            .unwrap_or(&[]);
+        if !notes.is_empty() {
+            add_body_paragraph_with_comments(doc, annotation_comments, chunk, notes)
+        } else if pieces_have_markup(bucket) {
             doc.add_paragraph(paragraph_from_diff_pieces(bucket, author, &date))
         } else {
             add_body_paragraph(doc, chunk)

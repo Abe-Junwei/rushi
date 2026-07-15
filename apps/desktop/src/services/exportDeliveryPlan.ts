@@ -6,6 +6,8 @@ import {
   resolveExportPolishForDelivery,
   type ExportPolishResult,
 } from "./exportDocxPolish";
+import type { DocxExportMode } from "../tauri/exportDocxApi";
+import { readLlmRuntimeConfigFromStorage } from "./postprocess/postprocessRuntimeContract";
 import { joinSegmentTextsForExportPolish } from "./exportDocxPolish.helpers";
 import { assessExportPolishReadiness } from "./exportPolishDelivery";
 import {
@@ -33,11 +35,19 @@ export type DeliveryDocxExportPlan =
         polishBeforeJoined?: string;
         polishCorrectedLines?: string[];
         polishTrackChanges?: boolean;
+        polishTrackAuthor?: string;
       };
       recordEditLog:
         | { kind: "none" }
         | { kind: "export_llm_polish"; detail: ReturnType<typeof buildExportPolishEditLogDetail> };
     };
+
+/** 干净稿 Word 修订轨作者：当前 LLM 模型名。 */
+function resolveCleanDocxPolishTrackAuthor(mode: DocxExportMode): string | undefined {
+  if (mode !== "clean") return undefined;
+  const model = readLlmRuntimeConfigFromStorage().model.trim();
+  return model || undefined;
+}
 
 /** Delivery DOCX 编排真源：appendix + LLM polish + 修订轨决策（不含 IO）。 */
 export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): DeliveryDocxExportPlan {
@@ -107,6 +117,10 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
       polishCorrectedLines: polishedParagraphs != null ? polishCorrectedLines : undefined,
       polishTrackChanges:
         polishedParagraphs != null && polishCorrectedLines != null ? true : undefined,
+      polishTrackAuthor:
+        polishedParagraphs != null && polishCorrectedLines != null
+          ? resolveCleanDocxPolishTrackAuthor(request.mode)
+          : undefined,
     },
     recordEditLog,
   };

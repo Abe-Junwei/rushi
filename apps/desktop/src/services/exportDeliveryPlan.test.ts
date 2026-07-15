@@ -14,6 +14,19 @@ vi.mock("./exportPolishDelivery", async (importOriginal) => {
   };
 });
 
+vi.mock("./postprocess/postprocessRuntimeContract", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./postprocess/postprocessRuntimeContract")>();
+  return {
+    ...actual,
+    readLlmRuntimeConfigFromStorage: vi.fn(() => ({
+      providerId: "ollama",
+      baseUrl: "http://127.0.0.1:11434",
+      model: "qwen2.5:7b",
+      apiKeyId: null,
+    })),
+  };
+});
+
 import { planDeliveryDocxExport } from "./exportDeliveryPlan";
 
 const segments: SegmentDto[] = [
@@ -66,6 +79,7 @@ describe("planDeliveryDocxExport", () => {
     expect(plan.ok).toBe(true);
     if (plan.ok) {
       expect(plan.docxOptions.polishedParagraphs).toEqual(["第一句。"]);
+      expect(plan.docxOptions.polishTrackAuthor).toBe("qwen2.5:7b");
     }
   });
 
