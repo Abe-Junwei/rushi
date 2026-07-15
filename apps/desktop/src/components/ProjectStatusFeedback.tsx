@@ -17,12 +17,16 @@ export function ProjectBusyOverlay({
   reason,
   elapsedSec,
   transcribeProgress = null,
+  exportPolishEstimateSecs = null,
 }: {
   reason: BusyReason | null;
   elapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
+  exportPolishEstimateSecs?: number | null;
 }) {
-  const busyCopy = busyOverlayCopy(reason, transcribeProgress);
+  const busyCopy = busyOverlayCopy(reason, transcribeProgress, {
+    exportPolishEstimateSecs: exportPolishEstimateSecs ?? undefined,
+  });
 
   if (typeof document === "undefined") return null;
 

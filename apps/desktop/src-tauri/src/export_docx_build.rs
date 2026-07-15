@@ -11,10 +11,29 @@ use crate::export_docx_polish_track::{
 use crate::project::SegmentDto;
 
 use super::export_docx_body::{
-    add_meta_paragraph, append_clean_segments, append_lecture_segments,
-    append_polished_paragraph_list, append_revision_appendix, append_verbatim_segments,
-    normalize_export_mode, sanitize_docx_text, sanitize_title,
+    add_meta_paragraph, append_clean_segments_with_blocks, append_export_footer_meta,
+    append_lecture_segments, append_polished_paragraph_list, append_revision_appendix,
+    append_verbatim_segments, collect_export_footer_meta_lines, normalize_export_mode,
+    sanitize_docx_text, sanitize_title, DocxDeliveryTimeBlock,
 };
+
+#[derive(Default, Clone)]
+pub(crate) struct DocxExportLayout {
+    pub delivery_time_blocks: Vec<DocxDeliveryTimeBlock>,
+    pub recording_file_name: Option<String>,
+    /// `None` = omit transcriber line; `Some(s)` = write line (`s` may be empty).
+    pub footer_transcriber_name: Option<String>,
+    /// 文末转录时间（`YYYY-MM-DD`）；`None` = omit.
+    pub footer_transcribed_at: Option<String>,
+}
+
+fn layout_time_blocks(layout: &DocxExportLayout) -> Option<&[DocxDeliveryTimeBlock]> {
+    if layout.delivery_time_blocks.is_empty() {
+        None
+    } else {
+        Some(layout.delivery_time_blocks.as_slice())
+    }
+}
 
 fn should_use_polish_track_changes(
     polish_track_changes: bool,
@@ -55,6 +74,7 @@ pub(crate) fn build_docx_to_path(
     polish_before_joined: Option<&str>,
     polish_corrected_lines: Option<&[String]>,
     polish_track_changes: bool,
+    layout: &DocxExportLayout,
 ) -> Result<(), String> {
     let file = std::fs::File::create(path).map_err(|e| format!("创建 DOCX 文件失败: {e}"))?;
     let mut writer = std::io::BufWriter::new(file);
@@ -69,6 +89,7 @@ pub(crate) fn build_docx_to_path(
         polish_before_joined,
         polish_corrected_lines,
         polish_track_changes,
+        layout,
     )?;
     writer.flush().map_err(|e| format!("写入 DOCX 失败: {e}"))?;
     if should_use_polish_track_changes(
@@ -96,6 +117,7 @@ pub(crate) fn build_docx_bytes(
     polish_before_joined: Option<&str>,
     polish_corrected_lines: Option<&[String]>,
     polish_track_changes: bool,
+    layout: &DocxExportLayout,
 ) -> Result<Vec<u8>, String> {
     let mut buf = Vec::new();
     let mut cur = Cursor::new(&mut buf);
@@ -110,6 +132,7 @@ pub(crate) fn build_docx_bytes(
         polish_before_joined,
         polish_corrected_lines,
         polish_track_changes,
+        layout,
     )?;
     if should_use_polish_track_changes(
         polish_track_changes,
@@ -134,8 +157,10 @@ fn build_docx_into_writer<W: Write + Seek>(
     polish_before_joined: Option<&str>,
     polish_corrected_lines: Option<&[String]>,
     polish_track_changes: bool,
+    layout: &DocxExportLayout,
 ) -> Result<(), String> {
     let mode = normalize_export_mode(export_mode);
+    let _is_lecture_or_clean = mode == "lecture" || mode == "clean";
     let any_text = segments.iter().any(|s| !s.text.trim().is_empty());
     let has_polished = polished_paragraphs.is_some_and(|p| p.iter().any(|x| !x.trim().is_empty()));
     let track_requested = polish_track_changes;
@@ -171,17 +196,18 @@ fn build_docx_into_writer<W: Write + Seek>(
     }
     doc = doc.add_paragraph(Paragraph::new());
 
+    let time_blocks = layout_time_blocks(layout);
     doc = match mode {
         "lecture" => {
             if use_track {
                 let before = polish_before_joined.unwrap_or("");
                 let lines = polish_corrected_lines.unwrap_or(&[]);
                 let after = polished_paragraphs.unwrap_or(&[]);
-                append_polished_with_track_changes(doc, before, lines, after, false)
+                append_polished_with_track_changes(doc, before, lines, after, false, time_blocks)
             } else if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
-                append_polished_paragraph_list(doc, paras, false)
+                append_polished_paragraph_list(doc, paras, false, time_blocks)
             } else {
-                append_lecture_segments(doc, segments)
+                append_lecture_segments(doc, segments, time_blocks)
             }
         }
         "clean" => {
@@ -189,11 +215,11 @@ fn build_docx_into_writer<W: Write + Seek>(
                 let before = polish_before_joined.unwrap_or("");
                 let lines = polish_corrected_lines.unwrap_or(&[]);
                 let after = polished_paragraphs.unwrap_or(&[]);
-                append_polished_with_track_changes(doc, before, lines, after, true)
+                append_polished_with_track_changes(doc, before, lines, after, true, time_blocks)
             } else if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
-                append_polished_paragraph_list(doc, paras, true)
+                append_polished_paragraph_list(doc, paras, true, time_blocks)
             } else {
-                append_clean_segments(doc, segments)
+                append_clean_segments_with_blocks(doc, segments, time_blocks)
             }
         }
         _ => append_verbatim_segments(doc, segments),
@@ -204,6 +230,13 @@ fn build_docx_into_writer<W: Write + Seek>(
     }
 
     doc = append_revision_appendix(doc, appendix_lines);
+
+    let footer_lines = collect_export_footer_meta_lines(
+        layout.recording_file_name.as_deref(),
+        layout.footer_transcriber_name.as_deref(),
+        layout.footer_transcribed_at.as_deref(),
+    );
+    doc = append_export_footer_meta(doc, &footer_lines);
 
     doc.build()
         .pack(writer)

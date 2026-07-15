@@ -55,6 +55,36 @@ export function exportModeSupportsLlmPolish(mode: DocxExportMode): boolean {
   return POLISH_MODES.includes(mode);
 }
 
+/** 干净稿导出必须走大模型润色。 */
+export function exportModeRequiresLlmPolish(mode: DocxExportMode): boolean {
+  return mode === "clean";
+}
+
+export function exportWantsLlmPolish(mode: DocxExportMode, llmPolish: boolean): boolean {
+  return exportModeRequiresLlmPolish(mode) || (llmPolish && exportModeSupportsLlmPolish(mode));
+}
+
+/**
+ * 导出润色预计耗时（秒），供忙碌遮罩展示典型耗时（非请求超时）。
+ * 基线刻意小于 Rust `export_polish_timeout_secs`（apps/desktop/src-tauri/src/utils/postprocess_http.rs）
+ * 的下限：那是为容忍冷启动/慢网络留的超时安全余量，短内容典型耗时通常只需数秒，
+ * 直接复用超时下限会明显高估（如短文云端实测 ~5s，超时下限却是 45s）。
+ * 上限沿用超时公式的封顶值，仅作长文档的宽松上限。
+ */
+export function estimateExportPolishSeconds(charCount: number, loopback: boolean): number {
+  const { baseSecs, maxSecs, charsPerExtraSec } = loopback
+    ? { baseSecs: 15, maxSecs: 900, charsPerExtraSec: 500 }
+    : { baseSecs: 5, maxSecs: 180, charsPerExtraSec: 1500 };
+  const extra = Math.floor(charCount / charsPerExtraSec);
+  return Math.min(baseSecs + extra, maxSecs);
+}
+
+/** 按当前语段正文预估导出润色耗时（秒），供忙碌遮罩展示。 */
+export function estimateExportPolishSecondsForSegments(segments: SegmentDto[]): number {
+  const body = joinLinesForLlmBody(segmentLinesFromSegments(segments));
+  return estimateExportPolishSeconds(countUnicodeScalars(body), isLocalLoopbackLlmConfig());
+}
+
 function resolveExportPolishBodyBlockReason(segments: SegmentDto[]): string | null {
   const lines = segmentLinesFromSegments(segments);
   if (lines.length === 0) {
@@ -76,9 +106,8 @@ export function resolveExportPolishBlockReason(
 ): string | null {
   const bodyBlock = resolveExportPolishBodyBlockReason(segments);
   if (bodyBlock) return bodyBlock;
-  if (llmBlockReason?.trim()) return llmBlockReason.trim();
   if (!tryBuildPostprocessRuntimeBridge()) {
-    return llmConfigHint();
+    return llmBlockReason?.trim() || llmConfigHint();
   }
   return null;
 }

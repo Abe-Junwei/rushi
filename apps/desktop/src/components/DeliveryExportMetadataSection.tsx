@@ -4,7 +4,6 @@ import { listDocxProjectMetadataPreviewLines } from "../services/exportDeliveryA
 
 type Props = {
   exportBusy: boolean;
-  exportTitleLine: string;
   includeProjectMetadata: boolean;
   projectMetadata?: DocxProjectMetadata;
   onIncludeProjectMetadataChange: (checked: boolean) => void;
@@ -12,7 +11,6 @@ type Props = {
 
 export function DeliveryExportMetadataSection({
   exportBusy,
-  exportTitleLine,
   includeProjectMetadata,
   projectMetadata,
   onIncludeProjectMetadataChange,
@@ -25,7 +23,7 @@ export function DeliveryExportMetadataSection({
         Word 抬头
       </legend>
       <p className="text-xs leading-snug text-notion-text-muted">
-        标题下方默认仅写入「{exportTitleLine}」。勾选后可追加 Hub「项目信息」中的场次字段。
+        标题下方默认不写导出行。勾选后可追加 Hub「项目信息」中的场次字段。
       </p>
       <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
         <input
@@ -51,7 +49,6 @@ export function DeliveryExportMetadataSection({
           <p className="text-xs font-semibold uppercase tracking-wide text-notion-text-light">
             将写入 Word 标题下方
           </p>
-          <p className="text-xs text-notion-text-muted">{exportTitleLine}</p>
           {metadataPreviewLines.length > 0 ? (
             <ul className="list-none space-y-1 p-0 text-xs text-notion-text">
               {metadataPreviewLines.map((row) => (
@@ -63,7 +60,7 @@ export function DeliveryExportMetadataSection({
             </ul>
           ) : (
             <p className="text-xs text-zen-cinnabar">
-              当前项目尚未填写场次信息；勾选后 Word 中仍只有导出行。请先在 Hub「项目信息」中填写。
+              当前项目尚未填写场次信息；勾选后标题下方仍为空。请先在 Hub「项目信息」中填写。
             </p>
           )}
         </div>

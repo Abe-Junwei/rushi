@@ -1,5 +1,4 @@
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
-import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { DeliveryDocxExportRequest } from "./useExportController";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import type { FindReplaceDialogState } from "./useFindReplaceController";
@@ -94,7 +93,6 @@ export interface ProjectLifecycleApi {
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
-  exportDocx: (mode: DocxExportMode) => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   exportProjectBundle: () => Promise<void>;

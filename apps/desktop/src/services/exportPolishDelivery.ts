@@ -1,9 +1,9 @@
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
-  exportModeSupportsLlmPolish,
-  type ExportPolishResult,
+  exportWantsLlmPolish,
   resolveExportPolishBlockReason,
+  type ExportPolishResult,
 } from "./exportDocxPolish";
 
 function flattenPolishText(parts: string[]): string {
@@ -33,7 +33,7 @@ export function assessExportPolishReadiness(
   llmPolish: boolean,
   llmBlockReason?: string | null,
 ): ExportPolishReadiness {
-  if (!llmPolish || !exportModeSupportsLlmPolish(mode)) {
+  if (!exportWantsLlmPolish(mode, llmPolish)) {
     return { canExport: true, blockReason: null };
   }
   const block = resolveExportPolishBlockReason(segments, llmBlockReason);

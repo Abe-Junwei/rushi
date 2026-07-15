@@ -4,15 +4,22 @@ import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { exportDocx as exportDocxImpl, type DocxExportMode } from "../tauri/exportDocxApi";
 import { buildDocxExportMetaLine } from "../services/exportDeliveryAppendix";
+import { buildDocxExportLayoutOptions } from "../services/exportDocxLayoutOptions";
+import {
+  mergeExportPolishBreaksWithBlockBoundaries,
+  resolveDocxDeliveryTimeBlocks,
+  resolvePolishParagraphCountsPerBlock,
+} from "../utils/exportDocxDeliveryBlocks";
+import { buildParagraphsFromBreaks } from "../services/exportPolishParagraphs";
 import { planDeliveryDocxExport } from "../services/exportDeliveryPlan";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import {
-  exportModeSupportsLlmPolish,
+  exportWantsLlmPolish,
   fetchExportPolishResult,
   resolveExportPolishBlockReason,
   type ExportPolishResult,
 } from "../services/exportDocxPolish";
-import { safeExportBasename } from "../utils/safeExportBasename";
+import { safeExportBasename, docxExportBasename } from "../utils/safeExportBasename";
 import { toast } from "../services/ui/toast";
 import { pushExportFailureActivity } from "../services/ui/pushActivity";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
@@ -33,7 +40,6 @@ export type DeliveryDocxExportRequest = {
 export interface ExportApi {
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
-  exportDocx: (mode: DocxExportMode) => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   exportProjectBundle: () => Promise<void>;
@@ -140,44 +146,15 @@ export function useExportController(deps: ExportDeps): ExportApi {
     [current, exportContextLabel],
   );
 
-  const exportDocx = useCallback(
-    async (mode: DocxExportMode) => {
-      if (!current) return;
-      setError("");
-      flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = segmentsForDeliveryExport(
-        getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
-      );
-      try {
-        await exportDocxImpl(exportDefaultBasename("docx"), exportContextLabel(), mode, normalized, {
-          exportMetaLine: docxExportMetaLine(false),
-        });
-        syncOnboardingExport();
-      } catch (e) {
-        reportExportFailure("DOCX", e);
-      }
-    },
-    [
-      current,
-      docxExportMetaLine,
-      exportContextLabel,
-      exportDefaultBasename,
-      getCurrentSegmentsSnapshot,
-      reportExportFailure,
-      flushSegmentTextDrafts,
-      setError,
-    ],
-  );
-
   const exportDeliveryDocx = useCallback(
     async (request: DeliveryDocxExportRequest) => {
       if (!current) return;
       setError("");
       flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = segmentsForDeliveryExport(
-        getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
-      );
-      beginBusy("export");
+      const allSegments = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+      const normalized: SegmentDto[] = segmentsForDeliveryExport(allSegments);
+      const wantsPolish = exportWantsLlmPolish(request.mode, Boolean(request.llmPolish));
+      beginBusy(wantsPolish ? "export_polish" : "export");
       try {
         let editLogRows: Awaited<ReturnType<typeof p1.projectListEditLog>> = [];
         if (request.includeRevisionAppendix && currentFileId) {
@@ -189,7 +166,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
           }
         }
         let polishResult: ExportPolishResult | null = null;
-        if (request.llmPolish && exportModeSupportsLlmPolish(request.mode)) {
+        if (wantsPolish) {
           const block = resolveExportPolishBlockReason(normalized);
           if (block) {
             setError(block);
@@ -227,12 +204,45 @@ export function useExportController(deps: ExportDeps): ExportApi {
           });
           return;
         }
+        const hasPolish = Boolean(wantsPolish && plan.ok && plan.docxOptions.polishedParagraphs != null);
+        const deliveryBlocks = resolveDocxDeliveryTimeBlocks(allSegments);
+        let docxOptions = plan.docxOptions;
+        let polishBlockUnitCounts: number[] | null = null;
+        if (hasPolish && plan.ok && docxOptions.polishedParagraphs && docxOptions.polishCorrectedLines) {
+          const correctedLines = docxOptions.polishCorrectedLines;
+          const blockBreaks = mergeExportPolishBreaksWithBlockBoundaries(
+            correctedLines.length,
+            polishResult?.breakAfterLine ?? [],
+            deliveryBlocks,
+          );
+          const paragraphs = buildParagraphsFromBreaks(correctedLines, blockBreaks);
+          polishBlockUnitCounts = resolvePolishParagraphCountsPerBlock(
+            paragraphs.length,
+            correctedLines.length,
+            blockBreaks,
+            deliveryBlocks,
+          );
+          docxOptions = {
+            ...docxOptions,
+            polishedParagraphs: paragraphs,
+          };
+        }
+        const layout = buildDocxExportLayoutOptions({
+          mode: request.mode,
+          segments: normalized,
+          allSegments,
+          recordingFileName: exportContextLabel(),
+          transcriber: current.transcriber,
+          includeProjectMetadata: Boolean(request.includeProjectMetadata),
+          polishBlockUnitCounts,
+          exportedAt: new Date(),
+        });
         await exportDocxImpl(
-          exportDefaultBasename("docx"),
+          docxExportBasename(exportContextLabel(), request.mode),
           exportContextLabel(),
           request.mode,
           normalized,
-          plan.docxOptions,
+          { ...docxOptions, ...layout },
         );
         if (plan.recordEditLog.kind === "export_llm_polish") {
           try {
@@ -322,7 +332,6 @@ export function useExportController(deps: ExportDeps): ExportApi {
   return {
     exportTxt,
     exportSrt,
-    exportDocx,
     exportDeliveryDocx,
     exportDiagnosticBundle,
     exportProjectBundle,

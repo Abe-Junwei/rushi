@@ -2,7 +2,11 @@ import { useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
-import { exportModeSupportsLlmPolish } from "../services/exportDocxPolish";
+import {
+  exportModeRequiresLlmPolish,
+  exportModeSupportsLlmPolish,
+  exportWantsLlmPolish,
+} from "../services/exportDocxPolish";
 import { assessExportPolishReadiness } from "../services/exportPolishDelivery";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import { FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
@@ -45,8 +49,8 @@ export function DeliveryExportDialog({
   open,
   busy,
   segments,
-  projectName,
-  documentTitle,
+  projectName: _projectName,
+  documentTitle: _documentTitle,
   projectMetadata,
   llmStatusRefreshSeq = 0,
   onOpenLlmSettings,
@@ -60,22 +64,25 @@ export function DeliveryExportDialog({
   const [includeProjectMetadata, setIncludeProjectMetadata] = useState(false);
   const [llmPolish, setLlmPolish] = useState(false);
 
+  const requiresPolish = exportModeRequiresLlmPolish(mode);
   const polishAvailable = exportModeSupportsLlmPolish(mode);
+  const effectiveLlmPolish = exportWantsLlmPolish(mode, llmPolish);
   const polishReadiness = assessExportPolishReadiness(
     segments,
     mode,
-    polishAvailable && llmPolish,
+    llmPolish,
     llmEnv.blockReason,
   );
   const exportBlockedByPolish =
-    polishAvailable && llmPolish && !polishReadiness.canExport && !busy;
-
-  const titleForExport = (documentTitle ?? projectName).trim() || "未命名";
-  const exportTitleLine = `导出：${titleForExport} · …`;
+    effectiveLlmPolish && !polishReadiness.canExport && !busy;
 
   useEffect(() => {
+    if (requiresPolish && polishAvailable) {
+      setLlmPolish(true);
+      return;
+    }
     if (!polishAvailable) setLlmPolish(false);
-  }, [polishAvailable]);
+  }, [polishAvailable, requiresPolish, mode]);
 
   if (!open) return null;
 
@@ -123,15 +130,11 @@ export function DeliveryExportDialog({
                 mode,
                 includeAppendix,
                 includeProjectMetadata,
-                polishAvailable && llmPolish,
+                effectiveLlmPolish,
               )
             }
           >
-            {busy
-              ? polishAvailable && llmPolish
-                ? "润色并导出中…"
-                : "导出中…"
-              : "导出 DOCX…"}
+            {busy ? "导出中…" : "导出 DOCX…"}
           </button>
         </>
       }
@@ -148,7 +151,6 @@ export function DeliveryExportDialog({
             />
             <DeliveryExportMetadataSection
               exportBusy={busy}
-              exportTitleLine={exportTitleLine}
               includeProjectMetadata={includeProjectMetadata}
               projectMetadata={projectMetadata}
               onIncludeProjectMetadataChange={setIncludeProjectMetadata}
@@ -157,33 +159,39 @@ export function DeliveryExportDialog({
               <div className="space-y-2">
                 <label
                   className={`flex items-start gap-2 ${PANEL_TYPOGRAPHY.dialogBody} ${
-                    exportPolishBlockReason ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    requiresPolish || exportPolishBlockReason
+                      ? "cursor-not-allowed opacity-60"
+                      : "cursor-pointer"
                   } text-notion-text`}
                 >
                   <input
                     type="checkbox"
                     className="mt-0.5"
-                    checked={llmPolish}
-                    disabled={busy || Boolean(exportPolishBlockReason)}
+                    checked={llmPolish || requiresPolish}
+                    disabled={busy || requiresPolish || Boolean(exportPolishBlockReason)}
                     onChange={(e) => setLlmPolish(e.target.checked)}
                   />
                   <span>
-                    大模型润色（可选）
+                    {requiresPolish ? "大模型润色（干净稿必选）" : "大模型润色（可选）"}
                     <span className="block text-xs text-notion-text-muted">
-                      仅改正文错别字与错误标点（标点优先检查）；超范围改写回退原文。自然段按语义合并且约 ≤300 字。导出时直接生成终稿。
+                      {requiresPolish
+                        ? "干净稿导出将自动经大模型整理错别字与标点，并按语义合段。"
+                        : "仅改正文错别字与错误标点（标点优先检查）；超范围改写回退原文。自然段按语义合并且约 ≤300 字。导出时直接生成终稿。"}
                     </span>
                     {exportPolishBlockReason ? (
                       <span className="block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
                     ) : null}
                   </span>
                 </label>
-                {llmPolish ? (
+                {(llmPolish || requiresPolish) ? (
                   <div className="flex flex-wrap items-center gap-2 pl-6">
                     <TopBarStatusIndicator
                       label={llmEnv.sourceLabel}
                       tone={llmEnv.tone}
-                      onClick={onOpenLlmSettings}
-                      title={`${llmEnv.chipLabel} · 点击打开 LLM 配置`}
+                      title={requiresPolish ? llmEnv.chipLabel : `${llmEnv.chipLabel} · 点击打开 LLM 配置`}
+                      {...(requiresPolish || !onOpenLlmSettings
+                        ? {}
+                        : { onClick: onOpenLlmSettings })}
                     />
                     {!llmEnv.ok && llmEnv.blockReason && !exportPolishBlockReason ? (
                       <span className="text-xs text-zen-cinnabar">{llmEnv.blockReason}</span>

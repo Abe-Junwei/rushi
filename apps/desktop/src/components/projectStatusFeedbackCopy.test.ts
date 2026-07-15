@@ -30,6 +30,32 @@ describe("busyOverlayCopy transcribe", () => {
   });
 });
 
+describe("busyOverlayCopy export", () => {
+  it("plain export does not mention optional polish", () => {
+    const copy = busyOverlayCopy("export", null);
+    expect(copy.title).toBe("正在导出 Word");
+    expect(copy.lead).toBe("写入文档");
+    expect(copy.detail).toBeUndefined();
+  });
+
+  it("polish export falls back to generic wording without an estimate", () => {
+    const copy = busyOverlayCopy("export_polish", null);
+    expect(copy.title).toBe("正在导出 Word");
+    expect(copy.lead).toBe("大模型润色并写入文档");
+    expect(copy.detail).toMatch(/数十秒/);
+  });
+
+  it("polish export shows a seconds estimate for short bodies", () => {
+    const copy = busyOverlayCopy("export_polish", null, { exportPolishEstimateSecs: 45 });
+    expect(copy.detail).toBe("处理预计约 45 秒");
+  });
+
+  it("polish export shows a minutes estimate for long bodies", () => {
+    const copy = busyOverlayCopy("export_polish", null, { exportPolishEstimateSecs: 360 });
+    expect(copy.detail).toBe("处理预计约 6 分钟");
+  });
+});
+
 describe("transcribeCancelStoppingLabel", () => {
   it("online uses short stopping label", () => {
     expect(transcribeCancelStoppingLabel("online")).toBe("正在停止…");

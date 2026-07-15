@@ -77,9 +77,9 @@ describe("assessExportPolishReadiness", () => {
     expect(r.blockReason).toBeNull();
   });
 
-  it("still allows clean export with polish when ready", () => {
+  it("still allows clean export without checkbox when ready", () => {
     const segments = [seg("正文")];
-    const r = assessExportPolishReadiness(segments, "clean", true);
+    const r = assessExportPolishReadiness(segments, "clean", false);
     expect(r.canExport).toBe(true);
   });
 });

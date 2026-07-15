@@ -1,3 +1,6 @@
+import type { DocxExportMode } from "../tauri/exportDocxApi";
+import { resolveDocxExportModeLabel } from "../components/deliveryExportModeOptions";
+
 /** 避免默认文件名含路径分隔符、控制字符、Windows 保留名等非法字符。 */
 export function safeExportBasename(name: string, ext: "txt" | "srt" | "docx" | "zip"): string {
   // 1) 控制字符与常见文件系统非法字符
@@ -25,4 +28,10 @@ export function safeExportBasename(name: string, ext: "txt" | "srt" | "docx" | "
     base = "export";
   }
   return `${base}.${ext}`;
+}
+
+/** 交付 Word 另存为默认名：`{录音名}-{版式}.docx`（如 `访谈录音-逐字稿.docx`）。 */
+export function docxExportBasename(recordingName: string, mode: DocxExportMode): string {
+  const stem = recordingName.trim() || "export";
+  return safeExportBasename(`${stem}-${resolveDocxExportModeLabel(mode)}`, "docx");
 }

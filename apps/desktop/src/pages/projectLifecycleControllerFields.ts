@@ -69,7 +69,6 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     deleteProject: lifecycle.deleteProject,
     exportTxt: lifecycle.exportTxt,
     exportSrt: lifecycle.exportSrt,
-    exportDocx: lifecycle.exportDocx,
     exportDeliveryDocx: lifecycle.exportDeliveryDocx,
     exportDiagnosticBundle: lifecycle.exportDiagnosticBundle,
     exportProjectBundle: lifecycle.exportProjectBundle,

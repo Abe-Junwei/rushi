@@ -13,6 +13,8 @@ export type BusyReason =
   | "delete"
   | "install_funasr"
   | "export"
+  /** Word 交付导出且走大模型润色（干净稿必选 / 讲稿勾选）。 */
+  | "export_polish"
   | "stage_b"
   | "batch_transcribe";
 

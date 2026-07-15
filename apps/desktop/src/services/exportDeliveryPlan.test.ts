@@ -88,7 +88,7 @@ describe("planDeliveryDocxExport", () => {
     }
   });
 
-  it("allows clean export without polish", () => {
+  it("blocks clean export without polish", () => {
     const plan = planDeliveryDocxExport({
       request: {
         mode: "clean",
@@ -101,11 +101,9 @@ describe("planDeliveryDocxExport", () => {
       exportMetaLine: "meta",
     });
 
-    expect(plan.ok).toBe(true);
-    if (plan.ok) {
-      expect(plan.docxOptions.exportMetaLine).toBe("meta");
-      expect(plan.docxOptions.polishedParagraphs).toBeUndefined();
-      expect(plan.recordEditLog).toEqual({ kind: "none" });
+    expect(plan.ok).toBe(false);
+    if (!plan.ok) {
+      expect(plan.error).toMatch(/润色结果/);
     }
   });
 });

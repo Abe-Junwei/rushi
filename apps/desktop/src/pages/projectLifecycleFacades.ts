@@ -57,7 +57,6 @@ export type ExportLifecycleFacade = Pick<
   ProjectLifecycleApi,
   | "exportTxt"
   | "exportSrt"
-  | "exportDocx"
   | "exportDeliveryDocx"
   | "exportDiagnosticBundle"
   | "exportProjectBundle"
@@ -68,7 +67,6 @@ export function pickExportLifecycleFacade(exports: ExportApi): ExportLifecycleFa
   return {
     exportTxt: exports.exportTxt,
     exportSrt: exports.exportSrt,
-    exportDocx: exports.exportDocx,
     exportDeliveryDocx: exports.exportDeliveryDocx,
     exportDiagnosticBundle: exports.exportDiagnosticBundle,
     exportProjectBundle: exports.exportProjectBundle,

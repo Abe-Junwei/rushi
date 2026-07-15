@@ -1,7 +1,8 @@
 import type { EditLogEntryDto, SegmentDto } from "../tauri/projectApi";
 import { buildDeliveryExportAppendixLines } from "./exportDeliveryAppendix";
 import {
-  exportModeSupportsLlmPolish,
+  exportModeRequiresLlmPolish,
+  exportWantsLlmPolish,
   resolveExportPolishForDelivery,
   type ExportPolishResult,
 } from "./exportDocxPolish";
@@ -48,9 +49,10 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
     appendixLines = buildDeliveryExportAppendixLines(editLogRows, currentFileId);
   }
 
-  const wantsPolish = Boolean(
-    request.llmPolish && exportModeSupportsLlmPolish(request.mode),
-  );
+  const wantsPolish = exportWantsLlmPolish(request.mode, Boolean(request.llmPolish));
+  if (exportModeRequiresLlmPolish(request.mode) && !wantsPolish) {
+    return { ok: false, error: "干净稿导出须走大模型润色。" };
+  }
   let polishedParagraphs: string[] | undefined;
   let polishCorrectedLines: string[] | undefined;
   const polishBeforeJoined = wantsPolish

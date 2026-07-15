@@ -8,7 +8,9 @@ use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
 use crate::export_docx::{
-    add_body_paragraph, append_polished_paragraph_list, sanitize_docx_text, MAX_LECTURE_BODY_CHARS,
+    add_body_paragraph, append_delivery_block_separator, append_delivery_block_time_end,
+    append_delivery_block_time_start, append_polished_paragraph_list, sanitize_docx_text,
+    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
 
 use super::diff::{
@@ -16,7 +18,7 @@ use super::diff::{
     push_ins_char, push_same_char, DiffPiece,
 };
 
-pub const POLISH_TRACK_AUTHOR: &str = "如是我闻 · 错字与标点";
+pub const POLISH_TRACK_AUTHOR: &str = "如是我闻";
 
 fn polish_revision_date() -> String {
     chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
@@ -176,10 +178,11 @@ pub fn append_polished_with_track_changes(
     corrected_lines: &[String],
     display_paragraphs: &[String],
     spaced: bool,
+    blocks: Option<&[DocxDeliveryTimeBlock]>,
 ) -> Docx {
     let before_lines = before_lines_from_joined(before_joined);
     if corrected_lines.len() != before_lines.len() || before_lines.is_empty() {
-        return append_polished_paragraph_list(doc, display_paragraphs, spaced);
+        return append_polished_paragraph_list(doc, display_paragraphs, spaced, blocks);
     }
 
     let author = POLISH_TRACK_AUTHOR;
@@ -190,31 +193,74 @@ pub fn append_polished_with_track_changes(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
 
-    for (pi, para_text) in display.iter().enumerate() {
-        let t = para_text.trim();
-        if t.is_empty() {
-            continue;
-        }
-        if char_budget == 0 {
-            truncated = true;
-            break;
-        }
-        let take = t.chars().count().min(char_budget);
-        let chunk: String = t.chars().take(take).collect();
-        char_budget = char_budget.saturating_sub(take);
-
+    let append_para = |doc: Docx, pi: usize, chunk: &str| -> Docx {
         let bucket = buckets.get(pi).map(Vec::as_slice).unwrap_or(&[]);
         if pieces_have_markup(bucket) {
-            doc = doc.add_paragraph(paragraph_from_diff_pieces(bucket, author, &date));
+            doc.add_paragraph(paragraph_from_diff_pieces(bucket, author, &date))
         } else {
-            doc = add_body_paragraph(doc, &chunk);
+            add_body_paragraph(doc, chunk)
         }
-        if spaced {
-            doc = doc.add_paragraph(Paragraph::new());
+    };
+
+    if let Some(blocks) = blocks.filter(|b| !b.is_empty()) {
+        let mut para_i = 0;
+        for (bi, block) in blocks.iter().enumerate() {
+            doc = append_delivery_block_time_start(doc, block.start_sec);
+            for _ in 0..block.unit_count {
+                if char_budget == 0 {
+                    truncated = true;
+                    break;
+                }
+                let Some(para_text) = display.get(para_i) else {
+                    para_i += 1;
+                    continue;
+                };
+                let t = para_text.trim();
+                para_i += 1;
+                if t.is_empty() {
+                    continue;
+                }
+                let take = t.chars().count().min(char_budget);
+                let chunk: String = t.chars().take(take).collect();
+                char_budget = char_budget.saturating_sub(take);
+                doc = append_para(doc, para_i - 1, &chunk);
+                if spaced {
+                    doc = doc.add_paragraph(Paragraph::new());
+                }
+                if take < t.chars().count() {
+                    truncated = true;
+                    break;
+                }
+            }
+            doc = append_delivery_block_time_end(doc, block.end_sec);
+            if bi + 1 < blocks.len() {
+                doc = append_delivery_block_separator(doc);
+            }
+            if truncated {
+                break;
+            }
         }
-        if take < t.chars().count() {
-            truncated = true;
-            break;
+    } else {
+        for (pi, para_text) in display.iter().enumerate() {
+            let t = para_text.trim();
+            if t.is_empty() {
+                continue;
+            }
+            if char_budget == 0 {
+                truncated = true;
+                break;
+            }
+            let take = t.chars().count().min(char_budget);
+            let chunk: String = t.chars().take(take).collect();
+            char_budget = char_budget.saturating_sub(take);
+            doc = append_para(doc, pi, &chunk);
+            if spaced {
+                doc = doc.add_paragraph(Paragraph::new());
+            }
+            if take < t.chars().count() {
+                truncated = true;
+                break;
+            }
         }
     }
 

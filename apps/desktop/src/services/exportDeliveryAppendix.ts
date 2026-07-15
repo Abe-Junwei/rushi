@@ -71,15 +71,16 @@ export function listDocxProjectMetadataPreviewLines(
   return lines;
 }
 
-/** Word 封面抬头：导出行；勾选「附带场次信息」时再追加 P0 元信息行（Rust 侧按行渲染）。 */
+/**
+ * Word 标题下方元信息：默认空（不再写入「导出：文件名 · 时间」）。
+ * 勾选「附带场次信息」时仅写入已填场次字段（Rust 侧按行渲染）。
+ */
 export function buildDocxExportMetaLine(
-  documentTitle: string,
-  exportedAt = new Date(),
+  _documentTitle: string,
+  _exportedAt = new Date(),
   options?: { includeProjectMetadata?: boolean; metadata?: DocxProjectMetadata },
 ): string {
-  const when = exportedAt.toLocaleString("zh-CN", { hour12: false });
-  const title = documentTitle.trim() || "未命名";
-  const lines = [`导出：${title} · ${when}`];
+  const lines: string[] = [];
   if (options?.includeProjectMetadata) {
     for (const { key, label } of DOCX_METADATA_FIELDS) {
       const value = options.metadata?.[key]?.trim();

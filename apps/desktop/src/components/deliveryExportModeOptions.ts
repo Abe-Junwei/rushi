@@ -9,11 +9,15 @@ export const DELIVERY_EXPORT_MODE_OPTIONS: { id: DocxExportMode; label: string; 
   {
     id: "lecture",
     label: "讲稿",
-    hint: "默认按语段自然段；可选大模型润色（Word 修订模式显示改动）。",
+    hint: "按语段自然段；各连续块左上/右下标起止时间，块间空行；文末写录音文件名。",
   },
   {
     id: "clean",
     label: "干净稿",
-    hint: "默认按语段分段；可选大模型润色（段间空行，修订模式显示改动）。",
+    hint: "版式同讲稿（段间空行）；导出时自动大模型润色整理。",
   },
 ];
+
+export function resolveDocxExportModeLabel(mode: DocxExportMode): string {
+  return DELIVERY_EXPORT_MODE_OPTIONS.find((o) => o.id === mode)?.label ?? "导出";
+}

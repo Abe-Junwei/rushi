@@ -42,10 +42,10 @@ describe("buildDeliveryExportAppendixLines", () => {
 });
 
 describe("buildDocxExportMetaLine", () => {
-  it("includes project title", () => {
+  it("omits export stamp by default", () => {
     const line = buildDocxExportMetaLine("课程 A", new Date("2026-06-03T12:00:00"));
-    expect(line).toContain("课程 A");
-    expect(line.startsWith("导出：")).toBe(true);
+    expect(line).toBe("");
+    expect(line).not.toContain("导出：");
   });
 
   it("appends filled session metadata only when opted in", () => {
@@ -59,8 +59,8 @@ describe("buildDocxExportMetaLine", () => {
       includeProjectMetadata: false,
       metadata,
     });
+    expect(without).toBe("");
     expect(without).not.toContain("讲述人：张三");
-    expect(without).toContain("导出：口述史");
 
     const withMeta = buildDocxExportMetaLine("口述史", new Date("2026-06-08T12:00:00"), {
       includeProjectMetadata: true,
@@ -68,6 +68,7 @@ describe("buildDocxExportMetaLine", () => {
     });
     expect(withMeta).toContain("讲述人：张三");
     expect(withMeta).toContain("地点：北京");
+    expect(withMeta).not.toContain("导出：");
     expect(withMeta).not.toContain("主题：");
     expect(withMeta).not.toContain("转录人：");
   });

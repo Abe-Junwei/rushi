@@ -52,7 +52,6 @@ describe("projectLifecycleFacades contract", () => {
     const source = {
       exportTxt: async () => {},
       exportSrt: async () => {},
-      exportDocx: async () => {},
       exportDeliveryDocx,
       exportDiagnosticBundle: async () => {},
       exportProjectBundle: async () => {},

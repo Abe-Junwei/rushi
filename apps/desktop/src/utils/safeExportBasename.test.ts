@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeExportBasename } from "./safeExportBasename";
+import { safeExportBasename, docxExportBasename } from "./safeExportBasename";
 
 describe("safeExportBasename", () => {
   it("保留正常中文/英文文件名", () => {
@@ -37,5 +37,17 @@ describe("safeExportBasename", () => {
     expect(safeExportBasename("", "txt")).toBe("export.txt");
     expect(safeExportBasename("   ", "txt")).toBe("export.txt");
     expect(safeExportBasename("///", "txt")).toBe("export.txt");
+  });
+});
+
+describe("docxExportBasename", () => {
+  it("names docx as recording label plus mode suffix", () => {
+    expect(docxExportBasename("访谈录音", "verbatim")).toBe("访谈录音-逐字稿.docx");
+    expect(docxExportBasename("访谈录音", "lecture")).toBe("访谈录音-讲稿.docx");
+    expect(docxExportBasename("访谈录音", "clean")).toBe("访谈录音-干净稿.docx");
+  });
+
+  it("sanitizes illegal characters in the combined stem", () => {
+    expect(docxExportBasename("a/b", "verbatim")).toBe("a_b-逐字稿.docx");
   });
 });

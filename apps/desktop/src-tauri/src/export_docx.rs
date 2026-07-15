@@ -6,12 +6,36 @@ mod export_docx_body;
 mod export_docx_build;
 
 pub(crate) use export_docx_body::{
-    add_body_paragraph, append_polished_paragraph_list, sanitize_docx_text, MAX_LECTURE_BODY_CHARS,
+    add_body_paragraph, append_delivery_block_separator, append_delivery_block_time_end,
+    append_delivery_block_time_start, append_polished_paragraph_list, sanitize_docx_text,
+    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
-pub(crate) use export_docx_build::build_docx_to_path;
+pub(crate) use export_docx_build::{build_docx_to_path, DocxExportLayout};
+
+use serde::Deserialize;
 
 use crate::project::SegmentDto;
 use export_docx_body::normalize_export_mode;
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct DocxDeliveryTimeBlockDto {
+    start_sec: f64,
+    end_sec: f64,
+    unit_count: usize,
+}
+
+fn map_delivery_time_blocks(dtos: Option<Vec<DocxDeliveryTimeBlockDto>>) -> Vec<export_docx_body::DocxDeliveryTimeBlock> {
+    dtos.unwrap_or_default()
+        .into_iter()
+        .filter(|b| b.unit_count > 0 && b.start_sec.is_finite() && b.end_sec.is_finite())
+        .map(|b| export_docx_body::DocxDeliveryTimeBlock {
+            start_sec: b.start_sec,
+            end_sec: b.end_sec,
+            unit_count: b.unit_count,
+        })
+        .collect()
+}
 
 /// `export_mode`: `verbatim` | `lecture` | `clean`.
 #[tauri::command]
@@ -27,6 +51,10 @@ pub async fn export_docx(
     polish_before_joined: Option<String>,
     polish_corrected_lines: Option<Vec<String>>,
     polish_track_changes: Option<bool>,
+    delivery_time_blocks: Option<Vec<DocxDeliveryTimeBlockDto>>,
+    recording_file_name: Option<String>,
+    footer_transcriber_name: Option<String>,
+    footer_transcribed_at: Option<String>,
 ) -> Result<Option<String>, String> {
     let mode = normalize_export_mode(&export_mode);
     let appendix = appendix_lines.unwrap_or_default();
@@ -35,6 +63,12 @@ pub async fn export_docx(
     let polished_owned = polished_paragraphs.filter(|p| !p.is_empty());
     let before_owned = polish_before_joined.filter(|s| !s.trim().is_empty());
     let corrected_owned = polish_corrected_lines.filter(|p| !p.is_empty());
+    let layout = DocxExportLayout {
+        delivery_time_blocks: map_delivery_time_blocks(delivery_time_blocks),
+        recording_file_name,
+        footer_transcriber_name,
+        footer_transcribed_at,
+    };
     let picked = tauri::async_runtime::spawn_blocking({
         let default_filename = default_filename.clone();
         move || {
@@ -60,6 +94,7 @@ pub async fn export_docx(
             before_owned.as_deref(),
             corrected_owned.as_deref(),
             track,
+            &layout,
         )?;
         Ok(Some(path.to_string_lossy().to_string()))
     })
@@ -70,7 +105,7 @@ pub async fn export_docx(
 #[cfg(test)]
 mod tests {
     use super::export_docx_body::{format_hms, normalize_export_mode, sanitize_docx_text};
-    use super::export_docx_build::build_docx_bytes;
+    use super::export_docx_build::{build_docx_bytes, DocxExportLayout};
     use super::*;
 
     fn seg(text: &str, low: bool) -> SegmentDto {
@@ -122,6 +157,10 @@ mod tests {
         assert_eq!(s, "Tom & Jerry <3");
     }
 
+    fn default_layout() -> DocxExportLayout {
+        DocxExportLayout::default()
+    }
+
     #[test]
     fn build_docx_bytes_produces_zip_container() {
         let bytes = build_docx_bytes(
@@ -134,6 +173,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .unwrap();
         assert!(bytes.len() > 200);
@@ -156,6 +196,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .unwrap();
         let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
@@ -181,6 +222,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .unwrap();
         assert!(bytes.len() > 200);
@@ -198,6 +240,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .unwrap();
         assert!(bytes.len() > 200);
@@ -211,6 +254,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .unwrap();
         assert!(clean.len() > 200);
@@ -235,6 +279,7 @@ mod tests {
             )),
             Some(&["旧一。改".to_string(), "旧二。改".to_string()]),
             true,
+            &default_layout(),
         )
         .unwrap();
         let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
@@ -263,6 +308,7 @@ mod tests {
             Some("你好世界"),
             Some(&["你好，世界。".to_string()]),
             true,
+            &default_layout(),
         )
         .unwrap();
         let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
@@ -274,6 +320,338 @@ mod tests {
             .unwrap();
         assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
         assert!(doc_xml.contains("你好"));
+    }
+
+    #[test]
+    fn lecture_export_includes_time_span_and_footer() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let layout = DocxExportLayout {
+            delivery_time_blocks: vec![export_docx_body::DocxDeliveryTimeBlock {
+                start_sec: 1.5,
+                end_sec: 3.25,
+                unit_count: 1,
+            }],
+            recording_file_name: Some("interview.wav".to_string()),
+            footer_transcriber_name: Some("李四".to_string()),
+            footer_transcribed_at: Some("2026-07-15".to_string()),
+            ..DocxExportLayout::default()
+        };
+        let bytes = build_docx_bytes(
+            "讲稿",
+            "lecture",
+            &[seg("第一段。", false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("起始时间：00:00:01"));
+        assert!(doc_xml.contains("结束时间：00:00:03"));
+        assert!(doc_xml.contains("录音文件名称：interview.wav"));
+        assert!(doc_xml.contains("转录人：李四"));
+        assert!(doc_xml.contains("转录时间：2026-07-15"));
+        assert!(doc_xml.contains(r#"w:val="right""#));
+    }
+
+    #[test]
+    fn lecture_block_boundaries_when_discontinuous() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let layout = DocxExportLayout {
+            delivery_time_blocks: vec![
+                export_docx_body::DocxDeliveryTimeBlock {
+                    start_sec: 0.0,
+                    end_sec: 2.0,
+                    unit_count: 1,
+                },
+                export_docx_body::DocxDeliveryTimeBlock {
+                    start_sec: 10.0,
+                    end_sec: 15.0,
+                    unit_count: 1,
+                },
+            ],
+            ..DocxExportLayout::default()
+        };
+        let bytes = build_docx_bytes(
+            "讲稿",
+            "lecture",
+            &[
+                seg("第一段。", false),
+                SegmentDto {
+                    start_sec: 10.0,
+                    end_sec: 15.0,
+                    text: "第二段。".to_string(),
+                    ..seg("x", false)
+                },
+            ],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("起始时间：00:00:00"));
+        assert!(doc_xml.contains("结束时间：00:00:15"));
+        assert!(!doc_xml.contains("[00:00:00 –"));
+        assert!(doc_xml.contains("结束时间：00:00:02"));
+        assert!(doc_xml.contains("起始时间：00:00:10"));
+        assert!(doc_xml.contains(r#"w:val="right""#));
+    }
+
+    #[test]
+    fn verbatim_differs_from_lecture_without_bracket_timestamps() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let segments = &[seg("正文句。", false)];
+        let layout = DocxExportLayout {
+            delivery_time_blocks: vec![export_docx_body::DocxDeliveryTimeBlock {
+                start_sec: 1.5,
+                end_sec: 3.25,
+                unit_count: 1,
+            }],
+            ..DocxExportLayout::default()
+        };
+        let verbatim = build_docx_bytes(
+            "逐字稿",
+            "verbatim",
+            segments,
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let lecture = build_docx_bytes(
+            "讲稿",
+            "lecture",
+            segments,
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let read_xml = |bytes: Vec<u8>| {
+            let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut doc_xml = String::new();
+            archive
+                .by_name("word/document.xml")
+                .unwrap()
+                .read_to_string(&mut doc_xml)
+                .unwrap();
+            doc_xml
+        };
+        let v = read_xml(verbatim);
+        let l = read_xml(lecture);
+        assert!(v.contains("[00:00:01 – 00:00:03]"));
+        assert!(!l.contains("[00:00:01 – 00:00:03]"));
+        assert!(l.contains("起始时间：00:00:01"));
+        assert!(l.contains("结束时间：00:00:03"));
+    }
+
+    #[test]
+    fn footer_omits_transcriber_when_layout_none() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let layout = DocxExportLayout {
+            recording_file_name: Some("a.wav".to_string()),
+            footer_transcriber_name: None,
+            ..DocxExportLayout::default()
+        };
+        let bytes = build_docx_bytes(
+            "逐字稿",
+            "verbatim",
+            &[seg("正文。", false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("录音文件名称：a.wav"));
+        assert!(!doc_xml.contains("转录人："));
+    }
+
+    #[test]
+    fn polished_lecture_block_boundaries_when_discontinuous() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let layout = DocxExportLayout {
+            delivery_time_blocks: vec![
+                export_docx_body::DocxDeliveryTimeBlock {
+                    start_sec: 0.0,
+                    end_sec: 2.0,
+                    unit_count: 1,
+                },
+                export_docx_body::DocxDeliveryTimeBlock {
+                    start_sec: 10.0,
+                    end_sec: 15.0,
+                    unit_count: 1,
+                },
+            ],
+            ..DocxExportLayout::default()
+        };
+        let bytes = build_docx_bytes(
+            "讲稿",
+            "lecture",
+            &[],
+            None,
+            &[],
+            Some(&["润色段一。".to_string(), "润色段二。".to_string()]),
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("结束时间：00:00:02"));
+        assert!(doc_xml.contains("起始时间：00:00:10"));
+        assert!(!doc_xml.contains("冻结跳过"));
+    }
+
+    #[test]
+    fn verbatim_truncates_when_body_exceeds_limit() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let huge = "字".repeat(MAX_LECTURE_BODY_CHARS + 100);
+        let bytes = build_docx_bytes(
+            "逐字稿",
+            "verbatim",
+            &[seg(&huge, false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("已截断"));
+    }
+
+    #[test]
+    fn clean_without_blocks_truncates_when_body_exceeds_limit() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let huge = "字".repeat(MAX_LECTURE_BODY_CHARS + 100);
+        let bytes = build_docx_bytes(
+            "干净稿",
+            "clean",
+            &[seg(&huge, false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("已截断"));
+    }
+
+    #[test]
+    fn clean_with_blocks_truncates_when_body_exceeds_limit() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let huge = "字".repeat(MAX_LECTURE_BODY_CHARS + 100);
+        let layout = DocxExportLayout {
+            delivery_time_blocks: vec![export_docx_body::DocxDeliveryTimeBlock {
+                start_sec: 0.0,
+                end_sec: 10.0,
+                unit_count: 1,
+            }],
+            ..DocxExportLayout::default()
+        };
+        let bytes = build_docx_bytes(
+            "干净稿",
+            "clean",
+            &[seg(&huge, false)],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            &layout,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("已截断"));
     }
 
     /// R9 strict: export clean DOCX from live app DB (`RUSHI_APP_DB`, optional `RUSHI_STRICT_DOCX_OUT`).
@@ -353,6 +731,7 @@ mod tests {
             None,
             None,
             false,
+            &default_layout(),
         )
         .expect("build docx");
         std::fs::write(&out, &bytes).expect("write docx");
