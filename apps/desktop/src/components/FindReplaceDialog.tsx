@@ -20,8 +20,8 @@ import {
   resolveFindReplacePanelBounds,
 } from "./findReplacePanelLayout";
 
-/** Bump 丢弃 flex-1 撑满 maxHeight 时代的错误 persist 高度。 */
-const FIND_REPLACE_PANEL_LAYOUT_REV = 5;
+/** Bump：autoFit 列表可 shrink 保页脚；丢弃 shrink-0 时代错误高度。 */
+const FIND_REPLACE_PANEL_LAYOUT_REV = 6;
 
 const PANEL_ID = FIND_REPLACE_PANEL_ID;
 
@@ -141,12 +141,24 @@ export function FindReplaceDialog({
                     timeLabel={row.startTimeLabel}
                     suffix={`#${row.globalIndex + 1}`}
                   >
-                    <FindReplaceMatchText
-                      variant="inline"
-                      text={row.fullText}
-                      charStart={row.charStart}
-                      charEnd={row.charEnd}
-                    />
+                    <span className="inline text-sm leading-snug text-notion-text">
+                      <FindReplaceMatchText
+                        variant="snippet"
+                        text={row.beforeDisplayText}
+                        charStart={row.beforeHighlightStart}
+                        charEnd={row.beforeHighlightEnd}
+                        highlightClassName="rounded-sm bg-red-500/15 px-0.5 text-inherit line-through decoration-notion-text-light/70"
+                      />
+                      <span className="px-1 text-notion-text-light" aria-hidden>
+                        →
+                      </span>
+                      <FindReplaceMatchText
+                        variant="snippet"
+                        text={row.afterDisplayText}
+                        charStart={row.afterHighlightStart}
+                        charEnd={row.afterHighlightEnd}
+                      />
+                    </span>
                   </FloatingPanelSegmentRow>
                 </li>
               ))}

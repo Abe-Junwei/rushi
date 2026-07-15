@@ -3,7 +3,10 @@ import type { SegmentDto } from "../../tauri/projectApi";
 import {
   applyReplaceAllToSegments,
   buildFindMatchListItems,
+  buildMatchDisplaySnippet,
+  buildReplaceAllPreviewRows,
   collectLiteralFindMatches,
+  DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS,
   formatSegmentStartTimeLabel,
   formatSegmentTimeLabel,
   replaceOnceInText,
@@ -70,5 +73,60 @@ describe("segmentFindReplace", () => {
     expect(items[0]?.timeLabel).toBe(formatSegmentTimeLabel(segments[0]));
     expect(items[0]?.startTimeLabel).toBe(formatSegmentStartTimeLabel(segments[0]));
     expect(items[0]?.fullText).toBe("制控");
+    expect(items[0]?.displayText).toBe("制控");
+    expect(items[0]?.highlightStart).toBe(0);
+    expect(items[0]?.highlightEnd).toBe(1);
+  });
+
+  it("buildMatchDisplaySnippet centers match at end of long segment", () => {
+    const prefix = "甲".repeat(DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS + 5);
+    const text = `${prefix}目标词`;
+    const start = text.indexOf("目标词");
+    const end = start + "目标词".length;
+    const snippet = buildMatchDisplaySnippet(text, start, end);
+    expect(snippet.displayText).toContain("目标词");
+    expect(snippet.displayText.startsWith("…")).toBe(true);
+    expect(snippet.displayText.slice(snippet.highlightStart, snippet.highlightEnd)).toBe("目标词");
+  });
+
+  it("buildMatchDisplaySnippet uses snippet-relative highlight indices", () => {
+    const text = "前言抗美援朝后记";
+    const start = text.indexOf("抗美援朝");
+    const end = start + "抗美援朝".length;
+    const snippet = buildMatchDisplaySnippet(text, start, end, { contextChars: 2 });
+    expect(snippet.displayText).toContain("抗美援朝");
+    expect(snippet.displayText.slice(snippet.highlightStart, snippet.highlightEnd)).toBe("抗美援朝");
+  });
+
+  it("buildMatchDisplaySnippet align start places match near front", () => {
+    const prefix = "甲".repeat(DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS + 5);
+    const text = `${prefix}目标词后缀文字`;
+    const start = text.indexOf("目标词");
+    const end = start + "目标词".length;
+    const snippet = buildMatchDisplaySnippet(text, start, end, { align: "start" });
+    expect(snippet.displayText.startsWith("…")).toBe(true);
+    expect(snippet.displayText).toContain("目标词");
+    expect(snippet.highlightStart).toBe(1);
+    expect(snippet.displayText.slice(snippet.highlightStart, snippet.highlightEnd)).toBe("目标词");
+  });
+
+  it("buildReplaceAllPreviewRows exposes before and after snippet highlights", () => {
+    const segments = [seg("制控概讲")];
+    const matches = collectLiteralFindMatches(segments, "制控");
+    const rows = buildReplaceAllPreviewRows(segments, "制控", "自控", matches);
+    expect(rows[0]?.beforeDisplayText).toContain("制控");
+    expect(
+      rows[0]?.beforeDisplayText.slice(
+        rows[0]?.beforeHighlightStart ?? 0,
+        rows[0]?.beforeHighlightEnd ?? 0,
+      ),
+    ).toBe("制控");
+    expect(rows[0]?.afterDisplayText).toContain("自控");
+    expect(
+      rows[0]?.afterDisplayText.slice(
+        rows[0]?.afterHighlightStart ?? 0,
+        rows[0]?.afterHighlightEnd ?? 0,
+      ),
+    ).toBe("自控");
   });
 });

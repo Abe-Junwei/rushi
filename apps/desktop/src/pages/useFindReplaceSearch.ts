@@ -22,7 +22,10 @@ type Args = {
 export function useFindReplaceSearch(args: Args) {
   const { segments, getCurrentSegmentsSnapshot, flushSegmentTextDrafts, setSelectedIdx } = args;
 
+  /** 输入框草稿；每键更新，不驱动全量匹配扫描。 */
   const [findText, setFindText] = useState("");
+  /** 已提交查询；仅 debounce / 显式查找后更新，驱动 matches / 列表。 */
+  const [committedFindQuery, setCommittedFindQuery] = useState("");
   const [replaceText, setReplaceText] = useState("");
   const [activeMatchIndex, setActiveMatchIndex] = useState(-1);
   const [searchCommitted, setSearchCommitted] = useState(false);
@@ -47,12 +50,13 @@ export function useFindReplaceSearch(args: Args) {
   function resetSearchState() {
     clearFindSearchDebounce();
     setSearchCommitted(false);
+    setCommittedFindQuery("");
   }
 
   const matches: FindMatch[] = useMemo(() => {
-    if (!searchCommitted) return [];
-    return collectLiteralFindMatches(segments, findText);
-  }, [searchCommitted, segments, findText]);
+    if (!searchCommitted || !committedFindQuery) return [];
+    return collectLiteralFindMatches(segments, committedFindQuery);
+  }, [searchCommitted, segments, committedFindQuery]);
 
   const resultItems = useMemo(
     () => buildFindMatchListItems(segments, matches),
@@ -110,10 +114,12 @@ export function useFindReplaceSearch(args: Args) {
     (query: string, preferredIndex?: number) => {
       if (!query) {
         setSearchCommitted(false);
+        setCommittedFindQuery("");
         setActiveMatchIndex(-1);
         return;
       }
       flushSegmentTextDrafts();
+      setCommittedFindQuery(query);
       setSearchCommitted(true);
       const nextMatches = collectLiteralFindMatches(getCurrentSegmentsSnapshot(), query);
       applySearchResults(nextMatches, preferredIndex);
@@ -128,7 +134,10 @@ export function useFindReplaceSearch(args: Args) {
       setReplaceText(repl);
       setActiveMatchIndex(-1);
       if (seed) commitFindSearch(seed, 0);
-      else setSearchCommitted(false);
+      else {
+        setSearchCommitted(false);
+        setCommittedFindQuery("");
+      }
       focusFindInput(seed.length > 0);
     },
     [commitFindSearch],
@@ -184,6 +193,8 @@ export function useFindReplaceSearch(args: Args) {
 
   return {
     findText,
+    /** 与 matches 对齐的已提交查询；替换写回须用此值，勿用输入草稿。 */
+    committedFindQuery,
     replaceText,
     activeMatchIndex,
     searchCommitted,

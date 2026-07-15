@@ -15,13 +15,19 @@ function FloatingPanelSegmentMeta({
   /** 如「3处」「#2」 */
   suffix?: string;
 }) {
+  const hasTime = timeLabel.length > 0;
+  const title = `语段 ${segmentNumber}${hasTime ? ` · ${timeLabel}` : ""}${suffix ? ` · ${suffix}` : ""}`;
   return (
-    <span className={META_COL_CLASS} title={`语段 ${segmentNumber} · ${timeLabel}${suffix ? ` · ${suffix}` : ""}`}>
+    <span className={META_COL_CLASS} title={title}>
       <span className="font-semibold text-notion-text">语段{segmentNumber}</span>
-      <span className="px-1 text-notion-text-light" aria-hidden>
-        ·
-      </span>
-      <span>{timeLabel}</span>
+      {hasTime ? (
+        <>
+          <span className="px-1 text-notion-text-light" aria-hidden>
+            ·
+          </span>
+          <span>{timeLabel}</span>
+        </>
+      ) : null}
       {suffix ? (
         <>
           <span className="px-1 text-notion-text-light" aria-hidden>

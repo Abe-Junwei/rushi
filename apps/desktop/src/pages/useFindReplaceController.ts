@@ -64,13 +64,13 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     (rows: Extract<FindReplaceDialogState, { phase: "replaceAllPreview" }>["rows"]) => {
       setDialog({
         phase: "replaceAllPreview",
-        findText: search.findText,
+        findText: search.committedFindQuery,
         replaceText: search.replaceText,
         rows,
         matchCount: search.matches.length,
       });
     },
-    [search.findText, search.matches.length, search.replaceText],
+    [search.committedFindQuery, search.matches.length, search.replaceText],
   );
 
   const mutations = useFindReplaceMutations({
@@ -80,7 +80,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     updateSegmentText,
     pushUndo,
     saveSegments,
-    findText: search.findText,
+    findText: search.committedFindQuery,
     replaceText: search.replaceText,
     activeMatchIndex: search.activeMatchIndex,
     matches: search.matches,
@@ -230,13 +230,19 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
   const findReplaceEditorHighlight = useMemo(() => {
     if (dialog.phase === "closed" || !search.searchCommitted || search.activeMatchIndex < 0) return null;
     const match = search.matches[search.activeMatchIndex];
-    if (!match || !search.findText) return null;
+    if (!match || !search.committedFindQuery) return null;
     return {
       segmentIdx: match.segmentIdx,
       charStart: match.charStart,
       charEnd: match.charEnd,
     };
-  }, [dialog.phase, search.activeMatchIndex, search.findText, search.matches, search.searchCommitted]);
+  }, [
+    dialog.phase,
+    search.activeMatchIndex,
+    search.committedFindQuery,
+    search.matches,
+    search.searchCommitted,
+  ]);
 
   const findReplaceDialog: FindReplaceDialogState =
     dialog.phase === "closed"

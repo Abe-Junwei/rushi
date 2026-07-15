@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   IconChevronDown as ChevronDown,
   IconChevronUp as ChevronUp,
@@ -37,6 +38,14 @@ function FindResultList({
   activeMatchIndex: number;
   onSelectMatch: (globalIndex: number) => void;
 }) {
+  useEffect(() => {
+    if (activeMatchIndex < 0) return;
+    const id = `find-replace-match-${activeMatchIndex}`;
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+    });
+  }, [activeMatchIndex]);
+
   if (items.length === 0) return null;
 
   return (
@@ -44,19 +53,23 @@ function FindResultList({
       {items.map((item) => {
         const active = item.globalIndex === activeMatchIndex;
         return (
-          <li key={`${item.segmentIdx}-${item.globalIndex}`} className="list-none">
+          <li
+            key={`${item.segmentIdx}-${item.globalIndex}`}
+            id={`find-replace-match-${item.globalIndex}`}
+            className="list-none"
+          >
             <FloatingPanelSegmentRow
               segmentNumber={item.segmentNumber}
-              timeLabel={item.startTimeLabel}
+              timeLabel=""
               suffix={`#${item.globalIndex + 1}`}
               active={active}
               onClick={() => onSelectMatch(item.globalIndex)}
             >
               <FindReplaceMatchText
-                variant="inline"
-                text={item.fullText}
-                charStart={item.charStart}
-                charEnd={item.charEnd}
+                variant="snippet"
+                text={item.displayText}
+                charStart={item.highlightStart}
+                charEnd={item.highlightEnd}
               />
             </FloatingPanelSegmentRow>
           </li>

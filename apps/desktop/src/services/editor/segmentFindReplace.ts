@@ -22,7 +22,22 @@ export type ReplaceAllPreviewRow = {
   charEnd: number;
   beforeSnippet: string;
   afterSnippet: string;
+  beforeDisplayText: string;
+  beforeHighlightStart: number;
+  beforeHighlightEnd: number;
+  afterDisplayText: string;
+  afterHighlightStart: number;
+  afterHighlightEnd: number;
 };
+
+export type MatchDisplaySnippet = {
+  displayText: string;
+  highlightStart: number;
+  highlightEnd: number;
+};
+
+/** 与 Welcome `build_content_snippet` / Word 导航结果一致。 */
+export const DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS = 24;
 
 export type FindMatchListItem = {
   globalIndex: number;
@@ -33,6 +48,9 @@ export type FindMatchListItem = {
   fullText: string;
   charStart: number;
   charEnd: number;
+  displayText: string;
+  highlightStart: number;
+  highlightEnd: number;
 };
 
 export function formatSegmentTimeLabel(seg: SegmentDto): string {
@@ -46,18 +64,49 @@ export function formatSegmentStartTimeLabel(seg: SegmentDto): string {
   return formatMediaTime(segmentStartSec(seg));
 }
 
+/** 以匹配为中心截取上下文；高亮坐标相对 `displayText`（非全文）。
+ * `align: "start"` 用于浮窗单行列表：匹配置于 snippet 前端，避免右侧 CSS 截断时高亮被隐藏。 */
+export function buildMatchDisplaySnippet(
+  text: string,
+  charStart: number,
+  charEnd: number,
+  opts?: { contextChars?: number; align?: "start" | "center" },
+): MatchDisplaySnippet {
+  const contextChars = opts?.contextChars ?? DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS;
+  const align = opts?.align ?? "center";
+  if (!text) {
+    return { displayText: "（空）", highlightStart: 0, highlightEnd: 0 };
+  }
+  const safeStart = Math.max(0, Math.min(charStart, text.length));
+  const safeEnd = Math.max(safeStart, Math.min(charEnd, text.length));
+  const chars = [...text];
+  const left = align === "start" ? safeStart : Math.max(0, safeStart - contextChars);
+  const right = Math.min(chars.length, safeEnd + contextChars);
+  const prefix = left > 0 ? "…" : "";
+  const suffix = right < chars.length ? "…" : "";
+  const displayText = `${prefix}${chars.slice(left, right).join("")}${suffix}`;
+  const highlightStart = prefix.length + (safeStart - left);
+  const highlightEnd = highlightStart + (safeEnd - safeStart);
+  return { displayText, highlightStart, highlightEnd };
+}
+
 export function buildFindMatchListItems(segments: SegmentDto[], matches: FindMatch[]): FindMatchListItem[] {
   return matches.map((m) => {
     const seg = segments[m.segmentIdx];
+    const fullText = seg?.text ?? "";
+    const snippet = buildMatchDisplaySnippet(fullText, m.charStart, m.charEnd, { align: "start" });
     return {
       globalIndex: m.globalIndex,
       segmentIdx: m.segmentIdx,
       segmentNumber: m.segmentIdx + 1,
       timeLabel: seg ? formatSegmentTimeLabel(seg) : "—",
       startTimeLabel: seg ? formatSegmentStartTimeLabel(seg) : "—",
-      fullText: seg?.text ?? "",
+      fullText,
       charStart: m.charStart,
       charEnd: m.charEnd,
+      displayText: snippet.displayText,
+      highlightStart: snippet.highlightStart,
+      highlightEnd: snippet.highlightEnd,
     };
   });
 }
@@ -124,14 +173,6 @@ export function applyReplaceAllToSegments(
   return next;
 }
 
-function snippetAround(text: string, charStart: number, spanLen: number, radius = 14): string {
-  const lo = Math.max(0, charStart - radius);
-  const hi = Math.min(text.length, charStart + spanLen + radius);
-  const head = lo > 0 ? "…" : "";
-  const tail = hi < text.length ? "…" : "";
-  return `${head}${text.slice(lo, hi)}${tail}`;
-}
-
 export function buildReplaceAllPreviewRows(
   segments: SegmentDto[],
   query: string,
@@ -142,6 +183,12 @@ export function buildReplaceAllPreviewRows(
     const text = segments[m.segmentIdx]?.text ?? "";
     const afterText = replaceOnceInText(text, m.charStart, query, replacement);
     const seg = segments[m.segmentIdx];
+    const beforeSnip = buildMatchDisplaySnippet(text, m.charStart, m.charEnd);
+    const afterSnip = buildMatchDisplaySnippet(
+      afterText,
+      m.charStart,
+      m.charStart + replacement.length,
+    );
     return {
       globalIndex: m.globalIndex,
       segmentIdx: m.segmentIdx,
@@ -153,8 +200,14 @@ export function buildReplaceAllPreviewRows(
       fullTextAfter: afterText,
       charStart: m.charStart,
       charEnd: m.charEnd,
-      beforeSnippet: snippetAround(text, m.charStart, query.length),
-      afterSnippet: snippetAround(afterText, m.charStart, replacement.length),
+      beforeSnippet: beforeSnip.displayText,
+      afterSnippet: afterSnip.displayText,
+      beforeDisplayText: beforeSnip.displayText,
+      beforeHighlightStart: beforeSnip.highlightStart,
+      beforeHighlightEnd: beforeSnip.highlightEnd,
+      afterDisplayText: afterSnip.displayText,
+      afterHighlightStart: afterSnip.highlightStart,
+      afterHighlightEnd: afterSnip.highlightEnd,
     };
   });
 }
