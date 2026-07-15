@@ -7,9 +7,6 @@ import {
   readStoredTranscriptFontItalic,
   readStoredTranscriptFontWeight,
   transcriptFontFamilyDisplayLabel,
-  TRANSCRIPT_META_WIDTH_MAX,
-  TRANSCRIPT_META_WIDTH_MIN,
-  TRANSCRIPT_META_WIDTH_STORAGE_KEY,
   type LocalFontFaceMetadata,
   writeStoredTranscriptFontFamily,
   writeStoredTranscriptFontItalic,
@@ -27,13 +24,6 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     () => readStoredTranscriptFontFamily() ?? DEFAULT_FONT_OPTIONS[0],
   );
   const [fontLoadBusy, setFontLoadBusy] = useState(false);
-  const [transcriptMetaWidthPx, setTranscriptMetaWidthPx] = useState<number>(() => {
-    if (typeof window === "undefined") return 132;
-    const raw = window.localStorage.getItem(TRANSCRIPT_META_WIDTH_STORAGE_KEY);
-    const parsed = raw ? Number(raw) : NaN;
-    if (!Number.isFinite(parsed)) return 132;
-    return Math.max(TRANSCRIPT_META_WIDTH_MIN, Math.min(TRANSCRIPT_META_WIDTH_MAX, Math.round(parsed)));
-  });
   const [transcriptFontWeight, setTranscriptFontWeight] = useState<500 | 700>(() =>
     readStoredTranscriptFontWeight(),
   );
@@ -72,11 +62,6 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
   }, [loadSystemFonts]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(TRANSCRIPT_META_WIDTH_STORAGE_KEY, String(transcriptMetaWidthPx));
-  }, [transcriptMetaWidthPx]);
-
-  useEffect(() => {
     writeStoredTranscriptFontFamily(transcriptFontFamily);
   }, [transcriptFontFamily]);
 
@@ -88,55 +73,18 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     writeStoredTranscriptFontItalic(transcriptFontItalic);
   }, [transcriptFontItalic]);
 
-  const beginTranscriptMetaWidthDrag = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (busy) return;
-      e.preventDefault();
-      e.stopPropagation();
-
-      const pointerId = e.pointerId;
-      const startX = e.clientX;
-      const startWidth = transcriptMetaWidthPx;
-      const handle = e.currentTarget;
-      handle.setPointerCapture(pointerId);
-
-      const onMove = (moveEvent: PointerEvent) => {
-        const delta = moveEvent.clientX - startX;
-        const next = Math.max(
-          TRANSCRIPT_META_WIDTH_MIN,
-          Math.min(TRANSCRIPT_META_WIDTH_MAX, Math.round(startWidth + delta)),
-        );
-        setTranscriptMetaWidthPx(next);
-      };
-
-      const finish = () => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", finish);
-        window.removeEventListener("pointercancel", finish);
-        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
-      };
-
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", finish);
-      window.addEventListener("pointercancel", finish);
-    },
-    [busy, transcriptMetaWidthPx],
-  );
-
   return {
     fontOptions,
     fontDisplayLabels,
     transcriptFontFamily,
     setTranscriptFontFamily,
     fontLoadBusy,
-    transcriptMetaWidthPx,
     transcriptFontWeight,
     setTranscriptFontWeight,
     transcriptFontItalic,
     setTranscriptFontItalic,
     transcriptFontControlDisabled,
     loadSystemFonts,
-    beginTranscriptMetaWidthDrag,
     normalizeFontFamily,
   };
 }

@@ -96,4 +96,23 @@ describe("hoverSegmentField", () => {
     expect(view.contentDOM.querySelector(".cm-transcript-playback-focus")).toBeNull();
     expect(view.contentDOM.querySelector(".cm-transcript-primary-line")).toBeTruthy();
   });
+
+  it("shows row height resize hit zone on hovered line", () => {
+    const parent = document.createElement("div");
+    document.body.appendChild(parent);
+    const dragRef = {
+      current: undefined as ((target: HTMLElement, event: PointerEvent) => void) | undefined,
+    };
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: transcriptEditorCoreExtensions({
+        withProjection: false,
+        rowHeightDragFromDomRef: dragRef,
+      }),
+    });
+    view = new EditorView({ state, parent });
+    view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(1) });
+    const hit = view.dom.querySelector(".cm-transcript-row-height-resize");
+    expect(hit).toBeTruthy();
+    expect(hit?.querySelector("[class*='__tri']")).toBeNull();
+  });
 });

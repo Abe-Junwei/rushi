@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import {
   clampTranscriptFontPx,
   clampWaveformHeight,
@@ -15,13 +15,12 @@ import {
 import {
   clampSegmentLaneRowPx,
   computeSegmentLaneRowPx,
-  transcriptFontPxFromDragDelta,
   transcriptFontPxFromSegmentRowPx,
 } from "../utils/segmentLayout";
+import { bindTranscriptRowHeightPointerDrag } from "../utils/transcriptRowHeightDrag";
 import { useDeferredRendererState } from "./useDeferredRendererState";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
-const TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX = 4;
 
 const heightEquals = (a: number, b: number) => Math.abs(a - b) < 0.5;
 
@@ -125,70 +124,31 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     [args.busy, height],
   );
 
-  const beginTranscriptFontDrag = useCallback(
-    (e: React.PointerEvent) => {
-      if (e.button !== 0 || args.busy) return;
-      e.preventDefault();
-      const target = e.currentTarget;
-      target.setPointerCapture(e.pointerId);
-      const startY = e.clientY;
-      const startF = transcriptFontPxRef.current;
-      let dragging = false;
-      const onMove = (ev: PointerEvent) => {
-        if ((ev.buttons & 1) !== 1) return;
-        const dy = ev.clientY - startY;
-        if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
-        dragging = true;
-        setTranscriptFontPxState(transcriptFontPxFromDragDelta(startF, dy));
-      };
-      const onUp = (ev: PointerEvent) => {
-        try {
-          target.releasePointerCapture(ev.pointerId);
-        } catch {
-          /* noop */
-        }
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-        window.removeEventListener("pointercancel", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-      window.addEventListener("pointercancel", onUp);
+  const beginTranscriptRowHeightDragFromDom = useCallback(
+    (target: HTMLElement, event: Pick<PointerEvent, "button" | "pointerId" | "clientY">) => {
+      bindTranscriptRowHeightPointerDrag(target, event, {
+        busy: args.busy,
+        getStartFontPx: () => transcriptFontPxRef.current,
+        setFontPx: setTranscriptFontPxState,
+      });
     },
     [args.busy],
   );
 
-  const beginTranscriptRowHeightDrag = useCallback(
-    (e: React.PointerEvent) => {
-      if (e.button !== 0 || args.busy) return;
+  const beginTranscriptFontDrag = useCallback(
+    (e: ReactPointerEvent<Element>) => {
       e.preventDefault();
-      const target = e.currentTarget;
-      target.setPointerCapture(e.pointerId);
-      const startY = e.clientY;
-      const startF = transcriptFontPxRef.current;
-      let dragging = false;
-      const onMove = (ev: PointerEvent) => {
-        if ((ev.buttons & 1) !== 1) return;
-        const dy = ev.clientY - startY;
-        if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
-        dragging = true;
-        setTranscriptFontPxState(transcriptFontPxFromDragDelta(startF, dy));
-      };
-      const onUp = (ev: PointerEvent) => {
-        try {
-          target.releasePointerCapture(ev.pointerId);
-        } catch {
-          /* noop */
-        }
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-        window.removeEventListener("pointercancel", onUp);
-      };
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-      window.addEventListener("pointercancel", onUp);
+      beginTranscriptRowHeightDragFromDom(e.currentTarget as HTMLElement, e.nativeEvent);
     },
-    [args.busy],
+    [beginTranscriptRowHeightDragFromDom],
+  );
+
+  const beginTranscriptRowHeightDrag = useCallback(
+    (e: ReactPointerEvent<Element>) => {
+      e.preventDefault();
+      beginTranscriptRowHeightDragFromDom(e.currentTarget as HTMLElement, e.nativeEvent);
+    },
+    [beginTranscriptRowHeightDragFromDom],
   );
 
   const transcriptRowHeightPx = computeSegmentLaneRowPx(transcriptFontPx);
@@ -208,5 +168,6 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     beginWaveformHeightDrag,
     beginTranscriptFontDrag,
     beginTranscriptRowHeightDrag,
+    beginTranscriptRowHeightDragFromDom,
   };
 }

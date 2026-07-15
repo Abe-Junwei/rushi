@@ -326,6 +326,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     beginWaveformHeightDrag: display.beginWaveformHeightDrag,
     beginTranscriptFontDrag: display.beginTranscriptFontDrag,
     beginTranscriptRowHeightDrag: display.beginTranscriptRowHeightDrag,
+    beginTranscriptRowHeightDragFromDom: display.beginTranscriptRowHeightDragFromDom,
     onTierScroll: timeline.onTierScroll,
     timelineWidthPx: timeline.timelineWidthPx,
     tierScrollLive: timeline.tierScrollLive,

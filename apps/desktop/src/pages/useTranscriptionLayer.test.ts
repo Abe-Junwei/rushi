@@ -5,6 +5,7 @@ import {
   computeSegmentLaneRowPx,
   computeTimelineWidthPx,
   SEGMENT_LANE_ROW_PX,
+  transcriptEditorRowMetrics,
 } from "../utils/segmentLayout";
 
 describe("assignSegmentOverlapLanes", () => {
@@ -131,5 +132,23 @@ describe("computeSegmentLaneRowPx", () => {
 
   it("grows with font size", () => {
     expect(computeSegmentLaneRowPx(11)).toBeLessThan(computeSegmentLaneRowPx(22));
+  });
+});
+
+describe("transcriptEditorRowMetrics", () => {
+  it("uses tighter vertical padding than waveform lane row height at default font", () => {
+    const row = transcriptEditorRowMetrics(13);
+    expect(row.linePadPx).toBe(26);
+    expect(row.minLinePx).toBe(75);
+  });
+
+  it("holds the 75px row floor for typical fonts, shrinking padding as font grows", () => {
+    expect(transcriptEditorRowMetrics(13).minLinePx).toBe(75);
+    expect(transcriptEditorRowMetrics(22).minLinePx).toBe(75);
+    expect(transcriptEditorRowMetrics(22).linePadPx).toBeLessThan(
+      transcriptEditorRowMetrics(13).linePadPx,
+    );
+    // Larger fonts exceed the floor once content + pad-min > 75.
+    expect(transcriptEditorRowMetrics(30).minLinePx).toBeGreaterThan(75);
   });
 });

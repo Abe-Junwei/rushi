@@ -1,8 +1,10 @@
 import { Compartment, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
-import { computeSegmentLaneRowPx } from "../../../utils/segmentLayout";
-import { segmentListRowMinHeightPx } from "../../../utils/segmentListVirtualWindowCore";
+import {
+  transcriptEditorRowMetrics,
+  TRANSCRIPT_EDITOR_META_CONTENT_GAP,
+} from "../../../utils/segmentLayout";
 import { transcriptEditorCoreExtensions } from "./transcriptEditorCoreExtensions";
 import {
   selectSegmentCommand,
@@ -18,6 +20,7 @@ import { segmentMetaField } from "./segmentMetaField";
 import { primarySegmentIdx, transcriptMultiSelectionField } from "./selectionField";
 import { readTranscriptEditorSelectionText } from "./textEditCommands";
 import { createTranscriptTextDragClamp } from "./transcriptTextDragClamp";
+import { transcriptSelectionIsSingleLine } from "./transcriptClipboard";
 import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
 
 export function buildTranscriptAppearanceTheme(args: {
@@ -27,11 +30,10 @@ export function buildTranscriptAppearanceTheme(args: {
   fontItalic: boolean;
   metaGutterWidthPx: number;
 }): Extension {
-  // Match legacy list row stride (`segmentListRowMinHeightPx` + seg-text line-height 1.72).
-  const lineHeight = 1.72;
-  const minLine = segmentListRowMinHeightPx(computeSegmentLaneRowPx(args.fontPx));
-  const contentLine = Math.round(args.fontPx * lineHeight);
-  const linePad = Math.max(16, Math.ceil((minLine - contentLine) / 2));
+  // CM 列表单行：紧凑 padding；波形 lane 卡仍用 `computeSegmentLaneRowPx`。
+  const { lineHeight, linePadPx: linePad, minLinePx: minLine } = transcriptEditorRowMetrics(
+    args.fontPx,
+  );
   return EditorView.theme({
     "&": {
       height: "100%",
@@ -46,6 +48,8 @@ export function buildTranscriptAppearanceTheme(args: {
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
       "--cm-stage-gutter-width": "11rem",
       "--cm-transcript-line-pad": `${linePad}px`,
+      "--cm-transcript-min-line-px": `${minLine}px`,
+      "--cm-transcript-meta-content-gap": TRANSCRIPT_EDITOR_META_CONTENT_GAP,
     },
     ".cm-scroller": {
       overflow: "auto",
@@ -70,7 +74,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "transparent !important",
     },
     ".cm-content": {
-      padding: "0.15rem 0 0.5rem 0",
+      padding: "0.12rem 0 0.42rem 0",
       caretColor: "var(--accent-action-strong)",
       // Same compositing base as gutters — avoid white plate under translucent fills.
       backgroundColor: "transparent",
@@ -78,7 +82,9 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-line": {
       paddingTop: `${linePad}px`,
       paddingBottom: `${linePad}px`,
-      paddingLeft: "0.75rem",
+      // Meta gutter width is fixed — this paddingLeft is the ONLY thing that
+      // produces the visible gap between the left column and segment text.
+      paddingLeft: `var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP})`,
       paddingRight: "0.75rem",
       minHeight: `${minLine}px`,
       lineHeight: String(lineHeight),
@@ -99,6 +105,21 @@ export function buildTranscriptAppearanceTheme(args: {
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
         "var(--cm-stage-gutter-width, 11rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
+    },
+    ".cm-line.cm-transcript-line-resize-host": {
+      position: "relative",
+    },
+    ".cm-transcript-row-height-resize": {
+      position: "absolute",
+      left: "0",
+      right: "0",
+      bottom: "0",
+      height: "12px",
+      zIndex: "4",
+      cursor: "row-resize",
+      touchAction: "none",
+      userSelect: "none",
+      pointerEvents: "auto",
     },
     ".cm-transcript-primary-line": {
       backgroundColor: "var(--segment-fill-selected-list)",
@@ -158,6 +179,9 @@ export function buildTranscriptEditorCoreExtensions(args: {
       }) => void)
     | undefined
   >;
+  rowHeightDragFromDomRef: React.MutableRefObject<
+    ((target: HTMLElement, event: PointerEvent) => void) | undefined
+  >;
 }): Extension[] {
   const bridgePrimaryMoved = (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => {
     // Transitional P3→P5: CM6 owns selection SoT; bridge keeps SC1/waveform seek alive
@@ -168,6 +192,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
   return [
     ...transcriptEditorCoreExtensions({
       withProjection: true,
+      rowHeightDragFromDomRef: args.rowHeightDragFromDomRef,
       metaGutter: {
         onSelectSegment: (idx, opts) => bridgePrimaryMoved(idx, opts),
       },
@@ -241,7 +266,16 @@ export function buildTranscriptEditorCoreExtensions(args: {
         // in the set (mousedown runs before contextmenu and would otherwise collapse).
         if (event.button !== 0) {
           event.preventDefault();
+          const currentSelection = view.state.selection.main;
+          // Right-click inside an existing text selection must not collapse it
+          // (mousedown runs before contextmenu) — otherwise 复制/剪切 always see "".
+          const clickWithinTextSelection =
+            !currentSelection.empty &&
+            pos != null &&
+            pos >= currentSelection.from &&
+            pos <= currentSelection.to;
           if (
+            !clickWithinTextSelection &&
             shouldApplyContextMenuSelection({
               segmentIdx: idx,
               isIndexInSelection: (i) => multi.selectedSet.has(i),
@@ -297,7 +331,11 @@ export function buildTranscriptEditorCoreExtensions(args: {
           pos != null
             ? view.state.doc.lineAt(pos).number - 1
             : Math.max(0, Math.min(lineCount - 1, primarySegmentIdx(view.state)));
-        const selectionText = readTranscriptEditorSelectionText(view);
+        // Copy/cut only support a single-segment range (see transcriptClipboard);
+        // a cross-segment drag-selection must not offer them since it would no-op.
+        const selectionText = transcriptSelectionIsSingleLine(view)
+          ? readTranscriptEditorSelectionText(view)
+          : "";
         const meta = view.state.field(segmentMetaField);
         const pointerTimeSec = meta[lineIdx]?.startSec ?? 0;
         open({

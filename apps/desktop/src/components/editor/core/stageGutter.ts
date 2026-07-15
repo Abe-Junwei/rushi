@@ -414,7 +414,7 @@ export const transcriptStageGutterTheme = EditorView.theme({
     letterSpacing: "-0.01em",
     overflow: "hidden",
     flexShrink: "0",
-    cursor: "cell",
+    cursor: "default",
   },
   ".cm-transcript-stage-chip__icon": {
     display: "inline-flex",

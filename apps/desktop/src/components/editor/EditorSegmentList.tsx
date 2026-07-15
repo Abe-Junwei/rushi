@@ -110,8 +110,6 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         fontFamily={a.transcriptFontFamily}
         fontWeight={a.transcriptFontWeight}
         fontItalic={a.transcriptFontItalic}
-        transcriptMetaWidthPx={a.transcriptMetaWidthPx}
-        onMetaWidthPointerDown={a.beginTranscriptMetaWidthDrag}
         updateSegmentText={c.updateSegmentText}
         panelHighlight={panelHighlight}
         filterActive={filterActive}
@@ -156,6 +154,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             toggleSelectedLoop: () => tx.handleToggleSelectedWaveformLoop(),
           });
         }}
+        rowHeightDragFromDom={tx.beginTranscriptRowHeightDragFromDom}
       />
     </div>
   );
@@ -183,7 +182,9 @@ function areEditorSegmentListPropsEqual(
   }
   if (prev.controller.updateSegmentText !== next.controller.updateSegmentText) return false;
   if (prev.tx.transcriptFontPx !== next.tx.transcriptFontPx) return false;
-  if (prev.appearance.transcriptMetaWidthPx !== next.appearance.transcriptMetaWidthPx) return false;
+  if (prev.tx.beginTranscriptRowHeightDragFromDom !== next.tx.beginTranscriptRowHeightDragFromDom) {
+    return false;
+  }
   if (prev.appearance.transcriptFontFamily !== next.appearance.transcriptFontFamily) return false;
   if (prev.appearance.transcriptFontWeight !== next.appearance.transcriptFontWeight) return false;
   if (prev.appearance.transcriptFontItalic !== next.appearance.transcriptFontItalic) return false;

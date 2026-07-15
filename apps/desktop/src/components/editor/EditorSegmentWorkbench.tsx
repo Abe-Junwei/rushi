@@ -1,5 +1,4 @@
 import { memo } from "react";
-import { ResizeBottomHit } from "../ResizeBottomHit";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
@@ -48,11 +47,6 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         onResetSegmentListFilter={onResetSegmentListFilter}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       />
-      <ResizeBottomHit
-        busy={c.busy}
-        ariaLabel="上下拖动调节语段高度（字号联动）"
-        onPointerDown={tx.beginTranscriptRowHeightDrag}
-      />
     </div>
   );
 }, areEditorSegmentWorkbenchPropsEqual);
@@ -78,9 +72,6 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.editorSpansForText === next.controller.editorSpansForText &&
     prev.tx.transcriptFontPx === next.tx.transcriptFontPx &&
     prev.tx.transcriptRowHeightPx === next.tx.transcriptRowHeightPx &&
-    prev.tx.beginTranscriptRowHeightDrag === next.tx.beginTranscriptRowHeightDrag &&
-    prev.tx.selectSegmentAt === next.tx.selectSegmentAt &&
-    prev.tx.onSegmentTextareaKeyDown === next.tx.onSegmentTextareaKeyDown &&
     prev.appearance === next.appearance &&
     prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu
   );

@@ -6,15 +6,21 @@ import { TRANSCRIPT_FONT_DEFAULT } from "../utils/waveformPrefs";
 import { useWaveformDisplay } from "./useWaveformDisplay";
 
 function makePointerDown(clientY: number): React.PointerEvent {
+  const target = {
+    setPointerCapture: () => {},
+    releasePointerCapture: () => {},
+  } as unknown as HTMLElement;
+  const nativeEvent = new Event("pointerdown") as PointerEvent;
+  Object.defineProperty(nativeEvent, "clientY", { configurable: true, value: clientY });
+  Object.defineProperty(nativeEvent, "button", { configurable: true, value: 0 });
+  Object.defineProperty(nativeEvent, "pointerId", { configurable: true, value: 1 });
   return {
     button: 0,
     clientY,
     pointerId: 1,
     preventDefault: () => {},
-    currentTarget: {
-      setPointerCapture: () => {},
-      releasePointerCapture: () => {},
-    },
+    currentTarget: target,
+    nativeEvent,
   } as unknown as React.PointerEvent;
 }
 

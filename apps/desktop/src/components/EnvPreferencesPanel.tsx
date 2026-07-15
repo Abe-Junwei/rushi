@@ -158,7 +158,7 @@ export function EnvPreferencesPanel() {
 
       <EnvPrefGroupShell
         title="转写与波形"
-        description="与转写页工具条共用同一偏好；语段字体族、列宽等仍可在编辑器右键或拖拽调整。"
+        description="与转写页工具条共用同一偏好；语段字体族等仍可在编辑器右键调整，语段高度可在悬停语段行底缘拖拽。"
       >
         <div className={ENV_PANEL_FORM_FIELDS_CLASS}>
           <EnvPrefSwitchRow

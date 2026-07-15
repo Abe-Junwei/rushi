@@ -64,7 +64,8 @@
 }
 
 .resize-bottom-hit {
-  height: var(--resize-bottom-hit-height, 6px);
+  height: var(--resize-bottom-hit-height, 16px);
+  z-index: 40;
 }
 
 body.csp-drag-session {

@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import type { Extension } from "@codemirror/state";
 import { transcriptSelectionDecorations } from "./selectionDecorations";
 import {
@@ -22,6 +23,10 @@ import {
   type TranscriptStageGutterOptions,
 } from "./stageGutter";
 import { transcriptHoverExtensions } from "./hoverSegmentField";
+import {
+  createTranscriptRowHeightResizeExtensions,
+  type TranscriptRowHeightDragFromDom,
+} from "./segmentRowHeightResizeDecorations";
 import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
 import { transcriptSegmentLoopExtensions } from "./segmentLoopField";
@@ -41,6 +46,7 @@ export type TranscriptEditorCoreExtensionsOptions = {
   withStageGutter?: boolean;
   metaGutter?: TranscriptMetaGutterOptions;
   stageGutter?: TranscriptStageGutterOptions;
+  rowHeightDragFromDomRef?: MutableRefObject<TranscriptRowHeightDragFromDom | undefined>;
 };
 
 /**
@@ -61,6 +67,9 @@ export function transcriptEditorCoreExtensions(
     transcriptFrozenLineTheme,
     ...transcriptClipboardFilters,
     ...transcriptHoverExtensions,
+    ...(opts.rowHeightDragFromDomRef
+      ? createTranscriptRowHeightResizeExtensions(opts.rowHeightDragFromDomRef)
+      : []),
     ...transcriptPlaybackFocusExtensions,
     ...transcriptScopedPlayingExtensions,
     ...transcriptSegmentLoopExtensions,

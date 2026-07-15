@@ -1,6 +1,7 @@
 import { gutter, GutterMarker, EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { formatTranscriptTimestamp } from "../../segmentRow/segmentRowFormatting";
+import { TRANSCRIPT_EDITOR_META_CONTENT_GAP } from "../../../utils/segmentLayout";
 import { segmentMetaField, type SegmentMeta } from "./segmentMetaField";
 import {
   primarySegmentIdx,
@@ -247,11 +248,13 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     width: "100%",
     height: "100%",
     minHeight: "100%",
-    // Accent bar 4px + 5px gap before index/time.
+    // Accent bar 4px + 9px gap before index/time. Right padding here is purely
+    // internal (gutter width is fixed) — the visible left-column↔text gap
+    // comes from `.cm-line` paddingLeft in transcriptEditorCoreMount.ts.
     padding:
-      "var(--cm-transcript-line-pad, 1rem) 0.75rem var(--cm-transcript-line-pad, 1rem) 9px",
+      `var(--cm-transcript-line-pad, 1rem) var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}) var(--cm-transcript-line-pad, 1rem) 9px`,
     lineHeight: "1.2",
-    cursor: "cell",
+    cursor: "default",
     color: "var(--notion-text-light)",
     borderRadius: "0",
     backgroundColor: "transparent",

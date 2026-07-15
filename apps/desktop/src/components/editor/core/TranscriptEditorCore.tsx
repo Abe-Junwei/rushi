@@ -4,7 +4,6 @@ import { Compartment, EditorSelection, type Extension } from "@codemirror/state"
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { setDirectLayoutStyle } from "../../../utils/cspElementLayout";
-import { CspLayout } from "../../CspLayout";
 import { buildTranscriptEditorState } from "./buildTranscriptEditorState";
 import { syncTranscriptProjectionFromView } from "./transcriptProjection";
 import { serializeTranscriptEditorState } from "./serializeTranscriptEditorState";
@@ -15,6 +14,7 @@ import {
   setTranscriptMultiSelectionEffect,
 } from "./selectionField";
 import { computeTranscriptMetaGutterWidthPx } from "./metaGutter";
+import { TRANSCRIPT_META_WIDTH_DEFAULT } from "../editorTranscriptFontCatalogCore";
 import {
   buildTranscriptAppearanceTheme,
   buildTranscriptEditorCoreExtensions,
@@ -57,9 +57,6 @@ export type TranscriptEditorCoreProps = {
   fontFamily?: string;
   fontWeight?: 500 | 700;
   fontItalic?: boolean;
-  /** Legacy appearance meta width (full column); gutter uses derived half. */
-  transcriptMetaWidthPx?: number;
-  onMetaWidthPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onSelectSegment?: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   /** Primary-row play beside text — scoped segment play/stop. */
@@ -86,6 +83,7 @@ export type TranscriptEditorCoreProps = {
   filterCriteria?: SegmentListFilterState | null;
   listRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
+  rowHeightDragFromDom?: (target: HTMLElement, event: PointerEvent) => void;
 };
 
 type EditorViewWithEditContext = typeof EditorView & { EDIT_CONTEXT?: boolean };
@@ -104,8 +102,6 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     fontFamily = "inherit",
     fontWeight = 500,
     fontItalic = false,
-    transcriptMetaWidthPx = 132,
-    onMetaWidthPointerDown,
     updateSegmentText,
     onSelectSegment,
     onToggleSegmentPlay,
@@ -119,6 +115,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     filterCriteria = null,
     listRef,
     className,
+    rowHeightDragFromDom,
   } = props;
 
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -140,8 +137,10 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   onOpenContextMenuRef.current = onOpenContextMenu;
   const busyRef = useRef(busy);
   busyRef.current = busy;
+  const rowHeightDragFromDomRef = useRef(rowHeightDragFromDom);
+  rowHeightDragFromDomRef.current = rowHeightDragFromDom;
 
-  const metaGutterWidthPx = computeTranscriptMetaGutterWidthPx(transcriptMetaWidthPx);
+  const metaGutterWidthPx = computeTranscriptMetaGutterWidthPx(TRANSCRIPT_META_WIDTH_DEFAULT);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -163,6 +162,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       onToggleSegmentLoopRef,
       busyRef,
       onOpenContextMenuRef,
+      rowHeightDragFromDomRef,
     });
     extensionsRef.current = extensions;
 
@@ -358,21 +358,6 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
         }}
         className="h-full min-h-0 min-w-0 flex-1 overflow-hidden"
       />
-      {onMetaWidthPointerDown ? (
-        <CspLayout
-          role="separator"
-          aria-orientation="vertical"
-          aria-label="拖拽调整语段信息列宽度"
-          layout={{ left: metaGutterWidthPx }}
-          className={[
-            "absolute top-0 bottom-0 z-10 w-2.5 -translate-x-1/2 rounded-full",
-            busy
-              ? "cursor-not-allowed"
-              : "cursor-col-resize hover:bg-accent-action/12",
-          ].join(" ")}
-          onPointerDown={onMetaWidthPointerDown}
-        />
-      ) : null}
     </div>
   );
 }

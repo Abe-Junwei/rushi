@@ -6,12 +6,11 @@ export const CJK_FONT_PROBE = "语段";
 const CJK_FONT_NAME_HINT =
   /(?:SC|TC|HK|JP|KR|CJK|Han|PingFang|Songti|Heiti|Kaiti|Noto Sans|Noto Serif|Source Han|Hiragino|WenKai|YaHei|SimSun|SimHei|FangSong|KaiTi|MiSans|HarmonyOS|Alibaba|Smiley|STSong|STHeiti|STKaiti|STFangsong|Segoe UI)/i;
 
-export const TRANSCRIPT_META_WIDTH_STORAGE_KEY = "rushi.editor.transcript.metaWidthPx";
+/** 语段列表左侧 meta 列（序号/时间）固定宽度（px）；不可拖宽。 */
+export const TRANSCRIPT_META_WIDTH_DEFAULT = 132;
 export const TRANSCRIPT_FONT_FAMILY_STORAGE_KEY = "rushi.editor.transcript.fontFamily";
 export const TRANSCRIPT_FONT_WEIGHT_STORAGE_KEY = "rushi.editor.transcript.fontWeight";
 export const TRANSCRIPT_FONT_ITALIC_STORAGE_KEY = "rushi.editor.transcript.fontItalic";
-export const TRANSCRIPT_META_WIDTH_MIN = 104;
-export const TRANSCRIPT_META_WIDTH_MAX = 260;
 
 export const SYSTEM_FONT_CANDIDATES = [
   "PingFang SC",

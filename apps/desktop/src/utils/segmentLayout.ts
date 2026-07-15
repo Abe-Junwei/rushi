@@ -21,6 +21,46 @@ export function transcriptFontPxFromDragDelta(
   return clampTranscriptFontPx(startFontPx + Math.trunc(deltaYPx / pxPerStep));
 }
 
+/** CM 语段列表正文行高倍数（与 legacy `.seg-text` 一致）。 */
+export const TRANSCRIPT_EDITOR_LINE_HEIGHT = 1.72;
+
+/** CM 列表行上下 padding 下限（px）。 */
+export const TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX = 12;
+
+/** CM 列表单行最小高度（px）。 */
+export const TRANSCRIPT_EDITOR_MIN_LINE_PX = 75;
+
+/**
+ * CM 列表 meta 列（固定宽度）与正文之间的可见间距。
+ * 注意：meta gutter 宽度固定，marker 自身的 padding-right 只影响文字在盒内的位置，
+ * 不产生可见间距——可见间距完全由 `.cm-line` 的 paddingLeft 决定，此常量只应用在那里。
+ */
+export const TRANSCRIPT_EDITOR_META_CONTENT_GAP = "0.2rem";
+
+/** 左栏 index + 时间叠放的最小内容高度（px，与 meta marker 字号/gap 对齐）。 */
+const TRANSCRIPT_EDITOR_META_STACK_MIN_PX = 34;
+
+export function transcriptEditorRowMetrics(fontPx: number): {
+  lineHeight: number;
+  contentLinePx: number;
+  linePadPx: number;
+  minLinePx: number;
+} {
+  const f = clampTranscriptFontPx(fontPx);
+  const lineHeight = TRANSCRIPT_EDITOR_LINE_HEIGHT;
+  const contentLinePx = Math.round(f * lineHeight);
+  const minLinePx = Math.max(
+    TRANSCRIPT_EDITOR_MIN_LINE_PX,
+    TRANSCRIPT_EDITOR_META_STACK_MIN_PX + 2 * TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX,
+    contentLinePx + 2 * TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX,
+  );
+  const linePadPx = Math.max(
+    TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX,
+    Math.floor((minLinePx - contentLinePx) / 2),
+  );
+  return { lineHeight, contentLinePx, linePadPx, minLinePx };
+}
+
 /** 语段卡行高（px）：支持元信息与两行正文的编辑卡。 */
 export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
   const f = clampTranscriptFontPx(transcriptFontPx);
