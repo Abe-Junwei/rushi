@@ -65,12 +65,12 @@
 
   --spacing-page-margin: 2rem;
 
-  /* Type scale ← tokens.css :root --text-*（值须同步）；line-height 仍由 leading-* 控制 */
-  --text-display: 28px;
-  --text-heading: 18px;
-  --text-title: 14px;
-  --text-body: 12px;
-  --text-label: 11px;
+  /* Type scale ← tokens.css :root --text-*（calc 须同步）；line-height 仍由 leading-* 控制 */
+  --text-display: calc(28px * var(--rushi-ui-scale, 1));
+  --text-heading: calc(18px * var(--rushi-ui-scale, 1));
+  --text-title: calc(14px * var(--rushi-ui-scale, 1));
+  --text-body: calc(12px * var(--rushi-ui-scale, 1));
+  --text-label: calc(11px * var(--rushi-ui-scale, 1));
 
   --font-sans: Inter, system-ui, sans-serif;
   --font-serif: "Noto Serif SC", serif;

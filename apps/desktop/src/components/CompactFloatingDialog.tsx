@@ -66,7 +66,7 @@ export function CompactFloatingDialog({
   minHeight,
   maxWidth,
   maxHeight,
-  persistState = false,
+  persistState,
   persistPhaseKey = "default",
   layoutRev = FLOATING_PANEL_LAYOUT_REV,
   panelZIndex,

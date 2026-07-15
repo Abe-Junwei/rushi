@@ -1,4 +1,21 @@
 /* 壳层布局：全局根元素与外壳 */
+html {
+  font-size: calc(16px * var(--rushi-ui-scale, 1));
+}
+
+/** UI 缩放档位 — 100% 为最小基准；>100% 经 data-ui-scale 覆盖 --rushi-ui-scale */
+html[data-ui-scale="1.1"] {
+  --rushi-ui-scale: 1.1;
+}
+
+html[data-ui-scale="1.25"] {
+  --rushi-ui-scale: 1.25;
+}
+
+html[data-ui-scale="1.5"] {
+  --rushi-ui-scale: 1.5;
+}
+
 html,
 body,
 #root {

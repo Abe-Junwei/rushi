@@ -55,6 +55,23 @@
 - `fitKind` 必填（`autoFit` / `fill` / `staticFit`，机器守卫 error）；`fallbackHeight` 为打开时占位/默认高度。
 - 多阶段对话框传 `persistPhaseKey`（如 `empty` / `preview` / `loading`）以分别记住手拖尺寸。
 - 传 `maxWidth` / `maxHeight` 限制缩放与 clamp（`FloatingPanelTemplate` 透传）。
+- **`CompactFloatingDialog`** 未传 `persistState` 时继承 preset 默认（`compactDialog` / `findReplace` → `true`）；显式 `persistState={false}` 可关闭（如 OTA 确认）。
+- **`environment` preset**（设置大面板）默认 `persistState: true`，位置与手拖尺寸写入 `panel-state-environment-v3`。
+- **默认/边界尺寸**随 [`uiDisplayScale`](../../../apps/desktop/src/services/ui/uiDisplayScale.ts) 的 `scaleUiPanelPx` 同比放大（100% 为基准）；用户已持久化的手拖尺寸不二次缩放。
+
+## 拖拽改大小（边 / 角）
+
+所有 `DraggableResizablePanel` 壳层（含设置、查找替换、导出等）均带 **8 向 resize hit zone**：
+
+| 区域 | 行为 |
+|------|------|
+| 四边（n/s/e/w） | 单轴改宽或改高 |
+| 四角（nw/ne/sw/se） | 同时改宽与高 |
+| 标题栏 | 移动位置；Auto-fit 框双击恢复自动高度 |
+
+- **真源**：`DraggablePanelResizeHandles.tsx` + `hooks/draggablePanelDragResize.ts` + `useDraggablePanelPointerDrag.ts`
+- **可见 affordance**：无（透明 hit zone；光标变为 `*-resize` 即表示可拖）
+- **标题栏提示**：`dialogPanelTitleBarHint()` — 移动 / 拖边或角 /（Auto-fit）双击恢复
 
 ## 正文分区（单滚动区）
 

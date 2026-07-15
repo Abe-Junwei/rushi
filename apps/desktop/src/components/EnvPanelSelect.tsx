@@ -32,7 +32,7 @@ type EnvPanelSelectProps<T extends string> = {
 };
 
 const TRIGGER_CLASS = [
-  "box-border flex h-8 min-h-[32px] w-full min-w-0 items-center justify-between gap-2 rounded-sm border border-notion-border bg-notion-bg px-3",
+  "box-border flex h-8 min-h-8 w-full min-w-0 items-center justify-between gap-2 rounded-sm border border-notion-border bg-notion-bg px-3",
   PANEL_CONTROL_TYPOGRAPHY.compactInput,
   "font-medium text-notion-text shadow-none ring-0 transition-colors",
   "hover:border-notion-text-light hover:bg-notion-sidebar",
@@ -41,7 +41,7 @@ const TRIGGER_CLASS = [
 ].join(" ");
 
 const MENU_ITEM_CLASS =
-  "dropdown-item flex min-h-[32px] w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-body leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
+  "dropdown-item flex min-h-8 w-full items-center gap-2 rounded-sm px-2.5 py-1.5 text-left text-body leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
 
 const LISTBOX_CLASS =
   "dropdown-surface pointer-events-auto max-h-[min(16rem,50vh)] overflow-y-auto p-1";

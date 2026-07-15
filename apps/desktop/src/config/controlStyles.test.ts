@@ -36,10 +36,10 @@ describe("controlStyles", () => {
     expect(CONTROL_SELECT).toContain("rounded-sm");
   });
 
-  it("uses 32px control height", () => {
+  it("uses rem-scalable 32px control height at 100% scale", () => {
     expect(CONTROL_BTN_PRIMARY).toContain("h-8");
-    expect(CONTROL_BTN_PRIMARY).toContain("min-h-[32px]");
-    expect(CONTROL_TEXT_INPUT).toContain("min-h-[32px]");
+    expect(CONTROL_BTN_PRIMARY).toContain("min-h-8");
+    expect(CONTROL_TEXT_INPUT).toContain("min-h-8");
   });
 
   it("uses shadow-none on text inputs", () => {
@@ -110,9 +110,9 @@ describe("controlStyles", () => {
     expect(CONTROL_BTN_COMPACT_SECONDARY).toContain("text-label");
   });
 
-  it("exposes prominent 40px hero controls", () => {
+  it("exposes prominent rem-scalable hero controls", () => {
     expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("h-10");
-    expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("min-h-[40px]");
+    expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("min-h-10");
     expect(CONTROL_BTN_SECONDARY_PROMINENT).toContain("rounded-sm");
     expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("text-sm");
   });

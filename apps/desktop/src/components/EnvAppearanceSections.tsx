@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CONTROL_BTN_GHOST } from "../config/controlStyles";
 import {
@@ -18,6 +18,14 @@ import {
   getOfficeShellThemeSnapshot,
   subscribeOfficeShellTheme,
 } from "../services/ui/officeShellTheme";
+import {
+  applyUiDisplayScale,
+  formatUiDisplayScaleLabel,
+  getUiDisplayScaleSnapshot,
+  snapUiDisplayScale,
+  subscribeUiDisplayScale,
+  UI_DISPLAY_SCALE_PRESETS,
+} from "../services/ui/uiDisplayScale";
 import { isBrandAccentHex } from "../utils/deriveAccentRamp";
 import { EnvPanelSelect, type EnvPanelSelectOption } from "./EnvPanelSelect";
 import { CspLayout } from "./CspLayout";
@@ -41,6 +49,11 @@ const SHELL_OPTIONS: EnvPanelSelectOption<OfficeShellThemeId>[] = OFFICE_SHELL_T
   }),
 );
 
+const UI_SCALE_OPTIONS: EnvPanelSelectOption[] = UI_DISPLAY_SCALE_PRESETS.map((scale) => ({
+  id: String(scale),
+  label: formatUiDisplayScaleLabel(scale),
+}));
+
 export function EnvAppearanceSections() {
   const activeShellId = useSyncExternalStore(
     subscribeOfficeShellTheme,
@@ -52,6 +65,12 @@ export function EnvAppearanceSections() {
     getOfficeAccentColorSnapshot,
     getOfficeAccentColorSnapshot,
   );
+  const activeUiScale = useSyncExternalStore(
+    subscribeUiDisplayScale,
+    getUiDisplayScaleSnapshot,
+    getUiDisplayScaleSnapshot,
+  );
+  const uiScaleSelectValue = useMemo(() => String(activeUiScale), [activeUiScale]);
   const isBrand = isBrandAccentHex(activeAccentHex);
 
   return (
@@ -99,6 +118,22 @@ export function EnvAppearanceSections() {
             重置
           </button>
         </div>
+      </div>
+
+      <div className={`${ENV_PANEL_FORM_FIELD_CLASS} sm:col-span-2`}>
+        <span className={PANEL_TYPOGRAPHY.fieldLabel}>界面缩放</span>
+        <div className="max-w-[12rem]">
+          <EnvPanelSelect
+            id="pref-ui-scale"
+            aria-label="界面缩放"
+            value={uiScaleSelectValue}
+            options={UI_SCALE_OPTIONS}
+            onChange={(next) => applyUiDisplayScale(snapUiDisplayScale(Number(next)))}
+          />
+        </div>
+        <span className={PANEL_TYPOGRAPHY.meta}>
+          当前为最小基准；放大后字号、按钮与间距一并适配（与下方「语段正文字号」无关）。
+        </span>
       </div>
     </div>
   );

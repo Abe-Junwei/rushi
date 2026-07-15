@@ -11,11 +11,13 @@ import { installWaveformScrollProfileDevTools } from "./services/waveform/wavefo
 import { installSegmentProbeDevTools } from "./services/waveform/segmentProbeDevTools";
 import { installSelectionLatencyProfileDevTools } from "./services/ui/selectionLatencyProfile";
 import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
+import { initUiDisplayScale } from "./services/ui/uiDisplayScale";
 import { bootstrapCspStyleNonce } from "./utils/cspNonceStyleRegistry";
 import { logReleaseFrontendProbe } from "./utils/releaseFrontendProbe";
 import "./zen-tailwind.css";
 
 initOfficeShellTheme();
+initUiDisplayScale();
 
 ensureAppWindowCloseGuardRegistered();
 installWaveformZoomProfileDevTools();

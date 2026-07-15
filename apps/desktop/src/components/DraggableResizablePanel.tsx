@@ -5,7 +5,7 @@ import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";
 import { useDraggablePanelController } from "../hooks/useDraggablePanelController";
-import { dialogCloseButtonTitle } from "../utils/dialogPanelHints";
+import { dialogCloseButtonTitle, dialogPanelTitleBarHint } from "../utils/dialogPanelHints";
 import { DraggablePanelResizeHandles } from "./DraggablePanelResizeHandles";
 import { CspLayout } from "./CspLayout";
 import { resolvePanelLayout } from "./draggablePanelGeometry";
@@ -87,7 +87,7 @@ export function DraggableResizablePanel({
       id={id}
       data-panel-id={id}
       ref={panelElementRef}
-      className="fixed flex flex-col overflow-hidden"
+      className="floating-panel-shell group/floating-panel fixed flex flex-col overflow-hidden"
       layout={layout}
     >
       <DraggablePanelResizeHandles onPointerDown={startDrag} />
@@ -103,7 +103,7 @@ export function DraggableResizablePanel({
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
           onPointerDown={(e) => startDrag("move", e)}
           onDoubleClick={handleTitleDoubleClick}
-          title="双击标题栏恢复自动高度"
+          title={dialogPanelTitleBarHint(autoHeight)}
         >
           <h2 className={`m-0 select-none ${PANEL_TYPOGRAPHY.dialogTitle}`}>{title}</h2>
           <button

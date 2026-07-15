@@ -1,5 +1,6 @@
 import { useDialogEscapeClose } from "../hooks/useDialogEscapeClose";
 import { OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
+import { scaleUiPanelPx } from "../services/ui/uiDisplayScale";
 import { DraggableResizablePanel } from "./DraggableResizablePanel";
 import { centerFloatingPanelPosition, readFloatingPanelViewport } from "./floatingPanelViewport";
 
@@ -30,7 +31,7 @@ const PANEL_TEMPLATE_PRESETS = {
     minHeight: 360,
     maxWidth: 560,
     maxHeight: 560,
-    persistState: false,
+    persistState: true,
     overlayClassName: `${OVERLAY_SCRIM_LAYER} z-50`,
   },
   environment: {
@@ -39,7 +40,7 @@ const PANEL_TEMPLATE_PRESETS = {
     minHeight: 280,
     maxWidth: 920,
     maxHeight: 700,
-    persistState: false,
+    persistState: true,
     // 编辑页工具栏 z-90；与 findReplace 一致须整体抬层。
     overlayClassName: `${OVERLAY_SCRIM_LAYER} z-[100]`,
     panelZIndex: 110,
@@ -69,6 +70,21 @@ const PANEL_TEMPLATE_PRESETS = {
 
 export type PanelTemplatePresetKey = keyof typeof PANEL_TEMPLATE_PRESETS;
 
+export function readPanelTemplatePresetPersistState(key: PanelTemplatePresetKey): boolean {
+  return PANEL_TEMPLATE_PRESETS[key].persistState;
+}
+
+function scalePanelTemplatePreset(preset: PanelTemplatePreset): PanelTemplatePreset {
+  return {
+    ...preset,
+    margin: scaleUiPanelPx(preset.margin),
+    minWidth: scaleUiPanelPx(preset.minWidth),
+    minHeight: scaleUiPanelPx(preset.minHeight),
+    maxWidth: scaleUiPanelPx(preset.maxWidth),
+    maxHeight: scaleUiPanelPx(preset.maxHeight),
+  };
+}
+
 function resolvePanelTemplateMetrics(
   preset: PanelTemplatePreset,
   defaultSizeOverride?: { width: number; height: number },
@@ -76,11 +92,17 @@ function resolvePanelTemplateMetrics(
   const viewport = readFloatingPanelViewport();
   const availableWidth = Math.max(preset.minWidth, viewport.width - preset.margin * 2);
   const availableHeight = Math.max(preset.minHeight, viewport.height - preset.margin * 2);
-  const width = defaultSizeOverride
-    ? Math.min(defaultSizeOverride.width, availableWidth)
+  const scaledOverride = defaultSizeOverride
+    ? {
+        width: scaleUiPanelPx(defaultSizeOverride.width),
+        height: scaleUiPanelPx(defaultSizeOverride.height),
+      }
+    : undefined;
+  const width = scaledOverride
+    ? Math.min(scaledOverride.width, availableWidth)
     : Math.min(preset.maxWidth, availableWidth);
-  const height = defaultSizeOverride
-    ? Math.min(defaultSizeOverride.height, availableHeight)
+  const height = scaledOverride
+    ? Math.min(scaledOverride.height, availableHeight)
     : Math.min(preset.maxHeight, availableHeight);
   const defaultSize = { width, height };
 
@@ -158,7 +180,8 @@ export function FloatingPanelTemplate({
   if (mergedConfig.minWidth > mergedConfig.maxWidth) {
     mergedConfig.maxWidth = mergedConfig.minWidth;
   }
-  const metrics = resolvePanelTemplateMetrics(mergedConfig, defaultSizeOverride);
+  const scaledConfig = scalePanelTemplatePreset(mergedConfig);
+  const metrics = resolvePanelTemplateMetrics(scaledConfig, defaultSizeOverride);
   const handleEscapeClose = onEscapeClose ?? onOverlayClose ?? onClose;
   useDialogEscapeClose(true, handleEscapeClose, canEscapeClose);
 
@@ -169,11 +192,11 @@ export function FloatingPanelTemplate({
         id={id}
         title={title}
         defaultPosition={defaultPositionOverride ?? metrics.defaultPosition}
-        defaultSize={defaultSizeOverride ?? metrics.defaultSize}
-        minWidth={mergedConfig.minWidth}
-        minHeight={mergedConfig.minHeight}
-        maxWidth={mergedConfig.maxWidth}
-        maxHeight={mergedConfig.maxHeight}
+        defaultSize={metrics.defaultSize}
+        minWidth={scaledConfig.minWidth}
+        minHeight={scaledConfig.minHeight}
+        maxWidth={scaledConfig.maxWidth}
+        maxHeight={scaledConfig.maxHeight}
         persistState={mergedConfig.persistState}
         zIndex={panelZIndex ?? mergedConfig.panelZIndex}
         autoHeight={autoHeight}

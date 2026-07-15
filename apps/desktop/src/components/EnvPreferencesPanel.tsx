@@ -152,7 +152,7 @@ export function EnvPreferencesPanel() {
 
   return (
     <div className={ENV_PANEL_PAGE_CLASS} data-purpose="env-preferences-page">
-      <EnvPrefGroupShell title="外观" description="界面主题与强调色；变更后立即生效。">
+      <EnvPrefGroupShell title="外观" description="界面主题、强调色与界面缩放；变更后立即生效。">
         <EnvAppearanceSections />
       </EnvPrefGroupShell>
 

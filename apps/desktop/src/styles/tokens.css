@@ -139,12 +139,15 @@
   --segment-meta-width-min: 44px;
   --seg-row-min-height-fallback: 62px;
 
+  /** UI 缩放（100% 为最小基准；偏好设置写入 documentElement） */
+  --rushi-ui-scale: 1;
+
   /** Type scale（5 级；@theme text-* 与 Tailwind utilities 同源） */
-  --text-display: 28px;
-  --text-heading: 18px;
-  --text-title: 14px;
-  --text-body: 12px;
-  --text-label: 11px;
+  --text-display: calc(28px * var(--rushi-ui-scale));
+  --text-heading: calc(18px * var(--rushi-ui-scale));
+  --text-title: calc(14px * var(--rushi-ui-scale));
+  --text-body: calc(12px * var(--rushi-ui-scale));
+  --text-label: calc(11px * var(--rushi-ui-scale));
 
   /** 工作条 / 波形 toggle 选中态（与 CONTROL_BTN_PRIMARY 同色） */
   --workbench-toggle-active-bg: var(--zen-primary-action-bg);

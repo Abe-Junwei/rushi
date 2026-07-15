@@ -34,9 +34,19 @@ describe("EnvPreferencesPanel", () => {
     expect(screen.getByRole("heading", { name: "外观" })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "转写与波形" })).toBeTruthy();
     expect(screen.getByRole("combobox", { name: "界面主题" })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: "界面缩放" })).toBeTruthy();
     expect(screen.getByLabelText("主题色")).toBeTruthy();
     expect(screen.getByRole("button", { name: "重置主题色" })).toBeTruthy();
     expect(screen.getByRole("switch", { name: "跳段后 loop 播新语段" })).toBeTruthy();
+  });
+
+  it("persists ui display scale from custom select", () => {
+    render(<EnvPreferencesPanel />);
+    fireEvent.click(screen.getByRole("combobox", { name: "界面缩放" }));
+    const listbox = screen.getByRole("listbox", { name: "界面缩放" });
+    fireEvent.click(within(listbox).getByRole("option", { name: "125%" }));
+    expect(localStorage.getItem("rushi.ui-scale.v1")).toBe("1.25");
+    expect(document.documentElement.dataset.uiScale).toBe("1.25");
   });
 
   it("persists tab advance loop preference", () => {
