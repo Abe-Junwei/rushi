@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import type { ReactElement } from "react";
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { cleanup, render, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { EditorWorkbenchToolbar } from "./EditorWorkbenchToolbar";
 import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 
@@ -38,7 +38,7 @@ vi.mock("./EditorSegmentToolbarActions", () => ({
 }));
 
 vi.mock("./EditorSegmentListFilterMenu", () => ({
-  EditorSegmentListFilterMenu: () => null,
+  EditorSegmentListFilterMenu: () => <div data-testid="segment-filter-menu" />,
 }));
 
 function makeSegmentFilter() {
@@ -124,6 +124,10 @@ function wrapToolbar(
 }
 
 describe("EditorWorkbenchToolbar", () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it("uses compact solo layout when hasAudio is false", () => {
     const { container, queryByTestId } = render(
       wrapToolbar(
@@ -167,6 +171,29 @@ describe("EditorWorkbenchToolbar", () => {
     );
   });
 
+  it("places filter with edit (center) and scroll-follow with viewport (right)", () => {
+    const { container } = render(
+      wrapToolbar(
+        <EditorWorkbenchToolbar
+          controller={makeController()}
+          tx={makeTx()}
+          hasAudio
+          segmentFilter={makeSegmentFilter()}
+        />,
+      ),
+    );
+
+    const center = container.querySelector(".workbench-toolbar-center") as HTMLElement;
+    const right = container.querySelector(".workbench-toolbar-right") as HTMLElement;
+    const left = container.querySelector(".workbench-toolbar-left") as HTMLElement;
+    expect(within(center).getByTestId("segment-filter-menu")).toBeTruthy();
+    expect(within(center).getByTestId("edit-actions")).toBeTruthy();
+    expect(within(right).getByTestId("scroll-follow")).toBeTruthy();
+    expect(within(right).getByTestId("waveform-zoom-bar")).toBeTruthy();
+    expect(within(left).queryByTestId("scroll-follow")).toBeNull();
+    expect(within(right).queryByTestId("segment-filter-menu")).toBeNull();
+  });
+
   it("keeps global play button enabled when no segment is selected", () => {
     const { container } = render(
       wrapToolbar(
@@ -202,7 +229,8 @@ describe("EditorWorkbenchToolbar", () => {
 
     const btn = container.querySelector(".waveform-playback-btn") as HTMLButtonElement;
     expect(btn.getAttribute("aria-label")).toBe("全局播放");
-    expect(container.querySelector(".waveform-playback-btn-label")?.textContent).toBe("全局");
+    expect(btn.classList.contains("waveform-playback-btn--global")).toBe(true);
+    expect(container.querySelector(".waveform-playback-btn-label")).toBeNull();
     btn.click();
     expect(toggleGlobalPlay).toHaveBeenCalledTimes(1);
     expect(togglePlay).not.toHaveBeenCalled();
@@ -222,6 +250,6 @@ describe("EditorWorkbenchToolbar", () => {
     );
     const btn = container.querySelector(".waveform-playback-btn") as HTMLButtonElement;
     expect(btn.getAttribute("aria-label")).toBe("改为全局通读");
-    expect(btn.querySelector(".waveform-playback-btn-label")?.textContent).toBe("全局");
+    expect(btn.querySelector(".waveform-playback-btn-label")).toBeNull();
   });
 });

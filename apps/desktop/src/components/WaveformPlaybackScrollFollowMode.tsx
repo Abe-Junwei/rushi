@@ -24,7 +24,7 @@ export const WaveformPlaybackScrollFollowModeControl = memo(function WaveformPla
       role="group"
       aria-label={WAVEFORM_PLAYBACK_SCROLL_FOLLOW_GROUP_LABEL}
     >
-      {WAVEFORM_PLAYBACK_SCROLL_FOLLOW_UI_MODES.map(({ id, label, ariaLabel, title, Icon }) => {
+      {WAVEFORM_PLAYBACK_SCROLL_FOLLOW_UI_MODES.map(({ id, ariaLabel, title, Icon }) => {
         const active = mode === id;
         return (
           <button
@@ -38,7 +38,6 @@ export const WaveformPlaybackScrollFollowModeControl = memo(function WaveformPla
             onClick={() => onModeChange(id)}
           >
             <Icon className={LUCIDE_ICON_SIZE_MD} stroke={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            <span className="waveform-scroll-follow-segment-label">{label}</span>
           </button>
         );
       })}

@@ -67,30 +67,25 @@ export function EditorSegmentTranscribeActions({
   if (compact) {
     return (
       <div className="waveform-toolbar-subzone waveform-toolbar-transcribe" role="group" aria-label="转录与编辑">
+        {/* Compact: pin auto-transcribe so empty-project CTA never hides in the overflow. */}
+        <button
+          type="button"
+          className={transcribePrimary ? workbenchTranscribePrimaryClass() : workbenchLabelBtnClass(false)}
+          disabled={c.busy || blockTranscribeForModelPrepare}
+          onClick={() => void c.runTranscribe()}
+          aria-label="自动转录"
+          title={
+            blockTranscribeForModelPrepare
+              ? "模型准备中，请稍候"
+              : "打开对话框：选择本机或在线来源并开始转录"
+          }
+        >
+          <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          {blockTranscribeForModelPrepare ? "模型准备中..." : "自动转录"}
+        </button>
         <WorkbenchOverflowMenu label="编辑" ariaLabel="编辑菜单" engaged={editMenuEngaged} align="center">
           {(close) => (
             <>
-              <button
-                type="button"
-                className={
-                  transcribePrimary
-                    ? [workbenchDropdownItem, "font-semibold text-accent-action-strong"].join(" ")
-                    : workbenchDropdownItem
-                }
-                disabled={c.busy || blockTranscribeForModelPrepare}
-                title={
-                  blockTranscribeForModelPrepare
-                    ? "模型准备中，请稍候"
-                    : "打开对话框：选择本机或在线来源并开始转录"
-                }
-                onClick={() => {
-                  close();
-                  void c.runTranscribe();
-                }}
-              >
-                <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                {blockTranscribeForModelPrepare ? "模型准备中..." : "自动转录"}
-              </button>
               <button
                 type="button"
                 className={workbenchDropdownItem}

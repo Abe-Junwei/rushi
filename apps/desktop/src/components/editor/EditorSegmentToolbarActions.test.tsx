@@ -32,14 +32,32 @@ describe("EditorSegmentTranscribeActions", () => {
     cleanup();
   });
 
-  it("renders compact edit menu when compactLayout is true", () => {
+  it("pins auto-transcribe outside the compact edit menu", () => {
     const { container } = render(
       <EditorSegmentTranscribeActions controller={makeController()} compactLayout />,
     );
 
+    expect(screen.getByRole("button", { name: "自动转录" })).toBeTruthy();
     expect(screen.getByLabelText("编辑菜单")).toBeTruthy();
     expect(container.querySelector(".workbench-compact-menu")).toBeTruthy();
-    expect(container.querySelectorAll(".waveform-toolbar-transcribe > button").length).toBe(0);
+    // Direct children: pinned transcribe + overflow trigger (details/summary, not raw > button only).
+    expect(screen.getByRole("button", { name: "自动转录" }).closest(".waveform-toolbar-transcribe")).toBeTruthy();
+  });
+
+  it("does not bury auto-transcribe inside the compact edit menu", () => {
+    render(
+      <EditorSegmentTranscribeActions
+        controller={makeController({ segments: [] })}
+        compactLayout
+      />,
+    );
+
+    const pinned = screen.getByRole("button", { name: "自动转录" });
+    expect(pinned.closest(".workbench-compact-menu-panel")).toBeNull();
+    fireEvent.click(screen.getByLabelText("编辑菜单"));
+    expect(screen.queryByRole("menuitem", { name: "自动转录" })).toBeNull();
+    // Menu still has secondary edit actions.
+    expect(screen.getByRole("button", { name: "规则纠错" })).toBeTruthy();
   });
 
   it("keeps compact edit menu while transcribing; stop lives in progress panel", () => {
@@ -51,6 +69,7 @@ describe("EditorSegmentTranscribeActions", () => {
     );
 
     expect(screen.getByLabelText("编辑菜单")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "自动转录" }).hasAttribute("disabled")).toBe(true);
     expect(screen.queryByRole("button", { name: /停止转写/ })).toBeNull();
   });
 

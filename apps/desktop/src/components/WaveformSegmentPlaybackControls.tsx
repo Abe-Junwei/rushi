@@ -221,7 +221,9 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
           onToggleLoop();
         }}
       >
-        <Repeat className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <span className="region-action-btn-icon" aria-hidden>
+          <Repeat className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
+        </span>
       </button>
       <button
         type="button"
@@ -235,11 +237,16 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
           onTogglePlay();
         }}
       >
-        {isPlaying ? (
-          <Square className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        ) : (
-          <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        )}
+        <span className="region-action-btn-icon" aria-hidden>
+          <Square
+            className={`${LUCIDE_ICON_SIZE_SM}${isPlaying ? "" : " region-action-btn-icon-hidden"}`}
+            strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+          />
+          <PRODUCT_ICON.playAudio
+            className={`${LUCIDE_ICON_SIZE_SM}${isPlaying ? " region-action-btn-icon-hidden" : ""}`}
+            strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+          />
+        </span>
       </button>
     </div>
   );

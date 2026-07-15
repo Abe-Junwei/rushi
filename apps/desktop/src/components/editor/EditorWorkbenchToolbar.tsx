@@ -1,5 +1,8 @@
 import { memo } from "react";
-import { PRODUCT_ICON } from "../../config/productIcons";
+import {
+  IconPlayerPauseFilled,
+  IconPlayerPlayFilled,
+} from "@tabler/icons-react";
 import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
 import { useWaveformSelectionChromeViewContext } from "../../hooks/WaveformSelectionChromeViewContext";
 import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
@@ -7,7 +10,7 @@ import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
 import { collectPackableSegmentSpansSec } from "../../utils/waveformSegmentBounds";
-import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformPlaybackScrollFollowModeControl } from "../WaveformPlaybackScrollFollowMode";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
@@ -26,7 +29,7 @@ interface EditorWorkbenchToolbarProps {
   segmentFilter: SegmentListFilterApi;
 }
 
-/** 波形区与语段区之间的统一单行工具条（左播放滚屏 / 中转录编辑 / 右缩放）。 */
+/** 波形区与语段区之间的统一单行工具条（左听 / 中改+筛选 / 右看）。 */
 export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   controller: c,
   tx,
@@ -86,82 +89,92 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
       <div ref={trackRef} className="waveform-bottom-toolbar-track editor-workbench-toolbar-track">
         <div className="workbench-toolbar-left">
           <div className="workbench-toolbar-group waveform-toolbar-zone waveform-toolbar-transport">
-              <button
-                type="button"
-                className="waveform-playback-btn waveform-playback-btn--global"
-                disabled={stripDisabled}
-                onClick={() => void tx.toggleGlobalPlay()}
-                title={
-                  globalTransportShowsPause
-                    ? "暂停全局播放"
-                    : tx.isSelectedSegmentPlaying
-                      ? "改为全局通读"
-                      : "全局播放"
-                }
-                aria-label={
-                  globalTransportShowsPause
-                    ? "暂停全局播放"
-                    : tx.isSelectedSegmentPlaying
-                      ? "改为全局通读"
-                      : "全局播放"
-                }
-              >
-                {globalTransportShowsPause ? (
-                  <PRODUCT_ICON.pauseAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                ) : (
-                  <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                )}
-                <span className="waveform-playback-btn-label">全局</span>
-              </button>
-              <WaveformPlaybackTime
-                className="waveform-toolbar-time"
-                isPlaying={tx.isPlaying}
-                isReady={tx.isReady}
-                durationSec={mediaDurationSec}
-                currentTimeSec={tx.currentTime}
-                getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
-                subscribePlayheadFrame={tx.subscribePlayheadFrame}
-                formatMediaTime={tx.formatMediaTime}
-              />
-              <WaveformGlobalPlaybackSpeed
-                disabled={stripDisabled}
-                playbackRate={tx.globalPlaybackRate}
-                onPlaybackRateChange={tx.setGlobalPlaybackRate}
-              />
-              <WaveformPlaybackScrollFollowModeControl
-                disabled={stripDisabled}
-                mode={tx.playbackScrollFollowMode}
-                onModeChange={tx.setPlaybackScrollFollowMode}
+            <button
+              type="button"
+              className="waveform-playback-btn waveform-playback-btn--global"
+              disabled={stripDisabled}
+              onClick={() => void tx.toggleGlobalPlay()}
+              title={
+                globalTransportShowsPause
+                  ? "暂停全局播放"
+                  : tx.isSelectedSegmentPlaying
+                    ? "改为全局通读"
+                    : "全局播放"
+              }
+              aria-label={
+                globalTransportShowsPause
+                  ? "暂停全局播放"
+                  : tx.isSelectedSegmentPlaying
+                    ? "改为全局通读"
+                    : "全局播放"
+              }
+            >
+              {globalTransportShowsPause ? (
+                <IconPlayerPauseFilled
+                  className={`${LUCIDE_ICON_SIZE_SM} waveform-playback-btn-icon`}
+                  stroke={LUCIDE_ICON_STROKE_WIDTH}
+                  aria-hidden
+                />
+              ) : (
+                <IconPlayerPlayFilled
+                  className={`${LUCIDE_ICON_SIZE_SM} waveform-playback-btn-icon waveform-playback-btn-icon--play`}
+                  stroke={LUCIDE_ICON_STROKE_WIDTH}
+                  aria-hidden
+                />
+              )}
+            </button>
+            <WaveformPlaybackTime
+              className="waveform-toolbar-time"
+              isPlaying={tx.isPlaying}
+              isReady={tx.isReady}
+              durationSec={mediaDurationSec}
+              currentTimeSec={tx.currentTime}
+              getDisplayPlayheadTimeSec={tx.getDisplayPlayheadTimeSec}
+              subscribePlayheadFrame={tx.subscribePlayheadFrame}
+              formatMediaTime={tx.formatMediaTime}
+            />
+            <WaveformGlobalPlaybackSpeed
+              disabled={stripDisabled}
+              playbackRate={tx.globalPlaybackRate}
+              onPlaybackRateChange={tx.setGlobalPlaybackRate}
             />
           </div>
         </div>
 
         <div className="workbench-toolbar-center">
-          <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />
+          <div className="workbench-toolbar-group waveform-toolbar-subzone waveform-toolbar-edit">
+            <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />
+            {filterMenu}
+          </div>
         </div>
 
         <div className="workbench-toolbar-right">
           <div className="workbench-toolbar-group waveform-toolbar-zone waveform-toolbar-viewport">
-            {filterMenu}
+            <WaveformPlaybackScrollFollowModeControl
+              disabled={stripDisabled}
+              mode={tx.playbackScrollFollowMode}
+              onModeChange={tx.setPlaybackScrollFollowMode}
+            />
+            <span className="waveform-toolbar-viewport-sep" aria-hidden />
             <WaveformZoomBar
-                disabled={c.busy}
-                isReady={tx.isReady}
-                minimapEnabled={tx.minimapEnabled}
-                onToggleMinimap={() => tx.setMinimapEnabled(!tx.minimapEnabled)}
-                pxPerSec={tx.pxPerSec}
-                layoutIntent={tx.layoutIntent}
-                viewportWidthPx={viewportWidthPx}
-                durationSec={mediaDurationSec}
-                selectedStartSec={selectedSegment?.start_sec}
-                selectedEndSec={selectedSegment?.end_sec}
-                segmentSpansSec={packableSpansSec}
-                onFitSelection={tx.zoomToFitSelection}
-                onFitAll={tx.zoomToFitAll}
-                onResetDefaultZoom={() =>
-                  tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec, {
-                    segmentSpansSec: packableSpansSec,
-                  })
-                }
+              disabled={c.busy}
+              isReady={tx.isReady}
+              minimapEnabled={tx.minimapEnabled}
+              onToggleMinimap={() => tx.setMinimapEnabled(!tx.minimapEnabled)}
+              pxPerSec={tx.pxPerSec}
+              layoutIntent={tx.layoutIntent}
+              viewportWidthPx={viewportWidthPx}
+              durationSec={mediaDurationSec}
+              selectedStartSec={selectedSegment?.start_sec}
+              selectedEndSec={selectedSegment?.end_sec}
+              segmentSpansSec={packableSpansSec}
+              onFitSelection={tx.zoomToFitSelection}
+              onFitAll={tx.zoomToFitAll}
+              onResetDefaultZoom={() =>
+                tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec, {
+                  segmentSpansSec: packableSpansSec,
+                })
+              }
               onPxPerSecChange={tx.setPxPerSecFromSlider}
               compactLayout={compactLayout}
             />

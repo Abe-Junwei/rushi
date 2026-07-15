@@ -156,6 +156,7 @@ export function WaveformZoomBarControls({
             </>
           )}
         </WorkbenchOverflowMenu>
+        <span className="waveform-zoom-bar-sep" aria-hidden />
         <button
           type="button"
           className="icon-btn"
@@ -218,6 +219,7 @@ export function WaveformZoomBarControls({
       >
         <ZoomBarIcon Icon={FitAllIcon} size="lg" />
       </button>
+      <span className="waveform-zoom-bar-sep" aria-hidden />
       <button
         type="button"
         className="icon-btn"
