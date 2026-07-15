@@ -154,18 +154,18 @@ pub fn merge_export_polish_batches(
 }
 
 pub fn default_export_polish_system_prompt() -> &'static str {
-    "你是中文讲稿 ASR 纠错助手。lines 不得增删行。仅改正文明显错别字与错误标点（尤重标点正确性）；禁止整句重写、同义替换、删口语词。另给 break_after_line。禁止 paragraphs 字段。只输出合法 JSON。"
+    "你是中文讲稿 ASR 纠错助手。lines 不得增删行。仅改正文明显错别字（含同音、形近误识别，需结合上下文语义推断，不要机械比对示例）与错误标点，两者同等重要，逐字逐句检查；禁止整句重写、同义替换、删口语词。另给 break_after_line。禁止 paragraphs 字段。只输出合法 JSON。"
 }
 
 pub fn default_export_polish_instructions_template() -> String {
-    r#"你是中文讲稿 ASR 纠错器。输入为 {line_count} 条语段（每行一条，不得增删行）。客户端会对过大改动回退原文，请只做有把握的纠错。{batch_note}
+    r#"你是中文讲稿 ASR 纠错器。输入为 {line_count} 条语段（每行一条，不得增删行）。客户端只会对整句重写/大幅改写这类过大改动回退原文；逐字错别字与标点的修正会被完整保留，请结合上下文推理逐行仔细检查并大胆纠正。{batch_note}
 
 ## 输出 JSON（仅此结构）
 {"lines":["行1",...,"行{line_count}"],"break_after_line":[0,3,7]}
 
 ## lines（应尽量 {line_count} 行；若合并语段可少 1–2 行，客户端会自动对齐）
 对每一行仅允许（保持原意、人称与事实，禁止整句重写/润色用词；不要删口语词、不要改句式）：
-1. **明显错别字 / 同音误识别**（示例：传讨→传统，辛库→辛苦，棵→颗，的/地/得，在/再）。
+1. **明显错别字 / 同音或形近误识别**：结合上下文语义推断该字词是否符合语境，不要仅机械比对下列示例（示例：传讨→传统，辛库→辛苦，棵→颗，的/地/得，在/再）——只要读音相近、字形相近、或与上下文语义明显不符，都应视为候选错字并纠正。
 2. **错误标点（必须认真检查，优先于「保持原样」）**：
    - 句末缺标点则补「。」「？」「！」；陈述/疑问/感叹语气用对应句末标点。
    - 逗号「，」与顿号「、」误用：并列词语用顿号，分句用逗号。
@@ -522,6 +522,16 @@ mod tests {
         assert!(p.contains("300"));
         assert!(p.contains("错误标点"));
         assert!(p.contains("顿号"));
+    }
+
+    #[test]
+    fn prompt_and_system_prompt_encourage_contextual_typo_reasoning() {
+        let p = build_export_polish_prompt("a\nb", 2, "", None, None);
+        assert!(p.contains("结合上下文语义推断"));
+        assert!(p.contains("不要仅机械比对下列示例"));
+        let sys = default_export_polish_system_prompt();
+        assert!(sys.contains("需结合上下文语义推断"));
+        assert!(sys.contains("两者同等重要"));
     }
 
     #[test]
