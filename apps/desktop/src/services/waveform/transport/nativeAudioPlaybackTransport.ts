@@ -107,7 +107,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
   let seekSettleNoJumpUntilMs = 0;
 
   const emit = (fn: (h: PlaybackTransportEvents) => void) => {
-    for (const h of listeners) fn(h);
+    for (const h of [...listeners]) fn(h);
   };
 
   /** Authority latch only — display smoothing converges toward the projection. */

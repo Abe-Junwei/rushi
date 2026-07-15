@@ -107,7 +107,7 @@ fn write_output<T>(
     last_drain: &mut u64,
     map: impl Fn(f32) -> T,
 ) {
-    let playing = clock.playing.load(Ordering::Relaxed);
+    let playing = clock.playing.load(Ordering::SeqCst);
     let channels = clock.output_channels.load(Ordering::Relaxed).max(1) as usize;
     let sample_rate = clock.output_sample_rate.load(Ordering::Relaxed).max(1) as f64;
     let rate = clock.rate() as f64;
@@ -165,7 +165,11 @@ fn write_output<T>(
             got_frames += 1;
         }
     }
-    if missed {
+    if missed
+        && clock.playing.load(Ordering::SeqCst)
+        && !clock.at_eof.load(Ordering::SeqCst)
+        && !clock.drain_pending.load(Ordering::Relaxed)
+    {
         clock.underrun.store(true, Ordering::Relaxed);
     }
     if popped_samples > 0 {
@@ -179,9 +183,11 @@ fn write_output<T>(
         let pos = clock.position_us.load(Ordering::Relaxed);
         if dur > 0 && pos >= dur {
             clock.position_us.store(dur, Ordering::Relaxed);
-            clock.play_requested.store(false, Ordering::Relaxed);
-            clock.playing.store(false, Ordering::Relaxed);
-            clock.at_eof.store(true, Ordering::Relaxed);
+            // Output owns the audible end: these three stores are the single
+            // source of truth for "playback finished" (see engine.rs Ended check).
+            clock.play_requested.store(false, Ordering::SeqCst);
+            clock.playing.store(false, Ordering::SeqCst);
+            clock.at_eof.store(true, Ordering::SeqCst);
         }
     }
 }

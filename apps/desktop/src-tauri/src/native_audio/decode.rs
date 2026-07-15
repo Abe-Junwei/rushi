@@ -210,7 +210,7 @@ pub(crate) fn decode_loop(
             continue;
         }
 
-        if !clock.playing.load(Ordering::Relaxed) && !clock.play_requested.load(Ordering::Relaxed) {
+        if !clock.playing.load(Ordering::SeqCst) && !clock.play_requested.load(Ordering::SeqCst) {
             thread::sleep(Duration::from_millis(8));
             continue;
         }
@@ -253,17 +253,20 @@ pub(crate) fn decode_loop(
                 Ok(None) => {
                     // True demux EOF. Do not stop playback while queued audio
                     // remains; output owns the audible end and final Ended edge.
-                    clock.at_eof.store(true, Ordering::Relaxed);
+                    clock.at_eof.store(true, Ordering::SeqCst);
                     let queued = clock.queued_samples.load(Ordering::Relaxed);
                     let duration_samples = (clock.duration_us.load(Ordering::Relaxed)
                         * out_rate.max(1) as u64
                         * out_channels.max(1) as u64)
                         / 1_000_000;
                     if queued >= prebuffer_samples || (duration_samples == 0 && queued > 0) {
-                        clock.buffer_ready.store(true, Ordering::Relaxed);
+                        clock.buffer_ready.store(true, Ordering::SeqCst);
                     } else {
-                        clock.play_requested.store(false, Ordering::Relaxed);
-                        clock.playing.store(false, Ordering::Relaxed);
+                        // Decode is starved (no more source data, buffer under target) —
+                        // this is also a genuine playback end even if `position_us`
+                        // never reaches the nominal duration (e.g. bad duration metadata).
+                        clock.play_requested.store(false, Ordering::SeqCst);
+                        clock.playing.store(false, Ordering::SeqCst);
                     }
                     let dur = clock.duration_us.load(Ordering::Relaxed);
                     let pos = clock.position_us.load(Ordering::Relaxed);
@@ -321,7 +324,7 @@ pub(crate) fn decode_loop(
             if pushed > 0 {
                 let queued = clock.queued_samples.fetch_add(pushed, Ordering::Relaxed) + pushed;
                 if queued >= prebuffer_samples {
-                    clock.buffer_ready.store(true, Ordering::Relaxed);
+                    clock.buffer_ready.store(true, Ordering::SeqCst);
                 }
             }
             src_phase += step;

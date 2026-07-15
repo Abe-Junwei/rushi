@@ -159,7 +159,7 @@ impl PlayerHandle {
 
     pub(crate) fn snapshot(&self) -> NativeAudioSnapshot {
         NativeAudioSnapshot {
-            playing: self.clock.playing.load(Ordering::Relaxed),
+            playing: self.clock.playing.load(Ordering::SeqCst),
             current_time_sec: self.clock.current_time_sec(),
             duration_sec: self.clock.duration_sec(),
             rate: self.clock.rate(),
@@ -240,7 +240,7 @@ fn rebuild_output_stream(
     prod_tx
         .send(prod)
         .map_err(|_| "解码线程已停止，无法交接 producer".to_string())?;
-    if was_playing || clock.play_requested.load(Ordering::Relaxed) {
+    if was_playing || clock.play_requested.load(Ordering::SeqCst) {
         clock.play_requested.store(true, Ordering::SeqCst);
         // Resume once decode re-prebuffers into the new ring.
         clock.playing.store(false, Ordering::SeqCst);
@@ -333,7 +333,7 @@ fn engine_main(
     let events_dec = events.clone();
     let out_rate = clock.output_sample_rate.load(Ordering::Relaxed);
     let out_channels = clock.output_channels.load(Ordering::Relaxed);
-    let decode_join = thread::Builder::new()
+    let decode_join = match thread::Builder::new()
         .name("native-audio-decode".into())
         .spawn(move || {
             decode_loop(
@@ -345,8 +345,16 @@ fn engine_main(
                 out_channels,
                 events_dec,
             )
-        })
-        .ok();
+        }) {
+        Ok(handle) => Some(handle),
+        Err(e) => {
+            events.emit(NativeAudioEvent::Error {
+                message: format!("解码线程创建失败: {e}"),
+            });
+            drop(output);
+            return;
+        }
+    };
 
     let mut state = EngineState::Loaded;
     let mut last_emitted_playing = false;
@@ -367,8 +375,8 @@ fn engine_main(
                 StreamFault::DeviceChanged(message)
                 | StreamFault::StreamInvalidated(message)
                 | StreamFault::DeviceNotAvailable(message) => {
-                    let was_playing = clock.playing.load(Ordering::Relaxed)
-                        || clock.play_requested.load(Ordering::Relaxed);
+                    let was_playing = clock.playing.load(Ordering::SeqCst)
+                        || clock.play_requested.load(Ordering::SeqCst);
                     // Drop the old stream before rebuilding so the device can reopen.
                     output = None;
                     match rebuild_output_stream(&clock, &prod_tx, fault_tx.clone(), was_playing) {
@@ -395,8 +403,8 @@ fn engine_main(
                     }
                 }
                 StreamFault::DeviceBusy(message) => {
-                    let was_playing = clock.playing.load(Ordering::Relaxed)
-                        || clock.play_requested.load(Ordering::Relaxed);
+                    let was_playing = clock.playing.load(Ordering::SeqCst)
+                        || clock.play_requested.load(Ordering::SeqCst);
                     output = None;
                     match rebuild_output_stream(&clock, &prod_tx, fault_tx.clone(), was_playing) {
                         Ok(bundle) => {
@@ -457,9 +465,9 @@ fn engine_main(
                         .unwrap_or(true);
                     if consecutive_xruns >= UNDERRUN_REBUILD_THRESHOLD
                         && can_rebuild
-                        && (clock.playing.load(Ordering::Relaxed)
-                            || clock.play_requested.load(Ordering::Relaxed))
-                        && !clock.at_eof.load(Ordering::Relaxed)
+                        && (clock.playing.load(Ordering::SeqCst)
+                            || clock.play_requested.load(Ordering::SeqCst))
+                        && !clock.at_eof.load(Ordering::SeqCst)
                     {
                         let was_playing = true;
                         output = None;
@@ -510,7 +518,7 @@ fn engine_main(
                 consecutive_soft_underruns = 0;
                 consecutive_xruns = 0;
                 clock.play_requested.store(true, Ordering::SeqCst);
-                if clock.buffer_ready.load(Ordering::Relaxed)
+                if clock.buffer_ready.load(Ordering::SeqCst)
                     || clock.queued_samples.load(Ordering::Relaxed) >= IMMEDIATE_PLAY_SAMPLES
                 {
                     clock.playing.store(true, Ordering::SeqCst);
@@ -551,7 +559,7 @@ fn engine_main(
                 clock.drain_seq.fetch_add(1, Ordering::SeqCst);
                 clock.seek_seq.fetch_add(1, Ordering::SeqCst);
                 if state == EngineState::Ended {
-                    state = if clock.playing.load(Ordering::Relaxed) {
+                    state = if clock.playing.load(Ordering::SeqCst) {
                         EngineState::Playing
                     } else {
                         EngineState::Paused
@@ -575,9 +583,9 @@ fn engine_main(
             }
             Err(mpsc::RecvTimeoutError::Timeout) => {
                 let now = Instant::now();
-                let mut playing_now = clock.playing.load(Ordering::Relaxed);
-                let mut play_requested = clock.play_requested.load(Ordering::Relaxed);
-                let at_eof = clock.at_eof.load(Ordering::Relaxed);
+                let mut playing_now = clock.playing.load(Ordering::SeqCst);
+                let mut play_requested = clock.play_requested.load(Ordering::SeqCst);
+                let at_eof = clock.at_eof.load(Ordering::SeqCst);
                 if pending_device_busy_retry
                     .as_ref()
                     .map(|retry| now >= retry.next_at)
@@ -623,8 +631,8 @@ fn engine_main(
                             });
                         }
                     }
-                    playing_now = clock.playing.load(Ordering::Relaxed);
-                    play_requested = clock.play_requested.load(Ordering::Relaxed);
+                    playing_now = clock.playing.load(Ordering::SeqCst);
+                    play_requested = clock.play_requested.load(Ordering::SeqCst);
                 }
 
                 if clock.underrun.swap(false, Ordering::Relaxed) {
@@ -723,7 +731,7 @@ fn engine_main(
                     last_progress_pos_us = pos_us;
                 }
 
-                if play_requested && !playing_now && clock.buffer_ready.load(Ordering::Relaxed) {
+                if play_requested && !playing_now && clock.buffer_ready.load(Ordering::SeqCst) {
                     clock.playing.store(true, Ordering::SeqCst);
                     state = EngineState::Playing;
                     if !last_emitted_playing {
@@ -732,7 +740,11 @@ fn engine_main(
                     }
                 } else if last_emitted_playing && !playing_now {
                     last_emitted_playing = false;
-                    if at_eof || (dur > 0.0 && pos >= dur - 0.02) {
+                    // `at_eof` is the single source of truth for playback end: both
+                    // output.rs (audible end, pos >= dur) and decode.rs (demux
+                    // exhausted + under-buffered) set it with SeqCst before clearing
+                    // `playing`, so it is guaranteed visible here — no fuzz threshold needed.
+                    if at_eof {
                         state = EngineState::Ended;
                         events.emit(NativeAudioEvent::TimeUpdate { sec: pos.min(dur) });
                         events.emit(NativeAudioEvent::Ended);
