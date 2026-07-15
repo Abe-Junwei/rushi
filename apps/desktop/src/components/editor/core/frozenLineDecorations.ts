@@ -123,7 +123,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
     backgroundColor: "color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
     boxShadow: [
       "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
-      "var(--cm-stage-gutter-width, 11rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
+      "var(--cm-stage-gutter-width, 12rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
     ].join(", "),
   },
   // Weaker multi-select cue for frozen non-primary (matches waveform overlay).
@@ -131,7 +131,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
     backgroundColor: "color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
     boxShadow: [
       "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
-      "var(--cm-stage-gutter-width, 11rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
+      "var(--cm-stage-gutter-width, 12rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
     ].join(", "),
   },
   // Hatch spans meta + text + stage gutters (same extents as selection wash).
@@ -142,7 +142,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
     top: "0",
     bottom: "0",
     left: "calc(-1 * var(--cm-meta-gutter-width, 8.25rem))",
-    right: "calc(-1 * var(--cm-stage-gutter-width, 11rem))",
+    right: "calc(-1 * var(--cm-stage-gutter-width, 12rem))",
     zIndex: "-1",
     backgroundImage: FROZEN_HATCH,
   },

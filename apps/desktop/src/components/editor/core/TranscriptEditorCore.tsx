@@ -28,7 +28,7 @@ import type { TranscriptPanelHighlight } from "./panelHighlightField";
 import { setTranscriptFilterVisibleEffect, setTranscriptFilterCriteriaEffect, isTranscriptSegmentVisible } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
-import { revealSegmentAfterStructureChange } from "./revealSegmentAfterStructure";
+import { revealSegmentAfterStructureChange, readSegmentViewportAnchorOffsetPx } from "./revealSegmentAfterStructure";
 import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
 import { setTranscriptSegmentLoopEffect } from "./segmentLoopField";
 import { peekFileViewRestoreForFile } from "../../../services/fileViewStateBridge";
@@ -244,6 +244,15 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     // still highlights). Restore filter first, then one reveal.
     const prevPrimary = primarySegmentIdx(view.state);
     const prevMulti = getTranscriptMultiSelection(view.state);
+    const oldMeta = view.state.field(segmentMetaField);
+    const revealPrimary = Math.max(0, Math.min(prevPrimary < 0 ? 0 : prevPrimary, segments.length - 1));
+    const survivingUid = prevPrimary >= 0 ? oldMeta[prevPrimary]?.uid : undefined;
+    const samePrimarySurvives =
+      survivingUid != null && segments[revealPrimary]?.uid === survivingUid;
+    const priorAnchorOffsetPx =
+      samePrimarySurvives && prevPrimary >= 0
+        ? readSegmentViewportAnchorOffsetPx(view, prevPrimary)
+        : undefined;
     view.setState(
       buildTranscriptEditorState(segments, {
         extensions: extensionsRef.current,
@@ -277,7 +286,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       // Only reveal when primary remains visible. Revealing a filter-collapsed
       // (0-height) primary fights manual scroll and looks like forced snap-back.
       if (isTranscriptSegmentVisible(view.state, primary)) {
-        revealSegmentAfterStructureChange(view, primary);
+        revealSegmentAfterStructureChange(view, primary, { priorAnchorOffsetPx });
       }
     } else {
       view.dispatch({

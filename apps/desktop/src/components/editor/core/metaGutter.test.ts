@@ -60,15 +60,34 @@ describe("P4 meta gutter + reveal + stage", () => {
     });
     const meta = state.field(segmentMetaField);
     const stage0 = buildTranscriptStageMarker(meta[0]);
-    expect(stage0?.label).toBe("自动转写");
+    expect(stage0?.label).toBe("机转");
     expect(stage0?.stageMod).toBe("auto_transcribe");
     expect(stage0?.toDOM().querySelector(".cm-transcript-stage-chip")?.className).toContain(
       "cm-transcript-stage-chip--auto_transcribe",
     );
     expect(stage0?.toDOM().querySelector(".cm-transcript-stage-chip__icon svg")).toBeTruthy();
+    expect(stage0?.toDOM().querySelector(".cm-transcript-annotation-icon")).toBeNull();
 
     const stage1 = buildTranscriptStageMarker(meta[1]);
-    expect(stage1?.label).toBe("手动转写");
+    expect(stage1?.label).toBe("手转");
+  });
+
+  it("shows document annotation icon to the right of the stage chip", () => {
+    const segs = makeSegments(1).map((s) => ({ ...s, annotation: "备注内容" }));
+    const state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const meta = state.field(segmentMetaField);
+    expect(meta[0]?.hasAnnotation).toBe(true);
+    const stage = buildTranscriptStageMarker(meta[0]);
+    const dom = stage!.toDOM();
+    const chip = dom.querySelector(".cm-transcript-stage-chip");
+    const note = dom.querySelector(".cm-transcript-annotation-icon");
+    expect(note).toBeTruthy();
+    expect(note?.getAttribute("aria-label")).toBe("有备注");
+    expect(note?.querySelector("svg")).toBeTruthy();
+    const children = [...dom.children];
+    expect(children.indexOf(chip as Element)).toBeLessThan(children.indexOf(note as Element));
   });
 
   it("places loop transport left of play when showSegmentPlay", () => {

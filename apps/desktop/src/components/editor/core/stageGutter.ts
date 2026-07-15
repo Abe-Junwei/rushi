@@ -1,5 +1,5 @@
 import { gutter, GutterMarker, EditorView } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
+import type { EditorState, Extension, TransactionSpec } from "@codemirror/state";
 import {
   resolveSegmentStageLabels,
   segmentStageChipModifier,
@@ -22,27 +22,53 @@ import {
   transcriptFilterVisibilityChanged,
 } from "./filterLineVisibility";
 
-/** Compact Lucide-like strokes for stage chips (no React mount in gutter DOM). */
+/**
+ * Stage + annotation mark icons — one stroke system, always `currentColor`.
+ * Glyphs mirror PRODUCT_ICON (Bot / Wand2 / PenLine / CircleCheck / MessageSquare).
+ * Chip + annotation share grayscale `--cm-stage-affordance` (no plate / no per-stage hue).
+ */
+const ICON_STROKE =
+  'fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"';
+
+function transcriptGutterIconSvg(innerPaths: string): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" ${ICON_STROKE} aria-hidden="true">${innerPaths}</svg>`;
+}
+
+/** Compact stage set — readable at 12px (机转 / AI改稿 / 手转 / 定稿). */
 const STAGE_ICON_SVG: Record<string, string> = {
-  auto_transcribe:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>',
-  ai_revised:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg>',
-  manual_transcribe:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></svg>',
-  finalized:
-    '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>',
+  // Bot — ASR / machine
+  auto_transcribe: transcriptGutterIconSvg(
+    '<path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/>',
+  ),
+  // Wand2 — AI rewrite (same semantic as PRODUCT_ICON.stageAiRevised / aiRefine)
+  ai_revised: transcriptGutterIconSvg(
+    '<path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/>',
+  ),
+  // PenLine — manual edit
+  manual_transcribe: transcriptGutterIconSvg(
+    '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>',
+  ),
+  // CircleCheck — finalized (stronger “sealed” read than bare check)
+  finalized: transcriptGutterIconSvg(
+    '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  ),
 };
 
 const PLAY_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
 const STOP_ICON_SVG =
   '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
-const LOOP_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>';
+const LOOP_ICON_SVG = transcriptGutterIconSvg(
+  '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
+);
+/** MessageSquare — annotation present (ambient glyph; matches PRODUCT_ICON.segmentAnnotation). */
+const ANNOTATION_DOC_ICON_SVG = transcriptGutterIconSvg(
+  '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+);
 
 export const CM_SEGMENT_PLAY_ATTR = "data-cm-segment-play";
 export const CM_SEGMENT_LOOP_ATTR = "data-cm-segment-loop";
+export const CM_SEGMENT_ANNOTATION_ATTR = "data-cm-segment-annotation";
 
 export class TranscriptStageMarker extends GutterMarker {
   constructor(
@@ -62,6 +88,8 @@ export class TranscriptStageMarker extends GutterMarker {
     readonly segmentPlayForced: boolean = false,
     /** Primary row with segment loop armed. */
     readonly segmentLoopActive: boolean = false,
+    /** Show document icon to the right of the stage chip when the segment has a note. */
+    readonly hasAnnotation: boolean = false,
   ) {
     super();
   }
@@ -76,7 +104,8 @@ export class TranscriptStageMarker extends GutterMarker {
       this.showSegmentPlay === other.showSegmentPlay &&
       this.segmentPlayActive === other.segmentPlayActive &&
       this.segmentPlayForced === other.segmentPlayForced &&
-      this.segmentLoopActive === other.segmentLoopActive
+      this.segmentLoopActive === other.segmentLoopActive &&
+      this.hasAnnotation === other.hasAnnotation
     );
   }
 
@@ -92,7 +121,13 @@ export class TranscriptStageMarker extends GutterMarker {
             : this.selectionKind === "playback"
               ? "cm-transcript-stage-cell--playback"
               : "";
-    wrap.className = ["cm-transcript-stage-cell", kindClass].filter(Boolean).join(" ");
+    wrap.className = [
+      "cm-transcript-stage-cell",
+      kindClass,
+      this.segmentPlayForced ? "cm-transcript-stage-cell--row-hover" : "",
+    ]
+      .filter(Boolean)
+      .join(" ");
 
     if (this.showSegmentPlay) {
       const transportVisible = this.segmentPlayForced || this.segmentPlayActive || this.segmentLoopActive;
@@ -154,6 +189,16 @@ export class TranscriptStageMarker extends GutterMarker {
 
     el.append(icon, label);
     wrap.append(el);
+
+    if (this.hasAnnotation) {
+      const note = document.createElement("span");
+      note.className = "cm-transcript-annotation-icon";
+      note.setAttribute(CM_SEGMENT_ANNOTATION_ATTR, "1");
+      note.title = "有备注";
+      note.setAttribute("aria-label", "有备注");
+      note.innerHTML = ANNOTATION_DOC_ICON_SVG;
+      wrap.append(note);
+    }
     return wrap;
   }
 }
@@ -182,6 +227,7 @@ export function buildTranscriptStageMarker(
     opts.segmentPlayActive === true,
     opts.segmentPlayForced === true,
     opts.segmentLoopActive === true,
+    Boolean(meta.hasAnnotation),
   );
 }
 
@@ -190,6 +236,61 @@ export type TranscriptStageGutterOptions = {
   onToggleSegmentPlay?: (idx: number) => void;
   onToggleSegmentLoop?: (idx: number) => void;
 };
+
+type StageGutterMousedownView = {
+  state: EditorState;
+  dispatch: (tr: TransactionSpec) => void;
+};
+
+/**
+ * Pure gutter mousedown body (exported for focused tests — CM6 gutter row
+ * hit-testing needs real layout, so DOM-dispatch tests are unreliable in jsdom).
+ */
+export function handleTranscriptStageGutterMousedown(
+  view: StageGutterMousedownView,
+  lineFrom: number,
+  event: MouseEvent,
+  opts: TranscriptStageGutterOptions,
+): boolean {
+  const target = event.target as HTMLElement | null;
+  const idx = view.state.doc.lineAt(lineFrom).number - 1;
+  if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
+    event.preventDefault();
+    event.stopPropagation();
+    opts.onToggleSegmentLoop?.(idx);
+    return true;
+  }
+  if (target?.closest(`[${CM_SEGMENT_PLAY_ATTR}]`)) {
+    event.preventDefault();
+    event.stopPropagation();
+    opts.onToggleSegmentPlay?.(idx);
+    return true;
+  }
+  const multi = view.state.field(transcriptMultiSelectionField);
+  if (event.button !== 0) {
+    event.preventDefault();
+    if (
+      shouldApplyContextMenuSelection({
+        segmentIdx: idx,
+        isIndexInSelection: (i) => multi.selectedSet.has(i),
+        selectionCount: multi.selectedSet.size,
+      })
+    ) {
+      // CM6-local selection only — do not bridge to `onSelectSegment` (list
+      // source) here, or right-click would seek/reveal and can even arm
+      // global playback continuation on a non-primary row. `contextmenu`
+      // in transcriptEditorCoreMount owns the React-side "contextMenu"
+      // source re-select. See metaGutter.ts for the matching fix.
+      selectSegmentCommand(view, idx, { scrollIntoView: false });
+    }
+    return true;
+  }
+  const toggle = event.metaKey || event.ctrlKey;
+  const shiftKey = event.shiftKey;
+  selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
+  opts.onSelectSegment?.(idx, { toggle, shiftKey });
+  return true;
+}
 
 /**
  * Trailing stage chip gutter (legacy SegmentRowStageBadge column parity).
@@ -258,7 +359,7 @@ export function createTranscriptStageGutter(
     initialSpacer: () =>
       new TranscriptStageMarker(
         "auto_transcribe",
-        "自动转写",
+        "机转",
         "自动转写",
         null,
         false,
@@ -266,41 +367,7 @@ export function createTranscriptStageGutter(
       ),
     domEventHandlers: {
       mousedown(view, line, event) {
-        const mouse = event as MouseEvent;
-        const target = mouse.target as HTMLElement | null;
-        const idx = view.state.doc.lineAt(line.from).number - 1;
-        if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
-          mouse.preventDefault();
-          mouse.stopPropagation();
-          opts.onToggleSegmentLoop?.(idx);
-          return true;
-        }
-        if (target?.closest(`[${CM_SEGMENT_PLAY_ATTR}]`)) {
-          mouse.preventDefault();
-          mouse.stopPropagation();
-          opts.onToggleSegmentPlay?.(idx);
-          return true;
-        }
-        const multi = view.state.field(transcriptMultiSelectionField);
-        if (mouse.button !== 0) {
-          mouse.preventDefault();
-          if (
-            shouldApplyContextMenuSelection({
-              segmentIdx: idx,
-              isIndexInSelection: (i) => multi.selectedSet.has(i),
-              selectionCount: multi.selectedSet.size,
-            })
-          ) {
-            selectSegmentCommand(view, idx, { scrollIntoView: false });
-            opts.onSelectSegment?.(idx, { toggle: false, shiftKey: false });
-          }
-          return true;
-        }
-        const toggle = mouse.metaKey || mouse.ctrlKey;
-        const shiftKey = mouse.shiftKey;
-        selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
-        opts.onSelectSegment?.(idx, { toggle, shiftKey });
-        return true;
+        return handleTranscriptStageGutterMousedown(view, line.from, event as MouseEvent, opts);
       },
     },
   });
@@ -309,8 +376,8 @@ export function createTranscriptStageGutter(
 export const transcriptStageGutterTheme = EditorView.theme({
   // Flush against content — avoid a blank seam between text highlight and stage chip.
   ".cm-transcript-stage-gutter": {
-    // loop (1.75) + play (1.75) + gaps (0.25×2) + chip max (6.5) + cell padding ≈ 11.0
-    minWidth: "11rem",
+    // loop (1.75) + play (1.75) + gaps + chip max (6.5) + optional annotation (1.0) + cell pad ≈ 12.0
+    minWidth: "12rem",
     paddingLeft: "0",
     paddingRight: "0.35rem",
     borderLeft: "none",
@@ -327,9 +394,9 @@ export const transcriptStageGutterTheme = EditorView.theme({
     backgroundColor: "transparent",
     transition: "none",
   },
+  /** Row ambient ink — stage mark + annotation share one grayscale token. */
   ".cm-transcript-stage-cell": {
     display: "flex",
-    // Keep transport + stage chip on one baseline band (same as chip height).
     alignItems: "center",
     justifyContent: "flex-start",
     gap: "0.25rem",
@@ -343,6 +410,20 @@ export const transcriptStageGutterTheme = EditorView.theme({
     borderRadius: "0",
     backgroundColor: "transparent",
     transition: "none",
+    "--cm-stage-affordance":
+      "color-mix(in srgb, var(--notion-text-light) 55%, var(--notion-text-muted))",
+  },
+  ".cm-transcript-stage-cell--row-hover, .cm-transcript-stage-cell:hover": {
+    "--cm-stage-affordance":
+      "color-mix(in srgb, var(--notion-text-light) 35%, var(--notion-text-muted))",
+  },
+  ".cm-transcript-stage-cell--primary, .cm-transcript-stage-cell--primary-playback": {
+    "--cm-stage-affordance":
+      "color-mix(in srgb, var(--notion-text-muted) 72%, var(--notion-text))",
+  },
+  ".cm-transcript-stage-cell--in-selection, .cm-transcript-stage-cell--playback": {
+    "--cm-stage-affordance":
+      "color-mix(in srgb, var(--notion-text-light) 35%, var(--notion-text-muted))",
   },
   ".cm-transcript-segment-transport": {
     display: "inline-flex",
@@ -371,21 +452,21 @@ export const transcriptStageGutterTheme = EditorView.theme({
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
-    background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+    background: "color-mix(in srgb, var(--accent-action) 12%, transparent)",
   },
   ".cm-transcript-segment-transport--forced": {
     opacity: "1",
     pointerEvents: "auto",
     borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
-    background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+    background: "color-mix(in srgb, var(--accent-action) 12%, transparent)",
   },
   ".cm-transcript-segment-transport:hover": {
-    background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
+    background: "color-mix(in srgb, var(--accent-action) 22%, transparent)",
   },
   ".cm-transcript-segment-transport--active": {
     opacity: "1",
     pointerEvents: "auto",
-    background: "color-mix(in srgb, var(--accent-action) 22%, var(--notion-bg))",
+    background: "color-mix(in srgb, var(--accent-action) 22%, transparent)",
     borderColor: "color-mix(in srgb, var(--accent-action) 42%, var(--notion-divider))",
   },
   ".cm-transcript-segment-transport svg": {
@@ -395,18 +476,20 @@ export const transcriptStageGutterTheme = EditorView.theme({
     pointerEvents: "none",
     flexShrink: "0",
   },
-  // Match legacy `.seg-row-stage-chip` (Notion pill + icon).
+  // Stage mark: flat icon + label — grayscale ink shared with annotation.
   ".cm-transcript-stage-chip": {
     display: "inline-flex",
     boxSizing: "border-box",
     alignItems: "center",
-    gap: "0.25rem",
+    gap: "0.1875rem",
     height: "1.375rem",
     minHeight: "1.375rem",
     maxWidth: "6.5rem",
-    padding: "0 0.5rem 0 0.3125rem",
-    borderRadius: "9999px",
-    border: "1px solid transparent",
+    padding: "0",
+    margin: "0",
+    border: "0",
+    borderRadius: "0",
+    background: "transparent",
     fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif",
     fontSize: "var(--text-label, 0.75rem)",
     fontWeight: "500",
@@ -415,6 +498,9 @@ export const transcriptStageGutterTheme = EditorView.theme({
     overflow: "hidden",
     flexShrink: "0",
     cursor: "default",
+    color: "var(--cm-stage-affordance)",
+    opacity: "0.92",
+    transition: "color 120ms ease, opacity 120ms ease",
   },
   ".cm-transcript-stage-chip__icon": {
     display: "inline-flex",
@@ -423,7 +509,6 @@ export const transcriptStageGutterTheme = EditorView.theme({
     justifyContent: "center",
     width: "0.875rem",
     height: "0.875rem",
-    opacity: "0.92",
   },
   ".cm-transcript-stage-chip__icon svg": {
     width: "0.75rem",
@@ -436,25 +521,28 @@ export const transcriptStageGutterTheme = EditorView.theme({
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  ".cm-transcript-stage-chip--auto_transcribe": {
-    background: "var(--notion-callout-bg)",
-    borderColor: "var(--notion-callout-border)",
-    color: "var(--notion-text-muted)",
+  ".cm-transcript-annotation-icon": {
+    display: "inline-flex",
+    flexShrink: "0",
+    alignItems: "center",
+    justifyContent: "center",
+    boxSizing: "border-box",
+    width: "1rem",
+    height: "1.375rem",
+    minHeight: "1.375rem",
+    margin: "0",
+    padding: "0",
+    border: "0",
+    background: "transparent",
+    color: "var(--cm-stage-affordance)",
+    opacity: "0.92",
+    pointerEvents: "none",
+    transition: "color 120ms ease, opacity 120ms ease",
   },
-  ".cm-transcript-stage-chip--ai_revised": {
-    background: "color-mix(in srgb, var(--accent-action) 16%, var(--notion-bg))",
-    borderColor: "color-mix(in srgb, var(--accent-action) 34%, var(--notion-divider))",
-    color: "var(--accent-action)",
-  },
-  ".cm-transcript-stage-chip--manual_transcribe": {
-    background: "color-mix(in srgb, var(--zen-status-warn) 14%, var(--notion-bg))",
-    borderColor: "color-mix(in srgb, var(--zen-status-warn) 28%, var(--notion-divider))",
-    color: "var(--zen-status-warn-action)",
-  },
-  ".cm-transcript-stage-chip--finalized": {
-    background: "var(--zen-success-surface)",
-    borderColor: "var(--zen-success-border)",
-    color: "var(--zen-success)",
+  ".cm-transcript-annotation-icon svg": {
+    width: "0.75rem",
+    height: "0.75rem",
+    display: "block",
   },
 });
 

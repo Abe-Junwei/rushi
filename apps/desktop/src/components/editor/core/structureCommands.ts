@@ -14,8 +14,9 @@ import {
 } from "../../../services/segmentListFilter";
 import { encodeSegmentTextForDocLine } from "./segmentNewlineCodec";
 import { serializeTranscriptEditorState } from "./serializeTranscriptEditorState";
-import { setSegmentMetaEffect, type SegmentMeta } from "./segmentMetaField";
+import { setSegmentMetaEffect, segmentMetaField, type SegmentMeta } from "./segmentMetaField";
 import {
+  primarySegmentIdx,
   setTranscriptMultiSelectionEffect,
 } from "./selectionField";
 import { transcriptStructureEditAnnotation } from "./transcriptEditorKeymap";
@@ -139,12 +140,19 @@ export function applyTranscriptSegmentsStructure(
 ): boolean {
   const tr = replaceTranscriptSegmentsTransaction(view.state, nextSegments, primaryIdx);
   if (!tr) return false;
-  const anchorIdx = Math.max(0, Math.min(primaryIdx, Math.max(0, view.state.doc.lines - 1)));
-  const priorAnchorOffsetPx = readSegmentViewportAnchorOffsetPx(view, anchorIdx);
+  const revealIdx = Math.max(0, Math.min(primaryIdx, Math.max(0, nextSegments.length - 1)));
+  const oldPrimary = primarySegmentIdx(view.state);
+  const oldMeta = view.state.field(segmentMetaField);
+  const survivingUid = oldPrimary >= 0 ? oldMeta[oldPrimary]?.uid : undefined;
+  const samePrimarySurvives =
+    survivingUid != null && nextSegments[revealIdx]?.uid === survivingUid;
+  const priorAnchorOffsetPx =
+    samePrimarySurvives && oldPrimary >= 0
+      ? readSegmentViewportAnchorOffsetPx(view, oldPrimary)
+      : undefined;
   view.dispatch(tr);
-  const primary = Math.max(0, Math.min(primaryIdx, Math.max(0, nextSegments.length - 1)));
   if (nextSegments.length > 0) {
-    revealSegmentAfterStructureChange(view, primary, { priorAnchorOffsetPx });
+    revealSegmentAfterStructureChange(view, revealIdx, { priorAnchorOffsetPx });
   }
   return true;
 }
@@ -235,8 +243,11 @@ export function deleteSegmentAtCommand(
   if (idx < 0 || idx >= baseline.length) return false;
   const live = withLiveTextsFromState(view.state, baseline);
   const out = live.filter((_, j) => j !== idx);
+  const prevPrimary = primarySegmentIdx(view.state);
   const nextPrimary =
-    out.length <= 0 ? 0 : Math.max(0, Math.min(idx, out.length - 1));
+    out.length <= 0
+      ? 0
+      : resolveSelectedIdxAfterIndexRemoval(baseline.length, [idx], prevPrimary);
   return applyTranscriptSegmentsStructure(view, reindexSegments(out), nextPrimary);
 }
 
@@ -249,8 +260,12 @@ export function deleteSegmentRangeCommand(
   if (lo < 0 || hi >= baseline.length || lo > hi) return false;
   const live = withLiveTextsFromState(view.state, baseline);
   const out = [...live.slice(0, lo), ...live.slice(hi + 1)];
+  const prevPrimary = primarySegmentIdx(view.state);
+  const removed = Array.from({ length: hi - lo + 1 }, (_, k) => lo + k);
   const nextPrimary =
-    out.length <= 0 ? 0 : Math.max(0, Math.min(lo, out.length - 1));
+    out.length <= 0
+      ? 0
+      : resolveSelectedIdxAfterIndexRemoval(baseline.length, removed, prevPrimary);
   return applyTranscriptSegmentsStructure(view, reindexSegments(out), nextPrimary);
 }
 

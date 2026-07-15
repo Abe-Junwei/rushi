@@ -6,7 +6,14 @@ export function shouldApplyContextMenuSelection(input: {
   isIndexInSelection: (idx: number) => boolean;
   selectionCount: number;
 }): boolean {
-  return !(input.isIndexInSelection(input.segmentIdx) && input.selectionCount > 1);
+  if (input.isIndexInSelection(input.segmentIdx) && input.selectionCount > 1) {
+    return false;
+  }
+  // Already the sole primary row — avoid re-select + list transport drift.
+  if (input.selectionCount === 1 && input.isIndexInSelection(input.segmentIdx)) {
+    return false;
+  }
+  return true;
 }
 
 export function applyContextMenuSelectionBeforeOpen(

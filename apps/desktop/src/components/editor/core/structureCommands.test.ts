@@ -17,6 +17,7 @@ import {
   mergeProjectedStructureWithBaseline,
   primarySegmentIdx,
   replaceTranscriptSegmentsTransaction,
+  selectSegmentCommand,
 } from "./index";
 
 function makeSegments(n: number): SegmentDto[] {
@@ -115,6 +116,20 @@ describe("P6 structureCommands", () => {
     expect(deleteSegmentAtCommand(v, segs, 1)).toBe(true);
     expect(v.state.doc.lines).toBe(2);
     expect(serializeTranscriptEditorState(v.state).map((s) => s.uid)).toEqual(["u0", "u2"]);
+  });
+
+  it("delete preserves primary when removing a non-selected segment", () => {
+    const segs = makeSegments(5);
+    const v = mount(segs);
+    selectSegmentCommand(v, 3, { scrollIntoView: false });
+    expect(deleteSegmentAtCommand(v, segs, 1)).toBe(true);
+    expect(primarySegmentIdx(v.state)).toBe(2);
+    expect(serializeTranscriptEditorState(v.state).map((s) => s.uid)).toEqual([
+      "u0",
+      "u2",
+      "u3",
+      "u4",
+    ]);
   });
 
   it("sparse-deletes non-contiguous indices and remaps primary", () => {

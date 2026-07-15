@@ -194,7 +194,6 @@ export function createTranscriptMetaGutter(
             })
           ) {
             selectSegmentCommand(view, idx, { scrollIntoView: false });
-            opts.onSelectSegment?.(idx, { toggle: false, shiftKey: false });
           }
           return true;
         }

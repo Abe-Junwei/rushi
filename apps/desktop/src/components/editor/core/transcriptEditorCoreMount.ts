@@ -16,12 +16,14 @@ import {
   transcriptLineCountGuard,
 } from "./transcriptEditorKeymap";
 import { transcriptFrozenLineGuard } from "./frozenLineGuard";
+import { transcriptPointerScrollGuard } from "./transcriptPointerScrollGuard";
 import { segmentMetaField } from "./segmentMetaField";
 import { primarySegmentIdx, transcriptMultiSelectionField } from "./selectionField";
 import { readTranscriptEditorSelectionText } from "./textEditCommands";
 import { createTranscriptTextDragClamp } from "./transcriptTextDragClamp";
 import { transcriptSelectionIsSingleLine } from "./transcriptClipboard";
 import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
+import { resolveTranscriptSegmentIdxAtPointer } from "./resolveTranscriptSegmentIdxAtPointer";
 
 export function buildTranscriptAppearanceTheme(args: {
   fontPx: number;
@@ -46,7 +48,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
-      "--cm-stage-gutter-width": "11rem",
+      "--cm-stage-gutter-width": "12rem",
       "--cm-transcript-line-pad": `${linePad}px`,
       "--cm-transcript-min-line-px": `${minLine}px`,
       "--cm-transcript-meta-content-gap": TRANSCRIPT_EDITOR_META_CONTENT_GAP,
@@ -103,7 +105,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-        "var(--cm-stage-gutter-width, 11rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "var(--cm-stage-gutter-width, 12rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
     },
     ".cm-line.cm-transcript-line-resize-host": {
@@ -125,14 +127,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
-        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-in-selection-list)",
+        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-in-selection-list)",
       ].join(", "),
     },
     // Same fill as primary — playback-focus only drives icon/class, not a second wash.
@@ -140,14 +142,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-playback-focus": {
       backgroundColor: "var(--transcript-playback-focus-fill)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
-        "var(--cm-stage-gutter-width, 11rem) 0 0 0 var(--transcript-playback-focus-fill)",
+        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--transcript-playback-focus-fill)",
       ].join(", "),
     },
   });
@@ -203,6 +205,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
     }),
     transcriptLineCountGuard,
     transcriptFrozenLineGuard,
+    transcriptPointerScrollGuard,
     createTranscriptEditorKeymap({
       onPrimaryMoved: (idx, opts) => bridgePrimaryMoved(idx, opts),
     }),
@@ -253,10 +256,27 @@ export function buildTranscriptEditorCoreExtensions(args: {
     EditorView.domEventHandlers({
       mousedown(event, view) {
         if (args.busyRef.current) return true;
-        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-        if (pos == null) return false;
-        const line = view.state.doc.lineAt(pos);
-        const idx = line.number - 1;
+        const pointerIdx = resolveTranscriptSegmentIdxAtPointer(
+          view,
+          event.clientX,
+          event.clientY,
+          event.target,
+        );
+        const idx =
+          pointerIdx ??
+          (event.button === 0
+            ? (() => {
+                const pos = view.posAtCoords(
+                  { x: event.clientX, y: event.clientY },
+                  false,
+                );
+                return pos == null ? null : view.state.doc.lineAt(pos).number - 1;
+              })()
+            : null);
+        if (idx == null) return false;
+        const pos =
+          view.posAtCoords({ x: event.clientX, y: event.clientY }, false) ??
+          view.state.doc.line(idx + 1).from;
         const toggle = event.metaKey || event.ctrlKey;
         const shiftKey = event.shiftKey;
         const primary = primarySegmentIdx(view.state);
@@ -283,7 +303,6 @@ export function buildTranscriptEditorCoreExtensions(args: {
             })
           ) {
             selectSegmentCommand(view, idx, { scrollIntoView: false });
-            bridgePrimaryMoved(idx, { toggle: false, shiftKey: false });
           }
           return true;
         }
@@ -325,12 +344,14 @@ export function buildTranscriptEditorCoreExtensions(args: {
         const open = args.onOpenContextMenuRef?.current;
         if (!open) return false;
         event.preventDefault();
-        const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-        const lineCount = view.state.doc.lines;
         const lineIdx =
-          pos != null
-            ? view.state.doc.lineAt(pos).number - 1
-            : Math.max(0, Math.min(lineCount - 1, primarySegmentIdx(view.state)));
+          resolveTranscriptSegmentIdxAtPointer(
+            view,
+            event.clientX,
+            event.clientY,
+            event.target,
+          ) ??
+          Math.max(0, Math.min(view.state.doc.lines - 1, primarySegmentIdx(view.state)));
         // Copy/cut only support a single-segment range (see transcriptClipboard);
         // a cross-segment drag-selection must not offer them since it would no-op.
         const selectionText = transcriptSelectionIsSingleLine(view)

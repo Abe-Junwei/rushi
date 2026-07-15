@@ -25,6 +25,16 @@ describe("segmentContextMenuSelection", () => {
     ).toBe(false);
   });
 
+  it("skips re-select when single-select already on the target row", () => {
+    expect(
+      shouldApplyContextMenuSelection({
+        segmentIdx: 2,
+        isIndexInSelection: (idx) => idx === 2,
+        selectionCount: 1,
+      }),
+    ).toBe(false);
+  });
+
   it("calls selectSegmentAt with contextMenu source before opening menu", () => {
     const selectSegmentAt = vi.fn();
     applyContextMenuSelectionBeforeOpen(
