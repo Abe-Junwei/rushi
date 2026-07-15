@@ -54,4 +54,11 @@ describe("formatTxt / formatSrt", () => {
     const s = formatSrt(withNote);
     expect(s).toContain("甲（待核对）");
   });
+
+  it("exports annotation-only line for txt", () => {
+    const withNote: ExportSegment[] = [
+      { idx: 0, start_sec: 0, end_sec: 1, text: "", annotation: "仅备注" },
+    ];
+    expect(formatTxt(withNote)).toBe("（仅备注）");
+  });
 });

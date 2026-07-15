@@ -31,6 +31,7 @@ vi.mock("../services/ui/toast", () => ({
 }));
 
 import { exportTextFile, exportProjectBundle } from "../tauri/projectApi";
+import { exportDocx as exportDocxImpl } from "../tauri/exportDocxApi";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import { toast } from "../services/ui/toast";
 
@@ -159,5 +160,39 @@ describe("useExportController", () => {
     });
 
     expect(toast.info).toHaveBeenCalledWith("已取消导出诊断包");
+  });
+
+  it("exportDeliveryDocx passes segments with annotation to exportDocx", async () => {
+    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
+    const segments: SegmentDto[] = [
+      {
+        uid: "s1",
+        idx: 0,
+        start_sec: 0,
+        end_sec: 1,
+        text: "甲",
+        annotation: "存疑",
+      },
+    ];
+    const deps = makeDeps({ getCurrentSegmentsSnapshot: () => segments });
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportDeliveryDocx({
+        mode: "verbatim",
+        includeRevisionAppendix: false,
+      });
+    });
+
+    expect(deps.flushSegmentTextDrafts).toHaveBeenCalled();
+    expect(exportDocxImpl).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      "verbatim",
+      expect.arrayContaining([
+        expect.objectContaining({ text: "甲", annotation: "存疑" }),
+      ]),
+      expect.any(Object),
+    );
   });
 });

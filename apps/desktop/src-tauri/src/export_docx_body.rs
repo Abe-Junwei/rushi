@@ -18,7 +18,7 @@ pub(crate) const DOCX_COLOR_MUTED: &str = "6B6B6B";
 pub(crate) const ANNOTATION_COMMENT_AUTHOR: &str = "备注";
 
 /// 有备注的语段正文高亮色（Word 具名颜色）。
-const ANNOTATION_HIGHLIGHT: &str = "yellow";
+pub(crate) const ANNOTATION_HIGHLIGHT: &str = "yellow";
 
 pub(crate) const MAX_LECTURE_BODY_CHARS: usize = 2_000_000;
 const MAX_APPENDIX_LINES: usize = 120;
@@ -180,6 +180,22 @@ fn trimmed_segment_annotation(annotation: Option<&str>) -> Option<&str> {
     })
 }
 
+/// 正文或备注至少一项非空时导出该语段（与 TXT `（备注）` 对齐）。
+pub(crate) fn segment_has_exportable_content(s: &SegmentDto) -> bool {
+    !s.text.trim().is_empty()
+        || trimmed_segment_annotation(s.annotation.as_deref()).is_some()
+}
+
+/// 与 TS `segmentLinesFromSegments` 一致：仅非空正文语段的下标。
+pub(crate) fn non_empty_segment_indices(segments: &[SegmentDto]) -> Vec<usize> {
+    segments
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| !s.text.trim().is_empty())
+        .map(|(i, _)| i)
+        .collect()
+}
+
 #[cfg(test)]
 pub(crate) fn segments_have_annotations(segments: &[SegmentDto]) -> bool {
     segments
@@ -202,7 +218,7 @@ pub(crate) struct DocxAnnotationComments {
 }
 
 impl DocxAnnotationComments {
-    fn alloc_id(&mut self) -> usize {
+    pub(crate) fn alloc_id(&mut self) -> usize {
         self.next_id += 1;
         self.next_id
     }
@@ -246,15 +262,18 @@ pub(crate) fn annotations_grouped_by_polish_paragraphs(
     paragraphs: &[String],
     segments: &[SegmentDto],
 ) -> Vec<Vec<String>> {
+    let segment_index_for_line = non_empty_segment_indices(segments);
     line_indices_per_polish_paragraph(lines, paragraphs)
         .into_iter()
-        .map(|indices| {
-            indices
+        .map(|line_indices| {
+            line_indices
                 .into_iter()
-                .filter_map(|li| {
-                    segments.get(li).and_then(|s| {
-                        trimmed_segment_annotation(s.annotation.as_deref())
-                            .map(|t| t.to_string())
+                .filter_map(|line_i| {
+                    segment_index_for_line.get(line_i).and_then(|&seg_i| {
+                        segments.get(seg_i).and_then(|s| {
+                            trimmed_segment_annotation(s.annotation.as_deref())
+                                .map(|t| t.to_string())
+                        })
                     })
                 })
                 .collect()
@@ -331,7 +350,7 @@ pub(crate) fn append_lecture_segments(
                     truncated = true;
                     break;
                 }
-                while seg_i < segments.len() && segments[seg_i].text.trim().is_empty() {
+                while seg_i < segments.len() && !segment_has_exportable_content(&segments[seg_i]) {
                     seg_i += 1;
                 }
                 let Some(s) = segments.get(seg_i) else {
@@ -339,16 +358,18 @@ pub(crate) fn append_lecture_segments(
                 };
                 seg_i += 1;
                 let t = s.text.trim();
-                let take = t.chars().count().min(char_budget);
+                let notes = segment_notes(s.annotation.as_deref());
+                let take = if t.is_empty() {
+                    0
+                } else {
+                    t.chars().count().min(char_budget)
+                };
                 let chunk: String = t.chars().take(take).collect();
-                char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph_with_comments(
-                    doc,
-                    comments,
-                    &chunk,
-                    &segment_notes(s.annotation.as_deref()),
-                );
-                if take < t.chars().count() {
+                if take > 0 {
+                    char_budget = char_budget.saturating_sub(take);
+                }
+                doc = add_body_paragraph_with_comments(doc, comments, &chunk, &notes);
+                if take > 0 && take < t.chars().count() {
                     truncated = true;
                     break;
                 }
@@ -371,24 +392,30 @@ pub(crate) fn append_lecture_segments(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
     for s in segments {
-        let t = s.text.trim();
-        if t.is_empty() {
+        if !segment_has_exportable_content(s) {
             continue;
         }
+        let t = s.text.trim();
         if char_budget == 0 {
             truncated = true;
             break;
         }
-        let take = t.chars().count().min(char_budget);
+        let take = if t.is_empty() {
+            0
+        } else {
+            t.chars().count().min(char_budget)
+        };
         let chunk: String = t.chars().take(take).collect();
-        char_budget = char_budget.saturating_sub(take);
+        if take > 0 {
+            char_budget = char_budget.saturating_sub(take);
+        }
         doc = add_body_paragraph_with_comments(
             doc,
             comments,
             &chunk,
             &segment_notes(s.annotation.as_deref()),
         );
-        if take < t.chars().count() {
+        if take > 0 && take < t.chars().count() {
             truncated = true;
             break;
         }
@@ -417,7 +444,7 @@ pub(crate) fn append_clean_segments_with_blocks(
                     truncated = true;
                     break;
                 }
-                while seg_i < segments.len() && segments[seg_i].text.trim().is_empty() {
+                while seg_i < segments.len() && !segment_has_exportable_content(&segments[seg_i]) {
                     seg_i += 1;
                 }
                 let Some(s) = segments.get(seg_i) else {
@@ -425,17 +452,19 @@ pub(crate) fn append_clean_segments_with_blocks(
                 };
                 seg_i += 1;
                 let t = s.text.trim();
-                let take = t.chars().count().min(char_budget);
+                let notes = segment_notes(s.annotation.as_deref());
+                let take = if t.is_empty() {
+                    0
+                } else {
+                    t.chars().count().min(char_budget)
+                };
                 let chunk: String = t.chars().take(take).collect();
-                char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph_with_comments(
-                    doc,
-                    comments,
-                    &chunk,
-                    &segment_notes(s.annotation.as_deref()),
-                );
+                if take > 0 {
+                    char_budget = char_budget.saturating_sub(take);
+                }
+                doc = add_body_paragraph_with_comments(doc, comments, &chunk, &notes);
                 doc = doc.add_paragraph(Paragraph::new());
-                if take < t.chars().count() {
+                if take > 0 && take < t.chars().count() {
                     truncated = true;
                     break;
                 }
@@ -465,26 +494,34 @@ pub(crate) fn append_verbatim_segments(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
     for s in segments {
-        let t = s.text.trim();
-        if t.is_empty() {
+        if !segment_has_exportable_content(s) {
             continue;
         }
+        let t = s.text.trim();
         if char_budget == 0 {
             truncated = true;
             break;
         }
-        let meta = format!("[{} – {}]", format_hms(s.start_sec), format_hms(s.end_sec));
-        doc = doc.add_paragraph(
-            Paragraph::new().add_run(
-                Run::new()
-                    .size(20)
-                    .color(DOCX_COLOR_MUTED)
-                    .add_text(sanitize_docx_text(&meta)),
-            ),
-        );
-        let take = t.chars().count().min(char_budget);
+        if !t.is_empty() {
+            let meta = format!("[{} – {}]", format_hms(s.start_sec), format_hms(s.end_sec));
+            doc = doc.add_paragraph(
+                Paragraph::new().add_run(
+                    Run::new()
+                        .size(20)
+                        .color(DOCX_COLOR_MUTED)
+                        .add_text(sanitize_docx_text(&meta)),
+                ),
+            );
+        }
+        let take = if t.is_empty() {
+            0
+        } else {
+            t.chars().count().min(char_budget)
+        };
         let chunk: String = t.chars().take(take).collect();
-        char_budget = char_budget.saturating_sub(take);
+        if take > 0 {
+            char_budget = char_budget.saturating_sub(take);
+        }
         doc = add_body_paragraph_with_comments(
             doc,
             comments,
@@ -492,7 +529,7 @@ pub(crate) fn append_verbatim_segments(
             &segment_notes(s.annotation.as_deref()),
         );
         doc = doc.add_paragraph(Paragraph::new());
-        if take < t.chars().count() {
+        if take > 0 && take < t.chars().count() {
             truncated = true;
             break;
         }
@@ -512,17 +549,23 @@ pub(crate) fn append_clean_segments(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
     for s in segments {
-        let t = s.text.trim();
-        if t.is_empty() {
+        if !segment_has_exportable_content(s) {
             continue;
         }
+        let t = s.text.trim();
         if char_budget == 0 {
             truncated = true;
             break;
         }
-        let take = t.chars().count().min(char_budget);
+        let take = if t.is_empty() {
+            0
+        } else {
+            t.chars().count().min(char_budget)
+        };
         let chunk: String = t.chars().take(take).collect();
-        char_budget = char_budget.saturating_sub(take);
+        if take > 0 {
+            char_budget = char_budget.saturating_sub(take);
+        }
         doc = add_body_paragraph_with_comments(
             doc,
             comments,
@@ -530,7 +573,7 @@ pub(crate) fn append_clean_segments(
             &segment_notes(s.annotation.as_deref()),
         );
         doc = doc.add_paragraph(Paragraph::new());
-        if take < t.chars().count() {
+        if take > 0 && take < t.chars().count() {
             truncated = true;
             break;
         }
@@ -575,17 +618,24 @@ pub(crate) fn append_polished_paragraph_list(
                 };
                 para_i += 1;
                 let t = p.trim();
-                if t.is_empty() {
+                let notes = notes_for(para_i - 1);
+                if t.is_empty() && notes.is_empty() {
                     continue;
                 }
-                let take = t.chars().count().min(char_budget);
+                let take = if t.is_empty() {
+                    0
+                } else {
+                    t.chars().count().min(char_budget)
+                };
                 let chunk: String = t.chars().take(take).collect();
-                char_budget = char_budget.saturating_sub(take);
-                doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes_for(para_i - 1));
+                if take > 0 {
+                    char_budget = char_budget.saturating_sub(take);
+                }
+                doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes);
                 if spaced {
                     doc = doc.add_paragraph(Paragraph::new());
                 }
-                if take < t.chars().count() {
+                if take > 0 && take < t.chars().count() {
                     truncated = true;
                     break;
                 }
@@ -609,21 +659,28 @@ pub(crate) fn append_polished_paragraph_list(
     let mut truncated = false;
     for (para_i, p) in paragraphs.iter().enumerate() {
         let t = p.trim();
-        if t.is_empty() {
+        let notes = notes_for(para_i);
+        if t.is_empty() && notes.is_empty() {
             continue;
         }
         if char_budget == 0 {
             truncated = true;
             break;
         }
-        let take = t.chars().count().min(char_budget);
+        let take = if t.is_empty() {
+            0
+        } else {
+            t.chars().count().min(char_budget)
+        };
         let chunk: String = t.chars().take(take).collect();
-        char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes_for(para_i));
+        if take > 0 {
+            char_budget = char_budget.saturating_sub(take);
+        }
+        doc = add_body_paragraph_with_comments(doc, comments, &chunk, notes);
         if spaced {
             doc = doc.add_paragraph(Paragraph::new());
         }
-        if take < t.chars().count() {
+        if take > 0 && take < t.chars().count() {
             truncated = true;
             break;
         }

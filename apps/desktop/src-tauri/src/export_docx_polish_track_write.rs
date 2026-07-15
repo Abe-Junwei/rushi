@@ -10,7 +10,8 @@ use zip::ZipWriter;
 use crate::export_docx::{
     add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
     append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
-    sanitize_docx_text, DocxAnnotationComments, DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, DocxAnnotationComments,
+    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
 
 use super::diff::{
@@ -92,11 +93,47 @@ fn display_paragraphs_from_lines(lines: &[String], template: &[String]) -> Vec<S
     out
 }
 fn paragraph_from_diff_pieces(pieces: &[DiffPiece], author: &str, date: &str) -> Paragraph {
+    paragraph_from_diff_pieces_with_comments(pieces, &[], author, date, None)
+}
+
+fn paragraph_from_diff_pieces_with_comments(
+    pieces: &[DiffPiece],
+    notes: &[String],
+    author: &str,
+    date: &str,
+    comments: Option<&mut DocxAnnotationComments>,
+) -> Paragraph {
+    let highlight_same = !notes.is_empty();
     let mut para = Paragraph::new();
+    let mut comment_ids = Vec::new();
+    if highlight_same {
+        if let Some(comments) = comments {
+            let comment_date = polish_revision_date();
+            for note in notes {
+                let id = comments.alloc_id();
+                comment_ids.push(id);
+                let comment = Comment::new(id)
+                    .author(ANNOTATION_COMMENT_AUTHOR)
+                    .date(&comment_date)
+                    .add_paragraph(
+                        Paragraph::new().add_run(
+                            Run::new()
+                                .size(20)
+                                .add_text(sanitize_docx_text(note)),
+                        ),
+                    );
+                para = para.add_comment_start(comment);
+            }
+        }
+    }
     for piece in pieces {
         match piece {
             DiffPiece::Same(text) if !text.is_empty() => {
-                para = para.add_run(track_body_run().add_text(sanitize_docx_text(text)));
+                let mut run = track_body_run().add_text(sanitize_docx_text(text));
+                if highlight_same {
+                    run = run.highlight(ANNOTATION_HIGHLIGHT);
+                }
+                para = para.add_run(run);
             }
             DiffPiece::Del(text) => {
                 para = para.add_delete(
@@ -115,6 +152,9 @@ fn paragraph_from_diff_pieces(pieces: &[DiffPiece], author: &str, date: &str) ->
             }
             DiffPiece::Same(_) => {}
         }
+    }
+    for id in comment_ids {
+        para = para.add_comment_end(id);
     }
     para
 }
@@ -203,13 +243,28 @@ pub fn append_polished_with_track_changes(
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
 
+    let paragraph_has_notes = |pi: usize| -> bool {
+        paragraph_annotations
+            .and_then(|groups| groups.get(pi))
+            .is_some_and(|notes| !notes.is_empty())
+    };
+
     let mut append_para = |doc: Docx, pi: usize, chunk: &str| -> Docx {
         let bucket = buckets.get(pi).map(Vec::as_slice).unwrap_or(&[]);
         let notes = paragraph_annotations
             .and_then(|groups| groups.get(pi))
             .map(Vec::as_slice)
             .unwrap_or(&[]);
-        if !notes.is_empty() {
+        let notes_vec: Vec<String> = notes.to_vec();
+        if !notes.is_empty() && pieces_have_markup(bucket) {
+            doc.add_paragraph(paragraph_from_diff_pieces_with_comments(
+                bucket,
+                &notes_vec,
+                author,
+                &date,
+                Some(annotation_comments),
+            ))
+        } else if !notes.is_empty() {
             add_body_paragraph_with_comments(doc, annotation_comments, chunk, notes)
         } else if pieces_have_markup(bucket) {
             doc.add_paragraph(paragraph_from_diff_pieces(bucket, author, &date))
@@ -232,18 +287,25 @@ pub fn append_polished_with_track_changes(
                     continue;
                 };
                 let t = para_text.trim();
+                let pi = para_i;
                 para_i += 1;
-                if t.is_empty() {
+                if t.is_empty() && !paragraph_has_notes(pi) {
                     continue;
                 }
-                let take = t.chars().count().min(char_budget);
+                let take = if t.is_empty() {
+                    0
+                } else {
+                    t.chars().count().min(char_budget)
+                };
                 let chunk: String = t.chars().take(take).collect();
-                char_budget = char_budget.saturating_sub(take);
-                doc = append_para(doc, para_i - 1, &chunk);
+                if take > 0 {
+                    char_budget = char_budget.saturating_sub(take);
+                }
+                doc = append_para(doc, pi, &chunk);
                 if spaced {
                     doc = doc.add_paragraph(Paragraph::new());
                 }
-                if take < t.chars().count() {
+                if take > 0 && take < t.chars().count() {
                     truncated = true;
                     break;
                 }
@@ -259,21 +321,27 @@ pub fn append_polished_with_track_changes(
     } else {
         for (pi, para_text) in display.iter().enumerate() {
             let t = para_text.trim();
-            if t.is_empty() {
+            if t.is_empty() && !paragraph_has_notes(pi) {
                 continue;
             }
             if char_budget == 0 {
                 truncated = true;
                 break;
             }
-            let take = t.chars().count().min(char_budget);
+            let take = if t.is_empty() {
+                0
+            } else {
+                t.chars().count().min(char_budget)
+            };
             let chunk: String = t.chars().take(take).collect();
-            char_budget = char_budget.saturating_sub(take);
+            if take > 0 {
+                char_budget = char_budget.saturating_sub(take);
+            }
             doc = append_para(doc, pi, &chunk);
             if spaced {
                 doc = doc.add_paragraph(Paragraph::new());
             }
-            if take < t.chars().count() {
+            if take > 0 && take < t.chars().count() {
                 truncated = true;
                 break;
             }

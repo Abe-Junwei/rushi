@@ -8,7 +8,8 @@ mod export_docx_build;
 pub(crate) use export_docx_body::{
     add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
     append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
-    sanitize_docx_text, DocxAnnotationComments, DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, DocxAnnotationComments,
+    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
 };
 pub(crate) use export_docx_build::{build_docx_to_path, DocxExportLayout};
 
@@ -303,6 +304,103 @@ mod tests {
         assert_eq!(grouped.len(), 2);
         assert_eq!(grouped[0], vec!["note-a".to_string()]);
         assert_eq!(grouped[1], vec!["note-c".to_string()]);
+    }
+
+    #[test]
+    fn annotations_grouped_by_polish_paragraphs_maps_through_empty_segment() {
+        use super::export_docx_body::annotations_grouped_by_polish_paragraphs;
+
+        let lines = vec!["甲".to_string(), "乙".to_string()];
+        let paragraphs = vec!["甲乙".to_string()];
+        let mut s0 = seg("甲", false);
+        s0.annotation = Some("note-a".into());
+        let mut s2 = seg("乙", false);
+        s2.annotation = Some("note-b".into());
+        let segments = vec![s0, seg("", false), s2];
+        let grouped = annotations_grouped_by_polish_paragraphs(&lines, &paragraphs, &segments);
+        assert_eq!(grouped.len(), 1);
+        assert_eq!(
+            grouped[0],
+            vec!["note-a".to_string(), "note-b".to_string()]
+        );
+    }
+
+    #[test]
+    fn build_docx_bytes_renders_annotation_only_segment() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let mut annotated = seg("", false);
+        annotated.annotation = Some("仅备注".to_string());
+        let bytes = build_docx_bytes(
+            "口述史",
+            "verbatim",
+            &[annotated],
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+            None,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        let mut comments_xml = String::new();
+        archive
+            .by_name("word/comments.xml")
+            .unwrap()
+            .read_to_string(&mut comments_xml)
+            .unwrap();
+        assert!(doc_xml.contains("commentRangeStart"));
+        assert!(comments_xml.contains("仅备注"));
+    }
+
+    #[test]
+    fn polish_track_with_annotation_keeps_track_changes_and_comment() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let mut annotated = seg("你好世界", false);
+        annotated.annotation = Some("存疑".to_string());
+        let bytes = build_docx_bytes(
+            "润色",
+            "lecture",
+            &[annotated],
+            None,
+            &[],
+            Some(&["你好，世界。".to_string()]),
+            Some("你好世界"),
+            Some(&["你好，世界。".to_string()]),
+            true,
+            None,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        let mut comments_xml = String::new();
+        archive
+            .by_name("word/comments.xml")
+            .unwrap()
+            .read_to_string(&mut comments_xml)
+            .unwrap();
+        assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
+        assert!(doc_xml.contains("commentRangeStart"));
+        assert!(doc_xml.contains("w:highlight"));
+        assert!(comments_xml.contains("存疑"));
     }
 
     #[test]

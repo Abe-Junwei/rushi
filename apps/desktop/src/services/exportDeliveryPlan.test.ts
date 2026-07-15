@@ -120,4 +120,24 @@ describe("planDeliveryDocxExport", () => {
       expect(plan.error).toMatch(/润色结果/);
     }
   });
+
+  it("lecture polish leaves polishTrackAuthor undefined", () => {
+    const plan = planDeliveryDocxExport({
+      request: {
+        mode: "lecture",
+        includeRevisionAppendix: false,
+        llmPolish: true,
+        polishResult: polishFor(segments),
+      },
+      segments,
+      editLogRows: [],
+      currentFileId: "f1",
+      exportMetaLine: undefined,
+    });
+
+    expect(plan.ok).toBe(true);
+    if (plan.ok) {
+      expect(plan.docxOptions.polishTrackAuthor).toBeUndefined();
+    }
+  });
 });

@@ -18,7 +18,7 @@ function trimmedAnnotation(annotation: string | null | undefined): string | null
   return t ? t : null;
 }
 
-/** 正文 + 可选备注（全角括号，与 DOCX 修订轨展示一致）。 */
+/** 正文 + 可选备注（全角括号；DOCX 侧为右侧批注栏，非内联）。 */
 export function formatSegmentTextWithAnnotation(
   text: string,
   annotation?: string | null,
