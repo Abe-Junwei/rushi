@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import {
   CONTROL_BTN_DANGER,
   CONTROL_BTN_PRIMARY,
@@ -16,8 +17,7 @@ type Props = {
   segmentIdx: number;
   busy: boolean;
   onClose: () => void;
-  onDraftChange: (value: string) => void;
-  onSave: () => void;
+  onSave: (draft: string) => void;
   onClear: () => void;
 };
 
@@ -36,10 +36,19 @@ export function SegmentAnnotationDialog({
   segmentIdx,
   busy,
   onClose,
-  onDraftChange,
   onSave,
   onClear,
 }: Props) {
+  const [localDraft, setLocalDraft] = useState("");
+  const editSessionKey =
+    state.phase === "edit" ? `${state.segmentIdx}:${state.hadAnnotation ? 1 : 0}` : null;
+
+  // Keep typing local — avoid lifting draft to project lifecycle on every keystroke.
+  useEffect(() => {
+    if (state.phase !== "edit") return;
+    setLocalDraft(state.draft);
+  }, [editSessionKey, state.phase, state.phase === "edit" ? state.draft : ""]);
+
   if (state.phase === "closed" || !segment || typeof document === "undefined") return null;
 
   const textPreview = segment.text.replace(/\s+/g, " ").trim();
@@ -80,16 +89,16 @@ export function SegmentAnnotationDialog({
             <span className={PANEL_TYPOGRAPHY.fieldLabel}>备注内容</span>
             <textarea
               className={`min-h-[120px] ${CONTROL_TEXTAREA} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
-              value={state.draft}
+              value={localDraft}
               disabled={busy}
               autoFocus
               placeholder="背景说明、待核对项、引用来源等…"
-              onChange={(e) => onDraftChange(e.target.value)}
+              onChange={(e) => setLocalDraft(e.target.value)}
             />
           </label>
-          {state.hadAnnotation && state.draft.trim() ? (
+          {state.hadAnnotation && localDraft.trim() ? (
             <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
-              预览：{formatSegmentAnnotationPreview(state.draft)}
+              预览：{formatSegmentAnnotationPreview(localDraft)}
             </p>
           ) : null}
 
@@ -110,7 +119,12 @@ export function SegmentAnnotationDialog({
               <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onClose}>
                 取消
               </button>
-              <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSave}>
+              <button
+                type="button"
+                className={CONTROL_BTN_PRIMARY}
+                disabled={busy}
+                onClick={() => onSave(localDraft)}
+              >
                 保存
               </button>
             </div>

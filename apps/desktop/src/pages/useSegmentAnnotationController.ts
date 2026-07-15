@@ -71,10 +71,11 @@ export function useSegmentAnnotationController({
         pushUndo();
         const next = [...segmentPublish.getCurrentSegmentsSnapshot()];
         next[segmentIdx] = { ...row, annotation: nextValue };
+        // Optimistic UI: close dialog before awaiting disk/IPC so Save doesn't feel stuck.
         segmentPublish.publishStructure(next);
+        closeSegmentAnnotationDialog();
         const saved = await saveSegments({ quiet: true, countHits: false });
         if (saved) {
-          closeSegmentAnnotationDialog();
           return true;
         }
         const reverted = [...segmentPublish.getCurrentSegmentsSnapshot()];
@@ -93,10 +94,14 @@ export function useSegmentAnnotationController({
     [busy, closeSegmentAnnotationDialog, pushUndo, saveSegments, segmentPublish, setError],
   );
 
-  const saveSegmentAnnotation = useCallback(() => {
-    if (dialog.phase !== "edit" || busy) return Promise.resolve(false);
-    return persistAnnotation(dialog.segmentIdx, dialog.draft);
-  }, [busy, dialog, persistAnnotation]);
+  const saveSegmentAnnotation = useCallback(
+    (draftOverride?: string) => {
+      if (dialog.phase !== "edit" || busy) return Promise.resolve(false);
+      const draft = draftOverride ?? dialog.draft;
+      return persistAnnotation(dialog.segmentIdx, draft);
+    },
+    [busy, dialog, persistAnnotation],
+  );
 
   const clearSegmentAnnotation = useCallback(() => {
     if (dialog.phase !== "edit" || busy) return Promise.resolve(false);

@@ -25,7 +25,7 @@ function baseArgs(saveSegments = vi.fn().mockResolvedValue(true)) {
 }
 
 describe("useSegmentAnnotationController", () => {
-  it("keeps dialog open and reverts annotation when save fails", async () => {
+  it("keeps annotation reverted and closes dialog when save fails", async () => {
     const saveSegments = vi.fn().mockResolvedValue(false);
     const args = baseArgs(saveSegments);
     const { result } = renderHook(() => useSegmentAnnotationController(args));
@@ -42,10 +42,41 @@ describe("useSegmentAnnotationController", () => {
     });
     await waitFor(() => expect(saveSegments).toHaveBeenCalled());
 
-    expect(result.current.segmentAnnotationDialog.phase).toBe("edit");
+    expect(result.current.segmentAnnotationDialog.phase).toBe("closed");
     expect(args.segmentsRef.current[0]?.annotation).toBeNull();
     expect(args.setError).toHaveBeenCalledWith("备注保存失败，请重试");
     expect(args.pushUndo).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes dialog before save resolves so confirm stays responsive", async () => {
+    let resolveSave!: (value: boolean) => void;
+    const saveSegments = vi.fn(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveSave = resolve;
+        }),
+    );
+    const args = baseArgs(saveSegments);
+    const { result } = renderHook(() => useSegmentAnnotationController(args));
+
+    act(() => {
+      result.current.openSegmentAnnotationDialog(0);
+      result.current.setSegmentAnnotationDraft("已保存");
+    });
+
+    let savePromise!: Promise<boolean>;
+    act(() => {
+      savePromise = result.current.saveSegmentAnnotation();
+    });
+
+    await waitFor(() => expect(result.current.segmentAnnotationDialog.phase).toBe("closed"));
+    expect(args.segmentsRef.current[0]?.annotation).toBe("已保存");
+    expect(saveSegments).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveSave(true);
+      await savePromise;
+    });
   });
 
   it("closes dialog after successful save and pushes undo", async () => {
@@ -70,6 +101,22 @@ describe("useSegmentAnnotationController", () => {
     expect(saveSegments).toHaveBeenCalled();
     expect(args.pushUndo).toHaveBeenCalledTimes(1);
     expect(args.setError).not.toHaveBeenCalled();
+  });
+
+  it("persists draft passed directly to save without lifting draft state", async () => {
+    const saveSegments = vi.fn(() => Promise.resolve(true));
+    const args = baseArgs(saveSegments);
+    const { result } = renderHook(() => useSegmentAnnotationController(args));
+
+    act(() => {
+      result.current.openSegmentAnnotationDialog(0);
+    });
+
+    await act(async () => {
+      await result.current.saveSegmentAnnotation("直接保存");
+    });
+
+    expect(args.segmentsRef.current[0]?.annotation).toBe("直接保存");
   });
 
   it("ignores duplicate save while persist is in flight", async () => {

@@ -291,8 +291,7 @@ export function ProjectPanelDialogs({
         segmentIdx={annotationSegmentIdx}
         busy={c.busy || c.segmentAnnotationSaving}
         onClose={c.closeSegmentAnnotationDialog}
-        onDraftChange={c.setSegmentAnnotationDraft}
-        onSave={() => void c.saveSegmentAnnotation()}
+        onSave={(draft) => void c.saveSegmentAnnotation(draft)}
         onClear={() => void c.clearSegmentAnnotation()}
       />
     </>
