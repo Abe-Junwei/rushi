@@ -37,6 +37,7 @@ export type EditorViewLayoutProps = {
   footerCenterHintKind: "status" | "shortcut" | "none";
   transcriptStats: { segmentCount: number; charCount: number };
   editorDialogs: ReactNode;
+  onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
 };
 
 export function EditorViewLayout({
@@ -59,6 +60,7 @@ export function EditorViewLayout({
   footerCenterHintKind,
   transcriptStats,
   editorDialogs,
+  onOpenSegmentAnnotationDialog,
 }: EditorViewLayoutProps) {
   const chromeViewInput = useMemo(
     () => ({
@@ -143,6 +145,7 @@ export function EditorViewLayout({
           displayPositionByIndex={segmentFilter.displayPositionByIndex}
           onResetSegmentListFilter={segmentFilter.resetFilter}
           onOpenSegmentContextMenu={tx.openSegmentContextMenu}
+          onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}
         />
       </main>
 

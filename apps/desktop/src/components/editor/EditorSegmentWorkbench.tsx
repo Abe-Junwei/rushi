@@ -18,6 +18,7 @@ interface EditorSegmentWorkbenchProps {
   displayPositionByIndex?: ReadonlyMap<number, number> | null;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
+  onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   controller: c,
@@ -30,6 +31,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   displayPositionByIndex = null,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
+  onOpenSegmentAnnotationDialog,
 }: EditorSegmentWorkbenchProps) {
   return (
     <div className="flex h-0 min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-notion-bg">
@@ -46,6 +48,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         displayPositionByIndex={displayPositionByIndex}
         onResetSegmentListFilter={onResetSegmentListFilter}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
+        onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}
       />
     </div>
   );
@@ -73,6 +76,7 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.tx.transcriptFontPx === next.tx.transcriptFontPx &&
     prev.tx.transcriptRowHeightPx === next.tx.transcriptRowHeightPx &&
     prev.appearance === next.appearance &&
-    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu
+    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu &&
+    prev.onOpenSegmentAnnotationDialog === next.onOpenSegmentAnnotationDialog
   );
 }

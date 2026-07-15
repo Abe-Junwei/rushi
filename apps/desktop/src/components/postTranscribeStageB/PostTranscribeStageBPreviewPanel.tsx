@@ -1,13 +1,16 @@
+import { useEffect } from "react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { PostTranscribeStageBDialogState } from "../../pages/usePostTranscribeStageBController";
 import { describeStageBPreviewSummary } from "../../services/postprocess/postTranscribeStageB";
+import { resolveTextChangeRowDisplay } from "../../services/editor/segmentChangePreview";
+import { CorrectionRulesChangeText } from "../CorrectionRulesChangeText";
 import { FloatingPanelSegmentList } from "../FloatingPanelSegmentList";
 import { FloatingPanelSegmentRow } from "../FloatingPanelSegmentRow";
 import {
   FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
 } from "../FloatingPanelDialogLayout";
-import { highlightTextByDiff } from "../../utils/textDiff";
+import { EDITOR_PREVIEW_PANEL_LIST_PADDING_CLASS } from "../editorPreviewPanelLayout";
 import { PackTruncationHint, PendingStageAHint } from "./PostTranscribeStageBHints";
 
 type PreviewState = Extract<PostTranscribeStageBDialogState, { phase: "preview" }>;
@@ -35,6 +38,14 @@ export function PostTranscribeStageBPreviewPanel({
   const headerHintHeavy = Boolean(
     pendingHint || packTruncationHint || preview.dropDetail || preview.stepError,
   );
+
+  useEffect(() => {
+    if (previewFocusSegmentIdx == null) return;
+    const id = `stage-b-preview-segment-${previewFocusSegmentIdx}`;
+    window.requestAnimationFrame(() => {
+      document.getElementById(id)?.scrollIntoView({ block: "nearest" });
+    });
+  }, [previewFocusSegmentIdx]);
 
   return (
     <>
@@ -71,12 +82,16 @@ export function PostTranscribeStageBPreviewPanel({
           </p>
         ) : null}
       </FloatingPanelDialogHeader>
-      <FloatingPanelDialogListRegion className="mt-3 min-h-0">
+      <FloatingPanelDialogListRegion
+        fitToContent
+        autoFitListCap="generous"
+        className={`mt-3 min-h-0 ${EDITOR_PREVIEW_PANEL_LIST_PADDING_CLASS}`}
+      >
         <FloatingPanelSegmentList rowCount={preview.changes.length}>
           {preview.changes.map((ch) => {
             const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
             const focused = previewFocusSegmentIdx === ch.segmentIdx;
-            const highlighted = highlightTextByDiff(ch.afterText, ch.diff);
+            const rowDisplay = resolveTextChangeRowDisplay(ch.beforeText, ch.afterText, { focused });
             const isHomophoneGuess = ch.evidenceSummary?.includes("同音推测") ?? false;
             const changeLabel = isHomophoneGuess
               ? "同音推测"
@@ -86,11 +101,16 @@ export function PostTranscribeStageBPreviewPanel({
                   ? "标点"
                   : "改字";
             return (
-              <li key={ch.uid || String(ch.segmentIdx)} className="list-none">
+              <li
+                key={ch.uid || String(ch.segmentIdx)}
+                id={`stage-b-preview-segment-${ch.segmentIdx}`}
+                className="list-none"
+              >
                 <FloatingPanelSegmentRow
                   segmentNumber={ch.segmentNumber}
                   timeLabel={ch.timeLabel}
                   suffix={changeLabel}
+                  bodyLayout={focused ? "wrap" : "truncate"}
                   active={focused}
                   disabled={busy}
                   onClick={() => onFocusSegment(ch.segmentIdx)}
@@ -106,25 +126,22 @@ export function PostTranscribeStageBPreviewPanel({
                     />
                   }
                 >
-                  <div className="min-w-0 space-y-1">
+                  <div className="min-w-0 space-y-0.5">
                     {ch.evidenceSummary ? (
-                      <p className="truncate text-label text-notion-text-muted">
+                      <p
+                        className={`text-label text-notion-text-muted ${focused ? "whitespace-pre-wrap break-words" : "truncate"}`}
+                        title={ch.evidenceSummary}
+                      >
                         依据：{ch.evidenceSummary}
                       </p>
                     ) : null}
-                    <p className="truncate text-sm text-notion-text-muted line-through decoration-notion-text-light/70">
-                      {ch.beforeText}
-                    </p>
-                    <p className="truncate text-sm text-notion-text">
-                      {highlighted.map((part, idx) => (
-                        <span
-                          key={`${idx}-${part.text}`}
-                          className={part.highlight ? "rounded bg-accent-action/20" : ""}
-                        >
-                          {part.text}
-                        </span>
-                      ))}
-                    </p>
+                    <CorrectionRulesChangeText
+                      variant={rowDisplay.variant}
+                      beforeText={rowDisplay.beforeText}
+                      afterText={rowDisplay.afterText}
+                      beforeHighlights={rowDisplay.beforeHighlights}
+                      afterHighlights={rowDisplay.afterHighlights}
+                    />
                   </div>
                 </FloatingPanelSegmentRow>
               </li>

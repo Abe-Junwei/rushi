@@ -4,6 +4,7 @@ import {
   type CorrectionRulePair,
   type SegmentCorrectionChange,
 } from "./segmentCorrectionRulesApply";
+import { diffToCorrectionHighlights } from "./segmentChangePreview";
 import { applySegmentTextHygiene, segmentTextHygieneChanged } from "./segmentTextHygiene";
 import { formatSegmentStartTimeLabel, formatSegmentTimeLabel } from "./segmentFindReplace";
 
@@ -25,10 +26,7 @@ export function buildStageAPreviewChanges(
     const afterText = applied.text;
     if (afterText === beforeText) continue;
 
-    const ruleHighlightsOnOriginal =
-      hygieneTouched || applied.count <= 0
-        ? { beforeHighlights: [], afterHighlights: [] }
-        : applied;
+    const { beforeHighlights, afterHighlights } = diffToCorrectionHighlights(beforeText, afterText);
 
     out.push({
       segmentIdx,
@@ -39,8 +37,8 @@ export function buildStageAPreviewChanges(
       beforeText,
       afterText,
       replacementCount: applied.count + (hygieneTouched ? 1 : 0),
-      beforeHighlights: ruleHighlightsOnOriginal.beforeHighlights,
-      afterHighlights: ruleHighlightsOnOriginal.afterHighlights,
+      beforeHighlights,
+      afterHighlights,
     });
   }
   return out;

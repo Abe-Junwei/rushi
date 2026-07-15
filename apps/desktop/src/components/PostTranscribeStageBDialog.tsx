@@ -3,6 +3,7 @@ import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribe
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
+import { resolveEditorPreviewPanelBounds } from "./editorPreviewPanelLayout";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PostTranscribeStageBConsentPanel } from "./postTranscribeStageB/PostTranscribeStageBConsentPanel";
 import { PostTranscribeStageBEmptyPanel } from "./postTranscribeStageB/PostTranscribeStageBEmptyPanel";
@@ -11,18 +12,25 @@ import { PostTranscribeStageBPreviewPanel } from "./postTranscribeStageB/PostTra
 
 const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
 
-const STAGE_B_PANEL_DEFAULT_SIZE = { width: 480, height: 400 } as const;
+/** 预览加宽 + autoFit 列表上限调整时 bump，丢弃旧 persist 尺寸。 */
+const POST_TRANSCRIBE_STAGE_B_LAYOUT_REV = 2;
+
 /** consent 默认宽度（说明短，较预览略窄） */
 const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
 
 function resolveStageBPanelBounds() {
+  const previewBounds = resolveEditorPreviewPanelBounds();
   const margin = 24;
   const { width: vw, height: vh } = readFloatingPanelViewport();
   return {
-    minWidth: 400,
+    minWidth: previewBounds.minWidth,
     minHeight: 320,
-    maxWidth: Math.min(720, Math.max(400, vw - margin * 2)),
-    maxHeight: Math.min(520, Math.max(320, vh - margin * 2)),
+    maxWidth: previewBounds.maxWidth,
+    maxHeight: previewBounds.maxHeight,
+    defaultWidth: previewBounds.defaultWidth,
+    fallbackHeight: previewBounds.fallbackHeight,
+    consentMaxWidth: Math.min(640, Math.max(400, vw - margin * 2)),
+    consentMaxHeight: Math.min(520, Math.max(320, vh - margin * 2)),
   };
 }
 
@@ -60,6 +68,7 @@ export function PostTranscribeStageBDialog({
   const panelBounds = resolveStageBPanelBounds();
   const isConsent = state.phase === "consent";
   const isPreview = state.phase === "preview";
+  const isListPhase = isPreview || state.phase === "empty";
   const preview = isPreview ? state : null;
   const packTruncationHint =
     state.phase === "preview" || state.phase === "empty" ? state.packTruncationHint : null;
@@ -131,18 +140,20 @@ export function PostTranscribeStageBDialog({
       open={open}
       onClose={handleDismiss}
       onOverlayClose={() => {}}
-      fallbackHeight={STAGE_B_PANEL_DEFAULT_SIZE.height}
-      defaultWidth={isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : STAGE_B_PANEL_DEFAULT_SIZE.width}
+      fallbackHeight={isConsent ? 360 : panelBounds.fallbackHeight}
+      defaultWidth={isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : panelBounds.defaultWidth}
       minWidth={panelBounds.minWidth}
       minHeight={200}
-      maxWidth={panelBounds.maxWidth}
-      maxHeight={panelBounds.maxHeight}
+      maxWidth={isConsent ? panelBounds.consentMaxWidth : panelBounds.maxWidth}
+      maxHeight={isConsent ? panelBounds.consentMaxHeight : panelBounds.maxHeight}
       persistPhaseKey={persistPhaseKey}
+      layoutRev={POST_TRANSCRIBE_STAGE_B_LAYOUT_REV}
       panelZIndex={111}
       persistState
+      shellPreset={isListPhase ? "findReplace" : undefined}
       footer={footer}
       footerJustify={footerJustify}
-      fitKind={isPreview ? "autoFit" : "staticFit"}
+      fitKind={isListPhase ? "autoFit" : "staticFit"}
     >
       {state.phase === "consent" ? (
         <PostTranscribeStageBConsentPanel state={state} pendingHint={pendingHint} />

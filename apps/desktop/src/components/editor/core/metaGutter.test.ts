@@ -69,7 +69,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(stage0?.toDOM().querySelector(".cm-transcript-annotation-icon")).toBeNull();
 
     const stage1 = buildTranscriptStageMarker(meta[1]);
-    expect(stage1?.label).toBe("手转");
+    expect(stage1?.label).toBe("手改");
   });
 
   it("shows document annotation icon to the right of the stage chip", () => {
@@ -84,7 +84,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     const chip = dom.querySelector(".cm-transcript-stage-chip");
     const note = dom.querySelector(".cm-transcript-annotation-icon");
     expect(note).toBeTruthy();
-    expect(note?.getAttribute("aria-label")).toBe("有备注");
+    expect(note?.getAttribute("aria-label")).toBe("查看并编辑备注");
     expect(note?.querySelector("svg")).toBeTruthy();
     const children = [...dom.children];
     expect(children.indexOf(chip as Element)).toBeLessThan(children.indexOf(note as Element));

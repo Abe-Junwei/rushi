@@ -29,6 +29,7 @@ interface EditorSegmentListProps {
   displayPositionByIndex?: ReadonlyMap<number, number> | null;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
+  onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
 }
 
 export const EditorSegmentList = memo(function EditorSegmentList({
@@ -44,6 +45,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   displayPositionByIndex = null,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
+  onOpenSegmentAnnotationDialog,
 }: EditorSegmentListProps) {
   const displayCount = filteredIndices.length;
 
@@ -116,6 +118,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         filteredIndices={filteredIndices}
         filterCriteria={filterCriteria}
         listRef={segmentListRef}
+        onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}
         onOpenContextMenu={({ x, y, segmentIdx, pointerTimeSec, selectionText }) => {
           onOpenSegmentContextMenu({
             x,
@@ -204,5 +207,6 @@ function areEditorSegmentListPropsEqual(
   if (prev.appearance !== next.appearance) return false;
   if (prev.onResetSegmentListFilter !== next.onResetSegmentListFilter) return false;
   if (prev.onOpenSegmentContextMenu !== next.onOpenSegmentContextMenu) return false;
+  if (prev.onOpenSegmentAnnotationDialog !== next.onOpenSegmentAnnotationDialog) return false;
   return true;
 }

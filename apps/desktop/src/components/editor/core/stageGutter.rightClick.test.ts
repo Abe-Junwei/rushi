@@ -17,13 +17,13 @@ function makeSegments(n: number): SegmentDto[] {
   }));
 }
 
-function makeMouseEvent(button: number): MouseEvent {
+function makeMouseEvent(button: number, target: HTMLElement | null = null): MouseEvent {
   return {
     button,
     metaKey: false,
     ctrlKey: false,
     shiftKey: false,
-    target: null,
+    target,
     preventDefault: () => {},
     stopPropagation: () => {},
   } as unknown as MouseEvent;
@@ -79,5 +79,36 @@ describe("stage gutter mousedown → onSelectSegment bridge", () => {
 
     expect(primarySegmentIdx(state)).toBe(1);
     expect(onSelectSegment).toHaveBeenCalledWith(1, { toggle: false, shiftKey: false });
+  });
+
+  it("click on annotation icon opens the annotation dialog for that segment", () => {
+    const onOpenSegmentAnnotationDialog = vi.fn();
+    const onSelectSegment = vi.fn();
+    let state = buildTranscriptEditorState(makeSegments(4), {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+
+    const annotationIcon = document.createElement("span");
+    annotationIcon.setAttribute("data-cm-segment-annotation", "1");
+    const lineFrom = state.doc.line(3).from; // idx 2
+    const handled = handleTranscriptStageGutterMousedown(
+      view,
+      lineFrom,
+      makeMouseEvent(0, annotationIcon),
+      { onSelectSegment, onOpenSegmentAnnotationDialog },
+    );
+
+    expect(handled).toBe(true);
+    expect(onOpenSegmentAnnotationDialog).toHaveBeenCalledWith(2);
+    expect(onSelectSegment).not.toHaveBeenCalled();
+    expect(primarySegmentIdx(state)).toBe(0);
   });
 });

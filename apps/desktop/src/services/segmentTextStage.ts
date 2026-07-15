@@ -20,11 +20,11 @@ const STAGE_LABELS: Record<Exclude<SegmentTextStage, "finalized">, SegmentStageL
     tooltip: "自动转写，待改稿",
   },
   ai_revised: {
-    category: "AI改稿",
+    category: "AI改",
     tooltip: "AI 改稿已写回，待改稿或定稿",
   },
   manual_transcribe: {
-    category: "手转",
+    category: "手改",
     tooltip: "手动转写，已保存，待确认定稿",
   },
 };
@@ -113,7 +113,7 @@ export function newSegmentWithDefaultStage<T extends object>(seg: T): T & {
   };
 }
 
-/** 用户手建语段（插入空段 / 选区新建）：默认手转，非 ASR 自转。 */
+/** 用户手建语段（插入空段 / 选区新建）：默认手改，非 ASR 自转。 */
 export function newUserCreatedSegment<T extends object>(seg: T): T & {
   text_stage: SegmentTextStage;
   finalize_via: null;

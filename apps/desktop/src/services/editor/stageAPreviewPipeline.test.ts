@@ -20,4 +20,10 @@ describe("stageAPreviewPipeline", () => {
     expect(changes).toHaveLength(1);
     expect(changes[0]?.afterText).toBe("制控 系统。");
   });
+
+  it("includes diff highlights for hygiene and rule changes", () => {
+    const changes = buildStageAPreviewChanges(segments, [{ wrong: "制控", right: "智控" }]);
+    expect(changes[0]?.beforeHighlights.length).toBeGreaterThan(0);
+    expect(changes[0]?.afterHighlights.length).toBeGreaterThan(0);
+  });
 });

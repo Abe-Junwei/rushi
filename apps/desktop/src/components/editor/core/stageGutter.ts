@@ -34,7 +34,7 @@ function transcriptGutterIconSvg(innerPaths: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" ${ICON_STROKE} aria-hidden="true">${innerPaths}</svg>`;
 }
 
-/** Compact stage set — readable at 12px (机转 / AI改稿 / 手转 / 定稿). */
+/** Compact stage set — readable at 12px (机转 / AI改 / 手改 / 定稿). */
 const STAGE_ICON_SVG: Record<string, string> = {
   // Bot — ASR / machine
   auto_transcribe: transcriptGutterIconSvg(
@@ -191,11 +191,12 @@ export class TranscriptStageMarker extends GutterMarker {
     wrap.append(el);
 
     if (this.hasAnnotation) {
-      const note = document.createElement("span");
+      const note = document.createElement("button");
+      note.type = "button";
       note.className = "cm-transcript-annotation-icon";
       note.setAttribute(CM_SEGMENT_ANNOTATION_ATTR, "1");
-      note.title = "有备注";
-      note.setAttribute("aria-label", "有备注");
+      note.title = "查看并编辑备注";
+      note.setAttribute("aria-label", "查看并编辑备注");
       note.innerHTML = ANNOTATION_DOC_ICON_SVG;
       wrap.append(note);
     }
@@ -235,6 +236,7 @@ export type TranscriptStageGutterOptions = {
   onSelectSegment?: (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => void;
   onToggleSegmentPlay?: (idx: number) => void;
   onToggleSegmentLoop?: (idx: number) => void;
+  onOpenSegmentAnnotationDialog?: (idx: number) => void;
 };
 
 type StageGutterMousedownView = {
@@ -254,6 +256,12 @@ export function handleTranscriptStageGutterMousedown(
 ): boolean {
   const target = event.target as HTMLElement | null;
   const idx = view.state.doc.lineAt(lineFrom).number - 1;
+  if (target?.closest(`[${CM_SEGMENT_ANNOTATION_ATTR}]`)) {
+    event.preventDefault();
+    event.stopPropagation();
+    opts.onOpenSegmentAnnotationDialog?.(idx);
+    return true;
+  }
   if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
     event.preventDefault();
     event.stopPropagation();
@@ -536,13 +544,19 @@ export const transcriptStageGutterTheme = EditorView.theme({
     background: "transparent",
     color: "var(--cm-stage-affordance)",
     opacity: "0.92",
-    pointerEvents: "none",
+    pointerEvents: "auto",
+    cursor: "pointer",
     transition: "color 120ms ease, opacity 120ms ease",
   },
   ".cm-transcript-annotation-icon svg": {
     width: "0.75rem",
     height: "0.75rem",
     display: "block",
+    pointerEvents: "none",
+  },
+  ".cm-transcript-annotation-icon:hover": {
+    color: "var(--accent-action)",
+    opacity: "1",
   },
 });
 

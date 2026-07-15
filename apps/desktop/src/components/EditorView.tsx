@@ -151,6 +151,7 @@ export function EditorView({
       footerCenterHintKind={footerCenterHintKind}
       transcriptStats={transcriptStats}
       editorDialogs={editorDialogs}
+      onOpenSegmentAnnotationDialog={c.openSegmentAnnotationDialog}
     />
   );
 }

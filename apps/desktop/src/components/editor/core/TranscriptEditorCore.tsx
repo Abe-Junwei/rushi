@@ -63,6 +63,8 @@ export type TranscriptEditorCoreProps = {
   onToggleSegmentPlay?: (idx: number) => void;
   /** Primary-row loop beside play — segment loop arm/disarm. */
   onToggleSegmentLoop?: (idx: number) => void;
+  /** Click the annotation icon in the stage gutter to edit the segment note. */
+  onOpenSegmentAnnotationDialog?: (idx: number) => void;
   /** Syncs play/stop icon on primary stage gutter. */
   isSelectedSegmentPlaying?: boolean;
   /** Syncs loop pressed state on primary stage gutter. */
@@ -106,6 +108,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     onSelectSegment,
     onToggleSegmentPlay,
     onToggleSegmentLoop,
+    onOpenSegmentAnnotationDialog,
     isSelectedSegmentPlaying = false,
     segmentLoopPlayback = false,
     onOpenContextMenu,
@@ -133,6 +136,8 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   onToggleSegmentPlayRef.current = onToggleSegmentPlay;
   const onToggleSegmentLoopRef = useRef(onToggleSegmentLoop);
   onToggleSegmentLoopRef.current = onToggleSegmentLoop;
+  const onOpenSegmentAnnotationDialogRef = useRef(onOpenSegmentAnnotationDialog);
+  onOpenSegmentAnnotationDialogRef.current = onOpenSegmentAnnotationDialog;
   const onOpenContextMenuRef = useRef(onOpenContextMenu);
   onOpenContextMenuRef.current = onOpenContextMenu;
   const busyRef = useRef(busy);
@@ -160,6 +165,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       onSelectSegmentRef,
       onToggleSegmentPlayRef,
       onToggleSegmentLoopRef,
+      onOpenSegmentAnnotationDialogRef,
       busyRef,
       onOpenContextMenuRef,
       rowHeightDragFromDomRef,

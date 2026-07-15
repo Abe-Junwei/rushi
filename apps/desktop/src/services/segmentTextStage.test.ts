@@ -15,7 +15,8 @@ describe("segmentTextStage", () => {
 
   it("resolveSegmentStageLabels uses short chip copy for auto/manual", () => {
     expect(resolveSegmentStageLabels("auto_transcribe", null).category).toBe("机转");
-    expect(resolveSegmentStageLabels("manual_transcribe", null).category).toBe("手转");
+    expect(resolveSegmentStageLabels("manual_transcribe", null).category).toBe("手改");
+    expect(resolveSegmentStageLabels("ai_revised", null).category).toBe("AI改");
   });
 
   it("resolveSegmentStageLabels for finalized confirm_edit", () => {

@@ -53,6 +53,7 @@ describe("transcript editor appearance theme", () => {
       onSelectSegmentRef: { current: () => {} },
       onToggleSegmentPlayRef: { current: () => {} },
       onToggleSegmentLoopRef: { current: () => {} },
+      onOpenSegmentAnnotationDialogRef: { current: () => {} },
       busyRef: { current: false },
       onOpenContextMenuRef: { current: () => {} },
       rowHeightDragFromDomRef: { current: undefined },

@@ -170,6 +170,9 @@ export function buildTranscriptEditorCoreExtensions(args: {
   >;
   onToggleSegmentPlayRef: React.MutableRefObject<((idx: number) => void) | undefined>;
   onToggleSegmentLoopRef: React.MutableRefObject<((idx: number) => void) | undefined>;
+  onOpenSegmentAnnotationDialogRef?: React.MutableRefObject<
+    ((idx: number) => void) | undefined
+  >;
   busyRef: React.MutableRefObject<boolean>;
   onOpenContextMenuRef?: React.MutableRefObject<
     | ((args: {
@@ -201,6 +204,8 @@ export function buildTranscriptEditorCoreExtensions(args: {
       stageGutter: {
         onToggleSegmentPlay: (idx) => args.onToggleSegmentPlayRef.current?.(idx),
         onToggleSegmentLoop: (idx) => args.onToggleSegmentLoopRef.current?.(idx),
+        onOpenSegmentAnnotationDialog: (idx) =>
+          args.onOpenSegmentAnnotationDialogRef?.current?.(idx),
       },
     }),
     transcriptLineCountGuard,
