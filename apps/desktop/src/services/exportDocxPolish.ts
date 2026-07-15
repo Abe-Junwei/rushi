@@ -11,6 +11,7 @@ import {
   tryBuildPostprocessRuntimeBridge,
 } from "./postprocess/postprocessRuntimeContract";
 import { correctionStableRulesList } from "../tauri/correctionApi";
+import { glossaryList } from "../tauri/glossaryApi";
 import {
   applyRulesToSegmentLines,
   buildExportPolishLineChanges,
@@ -23,6 +24,7 @@ import {
 } from "./exportPolishPipeline";
 import { assertExportPolishParagraphsAlignLines } from "./exportPolishDelivery";
 import { buildExportPolishRuleHints } from "./exportPolishRuleHints";
+import { buildExportPolishGlossaryHints } from "./exportPolishGlossaryHints";
 import {
   buildParagraphsFromBreaks,
   coalesceExportParagraphBreaks,
@@ -139,8 +141,9 @@ export async function fetchExportPolishResult(
   }
 
   const beforeLines = segmentLinesFromSegments(segments);
-  const rules = await correctionStableRulesList();
+  const [rules, glossaryTerms] = await Promise.all([correctionStableRulesList(), glossaryList()]);
   const ruleHints = buildExportPolishRuleHints(rules);
+  const glossaryHints = buildExportPolishGlossaryHints(glossaryTerms);
   const body = joinLinesForLlmBody(beforeLines);
 
   const req: PostprocessExportPolishRequest = {
@@ -150,6 +153,7 @@ export async function fetchExportPolishResult(
     lineCount: beforeLines.length,
     runtime,
     ruleHints: ruleHints.trim() || undefined,
+    glossaryHints: glossaryHints.trim() || undefined,
   };
   const out = await postprocessExportPolish(req);
 

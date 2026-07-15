@@ -33,6 +33,9 @@ pub struct PostprocessExportPolishRequest {
     /// 稳定纠错规则摘要，注入 prompt（可选）。
     #[serde(default)]
     pub rule_hints: Option<String>,
+    /// 词表 canonical 摘要，注入 prompt（可选）。
+    #[serde(default)]
+    pub glossary_hints: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -82,6 +85,7 @@ pub async fn postprocess_export_polish(
     .map_err(|e| format!("无法解析 LLM 配置：{e}"))??;
 
     let rule_hints = req.rule_hints.as_deref().map(str::trim).unwrap_or("");
+    let glossary_hints = req.glossary_hints.as_deref().map(str::trim).unwrap_or("");
     let prompt_overrides = req.runtime.prompt_overrides.clone();
     if let Some(template) = prompt_overrides
         .as_ref()
@@ -159,6 +163,7 @@ pub async fn postprocess_export_polish(
             batch_body,
             batch_lines,
             rule_hints,
+            glossary_hints,
             batch_note,
             request_id.as_deref(),
             prompt_overrides.as_ref(),
@@ -208,6 +213,7 @@ async fn run_export_polish_batch(
     batch_body: &str,
     line_count: usize,
     rule_hints: &str,
+    glossary_hints: &str,
     batch_note: Option<(usize, usize)>,
     request_id: Option<&str>,
     prompt_overrides: Option<&PostprocessPromptOverrides>,
@@ -219,6 +225,7 @@ async fn run_export_polish_batch(
         batch_body,
         line_count,
         rule_hints,
+        glossary_hints,
         batch_note,
         request_id,
         prompt_overrides,
@@ -254,6 +261,7 @@ async fn run_export_polish_batch(
                         &left,
                         left_n,
                         rule_hints,
+                        glossary_hints,
                         batch_note,
                         request_id,
                         prompt_overrides,
@@ -266,6 +274,7 @@ async fn run_export_polish_batch(
                         &right,
                         right_n,
                         rule_hints,
+                        glossary_hints,
                         batch_note,
                         request_id,
                         prompt_overrides,
@@ -293,6 +302,7 @@ async fn run_export_polish_batch(
                 batch_body,
                 line_count,
                 rule_hints,
+                glossary_hints,
                 batch_note,
                 request_id,
                 prompt_overrides,
@@ -344,6 +354,7 @@ async fn run_export_polish_batch_once(
     batch_body: &str,
     line_count: usize,
     rule_hints: &str,
+    glossary_hints: &str,
     batch_note: Option<(usize, usize)>,
     request_id: Option<&str>,
     prompt_overrides: Option<&PostprocessPromptOverrides>,
@@ -359,6 +370,7 @@ async fn run_export_polish_batch_once(
         batch_body,
         line_count,
         rule_hints,
+        glossary_hints,
         batch_note,
         instructions_override,
     );

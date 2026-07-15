@@ -170,6 +170,8 @@ export interface PostprocessExportPolishRequest {
   lineCount: number;
   runtime: PostprocessRuntimeBridge;
   ruleHints?: string;
+  /** 词表 canonical 摘要，注入 prompt（可选）。 */
+  glossaryHints?: string;
 }
 
 export interface PostprocessExportPolishResponse {

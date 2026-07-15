@@ -227,6 +227,7 @@ pub fn build_export_polish_prompt(
     body: &str,
     line_count: usize,
     rule_hints: &str,
+    glossary_hints: &str,
     batch: Option<(usize, usize)>,
     instructions_override: Option<&str>,
 ) -> String {
@@ -237,11 +238,19 @@ pub fn build_export_polish_prompt(
             )
         })
         .unwrap_or_default();
-    let hints = if rule_hints.trim().is_empty() {
-        String::new()
-    } else {
-        format!("\n\n项目稳定纠错规则（须在对应行落实，优先级高于你的推断）：\n{rule_hints}")
-    };
+    let mut hints = String::new();
+    if !glossary_hints.trim().is_empty() {
+        hints.push_str(&format!(
+            "\n\n项目专名/术语词表（如遇疑似同音、形近误写且与下列词条相符，请改为词条写法）：\n{}",
+            glossary_hints.trim()
+        ));
+    }
+    if !rule_hints.trim().is_empty() {
+        hints.push_str(&format!(
+            "\n\n项目稳定纠错规则（须在对应行落实，优先级高于你的推断）：\n{}",
+            rule_hints.trim()
+        ));
+    }
     let template = instructions_override
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -500,7 +509,7 @@ mod tests {
     #[test]
     fn export_polish_prompt_accepts_custom_template() {
         let custom = "润色 {line_count} 行。{batch_note}{rule_hints}\n{body}";
-        let p = build_export_polish_prompt("a\nb", 2, "规则A", None, Some(custom));
+        let p = build_export_polish_prompt("a\nb", 2, "规则A", "", None, Some(custom));
         assert!(p.contains("润色 2 行"));
         assert!(p.contains("a\nb"));
         assert!(p.contains("规则A"));
@@ -516,7 +525,7 @@ mod tests {
 
     #[test]
     fn prompt_mentions_break_after_only() {
-        let p = build_export_polish_prompt("a\nb", 2, "", None, None);
+        let p = build_export_polish_prompt("a\nb", 2, "", "", None, None);
         assert!(p.contains("break_after_line"));
         assert!(p.contains("回退原文"));
         assert!(p.contains("300"));
@@ -526,12 +535,29 @@ mod tests {
 
     #[test]
     fn prompt_and_system_prompt_encourage_contextual_typo_reasoning() {
-        let p = build_export_polish_prompt("a\nb", 2, "", None, None);
+        let p = build_export_polish_prompt("a\nb", 2, "", "", None, None);
         assert!(p.contains("结合上下文语义推断"));
         assert!(p.contains("不要仅机械比对下列示例"));
         let sys = default_export_polish_system_prompt();
         assert!(sys.contains("需结合上下文语义推断"));
         assert!(sys.contains("两者同等重要"));
+    }
+
+    #[test]
+    fn prompt_injects_glossary_hints_independent_of_rule_hints() {
+        let p =
+            build_export_polish_prompt("a\nb", 2, "「错」→「对」", "术语甲\n术语乙", None, None);
+        assert!(p.contains("项目专名/术语词表"));
+        assert!(p.contains("术语甲\n术语乙"));
+        assert!(p.contains("项目稳定纠错规则"));
+        assert!(p.contains("「错」→「对」"));
+    }
+
+    #[test]
+    fn prompt_omits_glossary_section_when_empty() {
+        let p = build_export_polish_prompt("a\nb", 2, "「错」→「对」", "", None, None);
+        assert!(!p.contains("项目专名/术语词表"));
+        assert!(p.contains("项目稳定纠错规则"));
     }
 
     #[test]
