@@ -15,7 +15,7 @@ function makeWs(overrides: Partial<{
   isPlaying: () => boolean;
   play: (start?: number) => Promise<void>;
   pause: () => void;
-  setTime: (t: number) => void;
+  setTime: (t: number) => void | Promise<void>;
   on: (event: string, cb: (...args: unknown[]) => void) => () => void;
 }> = {}) {
   return {
@@ -24,7 +24,7 @@ function makeWs(overrides: Partial<{
     pause: vi.fn(),
     setPlaybackRate: vi.fn(),
     setTime: vi.fn(),
-    play: vi.fn(async () => {}),
+    play: vi.fn(() => Promise.resolve()),
     on: vi.fn(() => () => {}),
     getDuration: () => 100,
     ...overrides,
@@ -1562,8 +1562,9 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
@@ -1614,14 +1615,19 @@ describe("useWaveformSegmentPlaybackControls", () => {
     const ws = makeWs({
       getCurrentTime: () => playhead,
       isPlaying: () => playing,
-      play: vi.fn(async () => {
+      play: vi.fn(() => {
         playing = true;
+        return Promise.resolve();
       }),
       pause: vi.fn(() => {
         playing = false;
       }),
-      setTime: vi.fn(async (t: number) => {
-        if (blockSeeks && seekGate) await seekGate;
+      setTime: vi.fn((t: number) => {
+        if (blockSeeks && seekGate) {
+          return seekGate.then(() => {
+            playhead = t;
+          });
+        }
         playhead = t;
       }),
     });

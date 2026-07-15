@@ -25,7 +25,9 @@ pub(crate) struct DocxDeliveryTimeBlockDto {
     unit_count: usize,
 }
 
-fn map_delivery_time_blocks(dtos: Option<Vec<DocxDeliveryTimeBlockDto>>) -> Vec<export_docx_body::DocxDeliveryTimeBlock> {
+fn map_delivery_time_blocks(
+    dtos: Option<Vec<DocxDeliveryTimeBlockDto>>,
+) -> Vec<export_docx_body::DocxDeliveryTimeBlock> {
     dtos.unwrap_or_default()
         .into_iter()
         .filter(|b| b.unit_count > 0 && b.start_sec.is_finite() && b.end_sec.is_finite())
@@ -336,7 +338,6 @@ mod tests {
             recording_file_name: Some("interview.wav".to_string()),
             footer_transcriber_name: Some("李四".to_string()),
             footer_transcribed_at: Some("2026-07-15".to_string()),
-            ..DocxExportLayout::default()
         };
         let bytes = build_docx_bytes(
             "讲稿",

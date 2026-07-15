@@ -339,7 +339,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
 
   it("syncDisplayPlayheadAfterSeek pins without blocking engine polls while playing", () => {
     const raf = stubQueuedRaf();
-    let mediaSec = 12;
+    const mediaSec = 12;
 
     const { result } = renderHook(() =>
       useWaveformVisualPlayheadClock({

@@ -77,14 +77,12 @@ fn add_right_meta_paragraph(doc: Docx, line: &str) -> Docx {
         return doc;
     }
     doc.add_paragraph(
-        Paragraph::new()
-            .align(AlignmentType::Right)
-            .add_run(
-                Run::new()
-                    .size(20)
-                    .color(DOCX_COLOR_MUTED)
-                    .add_text(sanitize_docx_text(line)),
-            ),
+        Paragraph::new().align(AlignmentType::Right).add_run(
+            Run::new()
+                .size(20)
+                .color(DOCX_COLOR_MUTED)
+                .add_text(sanitize_docx_text(line)),
+        ),
     )
 }
 
@@ -132,7 +130,10 @@ pub(crate) fn collect_export_footer_meta_lines(
     if let Some(name) = footer_transcriber_name {
         lines.push(format!("转录人：{}", name.trim()));
     }
-    if let Some(day) = footer_transcribed_at.map(str::trim).filter(|s| !s.is_empty()) {
+    if let Some(day) = footer_transcribed_at
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    {
         lines.push(format!("转录时间：{day}"));
     }
     lines
