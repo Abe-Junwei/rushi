@@ -1,5 +1,7 @@
 import type { MutableRefObject } from "react";
 import type { Extension } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
+import { readTauriStyleCspNonce } from "../../../utils/tauriStyleCspNonce";
 import { transcriptSelectionDecorations } from "./selectionDecorations";
 import {
   transcriptPanelHighlightField,
@@ -36,6 +38,19 @@ import {
   transcriptFrozenLineTheme,
 } from "./frozenLineDecorations";
 
+/**
+ * Production CSP (`style-src 'self'` + Tauri nonce) blocks CodeMirror's
+ * nonce-less `<style>` tags. Without this facet, Release/DMG shows gutters as
+ * plain concatenated text and hides line layout (works in Vite-dev where CSP
+ * differs). See `EditorView.cspNonce` + style-mod `StyleModule.mount(..., {nonce})`.
+ */
+export function transcriptEditorCspNonceExtension(
+  readNonce: () => string | undefined = readTauriStyleCspNonce,
+): Extension[] {
+  const nonce = readNonce()?.trim();
+  return nonce ? [EditorView.cspNonce.of(nonce)] : [];
+}
+
 export type TranscriptEditorCoreExtensionsOptions = {
   persistence?: TransactionPersistenceBridgeHandlers;
   /** Include unidirectional projection publisher (default true). */
@@ -61,6 +76,8 @@ export function transcriptEditorCoreExtensions(
   const withStageGutter = opts.withStageGutter !== false && withMetaGutter;
   const selectBridge = opts.metaGutter?.onSelectSegment ?? opts.stageGutter?.onSelectSegment;
   return [
+    // Must precede themes: StyleModule.mount reads facet at EditorView construction.
+    ...transcriptEditorCspNonceExtension(),
     // multi-selection field is installed by buildTranscriptEditorState
     transcriptSelectionDecorations,
     transcriptFrozenLineDecorations,
