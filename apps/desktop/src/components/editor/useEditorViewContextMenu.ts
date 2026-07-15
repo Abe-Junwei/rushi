@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
@@ -19,6 +19,7 @@ import {
   copyTranscriptSelection,
   cutTranscriptSelection,
   pasteTranscriptClipboard,
+  readClipboardHasText,
 } from "./core/transcriptClipboard";
 
 type TranscriptAppearance = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -38,6 +39,27 @@ export function useEditorViewContextMenu({
   appearance,
   transcriptFontPx,
 }: Args) {
+  const ctxMenuOpenKey = segmentCtxMenu
+    ? `${segmentCtxMenu.x}:${segmentCtxMenu.y}:${segmentCtxMenu.segmentIdx}:${segmentCtxMenu.origin}`
+    : null;
+
+  // Paste visibility depends on live clipboard content; probed async per open
+  // (defaults to hidden until confirmed, so "粘贴" never shows for an empty clipboard).
+  const [clipboardHasText, setClipboardHasText] = useState(false);
+  useEffect(() => {
+    if (!ctxMenuOpenKey) {
+      setClipboardHasText(false);
+      return;
+    }
+    let cancelled = false;
+    void readClipboardHasText().then((hasText) => {
+      if (!cancelled) setClipboardHasText(hasText);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ctxMenuOpenKey]);
+
   const segmentCtxMenuItems = useMemo(
     () =>
       segmentCtxMenu
@@ -48,6 +70,7 @@ export function useEditorViewContextMenu({
             pointerTimeSec: segmentCtxMenu.pointerTimeSec,
             origin: segmentCtxMenu.origin,
             selectionText: segmentCtxMenu.selectionText,
+            hasClipboardText: clipboardHasText,
             selectionLo: c.selectionLo,
             selectionHi: c.selectionHi,
             selectionCount: c.selectionCount,
@@ -73,6 +96,7 @@ export function useEditorViewContextMenu({
       c.selectionLo,
       c.selectionHi,
       c.selectedIndicesArray,
+      clipboardHasText,
       appearance.transcriptFontControlDisabled,
       appearance.transcriptFontFamily,
       appearance.transcriptFontWeight,
@@ -86,10 +110,6 @@ export function useEditorViewContextMenu({
   const segmentCtxMenuItemsRef = useRef(segmentCtxMenuItems);
   segmentCtxMenuItemsRef.current = segmentCtxMenuItems;
 
-  const ctxMenuOpenKey = segmentCtxMenu
-    ? `${segmentCtxMenu.x}:${segmentCtxMenu.y}:${segmentCtxMenu.segmentIdx}:${segmentCtxMenu.origin}`
-    : null;
-
   const [frozenCtxMenuItems, setFrozenCtxMenuItems] = useState<ContextMenuItem[]>([]);
 
   useLayoutEffect(() => {
@@ -97,8 +117,10 @@ export function useEditorViewContextMenu({
       setFrozenCtxMenuItems([]);
       return;
     }
+    // Re-freezes when clipboardHasText resolves after open so 粘贴 can appear
+    // without waiting for an unrelated re-open.
     setFrozenCtxMenuItems(segmentCtxMenuItemsRef.current);
-  }, [ctxMenuOpenKey]);
+  }, [ctxMenuOpenKey, clipboardHasText]);
 
   const segmentCtxMenuItemsForRender = segmentCtxMenu
     ? frozenCtxMenuItems.length > 0

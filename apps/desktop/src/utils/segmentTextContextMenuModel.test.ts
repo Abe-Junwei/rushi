@@ -28,6 +28,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "错词",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
@@ -52,6 +53,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
@@ -73,6 +75,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "waveform",
       selectionText: "",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)[0]).toBe("toggleFreeze");
@@ -91,6 +94,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual(["toggleFreeze", "editAnnotation"]);
@@ -106,6 +110,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "保留",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual(["toggleFreeze", "editAnnotation", "copyText"]);
@@ -119,6 +124,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "错词",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.find((i) => i.key === "copyText")?.shortcutHint).toBe("Ctrl+C");
@@ -137,6 +143,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.find((i) => i.key === "editAnnotation")?.label).toBe("编辑备注…");
@@ -150,11 +157,42 @@ describe("buildSegmentRowContextMenuItems", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
       selectionText: "",
+      hasClipboardText: true,
       appearance: appearanceArgs,
     });
     expect(items.find((i) => i.key === "copyText")).toBeUndefined();
     expect(items.find((i) => i.key === "cutText")).toBeUndefined();
     expect(items.find((i) => i.key === "pasteText")?.disabled).toBe(false);
+  });
+
+  it("omits paste when the clipboard has no text", () => {
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [seg(0, 10)],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "",
+      hasClipboardText: false,
+      appearance: appearanceArgs,
+    });
+    expect(items.find((i) => i.key === "pasteText")).toBeUndefined();
+  });
+
+  it("still shows copy/cut with an empty clipboard when text is selected", () => {
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [seg(0, 10)],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "错词",
+      hasClipboardText: false,
+      appearance: appearanceArgs,
+    });
+    expect(items.find((i) => i.key === "copyText")).toBeDefined();
+    expect(items.find((i) => i.key === "cutText")).toBeDefined();
+    expect(items.find((i) => i.key === "pasteText")).toBeUndefined();
   });
 });
 

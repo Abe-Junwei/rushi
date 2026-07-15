@@ -75,6 +75,16 @@ export async function cutTranscriptSelection(view: EditorView): Promise<boolean>
   return true;
 }
 
+/** Best-effort clipboard probe for menu visibility; treats read failure as "no text". */
+export async function readClipboardHasText(): Promise<boolean> {
+  try {
+    const text = await navigator.clipboard.readText();
+    return text.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function pasteTranscriptClipboard(view: EditorView): Promise<boolean> {
   let raw: string;
   try {

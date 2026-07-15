@@ -92,6 +92,8 @@ export type SegmentRowContextMenuBuildArgs = {
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
   selectionText: string;
+  /** Whether the system clipboard currently holds pasteable text (probed async). */
+  hasClipboardText: boolean;
   appearance: SegmentTextAppearanceBuildArgs;
   selectionLo?: number;
   selectionHi?: number;
@@ -201,7 +203,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
         });
       }
     }
-    if (!frozen) {
+    if (!frozen && args.hasClipboardText) {
       items.push({
         key: "pasteText",
         label: "粘贴",
