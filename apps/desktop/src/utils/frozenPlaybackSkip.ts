@@ -49,7 +49,7 @@ export function resolveFrozenPlaybackSkipTargetSec(
   return null;
 }
 
-/** Delivery exports exclude frozen rows; archive/save keep them. */
+/** Delivery exports exclude frozen rows (and their annotations); archive/save keep them. */
 export function segmentsForDeliveryExport<T extends { frozen?: boolean | null }>(
   segments: readonly T[],
 ): T[] {
