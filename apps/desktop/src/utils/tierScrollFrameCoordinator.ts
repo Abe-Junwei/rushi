@@ -44,6 +44,26 @@ export function readPlaybackFractionalPx(): number {
   return playbackFractionalPx;
 }
 
+/** Same-frame geometry contract written by follow/snap; read by playhead (Pri1). */
+export type PlaybackRenderSnapshot = {
+  timeSec: number;
+  scrollLeftPx: number;
+  fractionalPx: number;
+  centerFollowDriving: boolean;
+  edgeFollowDriving: boolean;
+  playheadViewportLeftPx: number;
+};
+
+let playbackRenderSnapshot: PlaybackRenderSnapshot | null = null;
+
+export function writePlaybackRenderSnapshot(snapshot: PlaybackRenderSnapshot | null): void {
+  playbackRenderSnapshot = snapshot;
+}
+
+export function readPlaybackRenderSnapshot(): PlaybackRenderSnapshot | null {
+  return playbackRenderSnapshot;
+}
+
 export type TierViewportMetricsSnapshot = {
   scrollLeftPx: number;
   viewportWidthPx: number;
@@ -82,6 +102,7 @@ export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
   pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
   playbackFractionalPx = 0;
+  playbackRenderSnapshot = null;
 }
 
 import {
@@ -124,9 +145,18 @@ function runTierScrollFrame(): void {
         ? playbackStartMs - pendingPlaybackScheduledAtMs
         : null;
     playbackTimeDuringFrame = pendingPlaybackTimeSec;
+    let refreshedAfterScrollFollow = false;
     for (const sub of playbackSubscribers) {
+      // Scroll-follow is priority 0; playhead/tint are >0. Refresh S after follow
+      // writes so playhead does not mix stale snapshot scroll with live fraction.
+      if (!refreshedAfterScrollFollow && sub.priority > 0) {
+        scrollFrameMetricsSnapshot = metricsSupplier?.() ?? scrollFrameMetricsSnapshot;
+        refreshedAfterScrollFollow = true;
+      }
       sub.cb(pendingPlaybackTimeSec);
     }
+    // Tier chrome subscribers also need post-follow metrics.
+    scrollFrameMetricsSnapshot = metricsSupplier?.() ?? scrollFrameMetricsSnapshot;
     if (profileEnabled) {
       waveformScrollProfilePlaybackFrame({
         frameLagMs,
@@ -146,6 +176,7 @@ function runTierScrollFrame(): void {
   playbackTimeDuringFrame = null;
   scrollFrameMetricsSnapshot = null;
   scrollFrameActive = false;
+  playbackRenderSnapshot = null;
 }
 
 /** Schedule one coalesced scroll frame for viewport chrome paints. */
@@ -246,4 +277,5 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
   pendingPlaybackScheduledAtMs = null;
   playbackTimeDuringFrame = null;
   playbackFractionalPx = 0;
+  playbackRenderSnapshot = null;
 }

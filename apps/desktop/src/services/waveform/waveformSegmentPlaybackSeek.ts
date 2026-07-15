@@ -25,6 +25,9 @@ export async function atomicWaveformSegmentSeek(args: {
   timeSec: number;
   layoutDurationSecRef?: MutableRefObject<number>;
   syncDisplayPlayheadAfterSeekRef?: MutableRefObject<((timeSec: number) => void) | null>;
+  beginVisualSeekRef?: MutableRefObject<((timeSec: number) => void) | null>;
+  endVisualSeekRef?: MutableRefObject<((timeSec: number) => void) | null>;
+  snapPlaybackViewportAfterSeekRef?: MutableRefObject<((timeSec: number) => void) | null>;
   commitSeekUi?: (timeSec: number) => void;
 }): Promise<void> {
   const {
@@ -34,6 +37,9 @@ export async function atomicWaveformSegmentSeek(args: {
     timeSec,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
+    beginVisualSeekRef,
+    endVisualSeekRef,
+    snapPlaybackViewportAfterSeekRef,
     commitSeekUi,
   } = args;
   const host = resolveMediaPlaybackHost(ws, transport, { requireTransport });
@@ -44,7 +50,9 @@ export async function atomicWaveformSegmentSeek(args: {
   await applyPeaksOrderedSeek({
     timeSec,
     durationSec: d,
-    syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+    beginVisualSeek: (t) => beginVisualSeekRef?.current?.(t) ?? syncDisplayPlayheadAfterSeekRef?.current?.(t),
+    endVisualSeek: (t) => endVisualSeekRef?.current?.(t),
+    snapPlaybackViewportAfterSeek: (t) => snapPlaybackViewportAfterSeekRef?.current?.(t),
     setTime: (t) => host.setTime(t),
     commitSeekUi,
   });

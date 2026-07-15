@@ -54,8 +54,10 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     options.tierScrollRef,
     options.tierViewportMetricsRef,
     shell.commitSeekUi,
-    options.syncDisplayPlayheadAfterSeekRef,
+    options.beginVisualSeekRef,
+    options.endVisualSeekRef,
     options.getDisplayPlayheadTimeSecRef,
+    options.snapPlaybackViewportAfterSeekRef,
     shell.transportRef,
     useNativeTransport,
   );
@@ -71,6 +73,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     getPlayheadTime: playback.getPlayheadTime,
     getAuthorityPlayheadTimeSec: playback.getAuthorityPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef: options.syncDisplayPlayheadAfterSeekRef,
+    beginVisualSeekRef: options.beginVisualSeekRef,
+    endVisualSeekRef: options.endVisualSeekRef,
     layoutDurationSecRef: shell.layoutDurationSecRef,
     commitSeekUi: shell.commitSeekUi,
   });

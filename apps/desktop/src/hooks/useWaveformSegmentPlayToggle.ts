@@ -31,6 +31,7 @@ export function useWaveformSegmentPlayToggle(args: {
   resolveSelectedPlaybackRange: () => { start: number; end: number } | null;
   playGenerationRef: React.MutableRefObject<number>;
   segmentBoundStopInFlightRef: React.MutableRefObject<boolean>;
+  segmentPauseInFlightRef: React.MutableRefObject<boolean>;
   segmentPlaybackBoundRef: React.MutableRefObject<ActiveSegmentPlaybackBound | null>;
   unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
   pausedResumeAnchorRef: React.MutableRefObject<{ idx: number; timeSec: number } | null>;
@@ -57,6 +58,7 @@ export function useWaveformSegmentPlayToggle(args: {
     resolveSelectedPlaybackRange,
     playGenerationRef,
     segmentBoundStopInFlightRef,
+    segmentPauseInFlightRef,
     segmentPlaybackBoundRef,
     unboundedSelectedPlayGenRef,
     pausedResumeAnchorRef,
@@ -120,6 +122,10 @@ export function useWaveformSegmentPlayToggle(args: {
       if (idx >= 0) {
         armSegmentPlaybackSession(idx);
       }
+      // Hold Stop chrome off across the async native pause so per-frame sync cannot
+      // re-arm Play↔Stop while host.isPlaying() still lags true. Cleared by sync once
+      // the pause lands (host stops).
+      segmentPauseInFlightRef.current = true;
       cancelSegmentPlaybackBound();
       await enqueueMediaOp(
         host.gateHost,
@@ -147,6 +153,7 @@ export function useWaveformSegmentPlayToggle(args: {
     resolvePlayheadSec,
     resolveSelectedPlaybackRange,
     segmentBoundStopInFlightRef,
+    segmentPauseInFlightRef,
     segmentPlaybackBoundRef,
     syncDisplayPlayheadAfterSeekRef,
     requireTransport,

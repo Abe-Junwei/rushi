@@ -5,7 +5,7 @@ import { renderHook, act } from "@testing-library/react";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 
 describe("useWaveformPlayback", () => {
-  it("syncs imperative playhead before ws.setTime (Peaks order)", async () => {
+  it("begins visual seek before ws.setTime and ends after (Peaks order)", async () => {
     const ws = {
       setTime: vi.fn(),
       getCurrentTime: () => 0,
@@ -15,14 +15,19 @@ describe("useWaveformPlayback", () => {
     const layoutDurationSecRef = { current: 60 };
     const layoutTimelineWidthPxRef = { current: 1000 };
     const applyGlobalPlaybackRateRef = { current: vi.fn() };
-    const syncDisplayPlayheadAfterSeek = vi.fn();
-    const syncDisplayPlayheadAfterSeekRef = {
-      current: syncDisplayPlayheadAfterSeek,
-    };
+    const beginVisualSeek = vi.fn();
+    const endVisualSeek = vi.fn();
+    const snapPlaybackViewportAfterSeek = vi.fn();
+    const beginVisualSeekRef = { current: beginVisualSeek };
+    const endVisualSeekRef = { current: endVisualSeek };
+    const snapPlaybackViewportAfterSeekRef = { current: snapPlaybackViewportAfterSeek };
     const commitSeekUi = vi.fn();
     const order: string[] = [];
-    syncDisplayPlayheadAfterSeek.mockImplementation(() => order.push("playhead"));
+    beginVisualSeek.mockImplementation(() => order.push("begin"));
+    endVisualSeek.mockImplementation(() => order.push("end"));
+    snapPlaybackViewportAfterSeek.mockImplementation(() => order.push("snap"));
     ws.setTime.mockImplementation(() => order.push("media"));
+    commitSeekUi.mockImplementation(() => order.push("commit"));
 
     const { result } = renderHook(() =>
       useWaveformPlayback(
@@ -35,7 +40,10 @@ describe("useWaveformPlayback", () => {
         undefined,
         undefined,
         commitSeekUi,
-        syncDisplayPlayheadAfterSeekRef,
+        beginVisualSeekRef,
+        endVisualSeekRef,
+        undefined,
+        snapPlaybackViewportAfterSeekRef,
       ),
     );
 
@@ -46,9 +54,11 @@ describe("useWaveformPlayback", () => {
       await Promise.resolve();
     });
 
-    expect(syncDisplayPlayheadAfterSeek).toHaveBeenCalledWith(12.5);
+    expect(beginVisualSeek).toHaveBeenCalledWith(12.5, { deferViewportFrame: true });
+    expect(snapPlaybackViewportAfterSeek).toHaveBeenCalledWith(12.5);
+    expect(endVisualSeek).toHaveBeenCalledWith(12.5);
     expect(ws.setTime).toHaveBeenCalledWith(12.5);
-    expect(order).toEqual(["playhead", "media"]);
+    expect(order).toEqual(["begin", "snap", "media", "end", "commit"]);
     expect(commitSeekUi).toHaveBeenCalledWith(12.5);
   });
 
@@ -62,7 +72,8 @@ describe("useWaveformPlayback", () => {
     const layoutDurationSecRef = { current: 60 };
     const layoutTimelineWidthPxRef = { current: 1000 };
     const applyGlobalPlaybackRateRef = { current: vi.fn() };
-    const syncDisplayPlayheadAfterSeekRef = { current: vi.fn() };
+    const beginVisualSeekRef = { current: vi.fn() };
+    const endVisualSeekRef = { current: vi.fn() };
     const getDisplayPlayheadTimeSecRef = { current: () => 8 };
     const commitSeekUi = vi.fn();
 
@@ -77,7 +88,8 @@ describe("useWaveformPlayback", () => {
         undefined,
         undefined,
         commitSeekUi,
-        syncDisplayPlayheadAfterSeekRef,
+        beginVisualSeekRef,
+        endVisualSeekRef,
         getDisplayPlayheadTimeSecRef,
       ),
     );
@@ -112,7 +124,8 @@ describe("useWaveformPlayback", () => {
         undefined,
         undefined,
         vi.fn(),
-        { current: vi.fn() },
+        undefined,
+        undefined,
       ),
     );
 
@@ -139,7 +152,8 @@ describe("useWaveformPlayback", () => {
         undefined,
         undefined,
         vi.fn(),
-        { current: vi.fn() },
+        undefined,
+        undefined,
         getDisplayPlayheadTimeSecRef,
       ),
     );

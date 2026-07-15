@@ -2,6 +2,7 @@ import type { RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectTypes";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
+import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 
 /** Live tier metrics for pointer → time mapping (populated after tier scroll sync mounts). */
 export type TierViewportMetricsRef = RefObject<{
@@ -49,6 +50,8 @@ export type UseProjectWaveformOptions = {
   tierViewportMetricsRef?: TierViewportMetricsRef;
   /** After reveal/flushTierScrollFrame, playback follow suppression window. */
   playbackFollowSuppressUntilRef?: React.MutableRefObject<number>;
+  /** Live playback follow mode (edge page-drive vs center). */
+  playbackScrollFollowModeRef?: React.MutableRefObject<WaveformPlaybackScrollFollowMode>;
   /** Sticky waveform clip shell — resize sync writes width imperatively. */
   stickyShellRef?: React.RefObject<HTMLDivElement | null>;
   /** Inner stretch wrapper — temporary scaleX during viewport resize. */
@@ -66,6 +69,17 @@ export type UseProjectWaveformOptions = {
   getDisplayPlayheadTimeSecRef?: React.MutableRefObject<(() => number) | null>;
   /** Peaks-order seek: imperative playhead before media (`ws.setTime`). */
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  /** VisualSeeking begin — blocks engine polls during seek (Peaks-order seek path). */
+  beginVisualSeekRef?: React.MutableRefObject<
+    ((timeSec: number, opts?: { deferViewportFrame?: boolean }) => void) | null
+  >;
+  /** VisualSeeking end — release after transport seeked ACK. */
+  endVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  /**
+   * After seek sync: land scroll + subpixel on the follow target and re-arm pin.
+   * Prevents pin/offset thrash when seeking while playing.
+   */
+  snapPlaybackViewportAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   /** WS audioprocess → visual clock + unified viewport frame. */
   onWsAudioprocessRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
 };

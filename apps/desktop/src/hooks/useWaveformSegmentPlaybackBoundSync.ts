@@ -31,6 +31,8 @@ export type WaveformSegmentPlaybackBoundSyncArgs = {
   segmentPlaybackBoundRef: React.MutableRefObject<ActiveSegmentPlaybackBound | null>;
   segmentBoundStopInFlightRef: React.MutableRefObject<boolean>;
   playStartInFlightGenerationRef: React.MutableRefObject<number | null>;
+  /** Manual pause in flight — hold Stop chrome off until native pause lands. */
+  segmentPauseInFlightRef: React.MutableRefObject<boolean>;
   unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
   /** Global continuous play generation — must not auto-arm segment end-bound. */
   globalPlayGenRef: React.MutableRefObject<number | null>;
@@ -71,6 +73,7 @@ export function useWaveformSegmentPlaybackBoundSync(
     segmentPlaybackBoundRef,
     segmentBoundStopInFlightRef,
     playStartInFlightGenerationRef,
+    segmentPauseInFlightRef,
     unboundedSelectedPlayGenRef,
     globalPlayGenRef,
     segmentLoopPlaybackRef,
@@ -228,6 +231,23 @@ export function useWaveformSegmentPlaybackBoundSync(
         if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
         return;
       }
+      // Manual pause (region Stop / Space) in flight: native pause is async and
+      // host.isPlaying() lags true. Force Stop chrome off and never re-arm until the
+      // pause lands — this is the Play↔Stop flash on repeated play/stop of one segment.
+      if (segmentPauseInFlightRef.current) {
+        if (isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(false);
+        if (!host.isPlaying()) {
+          segmentPauseInFlightRef.current = false;
+          if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
+        }
+        return;
+      }
+      // Full seek+play arm window (incl. while media is still playing during seek):
+      // bound was cleared; do not let playhead/outside-range sync yank Stop→Play.
+      if (playStartInFlightGenerationRef.current != null) {
+        if (!isSelectedSegmentPlayingRef.current) setIsSelectedSegmentPlaying(true);
+        return;
+      }
       if (!host.isPlaying()) {
         if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
         // Keep globalPlayGenRef across the arm-before-play window (beginGlobalPlayback
@@ -302,6 +322,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       isSelectedSegmentPlayingRef,
       playGenerationRef,
       playStartInFlightGenerationRef,
+      segmentPauseInFlightRef,
       resolvePlayheadSec,
       resolveSelectedPlaybackRange,
       segmentBoundStopInFlightRef,

@@ -300,7 +300,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
     });
 
     expect(playbackFollowScroll).toHaveBeenCalledWith(440);
-    expect(Math.abs(readPlaybackFractionalPx())).toBeLessThanOrEqual(0.5 * SUBPIXEL_DEBUG_AMPLIFY + 1e-6);
+    expect(readPlaybackFractionalPx()).toBe(0);
     expect(isEdgeFollowDriving()).toBe(true);
   });
 

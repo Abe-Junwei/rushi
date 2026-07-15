@@ -59,7 +59,9 @@ export function useProjectWaveformTransport(args: {
 
   const suppressPlaybackFollow = useCallback(() => {
     const untilRef = optsRef.current.playbackFollowSuppressUntilRef;
-    if (untilRef) untilRef.current = performance.now() + 1200;
+    // Viewport snap owns scroll/pin. Do not arm a suppress window — freezing
+    // follow while the clock advances causes zoom-amplified catch-up thrash.
+    if (untilRef) untilRef.current = 0;
   }, [optsRef]);
 
   const dispatchTransport = useCallback(
@@ -102,19 +104,34 @@ export function useProjectWaveformTransport(args: {
           segmentPlayback.clearPausedResumeAnchor();
           if (seekOpts?.suppressFollow) suppressPlaybackFollow();
           if (segmentPlayback.isSelectedSegmentPlaying) {
-            segmentPlayback.clearSegmentPlaybackBound();
+            // Seek during playback (select / scrub to another segment) drops the old
+            // scoped bound, but media keeps playing — do NOT flip chrome to Play here.
+            // The per-frame sync re-arms against the new selection/playhead, so keeping
+            // Stop chrome avoids the Stop→Play→Stop flash. Only release chrome when the
+            // media is actually stopped.
+            const live = resolveHost();
+            segmentPlayback.clearSegmentPlaybackBound({
+              preservePlayingChrome: Boolean(live?.isPlaying()),
+            });
           }
           const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
+          const followMode = optsRef.current.playbackScrollFollowModeRef?.current ?? "edge";
+          const skipViewportSnap = Boolean(
+            seekOpts?.suppressFollow && isPlaying && followMode === "edge",
+          );
           await applyPeaksOrderedSeek({
             timeSec,
             durationSec: d,
-            syncDisplayPlayheadAfterSeek: (t) =>
-              optsRef.current.syncDisplayPlayheadAfterSeekRef?.current?.(t),
+            beginVisualSeek: (t, opts) => optsRef.current.beginVisualSeekRef?.current?.(t, opts),
+            endVisualSeek: (t) => optsRef.current.endVisualSeekRef?.current?.(t),
+            snapPlaybackViewportAfterSeek: (t) =>
+              optsRef.current.snapPlaybackViewportAfterSeekRef?.current?.(t),
             setTime: (t) => {
               const live = resolveHost();
               return live?.setTime(t);
             },
             commitSeekUi,
+            skipViewportSnap,
           });
         },
         runPlaySegment: (playArgs) => segmentPlayback.runPlaySegmentResolved(playArgs),
@@ -148,7 +165,14 @@ export function useProjectWaveformTransport(args: {
 
   const seek = useCallback(
     (timeSec: number) => {
-      void dispatchTransport({ kind: "seek", timeSec, source: "segmentSelect" });
+      // Waveform click / overlay seek during global play: suppress follow so
+      // center/edge scroll does not chase a mix of old fractional offset + new time.
+      void dispatchTransport({
+        kind: "seek",
+        timeSec,
+        source: "segmentSelect",
+        suppressFollow: true,
+      });
     },
     [dispatchTransport],
   );

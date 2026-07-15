@@ -146,22 +146,65 @@ describe("dispatchTransportIntent", () => {
 });
 
 describe("applyPeaksOrderedSeek", () => {
-  it("syncs display before setTime and commits after setTime", async () => {
-    const sync = vi.fn();
+  it("begins visual seek, sets time, ends visual seek, then commits", async () => {
+    const begin = vi.fn();
+    const end = vi.fn();
+    const snap = vi.fn();
     const setTime = vi.fn();
     const commit = vi.fn();
     const t = await applyPeaksOrderedSeek({
       timeSec: 12,
       durationSec: 100,
-      syncDisplayPlayheadAfterSeek: sync,
+      beginVisualSeek: begin,
+      endVisualSeek: end,
+      snapPlaybackViewportAfterSeek: snap,
       setTime,
       commitSeekUi: commit,
     });
     expect(t).toBe(12);
-    expect(sync).toHaveBeenCalledWith(12);
+    expect(begin).toHaveBeenCalledWith(12, { deferViewportFrame: true });
+    expect(snap).toHaveBeenCalledWith(12);
     expect(setTime).toHaveBeenCalledWith(12);
+    expect(end).toHaveBeenCalledWith(12);
     expect(commit).toHaveBeenCalledWith(12);
-    expect(sync.mock.invocationCallOrder[0]).toBeLessThan(setTime.mock.invocationCallOrder[0]);
-    expect(setTime.mock.invocationCallOrder[0]).toBeLessThan(commit.mock.invocationCallOrder[0]);
+    expect(begin.mock.invocationCallOrder[0]).toBeLessThan(snap.mock.invocationCallOrder[0]);
+    expect(snap.mock.invocationCallOrder[0]).toBeLessThan(setTime.mock.invocationCallOrder[0]);
+    expect(setTime.mock.invocationCallOrder[0]).toBeLessThan(end.mock.invocationCallOrder[0]);
+    expect(end.mock.invocationCallOrder[0]).toBeLessThan(commit.mock.invocationCallOrder[0]);
+  });
+
+  it("skips viewport snap when skipViewportSnap is set", async () => {
+    const snap = vi.fn();
+    const begin = vi.fn();
+    await applyPeaksOrderedSeek({
+      timeSec: 12,
+      durationSec: 100,
+      beginVisualSeek: begin,
+      snapPlaybackViewportAfterSeek: snap,
+      setTime: vi.fn(),
+      skipViewportSnap: true,
+    });
+    expect(snap).not.toHaveBeenCalled();
+    expect(begin).toHaveBeenCalledWith(12, undefined);
+  });
+
+  it("releases visual seek when setTime rejects", async () => {
+    const begin = vi.fn();
+    const end = vi.fn();
+    const setTime = vi.fn(() => Promise.reject(new Error("ipc failed")));
+    const commit = vi.fn();
+    await expect(
+      applyPeaksOrderedSeek({
+        timeSec: 12,
+        durationSec: 100,
+        beginVisualSeek: begin,
+        endVisualSeek: end,
+        setTime,
+        commitSeekUi: commit,
+      }),
+    ).rejects.toThrow("ipc failed");
+    expect(begin).toHaveBeenCalledWith(12, undefined);
+    expect(end).toHaveBeenCalledWith(12);
+    expect(commit).not.toHaveBeenCalled();
   });
 });

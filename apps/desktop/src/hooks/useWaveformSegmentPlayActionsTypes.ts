@@ -26,11 +26,13 @@ export type WaveformSegmentPlayActionsArgs = {
   segmentBoundStopInFlightRef: React.MutableRefObject<boolean>;
   playStartInFlightGenerationRef: React.MutableRefObject<number | null>;
   segmentPlaybackBoundRef: React.MutableRefObject<ActiveSegmentPlaybackBound | null>;
+  /** Manual pause in flight — hold Stop chrome off until native pause lands. */
+  segmentPauseInFlightRef: React.MutableRefObject<boolean>;
   unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
   pausedResumeAnchorRef: React.MutableRefObject<{ idx: number; timeSec: number } | null>;
   autoStoppedSegmentIdxRef: React.MutableRefObject<number | null>;
   segmentLoopPlaybackRef: React.MutableRefObject<boolean>;
-  clearSegmentPlaybackBound: () => void;
+  clearSegmentPlaybackBound: (opts?: { preservePlayingChrome?: boolean }) => void;
   cancelSegmentPlaybackBound: () => void;
   setSegmentLoopPlayback: (loop: boolean) => void;
   setIsSelectedSegmentPlaying: (playing: boolean) => void;
@@ -38,5 +40,7 @@ export type WaveformSegmentPlayActionsArgs = {
   armSegmentPlaybackSession: (idx: number) => void;
   layoutDurationSecRef?: React.MutableRefObject<number>;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  beginVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  endVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   commitSeekUi?: (timeSec: number) => void;
 };

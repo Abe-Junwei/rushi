@@ -3,6 +3,7 @@
  * Research: docs/execution/specs/segment-structure-playback-remap-research.md
  */
 import type { SegmentDto } from "../tauri/projectApi";
+import { segmentPlaybackReachedEnd } from "./segmentPlaybackBound";
 
 export type PlayheadSeamPolicy = "right";
 
@@ -71,7 +72,9 @@ export type StructurePlaybackRemapResult = {
 
 /**
  * Remap sticky playback identity onto the segment that contains the playhead.
- * - Natural-end sticky → autoStopped on new idx (replay from start).
+ * - Natural-end sticky survives only when playhead is still at the *containing*
+ *   segment's end (replay from start). After merge, an old end latch often lands
+ *   mid-block → clear autoStopped and pausedAnchor@t (resume from playhead).
  * - Mid-pause sticky → pausedAnchor at the same t on new idx.
  * - Otherwise still arms segment session on containing idx (Space follows playhead).
  */
@@ -89,10 +92,22 @@ export function resolveStructurePlaybackRemap(
   }
   const t = Number.isFinite(input.playheadSec) ? input.playheadSec : 0;
   if (input.hadAutoStopped) {
+    const seg = input.segments[idx];
+    const endSec = seg != null ? Math.max(seg.start_sec, seg.end_sec) : t;
+    // Still parked at the new block's natural end → keep start-replay sticky.
+    if (segmentPlaybackReachedEnd(t, endSec)) {
+      return {
+        idx,
+        autoStoppedIdx: idx,
+        pausedAnchor: null,
+        session: { kind: "segment", idx },
+      };
+    }
+    // Mid-block after structure change (typical merge) → resume from playhead.
     return {
       idx,
-      autoStoppedIdx: idx,
-      pausedAnchor: null,
+      autoStoppedIdx: null,
+      pausedAnchor: { idx, timeSec: t },
       session: { kind: "segment", idx },
     };
   }

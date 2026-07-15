@@ -1555,4 +1555,117 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(remapped).toBe(1);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 1 });
   });
+
+  it("clearSegmentPlaybackBound preserves Stop chrome for seek-while-playing", async () => {
+    let playhead = 15;
+    let playing = false;
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+    });
+    const wsRef = { current: ws };
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 15 });
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+
+    // Seek-while-playing (select/scrub) drops the bound but must keep Stop chrome.
+    act(() => {
+      result.current.clearSegmentPlaybackBound({ preservePlayingChrome: true });
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+
+    // Genuine stop (media no longer playing) clears chrome.
+    playing = false;
+    act(() => {
+      result.current.clearSegmentPlaybackBound();
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(false);
+  });
+
+  it("does not flash Stop→Play→Stop while re-arming seek with media still playing", async () => {
+    let playhead = 15;
+    let playing = false;
+    let blockSeeks = false;
+    let releaseSeek: (() => void) | null = null;
+    let seekGate: Promise<void> | null = null;
+
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(async () => {
+        playing = true;
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn(async (t: number) => {
+        if (blockSeeks && seekGate) await seekGate;
+        playhead = t;
+      }),
+    });
+    const wsRef = { current: ws };
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 15 });
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+    expect(playing).toBe(true);
+
+    blockSeeks = true;
+    seekGate = new Promise<void>((resolve) => {
+      releaseSeek = resolve;
+    });
+
+    const chromeDuringArm: boolean[] = [];
+    await act(async () => {
+      const restart = result.current.playSegmentAtIndex(0, { fromSec: 10 });
+      // Let clear+inFlight+optimistic Stop land, then hang in seek.
+      await Promise.resolve();
+      await Promise.resolve();
+      // Playback frame with t outside the segment — old sync would set chrome to Play.
+      schedulePlaybackViewportFrame(50);
+      flushTierScrollFrameForTests();
+      chromeDuringArm.push(result.current.isSelectedSegmentPlaying);
+      releaseSeek?.();
+      await restart;
+    });
+
+    expect(chromeDuringArm.length).toBeGreaterThan(0);
+    expect(chromeDuringArm.every((v) => v === true)).toBe(true);
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+  });
 });

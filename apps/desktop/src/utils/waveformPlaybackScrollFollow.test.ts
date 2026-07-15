@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   resolvePlaybackScrollFollowTargetPx,
+  resolveEdgeSeekAnchorScrollPx,
   WAVEFORM_EDGE_FOLLOW,
 } from "./waveformPlaybackScrollFollow";
 
@@ -65,5 +66,20 @@ describe("resolvePlaybackScrollFollowTargetPx", () => {
         currentScrollLeftPx: 250,
       }),
     ).toBe(200 - anchor);
+  });
+});
+
+describe("resolveEdgeSeekAnchorScrollPx", () => {
+  it("always lands playhead at anchorFrac regardless of current scroll mid-band", () => {
+    const anchor = 400 * WAVEFORM_EDGE_FOLLOW.anchorFrac;
+    // Mid-band hysteresis would keep scroll=1200 for t=15; seek land forces anchor.
+    expect(
+      resolveEdgeSeekAnchorScrollPx({
+        timeSec: 15,
+        timelineWidthPx: 3000,
+        durationSec: 30,
+        viewportWidthPx: 400,
+      }),
+    ).toBe(1500 - anchor);
   });
 });

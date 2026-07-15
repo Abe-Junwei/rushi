@@ -292,23 +292,23 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
           playbackRate: 1,
           getEngineDisplayTimeSec: () => props.currentTimeSec,
         }),
-      { initialProps: { currentTimeSec: 165 } },
+      { initialProps: { currentTimeSec: 20 } },
     );
 
     act(() => {
-      result.current.syncDisplayPlayheadAfterSeek(142);
+      result.current.syncDisplayPlayheadAfterSeek(12);
     });
-    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
 
     act(() => {
-      rerender({ currentTimeSec: 165 });
+      rerender({ currentTimeSec: 20 });
     });
-    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
 
     act(() => {
-      rerender({ currentTimeSec: 142 });
+      rerender({ currentTimeSec: 12 });
     });
-    expect(result.current.getVisualPlayheadTimeSec()).toBe(142);
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
   });
 
   it("does not pull visual backward to stale React currentTime after pause", () => {
@@ -337,7 +337,7 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(result.current.getVisualPlayheadTimeSec()).toBe(15);
   });
 
-  it("syncDisplayPlayheadAfterSeek snaps to seek target while playing", () => {
+  it("syncDisplayPlayheadAfterSeek pins without blocking engine polls while playing", () => {
     const raf = stubQueuedRaf();
     let mediaSec = 12;
 
@@ -352,28 +352,135 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
       }),
     );
 
-    const seen: number[] = [];
-    act(() => {
-      result.current.subscribePlayheadFrame((t) => seen.push(t));
-    });
-
     act(() => {
       result.current.syncDisplayPlayheadAfterSeek(5);
-      mediaSec = 5; // mirrors ws.setTime completing in the same stack
       flushTierScrollFrameForTests();
     });
-
-    expect(seen).toEqual([5]);
     expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
 
     act(() => {
       raf.flushOne();
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    // Pin-only path does not enter VisualSeeking — rAF may follow engine again.
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
+  });
+
+  it("ignores stale paused currentTimeSec while VisualSeeking is armed", () => {
+    const { result, rerender } = renderHook(
+      (props: { currentTimeSec: number }) =>
+        useWaveformVisualPlayheadClock({
+          isPlaying: false,
+          isReady: true,
+          durationSec: 30,
+          currentTimeSec: props.currentTimeSec,
+          playbackRate: 1,
+          getEngineDisplayTimeSec: () => props.currentTimeSec,
+        }),
+      { initialProps: { currentTimeSec: 20 } },
+    );
+
+    act(() => {
+      result.current.beginVisualSeek(12);
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
+
+    act(() => {
+      rerender({ currentTimeSec: 20 });
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
+
+    act(() => {
+      result.current.endVisualSeek(12);
+      rerender({ currentTimeSec: 12 });
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(12);
+  });
+
+  it("beginVisualSeek blocks rAF engine polls until endVisualSeek", () => {
+    const raf = stubQueuedRaf();
+    let mediaSec = 12;
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 12,
+        playbackRate: 1,
+        getEngineDisplayTimeSec: () => mediaSec,
+        getRawMediaIsPlaying: () => true,
+      }),
+    );
+
+    act(() => {
+      result.current.beginVisualSeek(5);
       flushTierScrollFrameForTests();
     });
     expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
+
+    act(() => {
+      raf.flushOne();
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
+
+    act(() => {
+      mediaSec = 12;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
+
+    act(() => {
+      result.current.endVisualSeek(5.02);
+      mediaSec = 5.02;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBeCloseTo(5.02, 2);
   });
 
-  it("keeps segment-end latch when React isPlaying lags media pause", () => {
+  it("endVisualSeek grounds display monotonically when engine briefly lags pre-seek", () => {
+    const raf = stubQueuedRaf();
+    let mediaSec = 12;
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 12,
+        playbackRate: 1,
+        getEngineDisplayTimeSec: () => mediaSec,
+        getRawMediaIsPlaying: () => true,
+      }),
+    );
+
+    act(() => {
+      result.current.beginVisualSeek(5);
+      flushTierScrollFrameForTests();
+    });
+
+    act(() => {
+      result.current.endVisualSeek(5);
+      mediaSec = 12;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBe(5);
+
+    act(() => {
+      mediaSec = 5.01;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBeCloseTo(5.01, 2);
+  });
+
+  it("pause pin via syncDisplayPlayheadAfterSeek does not leave VisualSeeking stuck", () => {
     // Natural-end finally latches display to endSec while React isPlaying is still
     // true; a late rAF freeze must not re-apply media overshoot past the band.
     const raf = stubQueuedRaf();

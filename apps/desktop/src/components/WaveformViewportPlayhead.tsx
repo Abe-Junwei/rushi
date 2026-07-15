@@ -1,7 +1,11 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
 import { setDirectLayoutStyle } from "../utils/cspElementLayout";
-import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import {
+  subscribeTierScrollFrame,
+  readPlaybackRenderSnapshot,
+  isTierScrollFrameActive,
+} from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
@@ -81,6 +85,18 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     const el = playheadRef.current;
     const args = argsRef.current;
     if (!el || args.durationSec <= 0 || args.timelineWidthPx <= 0) return;
+
+    // Snapshot is only authoritative while a scroll frame is running (follow @Pri0
+    // wrote it this frame). Outside a frame, fall back to live metrics mapping.
+    const frameSnapshot = isTierScrollFrameActive() ? readPlaybackRenderSnapshot() : null;
+    if (frameSnapshot) {
+      const transform = `translate3d(${frameSnapshot.playheadViewportLeftPx.toFixed(3)}px, 0, 0)`;
+      if (lastTransformRef.current === transform) return;
+      lastTransformRef.current = transform;
+      setDirectLayoutStyle(el, { transform });
+      return;
+    }
+
     const metrics = resolveTierViewportMetricsDuringScrollFrame({
       tierScrollEl: args.tierScrollRef?.current ?? null,
       tierScrollLive: args.tierScrollLive,

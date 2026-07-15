@@ -48,7 +48,7 @@ describe("resolveStructurePlaybackRemap", () => {
     expect(r.session).toEqual({ kind: "segment", idx: 1 });
   });
 
-  it("remaps natural-end sticky to new block start replay", () => {
+  it("keeps natural-end sticky when playhead is still at the new block end", () => {
     const r = resolveStructurePlaybackRemap({
       segments: parts,
       playheadSec: 20,
@@ -57,5 +57,20 @@ describe("resolveStructurePlaybackRemap", () => {
     });
     expect(r.autoStoppedIdx).toBe(1);
     expect(r.pausedAnchor).toBeNull();
+  });
+
+  it("clears natural-end sticky when merge leaves playhead mid-block", () => {
+    // Old left segment ended at t=10; after merge [0,20] that latch is mid-block.
+    const merged = [seg(0, 20, 0)];
+    const r = resolveStructurePlaybackRemap({
+      segments: merged,
+      playheadSec: 10,
+      hadAutoStopped: true,
+      hadPausedAnchor: false,
+    });
+    expect(r.idx).toBe(0);
+    expect(r.autoStoppedIdx).toBeNull();
+    expect(r.pausedAnchor).toEqual({ idx: 0, timeSec: 10 });
+    expect(r.session).toEqual({ kind: "segment", idx: 0 });
   });
 });

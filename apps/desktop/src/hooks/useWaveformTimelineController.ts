@@ -21,6 +21,7 @@ import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
 import { useFileViewStateRestoreEffect } from "./useFileViewStateRestoreEffect";
 import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { snapPlaybackViewportAfterSeek } from "../utils/snapPlaybackViewportAfterSeek";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -41,10 +42,16 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
   const syncDisplayPlayheadAfterSeekRef = useRef<((timeSec: number) => void) | null>(null);
+  const beginVisualSeekRef = useRef<((timeSec: number) => void) | null>(null);
+  const endVisualSeekRef = useRef<((timeSec: number) => void) | null>(null);
+  const snapPlaybackViewportAfterSeekRef = useRef<((timeSec: number) => void) | null>(null);
   const getDisplayPlayheadTimeSecRef = useRef<(() => number) | null>(null);
   const onWsAudioprocessRef = useRef<((timeSec: number) => void) | null>(null);
   const suppressPlaybackFollowForSelectionSeek = () => {
-    playbackFollowSuppressUntilRef.current = performance.now() + 1200;
+    // Seek path snaps viewport + re-arms pin; do not freeze follow — a suppress
+    // window lets time/tint advance while scroll stays put, then catch-up thrash
+    // (worse at high px/s).
+    playbackFollowSuppressUntilRef.current = 0;
   };
   const applyPendingViewportFitRef = useRef<(pxPerSec: number, options?: { finalize?: boolean }) => boolean>(
     () => false,
@@ -52,6 +59,8 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   const display = useWaveformDisplay({ busy: ctx.busy });
   const routePrefs = useWaveformEditorRoutePrefs();
+  const playbackScrollFollowModeRef = useRef(routePrefs.playbackScrollFollowMode);
+  playbackScrollFollowModeRef.current = routePrefs.playbackScrollFollowMode;
   const zoom = useWaveformZoom();
   const [resolvedDurationSec, setResolvedDurationSec] = useState(0);
   const peaks = useWaveformPeaks(
@@ -98,9 +107,13 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     tierScrollRef,
     tierViewportMetricsRef,
     syncDisplayPlayheadAfterSeekRef,
+    beginVisualSeekRef,
+    endVisualSeekRef,
+    snapPlaybackViewportAfterSeekRef,
     getDisplayPlayheadTimeSecRef,
     onWsAudioprocessRef,
     playbackFollowSuppressUntilRef,
+    playbackScrollFollowModeRef,
     refitFitAllPxPerSec: (viewportWidthPx) => refitFitAllPxPerSecRef.current(viewportWidthPx),
     onFitAllPxPerSecRefit: zoom.applyFitAllRefitPxPerSec,
     onZoomApplied: (pxPerSec) =>
@@ -162,6 +175,18 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   });
 
   syncDisplayPlayheadAfterSeekRef.current = visualPlayheadClock.syncDisplayPlayheadAfterSeek;
+  // During VisualSeeking the clock is pinned — freeze follow so edge mid-band
+  // clear/sink cannot fight the seek snap (center follow is idempotent; edge is not).
+  beginVisualSeekRef.current = (timeSec: number, opts?: { deferViewportFrame?: boolean }) => {
+    playbackFollowSuppressUntilRef.current = Number.POSITIVE_INFINITY;
+    visualPlayheadClock.beginVisualSeek(timeSec, opts);
+  };
+  endVisualSeekRef.current = (timeSec: number) => {
+    visualPlayheadClock.endVisualSeek(timeSec);
+    // Grounding: keep follow frozen after seeked so scroll/frac=0 + content transform
+    // repaint before mid-band sink / pageDrive resume (edge thrash at high zoom).
+    playbackFollowSuppressUntilRef.current = performance.now() + 120;
+  };
   getDisplayPlayheadTimeSecRef.current = visualPlayheadClock.getDisplayPlayheadTimeSec;
   onWsAudioprocessRef.current = visualPlayheadClock.onWsAudioprocess;
 
@@ -195,6 +220,17 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     fileId: ctx.fileId,
     playbackFollowSuppressUntilRef,
   });
+
+  snapPlaybackViewportAfterSeekRef.current = (timeSec: number) => {
+    snapPlaybackViewportAfterSeek({
+      timeSec,
+      followMode: routePrefs.playbackScrollFollowMode,
+      timelineWidthPx: timelineWidthPxRef.current,
+      durationSec: durationRef.current || timelineMetrics.mediaDurationSec,
+      tierScrollEl: tierScrollRef.current,
+      playbackFollowScroll: scroll.playbackFollowScroll,
+    });
+  };
 
   useLayoutEffect(() => {
     tierViewportMetricsRef.current = {

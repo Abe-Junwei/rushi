@@ -145,9 +145,11 @@ describe("waveformRegionActionOverlay", () => {
   });
 
   it("resolveSegmentPlaybackControlVisibility shows loop when wide enough", () => {
+    const loopPlayWidth = estimateRegionActionOverlayWidthPx({ showLoopBtn: true });
+    const playOnlyWidth = estimateRegionActionOverlayWidthPx({ showLoopBtn: false });
     expect(resolveSegmentPlaybackControlVisibility(110).showLoopBtn).toBe(true);
-    expect(resolveSegmentPlaybackControlVisibility(51).showLoopBtn).toBe(true);
-    expect(resolveSegmentPlaybackControlVisibility(40).showLoopBtn).toBe(false);
+    expect(resolveSegmentPlaybackControlVisibility(loopPlayWidth).showLoopBtn).toBe(true);
+    expect(resolveSegmentPlaybackControlVisibility(playOnlyWidth - 1).showLoopBtn).toBe(false);
   });
 
   it("uses visible segment width when partially off-screen", () => {

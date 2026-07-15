@@ -1,11 +1,12 @@
 import { timeToTimelinePx } from "./waveformProjection";
 
-/** 语段播放控制条预估宽度（loop + play）。 */
+/** 语段播放控制条预估宽度（独立 loop + play 按钮）。 */
 export const WAVEFORM_REGION_ACTION_OVERLAY_EST_WIDTH_PX = 160;
 
-const REGION_ACTION_PLAY_BTN_PX = 24;
-const REGION_ACTION_LOOP_BTN_PX = 24;
-const REGION_ACTION_BTN_GAP_PX = 3;
+const REGION_ACTION_PLAY_BTN_PX = 28; /* 1.75rem @ 16px root */
+const REGION_ACTION_LOOP_BTN_PX = 28;
+/** Match `.region-action-overlay` gap between separate buttons. */
+const REGION_ACTION_BTN_GAP_PX = 6;
 
 const REGION_ACTION_WIDTH_PLAY_ONLY_PX = REGION_ACTION_PLAY_BTN_PX;
 const REGION_ACTION_WIDTH_LOOP_PLAY_PX =

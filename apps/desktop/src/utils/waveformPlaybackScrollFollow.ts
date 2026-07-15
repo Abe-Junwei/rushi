@@ -46,3 +46,21 @@ export function resolvePlaybackScrollFollowTargetPx(input: {
 
   return Math.max(0, Math.min(maxSl, input.currentScrollLeftPx));
 }
+
+/**
+ * Edge seek land: always put playhead at {@link WAVEFORM_EDGE_FOLLOW.anchorFrac}.
+ * Continuous mid-band hysteresis must not apply to interactive seek (Audacity-style).
+ */
+export function resolveEdgeSeekAnchorScrollPx(input: {
+  timeSec: number;
+  timelineWidthPx: number;
+  durationSec: number;
+  viewportWidthPx: number;
+}): number {
+  const vw = Math.max(1, input.viewportWidthPx);
+  const tw = Math.max(input.timelineWidthPx, 0);
+  const maxSl = Math.max(0, tw - vw);
+  const playheadPx = timeToTimelinePx(input.timeSec, tw, input.durationSec);
+  const anchor = vw * WAVEFORM_EDGE_FOLLOW.anchorFrac;
+  return Math.max(0, Math.min(maxSl, playheadPx - anchor));
+}

@@ -27,7 +27,9 @@ export function useWaveformSegmentPlaybackSession(args: {
   globalPlayGenRef: React.MutableRefObject<number | null>;
   pausedResumeAnchorRef: React.MutableRefObject<{ idx: number; timeSec: number } | null>;
   autoStoppedSegmentIdxRef: React.MutableRefObject<number | null>;
-  clearSegmentPlaybackBound: () => void;
+  /** Manual pause in flight — hold Stop chrome off until native pause lands. */
+  segmentPauseInFlightRef: React.MutableRefObject<boolean>;
+  clearSegmentPlaybackBound: (opts?: { preservePlayingChrome?: boolean }) => void;
   setIsSelectedSegmentPlaying: (playing: boolean) => void;
 }) {
   const {
@@ -44,6 +46,7 @@ export function useWaveformSegmentPlaybackSession(args: {
     globalPlayGenRef,
     pausedResumeAnchorRef,
     autoStoppedSegmentIdxRef,
+    segmentPauseInFlightRef,
     clearSegmentPlaybackBound,
     setIsSelectedSegmentPlaying,
   } = args;
@@ -149,6 +152,8 @@ export function useWaveformSegmentPlaybackSession(args: {
       unboundedSelectedPlayGenRef.current = null;
       globalPlayGenRef.current = null;
       playGenerationRef.current += 1;
+      // Async native pause: hold Stop chrome off until it lands (sync clears the flag).
+      segmentPauseInFlightRef.current = true;
       setIsSelectedSegmentPlaying(false);
       void Promise.resolve(host.pause());
       noteMediaPaused(host.gateHost);
@@ -169,6 +174,7 @@ export function useWaveformSegmentPlaybackSession(args: {
     pausedResumeAnchorRef,
     playGenerationRef,
     requireTransport,
+    segmentPauseInFlightRef,
     segmentPlaybackBoundRef,
     setIsSelectedSegmentPlaying,
     syncDisplayPlayheadAfterSeekRef,

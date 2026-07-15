@@ -108,20 +108,42 @@ export async function dispatchTransportIntent(
 export async function applyPeaksOrderedSeek(args: {
   timeSec: number;
   durationSec: number;
-  syncDisplayPlayheadAfterSeek: (t: number) => void;
+  /** VisualSeeking state machine: block engine polls until seeked ACK. */
+  beginVisualSeek: (t: number, opts?: { deferViewportFrame?: boolean }) => void;
+  /** Same-stack release after {@link args.setTime} resolves (native seeked). */
+  endVisualSeek?: (t: number) => void;
+  /** Land follow scroll/pin on the seek target (playing seek anti-thrash). */
+  snapPlaybackViewportAfterSeek?: (t: number) => void;
   setTime: (t: number) => void | Promise<void>;
   commitSeekUi?: (t: number) => void;
   suppressFollow?: boolean;
   suppressPlaybackFollow?: () => void;
+  /**
+   * Playing edge listen-jump: seek playhead only — do not force-anchor tier scroll.
+   * (Snap fights page-drive mid-band; user stays on current viewport page.)
+   */
+  skipViewportSnap?: boolean;
 }): Promise<number> {
   const clamped = resolveSeekTargetTime({
     timeSec: args.timeSec,
     durationSec: args.durationSec,
   });
   if (args.suppressFollow) args.suppressPlaybackFollow?.();
-  args.syncDisplayPlayheadAfterSeek(clamped);
-  await args.setTime(clamped);
-  args.commitSeekUi?.(clamped);
+  const willSnap = Boolean(args.snapPlaybackViewportAfterSeek) && !args.skipViewportSnap;
+  args.beginVisualSeek(clamped, willSnap ? { deferViewportFrame: true } : undefined);
+  if (willSnap) {
+    args.snapPlaybackViewportAfterSeek?.(clamped);
+  }
+  try {
+    await args.setTime(clamped);
+    args.endVisualSeek?.(clamped);
+    args.commitSeekUi?.(clamped);
+  } catch (err) {
+    // Always release VisualSeeking — otherwise a rejected/timed-out seek leaves
+    // the UI pinned until the 2s zombie fallback.
+    args.endVisualSeek?.(clamped);
+    throw err;
+  }
   return clamped;
 }
 

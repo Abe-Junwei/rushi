@@ -25,8 +25,12 @@ export function useWaveformPlayback(
   tierScrollRef?: React.RefObject<HTMLDivElement | null>,
   tierViewportMetricsRef?: TierViewportMetricsRef,
   commitSeekUi?: (timeSec: number) => void,
-  syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
+  beginVisualSeekRef?: React.MutableRefObject<
+    ((timeSec: number, opts?: { deferViewportFrame?: boolean }) => void) | null
+  >,
+  endVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
   getDisplayPlayheadTimeSecRef?: React.MutableRefObject<(() => number) | null>,
+  snapPlaybackViewportAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>,
   transportRef?: React.MutableRefObject<PlaybackTransport | null>,
   requireTransport?: boolean,
 ) {
@@ -71,7 +75,10 @@ export function useWaveformPlayback(
       void applyPeaksOrderedSeek({
         timeSec,
         durationSec: d,
-        syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        beginVisualSeek: (t, opts) => beginVisualSeekRef?.current?.(t, opts),
+        endVisualSeek: (t) => endVisualSeekRef?.current?.(t),
+        snapPlaybackViewportAfterSeek: (t) =>
+          snapPlaybackViewportAfterSeekRef?.current?.(t),
         setTime: (t) => {
           return host.setTime(t);
         },
@@ -82,11 +89,13 @@ export function useWaveformPlayback(
       });
     },
     [
+      beginVisualSeekRef,
       commitSeekUi,
+      endVisualSeekRef,
+      snapPlaybackViewportAfterSeekRef,
       isReady,
       layoutDurationSecRef,
       requireTransport,
-      syncDisplayPlayheadAfterSeekRef,
       transportRef,
       wsRef,
     ],
@@ -155,7 +164,10 @@ export function useWaveformPlayback(
       void applyPeaksOrderedSeek({
         timeSec: base + deltaSec,
         durationSec: d,
-        syncDisplayPlayheadAfterSeek: (t) => syncDisplayPlayheadAfterSeekRef?.current?.(t),
+        beginVisualSeek: (t, opts) => beginVisualSeekRef?.current?.(t, opts),
+        endVisualSeek: (t) => endVisualSeekRef?.current?.(t),
+        snapPlaybackViewportAfterSeek: (t) =>
+          snapPlaybackViewportAfterSeekRef?.current?.(t),
         setTime: (t) => {
           return host.setTime(t);
         },
@@ -166,12 +178,14 @@ export function useWaveformPlayback(
       });
     },
     [
+      beginVisualSeekRef,
       commitSeekUi,
+      endVisualSeekRef,
+      snapPlaybackViewportAfterSeekRef,
       isReady,
       layoutDurationSecRef,
       requireTransport,
       resolvePlayheadSec,
-      syncDisplayPlayheadAfterSeekRef,
       transportRef,
       wsRef,
     ],

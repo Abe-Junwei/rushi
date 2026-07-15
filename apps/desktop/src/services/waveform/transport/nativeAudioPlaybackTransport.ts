@@ -21,6 +21,20 @@ const STATE_ACK_TIMEOUT_MS = 2_000;
 const DISPLAY_SMOOTH_TAU_SEC = 0.1;
 /** Forward mismatch beyond this (s) is a genuine catch-up (underrun/resume) → jump. */
 const DISPLAY_SMOOTH_MAX_DRIFT_SEC = 0.05;
+/**
+ * After an imperative seek, ignore TimeUpdate anchors that are still far from the
+ * seek target. A lagging pre-seek tick would otherwise re-anchor authority ahead of
+ * the new position; the smooth display then forward-jumps (maxDrift) and the
+ * playhead thrashs for a few frames after click-seek while playing.
+ */
+const SEEK_STALE_GUARD_MS = 250;
+const SEEK_STALE_GUARD_TOLERANCE_SEC = 0.35;
+/**
+ * After seek, keep maxDrift jumps off longer than the stale-TU guard. Decode
+ * underrun/resume catch-ups inside this window would otherwise forward-jump
+ * display by ≥50ms — at high px/s that is a violent multi-frame thrash.
+ */
+const SEEK_SETTLE_NO_JUMP_MS = 400;
 
 /**
  * First-order low-pass tracking of the authority-projected time, with an
@@ -86,6 +100,11 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
   let lastDisplaySec = 0;
   /** performance.now() of the last display smoothing evaluation. */
   let lastEvaluationTimeMs = 0;
+  /** Wall-clock deadline for discarding stale TimeUpdates after seek. */
+  let seekStaleGuardUntilMs = 0;
+  let seekStaleGuardTargetSec = 0;
+  /** Wall-clock deadline: smooth without maxDrift forward jumps after seek. */
+  let seekSettleNoJumpUntilMs = 0;
 
   const emit = (fn: (h: PlaybackTransportEvents) => void) => {
     for (const h of listeners) fn(h);
@@ -102,6 +121,18 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
   const resetDisplayClock = (sec: number) => {
     lastDisplaySec = sec;
     lastEvaluationTimeMs = performance.now();
+  };
+
+  const armSeekStaleGuard = (targetSec: number) => {
+    const now = performance.now();
+    seekStaleGuardTargetSec = targetSec;
+    seekStaleGuardUntilMs = now + SEEK_STALE_GUARD_MS;
+    seekSettleNoJumpUntilMs = now + SEEK_SETTLE_NO_JUMP_MS;
+  };
+
+  const isStalePostSeekTimeUpdate = (sec: number): boolean => {
+    if (performance.now() >= seekStaleGuardUntilMs) return false;
+    return Math.abs(sec - seekStaleGuardTargetSec) > SEEK_STALE_GUARD_TOLERANCE_SEC;
   };
 
   const emitReady = (sec: number) => {
@@ -133,6 +164,8 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       taProjected,
       deltaSec,
       rate,
+      // Soft converge only — underrun catch-up jumps amplify violently at high zoom.
+      maxDriftSec: now < seekSettleNoJumpUntilMs ? Number.POSITIVE_INFINITY : undefined,
     });
     if (durationSec > 0) {
       next = Math.min(next, durationSec);
@@ -222,6 +255,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         break;
       }
       case "seeked": {
+        armSeekStaleGuard(ev.data.sec);
         anchorTime(ev.data.sec);
         resetDisplayClock(ev.data.sec);
         emit((h) => h.onSeeked?.(currentTimeSec));
@@ -229,6 +263,15 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         break;
       }
       case "timeUpdate": {
+        // Drop lagging pre-seek ticks — they re-anchor authority far from the new
+        // latch and the display smoother forward-jumps the playhead.
+        if (isStalePostSeekTimeUpdate(ev.data.sec)) {
+          break;
+        }
+        if (performance.now() < seekStaleGuardUntilMs) {
+          // Confirmed near-target tick — release guard early.
+          seekStaleGuardUntilMs = 0;
+        }
         anchorTime(ev.data.sec);
         emit((h) => h.onTimeUpdate?.(currentTimeSec));
         break;
@@ -316,6 +359,11 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
     async seek(timeSec: number) {
       if (disposed) return;
       const target = timeSec;
+      // Optimistic re-anchor: do not keep extrapolating the pre-seek line while
+      // IPC/decode catch up — that left display far ahead of the UI seek latch.
+      armSeekStaleGuard(target);
+      anchorTime(target);
+      resetDisplayClock(target);
       const ack = createEventWaiter(
         (resolve) => ({
           onSeeked: (sec) => {

@@ -19,10 +19,12 @@ export type RunPlaySegmentResolvedInput = {
   loop?: boolean;
   playGenerationRef: React.MutableRefObject<number>;
   playStartInFlightGenerationRef: React.MutableRefObject<number | null>;
+  /** Manual pause in flight — cleared here so a new play isn't held Stop-off. */
+  segmentPauseInFlightRef: React.MutableRefObject<boolean>;
   segmentPlaybackBoundRef: React.MutableRefObject<ActiveSegmentPlaybackBound | null>;
   unboundedSelectedPlayGenRef: React.MutableRefObject<number | null>;
   segmentLoopPlaybackRef: React.MutableRefObject<boolean>;
-  clearSegmentPlaybackBound: () => void;
+  clearSegmentPlaybackBound: (opts?: { preservePlayingChrome?: boolean }) => void;
   setSegmentLoopPlayback: (loop: boolean) => void;
   setIsSelectedSegmentPlaying: (playing: boolean) => void;
   armSegmentPlaybackSession: (idx: number) => void;
@@ -48,7 +50,12 @@ export async function runPlaySegmentResolved(
   try {
     const gen = ++input.playGenerationRef.current;
     input.playStartInFlightGenerationRef.current = gen;
-    input.clearSegmentPlaybackBound();
+    // A fresh play supersedes any pending pause chrome hold.
+    input.segmentPauseInFlightRef.current = false;
+    // Preserve widget Stop chrome across async seek/play — clearing it here caused
+    // Play↔Stop flicker on every segment play / restart.
+    input.clearSegmentPlaybackBound({ preservePlayingChrome: true });
+    input.setIsSelectedSegmentPlaying(true);
     const range = {
       start: Math.min(seg.start_sec, seg.end_sec),
       end: Math.max(seg.start_sec, seg.end_sec),
@@ -104,10 +111,13 @@ export async function runPlaySegmentResolved(
       }
       return;
     }
-    if (input.playStartInFlightGenerationRef.current === gen) {
-      input.playStartInFlightGenerationRef.current = null;
+    if (!host.isPlaying()) {
+      if (input.playStartInFlightGenerationRef.current === gen) {
+        input.playStartInFlightGenerationRef.current = null;
+      }
+      input.clearSegmentPlaybackBound();
+      return;
     }
-    if (!host.isPlaying()) return;
 
     // Only scope-stop at segment end when starting inside the selected segment.
     // Past end (gap after): free play from playhead — keep Stop chrome via unbounded gen.
@@ -121,6 +131,10 @@ export async function runPlaySegmentResolved(
     input.unboundedSelectedPlayGenRef.current = arm.unboundedSelectedPlayGen;
     input.setIsSelectedSegmentPlaying(true);
     input.armSegmentPlaybackSession(input.idx);
+    // Clear in-flight only after bound+chrome are armed so mid-seek sync cannot flash Play.
+    if (input.playStartInFlightGenerationRef.current === gen) {
+      input.playStartInFlightGenerationRef.current = null;
+    }
   } finally {
     endMediaPlay(host.gateHost);
   }

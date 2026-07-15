@@ -30,6 +30,8 @@ export function useWaveformSegmentPlaybackControls(args: {
   /** Raw media `currentTime` — used only to detect "already inside this segment" on resume. */
   getAuthorityPlayheadTimeSec?: () => number;
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  beginVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
+  endVisualSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   layoutDurationSecRef?: React.MutableRefObject<number>;
   commitSeekUi?: (timeSec: number) => void;
 }) {
@@ -45,6 +47,8 @@ export function useWaveformSegmentPlaybackControls(args: {
     getPlayheadTime,
     getAuthorityPlayheadTimeSec,
     syncDisplayPlayheadAfterSeekRef,
+    beginVisualSeekRef,
+    endVisualSeekRef,
     layoutDurationSecRef,
     commitSeekUi,
   } = args;
@@ -108,17 +112,27 @@ export function useWaveformSegmentPlaybackControls(args: {
   const segmentPlaybackBoundRef = useRef<ActiveSegmentPlaybackBound | null>(null);
   const segmentBoundStopInFlightRef = useRef(false);
   const playStartInFlightGenerationRef = useRef<number | null>(null);
+  /**
+   * Manual pause (region Stop / Space) in flight. Native pause is async, so
+   * `host.isPlaying()` lags — without this, per-frame sync re-arms Stop chrome
+   * during the pause window, flashing Play↔Stop on repeated play/stop of one segment.
+   */
+  const segmentPauseInFlightRef = useRef(false);
   /** Play started past selected end (no end-bound); keep Stop chrome until pause. */
   const unboundedSelectedPlayGenRef = useRef<number | null>(null);
   /** Global continuous play — sync must not auto-arm segment end-bound. */
   const globalPlayGenRef = useRef<number | null>(null);
 
-  const clearSegmentPlaybackBound = useCallback(() => {
+  const clearSegmentPlaybackBound = useCallback((opts?: { preservePlayingChrome?: boolean }) => {
     segmentPlaybackBoundRef.current = null;
     unboundedSelectedPlayGenRef.current = null;
     globalPlayGenRef.current = null;
     autoStoppedSegmentIdxRef.current = null;
-    setIsSelectedSegmentPlaying(false);
+    // Play-start clears bound before async seek/play; keep Stop chrome so the
+    // widget does not flash Play→Stop while arming (sync also respects in-flight).
+    if (!opts?.preservePlayingChrome) {
+      setIsSelectedSegmentPlaying(false);
+    }
   }, []);
 
   /** Drop bound and invalidate queued end-stop microtasks (user pause / stop). Keeps sticky session. */
@@ -156,6 +170,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     globalPlayGenRef,
     pausedResumeAnchorRef,
     autoStoppedSegmentIdxRef,
+    segmentPauseInFlightRef,
     clearSegmentPlaybackBound,
     setIsSelectedSegmentPlaying,
   });
@@ -195,6 +210,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     pausedResumeAnchorRef,
     autoStoppedSegmentIdxRef,
     segmentLoopPlaybackRef,
+    segmentPauseInFlightRef,
     clearSegmentPlaybackBound,
     cancelSegmentPlaybackBound,
     setSegmentLoopPlayback,
@@ -202,6 +218,8 @@ export function useWaveformSegmentPlaybackControls(args: {
     armSegmentPlaybackSession,
     layoutDurationSecRef,
     syncDisplayPlayheadAfterSeekRef,
+    beginVisualSeekRef,
+    endVisualSeekRef,
     commitSeekUi,
   });
 
@@ -215,6 +233,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     segmentPlaybackBoundRef,
     segmentBoundStopInFlightRef,
     playStartInFlightGenerationRef,
+    segmentPauseInFlightRef,
     unboundedSelectedPlayGenRef,
     globalPlayGenRef,
     segmentLoopPlaybackRef,

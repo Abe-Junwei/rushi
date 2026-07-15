@@ -58,9 +58,11 @@ export function shouldRevealOnSegmentSelect(ctx: SelectionRevealSeekContext & {
   if (ctx.source === "list" || ctx.source === "listAdvance") return true;
   // ↑↓ / Tab confirm — user-initiated; gate can false-negative when virtual list unmounts textarea.
   if (ctx.source === "listKeyboard") return true;
-  // Playing-defer waveform: primary already matches after pointerdown — still reveal.
+  // Playing-defer waveform (forceSeek): pointerup seeks while media keeps playing.
+  // Fit-segment reveal fights the seek-time follow snap and thrashs the playhead
+  // for several frames — skip reveal; Transport Authority snap owns the viewport.
   if (ctx.forceSeek && (ctx.source === "waveform" || ctx.source === "waveformKeyboard")) {
-    return true;
+    return false;
   }
   if (!ctx.idxChanged) return false;
   if (ctx.source === "waveform" || ctx.source === "waveformKeyboard") return true;

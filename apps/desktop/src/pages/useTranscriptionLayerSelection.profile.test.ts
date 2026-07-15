@@ -881,6 +881,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(6);
+    expect(timeline.viewportFit.revealSegmentInViewport).not.toHaveBeenCalled();
     expect(selectedIdxRef.current).toBe(3);
   });
 

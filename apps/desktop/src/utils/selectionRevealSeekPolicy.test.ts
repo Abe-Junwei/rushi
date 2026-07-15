@@ -85,14 +85,21 @@ describe("selectionRevealSeekPolicy", () => {
     ).toBe(true);
   });
 
-  it("forceSeek still reveals waveform when idxChanged is false", () => {
+  it("forceSeek skips waveform reveal so seek follow-snap is not fought", () => {
     expect(
       shouldRevealOnSegmentSelect({
         source: "waveform",
         idxChanged: false,
         forceSeek: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
+    expect(
+      shouldRevealOnSegmentSelect({
+        source: "waveformKeyboard",
+        idxChanged: true,
+        forceSeek: true,
+      }),
+    ).toBe(false);
   });
 
   it("shift/toggle never seek even for list sources", () => {

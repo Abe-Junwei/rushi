@@ -313,6 +313,70 @@ describe("nativeAudioPlaybackTransport", () => {
     await t.dispose();
   });
 
+  it("ignores stale TimeUpdate after backward seek so display does not forward-jump", async () => {
+    let now = 1_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 30 });
+    await t.play();
+    emitEngine({ event: "timeUpdate", data: { sec: 12 } });
+    now += 50;
+    expect(t.getDisplayTime()).toBeGreaterThan(12);
+
+    const seekPromise = t.seek(5);
+    // Optimistic re-anchor before Seeked ack.
+    expect(t.getDisplayTime()).toBeCloseTo(5, 3);
+    expect(t.getCurrentTime()).toBeCloseTo(5, 3);
+
+    emitEngine({ event: "seeked", data: { sec: 5 } });
+    await seekPromise;
+
+    // Lagging pre-seek tick — must not yank display back toward 12.
+    emitEngine({ event: "timeUpdate", data: { sec: 12.05 } });
+    now += 16;
+    expect(t.getDisplayTime()).toBeCloseTo(5, 1);
+    expect(t.getCurrentTime()).toBeCloseTo(5, 3);
+
+    emitEngine({ event: "timeUpdate", data: { sec: 5.02 } });
+    now += 16;
+    expect(t.getDisplayTime()).toBeGreaterThanOrEqual(5);
+    expect(t.getDisplayTime()).toBeLessThan(5.5);
+
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
+  it("does not maxDrift-jump display during post-seek settle (underrun catch-up)", async () => {
+    let now = 2_000;
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 30 });
+    await t.play();
+
+    const seekPromise = t.seek(10);
+    emitEngine({ event: "seeked", data: { sec: 10 } });
+    await seekPromise;
+    emitEngine({ event: "timeUpdate", data: { sec: 10 } });
+    now += 16;
+    expect(t.getDisplayTime()).toBeGreaterThanOrEqual(10);
+    expect(t.getDisplayTime()).toBeLessThan(10.05);
+
+    // Authority leaps ahead (decode catch-up) inside the settle window — without
+    // the no-jump settle this would maxDrift-jump ≥50ms and thrash at high zoom.
+    emitEngine({ event: "timeUpdate", data: { sec: 10.2 } });
+    now += 16;
+    const display = t.getDisplayTime();
+    expect(display).toBeGreaterThanOrEqual(10);
+    expect(display).toBeLessThan(10.08);
+
+    await t.dispose();
+    vi.restoreAllMocks();
+  });
+
   it("cancels pending ACK waiter when native invoke rejects", async () => {
     vi.useFakeTimers();
     vi.mocked(nativeAudioSeek).mockRejectedValueOnce(new Error("ipc failed"));
