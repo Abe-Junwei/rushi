@@ -13,12 +13,16 @@
 ## CDN 布局
 
 ```text
-https://updates.rushi.app/latest.json
+https://updates.rushi.app/latest.json          # 合并 darwin-aarch64 + windows-x86_64
 https://updates.rushi.app/<tag>/app.tar.gz
 https://updates.rushi.app/<tag>/app.tar.gz.sig
 https://updates.rushi.app/<tag>/<dmg>
+https://updates.rushi.app/<tag>/rushi-desktop-setup.exe
+https://updates.rushi.app/<tag>/rushi-desktop-setup.exe.sig
 https://updates.rushi.app/<tag>/windows-portable-x64.zip
 ```
+
+`latest.json` 由 `verify-cdn-release` job 在 mac + win 双平台 fragment 合并后上传（见 [`rel-win-ota-spike-research.md`](./rel-win-ota-spike-research.md)）。
 
 ## Secrets
 
@@ -34,9 +38,11 @@ https://updates.rushi.app/<tag>/windows-portable-x64.zip
 
 ## 脚本
 
-- `scripts/ci-generate-updater-latest-json.sh` — 清单 URL 指向 CDN
-- `scripts/ci-upload-updater-cdn.sh --mode macos-ota|macos-dmg|windows`
-- `scripts/ci-verify-updater-manifest.sh` — 仅校验 CDN HTTP 200 + 版本一致性
+- `scripts/ci-generate-updater-latest-json.sh` — 单平台 updater fragment
+- `scripts/ci-merge-updater-manifest.sh` — 合并 fragment → `latest.json`
+- `scripts/ci-normalize-windows-nsis-name.sh` — NSIS 稳定文件名
+- `scripts/ci-upload-updater-cdn.sh --mode macos-ota|macos-dmg|windows|windows-ota|manifest`
+- `scripts/ci-verify-updater-manifest.sh` — 校验 mac + win CDN 包与 manifest
 
 ## 发版步骤
 

@@ -1,14 +1,18 @@
-# Spec(acceptance): P3 Win 发行资产
+# Spec(acceptance): P3 Win 发行资产 + OTA
 
-> **Plan**：[`r3h-1-r-release-checklist.md`](./r3h-1-r-release-checklist.md) §3  
-> **Roadmap**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10.5 P3
+> **Runbook**：[`rel-win-ota-signoff-runbook.md`](./rel-win-ota-signoff-runbook.md)  
+> **Acceptance（OTA 细则）**：[`rel-win-ota-acceptance.md`](./rel-win-ota-acceptance.md)  
+> **证据模板**：[`../v1.0.0-win-ota-signoff-evidence.md`](../v1.0.0-win-ota-signoff-evidence.md)  
+> **v1.0.0 联合签收**：[`v1.0.0-release-signoff-runbook.md`](./v1.0.0-release-signoff-runbook.md)  
+> **Research**：[`rel-win-ota-spike-research.md`](./rel-win-ota-spike-research.md)
 
 ---
 
 ## 机器门禁
 
 - [ ] `release.yml` **tauri-windows** 绿（tag push）
-- [ ] GitHub Release 含 `windows-portable-x64.zip` + `.sha256`（侧车已内嵌安装包，**无**独立 sidecar zip / runtime manifest）
+- [ ] `release.yml` **verify-cdn-release** 合并 `latest.json` 含 `windows-x86_64`
+- [ ] CDN `/<tag>/rushi-desktop-setup.exe` + `.sig` 可下载
 - [ ] `npm run typecheck` · `npm run test` · `check-architecture-guard` 无回归
 
 ---
@@ -17,23 +21,29 @@
 
 | ID | 步骤 | 期望 | 结果 |
 |----|------|------|------|
-| H-WIN-1 | Release 下载 portable zip | 解压后可启动 | ☐ |
-| H-WIN-2 | 关于页版本 | 与 Release tag 一致 | ☐ |
-| H-WIN-3 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见 | ☐ |
-| H-WIN-4 | 导出 Word | 成功 | ☐ |
+| H-WIN-1 | CDN 下载 `rushi-desktop-setup.exe` 并安装 | 可启动 · 关于页版本与 tag 一致 | ☐ |
+| H-WIN-2 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见 | ☐ |
+| H-WIN-3 | 导出 Word | 成功 | ☐ |
+| H-WIN-4 | （可选）下载 portable zip | 解压可启动；**无**应用内更新 | ☐ |
+
+## H-WIN-OTA 手测
+
+| ID | 步骤 | 期望 | 结果 |
+|----|------|------|------|
+| H-WIN-OTA-1 | 安装 NSIS vN；CDN 发布 vN+1 | 启动提示更新；确认后安装重启 | ☐ |
+| H-WIN-OTA-2 | 验签失败 / manifest 404 | 中文错误 · 不 crash | ☐ |
+| H-WIN-OTA-3 | portable 用户点「检查更新」 | 已装 NSIS baseline 后可正常 OTA；仅 portable 时提示手动装 NSIS | ☐ |
 
 ---
 
 ## 发版命令
-
-与 mac OTA 相同 — **仅 push tag**：
 
 ```bash
 git push origin main
 git tag vX.Y.Z && git push origin vX.Y.Z
 ```
 
-**不做** Win 应用内 OTA（见 [`rel-mac-ota-intent.md`](./rel-mac-ota-intent.md)）。
+**首装推荐**：CDN `/<tag>/rushi-desktop-setup.exe`。**便携版**仍提供 `windows-portable-x64.zip`（无 OTA）。
 
 ---
 
@@ -42,6 +52,7 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 | 项 | 结论 |
 |----|------|
 | P3 Win 发行资产 Go | ☐ |
+| Win OTA Go | ☐ |
 | Blocker | — |
 
 **变更记录**
@@ -49,3 +60,4 @@ git tag vX.Y.Z && git push origin vX.Y.Z
 | 日期 | 说明 |
 |------|------|
 | 2026-06-20 | 初版 · CI 修复 cli-win32 + Linux 签名 env |
+| 2026-07-15 | 启用 Win OTA（NSIS + 合并 manifest）· 见 spike research |

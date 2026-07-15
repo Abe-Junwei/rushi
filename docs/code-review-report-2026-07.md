@@ -338,6 +338,18 @@
 
 **落位**：`apps/desktop/src/services/appUpdate.ts`（`APP_UPDATE_BACKGROUND_CHECK_INTERVAL_MS`）、`useAppUpdateCheckOnLaunch.ts` 注释、`appUpdate.test.ts`。
 
+### 9.3 R4 Windows OTA — spike 结论（2026-07-15）
+
+**调研 brief**：[`docs/execution/specs/rel-win-ota-spike-research.md`](execution/specs/rel-win-ota-spike-research.md)
+
+| 项 | 结论 |
+|----|------|
+| 技术可行性 | **GO** — Tauri v2 支持 `windows-x86_64` + NSIS `*-setup.exe` + `.sig`；客户端与 Ed25519 密钥已就绪 |
+| v1.0.0 是否实施 | **已编码** — 待下一次 tag release + H-WIN-OTA 手测签收 |
+| 主要缺口 | CI 改 NSIS 必填产物、manifest 双平台合并、首装从 portable 迁到 NSIS 基线 |
+| 预估工时 | 编码 2～3 人日 + Win 真机 OTA 手测 0.5 人日 |
+| P3「Windows OTA 缺失」 | 自 v1.0.0 起**接受**（手动 CDN 下载）；非 v1.0.0 阻塞项 |
+
 ---
 
 *报告结束*
