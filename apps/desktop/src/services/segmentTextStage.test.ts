@@ -13,6 +13,11 @@ describe("segmentTextStage", () => {
     expect(normalizeSegmentTextStage("bogus")).toBe("auto_transcribe");
   });
 
+  it("resolveSegmentStageLabels uses short chip copy for auto/manual", () => {
+    expect(resolveSegmentStageLabels("auto_transcribe", null).category).toBe("机转");
+    expect(resolveSegmentStageLabels("manual_transcribe", null).category).toBe("手转");
+  });
+
   it("resolveSegmentStageLabels for finalized confirm_edit", () => {
     const labels = resolveSegmentStageLabels("finalized", "confirm_edit");
     expect(labels.category).toBe("定稿");

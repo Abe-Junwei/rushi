@@ -5,7 +5,7 @@ import {
   IconBook as BookOpen,
   IconRobot as Bot,
   IconBrain as Brain,
-  IconCheck as Check,
+  IconCircleCheck as CircleCheck,
   IconCircleCaretRight as CirclePlay,
   IconCloud as Cloud,
   IconCpu as Cpu,
@@ -74,7 +74,7 @@ export const PRODUCT_ICON = {
   /** 语段 stage · 人工转写/编辑 */
   stageManual: PenLine,
   /** 语段 stage · 已定稿 */
-  stageFinalized: Check,
+  stageFinalized: CircleCheck,
 
   /** 波形 / 语段 · 播放与暂停 */
   playAudio: Play,

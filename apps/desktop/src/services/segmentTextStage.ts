@@ -16,7 +16,7 @@ export type SegmentStageLabels = {
 
 const STAGE_LABELS: Record<Exclude<SegmentTextStage, "finalized">, SegmentStageLabels> = {
   auto_transcribe: {
-    category: "自动转写",
+    category: "机转",
     tooltip: "自动转写，待改稿",
   },
   ai_revised: {
@@ -24,7 +24,7 @@ const STAGE_LABELS: Record<Exclude<SegmentTextStage, "finalized">, SegmentStageL
     tooltip: "AI 改稿已写回，待改稿或定稿",
   },
   manual_transcribe: {
-    category: "手动转写",
+    category: "手转",
     tooltip: "手动转写，已保存，待确认定稿",
   },
 };
