@@ -1,6 +1,8 @@
 # Full Tauri bundles — tag push builds macOS + Windows and uploads installers/OTA to CDN only.
 # Linux desktop: NOT published (no .deb / AppImage / tauri-linux job).
 # Windows portable/NSIS: CI on tag push; local smoke — `npm run release:win` on a Windows machine.
+# Unsigned v1: prefer CDN windows-portable-x64.zip (green zip) over unsigned setup.exe (SmartScreen).
+# Portable + NSIS upload to CDN/artifacts ASAP after zip build — before CUDA (continue-on-error).
 # Do NOT create GitHub Release assets for installers — distribution host is updates.rushi.app (R2).
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
@@ -449,9 +451,70 @@ jobs:
           }
           Get-Item "windows-portable-x64.zip"
 
+      # Publish portable (+ NSIS) before CUDA so a later CUDA failure cannot block the green zip.
+      - name: Checksum portable + NSIS (early)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          foreach ($f in @(
+            "windows-portable-x64.zip",
+            "apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe"
+          )) {
+            if (Test-Path -LiteralPath $f) {
+              $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash.ToLowerInvariant()
+              $name = Split-Path -Leaf $f
+              Set-Content -Encoding ascii -Path "$f.sha256" -Value "$hash  $name"
+              Write-Host "Wrote $f.sha256"
+            }
+          }
+
+      - name: Upload Windows portable zip artifact (early)
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-portable-x64
+          path: |
+            windows-portable-x64.zip
+            windows-portable-x64.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows portable + NSIS to CDN (early)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
+            exit 1
+          fi
+          python -m pip install --upgrade awscli
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+          if [ -f "${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig" ]; then
+            bash scripts/ci-upload-updater-cdn.sh \
+              --tag "${{ github.ref_name }}" \
+              --mode windows-ota \
+              --bundle-root "${{ env.BUNDLE_ROOT }}" \
+              --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+              --bucket "${R2_BUCKET:-rushi-updates}"
+          else
+            echo "::warning::No NSIS .sig yet — skipped windows-ota early upload."
+          fi
+
       - name: Build Windows CUDA sidecar (CDN opt-in, after NSIS)
         run: npm run asr:build-sidecar-windows-cuda
         timeout-minutes: 120
+        continue-on-error: true
 
       - name: Authenticode sign CUDA sidecar (release tag)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
@@ -462,8 +525,10 @@ jobs:
           SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
           RELEASE_BUILD: "1"
         run: pwsh scripts/sign-windows-sidecar.ps1
+        continue-on-error: true
 
       - name: Package CUDA sidecar zip + checksum
+        id: cuda_zip
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -478,9 +543,11 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
           Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$hash  rushi-asr-sidecar-cuda-windows-x64.zip"
           Get-Item $zip | Format-List Name, Length, FullName
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "ok=true"
+        continue-on-error: true
 
       - name: Publish CUDA runtime manifest
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
         shell: bash
         env:
           RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
@@ -523,11 +590,11 @@ jobs:
             dist/cuda-cdn/**
             dist/runtime-manifest/**
             dist/windows-bundle-size-spike.json
-          if-no-files-found: error
+          if-no-files-found: warn
           retention-days: 14
 
-      - name: Upload Windows bundles to Cloudflare R2 CDN
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+      - name: Upload Windows CUDA (+ remaining) to Cloudflare R2 CDN
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
         shell: bash
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -540,18 +607,7 @@ jobs:
             exit 1
           fi
           python -m pip install --upgrade awscli
-          bash scripts/ci-upload-updater-cdn.sh \
-            --tag "${{ github.ref_name }}" \
-            --mode windows \
-            --bundle-root "${{ env.BUNDLE_ROOT }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --bucket "${R2_BUCKET:-rushi-updates}"
-          bash scripts/ci-upload-updater-cdn.sh \
-            --tag "${{ github.ref_name }}" \
-            --mode windows-ota \
-            --bundle-root "${{ env.BUNDLE_ROOT }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --bucket "${R2_BUCKET:-rushi-updates}"
+          # portable + NSIS already uploaded early; only push CUDA assets here.
           bash scripts/ci-upload-updater-cdn.sh \
             --tag "${{ github.ref_name }}" \
             --mode windows-cuda \
