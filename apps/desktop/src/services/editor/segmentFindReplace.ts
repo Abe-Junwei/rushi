@@ -39,6 +39,12 @@ export type MatchDisplaySnippet = {
 /** 与 Welcome `build_content_snippet` / Word 导航结果一致。 */
 export const DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS = 24;
 
+/** 浮窗列表：匹配/改区前保留有限上下文，尾部延至文末；可见宽度由 CSS truncate 随面板宽度变化。 */
+export const PANEL_RESIZABLE_LIST_SNIPPET_OPTS = {
+  align: "start",
+  tailToEnd: true,
+} as const;
+
 export type FindMatchListItem = {
   globalIndex: number;
   segmentIdx: number;
@@ -70,10 +76,11 @@ export function buildMatchDisplaySnippet(
   text: string,
   charStart: number,
   charEnd: number,
-  opts?: { contextChars?: number; align?: "start" | "center" },
+  opts?: { contextChars?: number; align?: "start" | "center"; tailToEnd?: boolean },
 ): MatchDisplaySnippet {
   const contextChars = opts?.contextChars ?? DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS;
   const align = opts?.align ?? "center";
+  const tailToEnd = opts?.tailToEnd === true;
   if (!text) {
     return { displayText: "（空）", highlightStart: 0, highlightEnd: 0 };
   }
@@ -81,7 +88,7 @@ export function buildMatchDisplaySnippet(
   const safeEnd = Math.max(safeStart, Math.min(charEnd, text.length));
   const chars = [...text];
   const left = align === "start" ? safeStart : Math.max(0, safeStart - contextChars);
-  const right = Math.min(chars.length, safeEnd + contextChars);
+  const right = tailToEnd ? chars.length : Math.min(chars.length, safeEnd + contextChars);
   const prefix = left > 0 ? "…" : "";
   const suffix = right < chars.length ? "…" : "";
   const displayText = `${prefix}${chars.slice(left, right).join("")}${suffix}`;
@@ -94,7 +101,7 @@ export function buildFindMatchListItems(segments: SegmentDto[], matches: FindMat
   return matches.map((m) => {
     const seg = segments[m.segmentIdx];
     const fullText = seg?.text ?? "";
-    const snippet = buildMatchDisplaySnippet(fullText, m.charStart, m.charEnd, { align: "start" });
+    const snippet = buildMatchDisplaySnippet(fullText, m.charStart, m.charEnd, PANEL_RESIZABLE_LIST_SNIPPET_OPTS);
     return {
       globalIndex: m.globalIndex,
       segmentIdx: m.segmentIdx,
@@ -183,11 +190,12 @@ export function buildReplaceAllPreviewRows(
     const text = segments[m.segmentIdx]?.text ?? "";
     const afterText = replaceOnceInText(text, m.charStart, query, replacement);
     const seg = segments[m.segmentIdx];
-    const beforeSnip = buildMatchDisplaySnippet(text, m.charStart, m.charEnd);
+    const beforeSnip = buildMatchDisplaySnippet(text, m.charStart, m.charEnd, PANEL_RESIZABLE_LIST_SNIPPET_OPTS);
     const afterSnip = buildMatchDisplaySnippet(
       afterText,
       m.charStart,
       m.charStart + replacement.length,
+      PANEL_RESIZABLE_LIST_SNIPPET_OPTS,
     );
     return {
       globalIndex: m.globalIndex,

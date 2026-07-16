@@ -84,10 +84,23 @@ describe("segmentFindReplace", () => {
     const matches = collectLiteralFindMatches(segments, "驾驭");
     const items = buildFindMatchListItems(segments, matches);
     expect(items[0]?.displayText.startsWith("…")).toBe(true);
+    expect(items[0]?.displayText.endsWith("…")).toBe(false);
     expect(items[0]?.highlightStart).toBe(1);
     expect(
       items[0]?.displayText.slice(items[0]?.highlightStart ?? 0, items[0]?.highlightEnd ?? 0),
     ).toBe("驾驭");
+  });
+
+  it("buildMatchDisplaySnippet tailToEnd keeps trailing text for CSS width ellipsis", () => {
+    const prefix = "甲".repeat(DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS + 5);
+    const text = `${prefix}目标词${"后".repeat(40)}`;
+    const start = text.indexOf("目标词");
+    const end = start + "目标词".length;
+    const snippet = buildMatchDisplaySnippet(text, start, end, { align: "start", tailToEnd: true });
+    expect(snippet.displayText.startsWith("…目标词")).toBe(true);
+    expect(snippet.displayText.endsWith("…")).toBe(false);
+    expect(snippet.displayText.length).toBeGreaterThan(DEFAULT_MATCH_SNIPPET_CONTEXT_CHARS + "目标词".length);
+    expect(snippet.highlightStart).toBe(1);
   });
 
   it("buildMatchDisplaySnippet centers match at end of long segment", () => {

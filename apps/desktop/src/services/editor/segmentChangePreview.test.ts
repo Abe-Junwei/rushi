@@ -85,12 +85,23 @@ describe("segmentChangePreview", () => {
     expect(buildTextChangeDisplaySnippets("相同", "相同")).toBeNull();
   });
 
+  it("buildTextChangePreviewHighlights tailToEnd extends trailing for panel resize", () => {
+    const prefix = "甲".repeat(DEFAULT_CHANGE_SNIPPET_CONTEXT_CHARS + 10);
+    const before = `${prefix}制控${"后".repeat(20)}`;
+    const after = `${prefix}自控${"后".repeat(20)}`;
+    const preview = buildTextChangePreviewHighlights(before, after, { tailToEnd: true });
+    expect(preview.beforeText.endsWith("…")).toBe(false);
+    expect(preview.beforeText).toContain("制");
+    expect(preview.beforeText.length).toBeGreaterThan(DEFAULT_CHANGE_SNIPPET_CONTEXT_CHARS + 4);
+  });
+
   it("resolveTextChangeRowDisplay uses wrap when focused", () => {
     const before = "甲".repeat(40) + "制控";
     const after = "甲".repeat(40) + "自控";
     const unfocused = resolveTextChangeRowDisplay(before, after);
     expect(unfocused.variant).toBe("snippet");
     expect(unfocused.beforeText).toContain("…");
+    expect(unfocused.beforeText.endsWith("…")).toBe(false);
 
     const focused = resolveTextChangeRowDisplay(before, after, { focused: true });
     expect(focused.variant).toBe("wrap");

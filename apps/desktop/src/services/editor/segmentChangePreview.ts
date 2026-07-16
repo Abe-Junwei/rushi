@@ -5,6 +5,9 @@ import { extractSingleTextDiffParts } from "../../utils/textDiff";
 /** 与 Welcome / 查找替换 snippet 一致。 */
 export const DEFAULT_CHANGE_SNIPPET_CONTEXT_CHARS = 24;
 
+/** 浮窗列表未聚焦行：改区前保留默认上下文，尾部延至文末，宽度变化由 CSS truncate 控制可见区。 */
+export const PANEL_RESIZABLE_CHANGE_SNIPPET_OPTS = { tailToEnd: true } as const;
+
 export type ChangeDisplaySnippet = {
   displayText: string;
   highlightStartG: number;
@@ -28,6 +31,7 @@ function buildSnippetAroundGraphemeRange(
   highlightStartG: number,
   highlightEndG: number,
   contextChars: number,
+  tailToEnd = false,
 ): ChangeDisplaySnippet {
   const glyphs = splitGraphemes(text);
   if (!glyphs.length) {
@@ -40,8 +44,9 @@ function buildSnippetAroundGraphemeRange(
     safeStart === safeEnd
       ? Math.max(0, safeStart - contextChars)
       : Math.max(0, safeStart - contextChars);
-  const right =
-    safeStart === safeEnd
+  const right = tailToEnd
+    ? glyphs.length
+    : safeStart === safeEnd
       ? Math.min(glyphs.length, safeStart + contextChars)
       : Math.min(glyphs.length, safeEnd + contextChars);
 
@@ -63,12 +68,13 @@ function buildSnippetAroundGraphemeRange(
 export function buildTextChangeDisplaySnippets(
   before: string,
   after: string,
-  opts?: { contextChars?: number },
+  opts?: { contextChars?: number; tailToEnd?: boolean },
 ): TextChangeDisplaySnippets | null {
   const parts = extractSingleTextDiffParts(before, after);
   if (!parts) return null;
 
   const contextChars = opts?.contextChars ?? DEFAULT_CHANGE_SNIPPET_CONTEXT_CHARS;
+  const tailToEnd = opts?.tailToEnd === true;
   const prefixG = splitGraphemes(parts.prefix).length;
   const beforeEndG = prefixG + splitGraphemes(parts.removed).length;
   const afterEndG = prefixG + splitGraphemes(parts.inserted).length;
@@ -78,8 +84,9 @@ export function buildTextChangeDisplaySnippets(
     prefixG,
     beforeEndG,
     contextChars,
+    tailToEnd,
   );
-  const afterSnippet = buildSnippetAroundGraphemeRange(after, prefixG, afterEndG, contextChars);
+  const afterSnippet = buildSnippetAroundGraphemeRange(after, prefixG, afterEndG, contextChars, tailToEnd);
 
   return { before: beforeSnippet, after: afterSnippet };
 }
@@ -93,7 +100,7 @@ function snippetToHighlightSpan(snippet: ChangeDisplaySnippet): CorrectionHighli
 export function buildTextChangePreviewHighlights(
   before: string,
   after: string,
-  opts?: { contextChars?: number },
+  opts?: { contextChars?: number; tailToEnd?: boolean },
 ): TextChangePreviewHighlights {
   const snippets = buildTextChangeDisplaySnippets(before, after, opts);
   if (!snippets) {
@@ -140,7 +147,7 @@ export type TextChangeRowDisplay = {
 export function resolveTextChangeRowDisplay(
   before: string,
   after: string,
-  opts?: { focused?: boolean; contextChars?: number },
+  opts?: { focused?: boolean; contextChars?: number; tailToEnd?: boolean },
 ): TextChangeRowDisplay {
   if (opts?.focused) {
     const { beforeHighlights, afterHighlights } = diffToCorrectionHighlights(before, after);
@@ -152,6 +159,9 @@ export function resolveTextChangeRowDisplay(
       afterHighlights,
     };
   }
-  const preview = buildTextChangePreviewHighlights(before, after, opts);
+  const preview = buildTextChangePreviewHighlights(before, after, {
+    contextChars: opts?.contextChars,
+    tailToEnd: opts?.tailToEnd ?? PANEL_RESIZABLE_CHANGE_SNIPPET_OPTS.tailToEnd,
+  });
   return { variant: "snippet", ...preview };
 }
