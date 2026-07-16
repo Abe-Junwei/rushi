@@ -30,7 +30,7 @@ https://updates.rushi.app/<tag>/windows-portable-x64.zip
 |--------|------|
 | `R2_ACCESS_KEY_ID` | R2 API token（须 **Object Read & Write**，勿用只读） |
 | `R2_SECRET_ACCESS_KEY` | Secret |
-| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`（**勿**带桶名；Cloudflare 桶页 S3 API 常显示为 `…/rushi-updates`，Secret 里要去掉末尾 `/rushi-updates`。CI 会自动 strip，但请以主机为准） |
+| `R2_ENDPOINT` | `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`（**勿**带桶名；Cloudflare 桶页 S3 API 常显示为 `…/rushi-updates`，Secret 里要去掉末尾 `/rushi-updates`。CI 会自动 strip。若误带桶名，对象会进嵌套前缀 `s3://rushi-updates/rushi-updates/`，可用 `scripts/ci-r2-unnest-bucket-prefix.sh` 或 workflow「CDN verify from artifacts」搬回根路径） |
 | `R2_BUCKET` | 可选，默认 `rushi-updates` |
 | `TAURI_SIGNING_*` | OTA 签名（不变） |
 

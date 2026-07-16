@@ -1,8 +1,10 @@
-# Re-run OTA latest.json merge + CDN verify without rebuilding Mac/Win packages.
-# Use when tauri-macos / tauri-windows already succeeded but verify-cdn-release failed.
+# Re-publish OTA/CDN from a prior successful Mac/Win release run — no rebuild.
+#
+# Also fixes objects uploaded when R2_ENDPOINT included /rushi-updates
+# (they land at s3://rushi-updates/rushi-updates/... instead of bucket root).
 #
 # Actions → CDN verify from artifacts → Run workflow
-#   source_run_id: failed Release build run id (e.g. 29474047758)
+#   source_run_id: release run id (e.g. 29474047758)
 #   tag: v1.0.0
 name: CDN verify from artifacts
 
@@ -18,6 +20,11 @@ on:
         required: true
         type: string
         default: v1.0.0
+      unnest_only:
+        description: If true, only unnest nested rushi-updates/ prefix + verify (skip artifact re-upload)
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -37,35 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Download macOS release bundles
-        uses: actions/download-artifact@v6
-        with:
-          name: macos-release-bundles
-          path: artifacts/macos
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.source_run_id }}
-
-      - name: Download Windows release bundles
-        uses: actions/download-artifact@v6
-        with:
-          name: windows-release-bundles
-          path: artifacts/windows
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.source_run_id }}
-
-      - name: Download Windows OTA fragment
-        uses: actions/download-artifact@v6
-        continue-on-error: true
-        with:
-          name: windows-ota-fragment
-          path: artifacts/windows
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.source_run_id }}
-
-      - name: Merge and upload OTA manifest
+      - name: Install awscli + jq
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -80,17 +59,145 @@ jobs:
           command -v jq >/dev/null || brew install jq
           # shellcheck source=scripts/ci-pip-venv-install.sh
           source scripts/ci-pip-venv-install.sh awscli
+          # shellcheck source=scripts/ci-r2-env.sh
+          source scripts/ci-r2-env.sh
+          echo "R2_ENDPOINT=$R2_ENDPOINT"
+          echo "R2_BUCKET=$R2_BUCKET"
+
+      - name: Unnest misplaced s3://bucket/bucket/ objects
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          # shellcheck source=scripts/ci-pip-venv-install.sh
+          source scripts/ci-pip-venv-install.sh awscli
+          # shellcheck source=scripts/ci-r2-env.sh
+          source scripts/ci-r2-env.sh
+          bash scripts/ci-r2-unnest-bucket-prefix.sh --delete-nested
+
+      - name: Download macOS release bundles
+        if: ${{ inputs.unnest_only == false }}
+        uses: actions/download-artifact@v6
+        with:
+          name: macos-release-bundles
+          path: artifacts/macos
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Download Windows release bundles
+        if: ${{ inputs.unnest_only == false }}
+        uses: actions/download-artifact@v6
+        with:
+          name: windows-release-bundles
+          path: artifacts/windows
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Download Windows portable zip
+        if: ${{ inputs.unnest_only == false }}
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: windows-portable-x64
+          path: artifacts/portable
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Download Windows OTA fragment
+        if: ${{ inputs.unnest_only == false }}
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: windows-ota-fragment
+          path: artifacts/windows
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Re-upload packages from artifacts (optional)
+        if: ${{ inputs.unnest_only == false }}
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          # shellcheck source=scripts/ci-pip-venv-install.sh
+          source scripts/ci-pip-venv-install.sh awscli
+          # shellcheck source=scripts/ci-r2-env.sh
+          source scripts/ci-r2-env.sh
+          TAR="$(find artifacts/macos -name app.tar.gz | head -1)"
+          if [ -z "$TAR" ]; then
+            echo "::error::app.tar.gz missing in macos artifact"
+            exit 1
+          fi
+          MAC_BUNDLE="$(cd "$(dirname "$TAR")/.." && pwd)"
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ inputs.tag }}" \
+            --mode macos-ota \
+            --bundle-root "$MAC_BUNDLE" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "$R2_BUCKET"
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ inputs.tag }}" \
+            --mode macos-dmg \
+            --bundle-root "$MAC_BUNDLE" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "$R2_BUCKET"
+          SETUP="$(find artifacts/windows -name rushi-desktop-setup.exe | head -1)"
+          if [ -z "$SETUP" ]; then
+            echo "::error::rushi-desktop-setup.exe missing in windows artifact"
+            exit 1
+          fi
+          WIN_BUNDLE="$(cd "$(dirname "$SETUP")/.." && pwd)"
+          PORTABLE="$(find artifacts/portable artifacts/windows -name windows-portable-x64.zip 2>/dev/null | head -1 || true)"
+          if [ -n "$PORTABLE" ]; then
+            cp "$PORTABLE" ./windows-portable-x64.zip
+            if [ -f "${PORTABLE}.sha256" ]; then
+              cp "${PORTABLE}.sha256" ./windows-portable-x64.zip.sha256
+            fi
+          fi
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ inputs.tag }}" \
+            --mode windows \
+            --bundle-root "$WIN_BUNDLE" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "$R2_BUCKET"
+          if [ -f "${SETUP}.sig" ] || [ -f "$(dirname "$SETUP")/rushi-desktop-setup.exe.sig" ]; then
+            bash scripts/ci-upload-updater-cdn.sh \
+              --tag "${{ inputs.tag }}" \
+              --mode windows-ota \
+              --bundle-root "$WIN_BUNDLE" \
+              --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+              --bucket "$R2_BUCKET"
+          fi
+
+      - name: Merge and upload OTA manifest
+        if: ${{ inputs.unnest_only == false }}
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          # shellcheck source=scripts/ci-pip-venv-install.sh
+          source scripts/ci-pip-venv-install.sh awscli
+          # shellcheck source=scripts/ci-r2-env.sh
+          source scripts/ci-r2-env.sh
           MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1)"
           WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1)"
           if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then
-            echo "::error::Missing updater fragments in workflow artifacts (run ${{ inputs.source_run_id }})."
-            find artifacts -type f | head -80
+            echo "::error::Missing updater fragments"
             exit 1
           fi
-          echo "MAC_FRAGMENT=$MAC_FRAGMENT"
-          echo "WIN_FRAGMENT=$WIN_FRAGMENT"
-          # shellcheck source=scripts/ci-r2-env.sh
-          source scripts/ci-r2-env.sh
           bash scripts/ci-merge-updater-manifest.sh \
             --tag "${{ inputs.tag }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
@@ -99,16 +206,10 @@ jobs:
             --out dist/updater/latest.json \
             --upload \
             --bucket "$R2_BUCKET"
-          echo "Bucket object check (API, not public CDN):"
-          aws --endpoint-url "$R2_ENDPOINT" s3api head-object --bucket "$R2_BUCKET" --key latest.json >/dev/null
-          aws --endpoint-url "$R2_ENDPOINT" s3 ls "s3://${R2_BUCKET}/" | head -20
-          aws --endpoint-url "$R2_ENDPOINT" s3 ls "s3://${R2_BUCKET}/${{ inputs.tag }}/" | head -40
 
       - name: Verify OTA manifest on CDN
         run: |
-          if ! bash scripts/ci-verify-updater-manifest.sh \
+          set -euo pipefail
+          bash scripts/ci-verify-updater-manifest.sh \
             --tag "${{ inputs.tag }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"; then
-            echo "::error::Objects are in R2 (previous step head-object OK) but https://updates.rushi.app returns 404. In Cloudflare: R2 → rushi-updates → Custom Domains must be updates.rushi.app on the SAME account/bucket as R2_ENDPOINT. Or set secret R2_BUCKET to the bucket that domain is bound to."
-            exit 1
-          fi
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
