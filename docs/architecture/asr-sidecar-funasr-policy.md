@@ -14,7 +14,7 @@
 | 网络 | **v0.1.8 默认 SKU 不要求联网**：首启本地 seed；**在线 STT** 仍可能需要网络。SenseVoice / ModelScope prepare **v0.1.8 不提供**。 |
 | 磁盘预算 | 用户侧 **总计约 5GB** 可接受（安装包 + 侧车 + 已下载模型缓存）；超额时 **硬提示**，并允许用户选择是否继续（见历史讨论）。 |
 | 算力 | **CPU 必须可用**（兜底）；**Apple Silicon 用 MPS**；**NVIDIA 用 CUDA**（见 §3）。 |
-| Windows CUDA 侧车 | **默认同包附带** `rushi-asr-sidecar-cuda.exe`（与 CPU 包一并安装，运行时二选一；见 §10）。 |
+| Windows CUDA 侧车 | **安装包仅含 CPU**；检测到 N 卡且无本地 CUDA onedir 时 **推荐 CDN 下载**（见 §10）。 |
 
 ---
 
@@ -23,7 +23,7 @@
 | 平台 | 架构 | 侧车产物 |
 |------|------|----------|
 | **macOS** | **arm64 与 x86_64 均需** 独立构建与分发 | 每个架构各自一份 **CPU/MPS** 侧车目录（PyInstaller onedir）；安装包仅嵌入 **与当前构建架构一致** 的那一份。 |
-| **Windows** | **仅 x64** | **两个可执行文件**：**`rushi-asr-sidecar.exe`**（CPU 基线，锁见 `requirements-sidecar-cpu-win_amd64.lock`）与 **`rushi-asr-sidecar-cuda.exe`**（锁见 `requirements-sidecar-cuda-win_amd64.lock`）。**默认安装介质同时附带二者**；运行时由壳 **探测 N 卡与驱动** 后 **二选一启动**；探测失败或 CUDA 不可用时 **只用 CPU 包**。 |
+| **Windows** | **仅 x64** | **CPU 基线** **`rushi-asr-sidecar.exe`**（锁见 `requirements-sidecar-cpu-win_amd64.lock`）**随安装包**；**`rushi-asr-sidecar-cuda.exe`**（CUDA 锁见 `requirements-sidecar-cuda-win_amd64.lock`）**可选 CDN 组件**（manifest `asr-sidecar-cuda`）。运行时 **探测 N 卡** 后优先已安装的 CUDA onedir，否则 CPU；探测失败或用户未下载 CUDA 时 **只用 CPU 包**。 |
 
 **Linux 桌面**：当前策略 **不包含** 正式侧车矩阵；**产品对外不承诺** Linux 桌面原生侧车与安装包矩阵（开发者沿用源码 venv；仓内 Linux x86_64 构建脚本与锁文件仅供工程与 CI，不代表终端用户支持级别）。若产品纳入，再单列矩阵。
 
@@ -44,7 +44,7 @@
 ## 3. GPU 策略（已定，与初版文档不同）
 
 - **macOS（arm64 / x86_64）**：单一侧车可执行文件内为 **CPU wheel + MPS**；运行时 **MPS 可用则优先 MPS**，否则 **CPU**。
-- **Windows x64**：**CUDA 不设为「下载替换 torch」**，而是 **单独产物 `rushi-asr-sidecar-cuda.exe`**（及配套 onedir），与 CPU 包 **并列且默认一并随应用安装**；运行时由壳 **探测 N 卡与驱动** 后选用 **cuda** 或 **cpu** 进程（**二进制边界** 以此为准）。
+- **Windows x64**：**CUDA 不设为「下载替换 torch」**，而是 **单独产物 `rushi-asr-sidecar-cuda.exe`**（及配套 onedir）；**安装包只带 CPU**；CUDA 经 **签名 manifest + zip** 按需安装至 App Data `bundled-asr/rushi-asr-sidecar-cuda/`；运行时由壳 **探测 N 卡与驱动** 后选用 **cuda** 或 **cpu** 进程（**二进制边界** 以此为准）。
 
 ---
 
@@ -83,7 +83,7 @@
 |------|------------------------------|------|
 | 桌面壳 + 非推理资源 | ≤ 约 0.5–1.0 GB | 含用户指南等。 |
 | 推理侧车（CPU 包；mac 含 MPS wheel） | ≤ 约 2.0–2.5 GB | 锁 `requirements-sidecar-cpu-*.lock`。 |
-| Windows `rushi-asr-sidecar-cuda.exe` 及依赖 | **默认计入**安装介质（与 CPU 包 **一并分发**） | 与 CPU 包 **二选一运行**；磁盘 **两包并存**，不占双份常驻内存。 |
+| Windows `rushi-asr-sidecar-cuda.exe` 及依赖 | **不计入** NSIS 安装介质；**CDN 可选** | 与 CPU 包 **二选一运行**；下载后 **两包并存**于磁盘，不占双份常驻内存。 |
 | `…/models/` 缓存 | 余量至 **5GB 总计** | 默认单模型 SKU；多模型走高级流程。 |
 
 若实测侧车超过上表，必须修订本文件或调整 PyInstaller 范围 / 总预算。
@@ -101,9 +101,13 @@
 
 ---
 
-## 10. Windows CUDA 包分发方式（已定）
+## 10. Windows CUDA 包分发方式（已定，2026-07-16 修订）
 
-- **默认**：安装介质 **同时附带** `rushi-asr-sidecar.exe` 与 `rushi-asr-sidecar-cuda.exe`（及各自 onedir）；**不**采用「仅检测到 N 卡后再联网下载 CUDA 包」作为默认路径（模型外置下载通道仍仅用于 **权重**，与侧车二进制分离）。
+- **安装介质（NSIS / portable）**：**仅** `rushi-asr-sidecar.exe`（CPU onedir）+ Plan B 模型；**不含** CUDA onedir（避免 NSIS ~2GB 上限）。
+- **可选 GPU 包**：Release CI 将 **`rushi-asr-sidecar-cuda` onedir** 打 zip 上传 CDN；`rushi-runtime-manifest.json` 含 **`asr-sidecar-cuda`** 组件（`windows-x86_64`）；桌面壳编译期注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL`。
+- **UX**：`windows_cuda_probe_ok()` 为真且本地无 CUDA onedir → 环境页 **推荐**（非强制）下载；失败或拒绝 → CPU 转写不受影响。
+- **模型**：Plan B 权重仍随安装包；外置模型为 **第二刀**（仅当 CPU+models 仍 ≥2GB）。
+- 调研：[`win-nsis-cpu-cuda-cdn-opt-in-research.md`](../execution/specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)。
 
 ---
 
