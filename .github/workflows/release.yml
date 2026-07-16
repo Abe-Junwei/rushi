@@ -2,7 +2,7 @@
 # Linux desktop: NOT published (no .deb / AppImage / tauri-linux job).
 # Windows portable/NSIS: CI on tag push; local smoke — `npm run release:win` on a Windows machine.
 # Unsigned v1: prefer CDN windows-portable-x64.zip (green zip) over unsigned setup.exe (SmartScreen).
-# Portable + NSIS upload to CDN/artifacts ASAP after zip build — before CUDA (continue-on-error).
+# Order: NSIS → portable zip → CDN core → OTA fragment → CUDA (best-effort, never blocks core).
 # Do NOT create GitHub Release assets for installers — distribution host is updates.rushi.app (R2).
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
@@ -15,6 +15,7 @@
 #   CUDA onedir is a CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
+# Windows Git Bash: never pass /d/a/... absolutes into native node/python (cwd-relative only).
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
 # on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
@@ -32,7 +33,8 @@ permissions:
 
 concurrency:
   group: release-build-${{ github.ref_name || github.sha }}
-  cancel-in-progress: true
+  # Never cancel an in-flight tag upload — force-pushing v* would leave partial CDN objects.
+  cancel-in-progress: false
 
 env:
   CI: true
@@ -41,7 +43,7 @@ env:
 
 jobs:
   tauri-macos:
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
@@ -242,7 +244,7 @@ jobs:
             --bucket "${R2_BUCKET:-rushi-updates}"
 
   tauri-windows:
-    if: always()
+    if: ${{ !cancelled() }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
@@ -298,11 +300,16 @@ jobs:
         env:
           WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
           WINDOWS_SIGN_PFX_PATH: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          WINDOWS_SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
         run: |
           if [ -z "$WINDOWS_SIGNTOOL_PATH" ] || [ -z "$WINDOWS_SIGN_PFX_PATH" ]; then
             echo "enabled=false" >> "$GITHUB_OUTPUT"
             echo "No Windows signing secrets — building unsigned sidecars."
             exit 0
+          fi
+          if [ -z "${WINDOWS_SIGN_PFX_PASSWORD:-}" ]; then
+            echo "::error::WINDOWS_SIGNTOOL_PATH + WINDOWS_SIGN_PFX_PATH set but WINDOWS_SIGN_PFX_PASSWORD is empty."
+            exit 1
           fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
           echo "Valid Windows signing secrets detected."
@@ -352,6 +359,22 @@ jobs:
           npm run asr:stage-bundled-models
         timeout-minutes: 5
 
+      - name: Guard — Plan B models must not enter Windows NSIS
+        shell: bash
+        run: |
+          set -euo pipefail
+          MODELS="apps/desktop/src-tauri/resources/bundled-asr-models"
+          if [ -d "$MODELS/modelscope" ] || [ -d "$MODELS/models" ]; then
+            echo "::error::Plan B model weights present under $MODELS — Windows NSIS second knife forbids bundling them (makensis mmap OOM)."
+            find "$MODELS" -maxdepth 3 -type d 2>/dev/null || true
+            exit 1
+          fi
+          if [ -e "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" ]; then
+            echo "::error::CUDA onedir must not be staged before NSIS."
+            exit 1
+          fi
+          echo "OK: no Plan B modelscope/ and no CUDA onedir before NSIS."
+
       - name: Measure Windows bundle size spike (CPU only; models omitted)
         shell: pwsh
         run: pwsh scripts/ci-measure-windows-bundle-size.ps1
@@ -383,16 +406,8 @@ jobs:
           bash scripts/ci-normalize-windows-nsis-name.sh \
             --bundle-root "${{ env.BUNDLE_ROOT }}"
 
-      - name: Generate updater fragment (Windows release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          bash scripts/ci-generate-updater-latest-json.sh \
-            --tag "${{ github.ref_name }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --bundle-root "${{ env.BUNDLE_ROOT }}" \
-            --platform windows-x86_64
-
+      # Authenticode (optional) before portable zip so the green zip can ship a signed exe.
+      # Do NOT sign rushi-desktop-setup.exe here — that would invalidate the Tauri updater .sig.
       - name: Detect Windows exe signing secret
         id: win_exe_sign
         shell: bash
@@ -406,25 +421,30 @@ jobs:
           fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
-      - name: Sign Windows executable (optional)
+      - name: Sign Windows portable exe (optional Authenticode)
         if: steps.win_exe_sign.outputs.enabled == 'true'
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
-          $certPath = "$env:TEMP\windows-cert.pfx"
-          [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE) | Set-Content -Path $certPath -Encoding Byte
-          $exe = "apps/desktop/src-tauri/target/release/rushi-desktop.exe"
-          if (-not (Test-Path $exe)) { exit 0 }
-          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          $ErrorActionPreference = "Stop"
+          $certPath = Join-Path $env:TEMP "windows-cert.pfx"
+          [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
+          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue |
+            Select-Object -First 1
           if (-not $signtool) {
-            Write-Warning "signtool.exe not found; skipping Windows signing."
-            exit 0
+            throw "signtool.exe not found but WINDOWS_CERTIFICATE secrets are set — fail closed."
+          }
+          $exe = "apps/desktop/src-tauri/target/release/rushi-desktop.exe"
+          if (-not (Test-Path -LiteralPath $exe)) {
+            throw "Missing $exe — cannot Authenticode-sign."
           }
           & $signtool.FullName sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
-          Write-Host "Signed $exe"
+          if ($LASTEXITCODE -ne 0) { throw "signtool failed for $exe (exit $LASTEXITCODE)" }
+          Write-Host "Signed $exe (portable zip only; NSIS .sig left intact)"
 
+      # Portable (+ CDN) BEFORE updater fragment so a missing .sig cannot block the green zip.
       - name: Build Windows portable zip
         shell: pwsh
         run: |
@@ -451,8 +471,7 @@ jobs:
           }
           Get-Item "windows-portable-x64.zip"
 
-      # Publish portable (+ NSIS) before CUDA so a later CUDA failure cannot block the green zip.
-      - name: Checksum portable + NSIS (early)
+      - name: Checksum portable + NSIS
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -460,12 +479,13 @@ jobs:
             "windows-portable-x64.zip",
             "apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe"
           )) {
-            if (Test-Path -LiteralPath $f) {
-              $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash.ToLowerInvariant()
-              $name = Split-Path -Leaf $f
-              Set-Content -Encoding ascii -Path "$f.sha256" -Value "$hash  $name"
-              Write-Host "Wrote $f.sha256"
+            if (-not (Test-Path -LiteralPath $f)) {
+              throw "Missing $f for checksum"
             }
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash.ToLowerInvariant()
+            $name = Split-Path -Leaf $f
+            Set-Content -Encoding ascii -Path "$f.sha256" -Value "$hash  $name"
+            Write-Host "Wrote $f.sha256"
           }
 
       - name: Upload Windows portable zip artifact (early)
@@ -500,24 +520,53 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
-          if [ -f "${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig" ]; then
-            bash scripts/ci-upload-updater-cdn.sh \
-              --tag "${{ github.ref_name }}" \
-              --mode windows-ota \
-              --bundle-root "${{ env.BUNDLE_ROOT }}" \
-              --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-              --bucket "${R2_BUCKET:-rushi-updates}"
-          else
-            echo "::warning::No NSIS .sig yet — skipped windows-ota early upload."
-          fi
 
+      - name: Generate updater fragment (Windows release)
+        # Tag-only: workflow_dispatch on a branch would embed github.ref_name as a fake tag.
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        id: win_fragment
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIG="${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig"
+          if [ ! -f "$SIG" ]; then
+            echo "::error::Missing $SIG — set TAURI_SIGNING_PRIVATE_KEY for OTA, or expect no Windows updater fragment."
+            exit 1
+          fi
+          bash scripts/ci-generate-updater-latest-json.sh \
+            --tag "${{ github.ref_name }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --platform windows-x86_64
+
+      - name: Upload Windows OTA (.exe + .sig) to CDN
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outcome == 'success'
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade awscli
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows-ota \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+
+      # CUDA is best-effort: never fail the job after portable/NSIS are on CDN.
       - name: Build Windows CUDA sidecar (CDN opt-in, after NSIS)
+        id: cuda_build
         run: npm run asr:build-sidecar-windows-cuda
         timeout-minutes: 120
         continue-on-error: true
 
       - name: Authenticode sign CUDA sidecar (release tag)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
+        id: cuda_sign
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.cuda_build.outcome == 'success'
         shell: pwsh
         env:
           SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
@@ -529,6 +578,7 @@ jobs:
 
       - name: Package CUDA sidecar zip + checksum
         id: cuda_zip
+        if: steps.cuda_build.outcome == 'success'
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -543,14 +593,16 @@ jobs:
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
           Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$hash  rushi-asr-sidecar-cuda-windows-x64.zip"
           Get-Item $zip | Format-List Name, Length, FullName
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "ok=true"
+          "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         continue-on-error: true
 
       - name: Publish CUDA runtime manifest
+        id: cuda_manifest
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
         shell: bash
         env:
           RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        continue-on-error: true
         run: |
           set -euo pipefail
           if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
@@ -563,19 +615,52 @@ jobs:
             --zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
 
-      - name: Generate SHA256 checksums (Windows)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+      - name: Upload Windows CUDA to Cloudflare R2 CDN
+        id: cuda_cdn
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success' && steps.cuda_manifest.outcome == 'success'
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
+            exit 1
+          fi
+          python -m pip install --upgrade awscli
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows-cuda \
+            --cuda-zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
+            --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+
+      - name: Report CUDA opt-in outcome
+        if: always() && (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
         shell: bash
         run: |
           set -euo pipefail
-          shopt -s nullglob
-          for f in windows-portable-x64.zip "${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe"; do
-            if [ -f "$f" ]; then
-              sha256sum "$f" > "$f.sha256"
-            fi
-          done
+          build="${{ steps.cuda_build.outcome }}"
+          zip="${{ steps.cuda_zip.outcome }}"
+          man="${{ steps.cuda_manifest.outcome }}"
+          cdn="${{ steps.cuda_cdn.outcome }}"
+          echo "CUDA outcomes: build=$build zip=$zip manifest=$man cdn=$cdn"
+          if [ "$build" != "success" ] || [ "$zip" != "success" ]; then
+            echo "::error::CUDA sidecar build/package failed or skipped — CDN opt-in zip missing. Core portable/NSIS were still published."
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "push" ] && { [ "$man" != "success" ] || [ "$cdn" != "success" ]; }; then
+            echo "::error::CUDA manifest/CDN upload failed — runtime GPU install may be unavailable. Core portable/NSIS were still published."
+            exit 0
+          fi
+          echo "CUDA opt-in pipeline OK."
 
-      - name: Upload Windows workflow artifacts
+      - name: Upload Windows workflow artifacts (required core)
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
         uses: actions/upload-artifact@v7
         with:
@@ -585,36 +670,31 @@ jobs:
             windows-portable-x64.zip.sha256
             ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe
             ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sha256
-            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig
-            ${{ env.BUNDLE_ROOT }}/nsis/updater-fragment.json
-            dist/cuda-cdn/**
-            dist/runtime-manifest/**
             dist/windows-bundle-size-spike.json
-          if-no-files-found: warn
+          if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Windows CUDA (+ remaining) to Cloudflare R2 CDN
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
-        shell: bash
-        env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        run: |
-          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
-            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
-            exit 1
-          fi
-          python -m pip install --upgrade awscli
-          # portable + NSIS already uploaded early; only push CUDA assets here.
-          bash scripts/ci-upload-updater-cdn.sh \
-            --tag "${{ github.ref_name }}" \
-            --mode windows-cuda \
-            --cuda-zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
-            --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --bucket "${R2_BUCKET:-rushi-updates}"
+      - name: Upload Windows OTA fragment artifacts
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-ota-fragment
+          path: |
+            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig
+            ${{ env.BUNDLE_ROOT }}/nsis/updater-fragment.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload Windows CUDA artifacts (optional)
+        if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))) && steps.cuda_zip.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: windows-cuda-cdn
+          path: |
+            dist/cuda-cdn/**
+            dist/runtime-manifest/**
+          if-no-files-found: warn
+          retention-days: 14
 
   verify-cdn-release:
     needs: [tauri-macos, tauri-windows]
@@ -633,6 +713,18 @@ jobs:
         with:
           name: windows-release-bundles
           path: artifacts/windows
+
+      - uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: windows-ota-fragment
+          path: artifacts/windows
+
+      - uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: windows-cuda-cdn
+          path: artifacts/windows-cuda
 
       - name: Merge and upload OTA manifest
         env:

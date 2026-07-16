@@ -102,4 +102,30 @@ verify_platform() {
 verify_platform "darwin-aarch64" "app.tar.gz"
 verify_platform "windows-x86_64" "rushi-desktop-setup.exe"
 
+verify_url() {
+  local label="$1"
+  local url="$2"
+  local required="${3:-1}"
+  local code
+  code="$(http_code "$url")"
+  if [ "$code" = "200" ]; then
+    echo "CDN OK [${label}]: ${url}"
+    return 0
+  fi
+  if [ "$required" = "1" ]; then
+    echo "CDN asset not reachable for ${label} (HTTP ${code}): ${url}" >&2
+    exit 1
+  fi
+  echo "::warning::CDN asset missing for ${label} (HTTP ${code}): ${url}"
+}
+
+# Unsigned-primary install path + checksum (hard).
+verify_url "windows-portable" "${CDN_BASE}/${TAG}/windows-portable-x64.zip" 1
+verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/windows-portable-x64.zip.sha256" 1
+verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/rushi-desktop-setup.exe.sha256" 0
+
+# CUDA opt-in (soft — core release must not fail verify if CUDA job was skipped).
+verify_url "windows-cuda-zip" "${CDN_BASE}/${TAG}/rushi-asr-sidecar-cuda-windows-x64.zip" 0
+verify_url "runtime-manifest" "${CDN_BASE}/runtime/rushi-runtime-manifest.json" 0
+
 echo "OTA CDN OK: version=${MANIFEST_VERSION}"

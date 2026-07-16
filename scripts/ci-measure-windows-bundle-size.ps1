@@ -4,9 +4,10 @@
 #   pwsh scripts/ci-measure-windows-bundle-size.ps1
 #   pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe
 #
-# Decision note (Plan B models stay in installer unless CPU+models still >= 2GB):
-#   - CUDA onedir alone is typically ~1.5–2GB — removing it is the primary NSIS fix.
-#   - CPU onedir + Plan B models (~1.1GB) should land under ~2GB; CI prints evidence.
+# Decision note (Windows 2026-07+ second knife):
+#   - Plan B models are omitted from Windows NSIS/portable (first-run ModelScope).
+#   - CUDA onedir is CDN opt-in only — must not be present before NSIS.
+#   - Guard: if models reappear and CPU+models >= 2GB, fail the NSIS path.
 
 param(
   [string]$NsisPath = ""
@@ -47,11 +48,11 @@ if ($null -ne $cpuBytes -and $null -ne $modelsBytes) {
   Write-Host ("CPU + models:  {0}" -f (Format-GiB $cpuPlusModels))
   $limit = [int64](2GB)
   if ($cpuPlusModels -ge $limit) {
-    Write-Host "DECISION: CPU+models still >= 2GB — second cut (externalize models) REQUIRED."
+    Write-Error "DECISION: CPU+models still >= 2GB — Windows NSIS must omit Plan B models (second knife)."
   } elseif ($null -ne $modelsBytes -and $modelsBytes -lt 1MB) {
     Write-Host "DECISION: Plan B models omitted from this staging (Windows second knife); CUDA stays CDN-only."
   } else {
-    Write-Host "DECISION: CPU+models < 2GB — keep Plan B models in installer; CUDA stays CDN-only."
+    Write-Warning "DECISION: Plan B models are present on Windows staging — expected omit for NSIS; confirm RUSHI_SKIP_BUNDLED_MODELS_STAGE=1."
   }
 } else {
   Write-Host "DECISION: incomplete staging (missing CPU and/or models) — re-run after build."
@@ -79,7 +80,7 @@ $payload = [ordered]@{
   modelsBytes = $modelsBytes
   cpuPlusModelsBytes = if ($null -ne $cpuBytes -and $null -ne $modelsBytes) { $cpuBytes + $modelsBytes } else { $null }
   nsisBytes = if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) { (Get-Item $NsisPath).Length } else { $null }
-  keepModelsInInstaller = if ($null -ne $cpuBytes -and $null -ne $modelsBytes) { ($cpuBytes + $modelsBytes) -lt 2GB } else { $null }
+  keepModelsInInstaller = $false
 }
 $payload | ConvertTo-Json | Set-Content -Encoding utf8 $report
 Write-Host "Wrote $report"

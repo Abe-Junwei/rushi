@@ -3,31 +3,37 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
 # shellcheck source=scripts/resolve-asr-models-root.sh
 source "${ROOT}/scripts/resolve-asr-models-root.sh"
 
-VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
 BUILD_CACHE="${ROOT}/dist/bundled-asr-models/.modelscope-cache"
 STAGING="${ROOT}/dist/bundled-asr-models/staging"
 DEST="${ROOT}/apps/desktop/src-tauri/resources/bundled-asr-models"
 
-echo "== stage bundled ASR models (Plan B) =="
-echo "    version=${VERSION}"
-echo "    dest=${DEST}"
-
+# Skip BEFORE any Node I/O — Windows Git Bash ROOT (/d/a/...) breaks native node require().
 if [[ "${RUSHI_SKIP_BUNDLED_MODELS_STAGE:-0}" -eq 1 ]]; then
+  echo "== stage bundled ASR models (Plan B) =="
   echo "  SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE=1"
   exit 0
 fi
 
 if [[ "${RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT:-0}" -eq 1 ]]; then
   if bash "${ROOT}/scripts/preflight-bundled-asr-models.sh" "${DEST}" 2>/dev/null; then
+    echo "== stage bundled ASR models (Plan B) =="
     echo "  SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE_IF_PRESENT=1 (reuse ${DEST})"
     du -sh "${DEST}"
     exit 0
   fi
   echo "  NOTE: bundled-asr-models not ready — continuing with download/stage"
 fi
+
+# cwd-relative require so Windows runners never pass /d/a/... into node.
+VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+
+echo "== stage bundled ASR models (Plan B) =="
+echo "    version=${VERSION}"
+echo "    dest=${DEST}"
 
 if ! ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh" 2>/dev/null)"; then
   echo "==> bootstrapping services/asr/.venv"

@@ -25,6 +25,11 @@ if (-not $env:SIGNTOOL -or -not $env:SIGN_PFX) {
   exit 0
 }
 
+if ($ReleaseBuild -and [string]::IsNullOrWhiteSpace($env:SIGN_PASS)) {
+  Write-Error "Release build requires SIGN_PASS (WINDOWS_SIGN_PFX_PASSWORD) when signing is enabled."
+  exit 1
+}
+
 function Invoke-SignFile {
   param([Parameter(Mandatory)][string] $FilePath)
   Write-Host "Signing $FilePath"

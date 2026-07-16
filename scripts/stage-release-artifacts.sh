@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DMG_DIR="${ROOT}/apps/desktop/src-tauri/target/release/bundle/dmg"
 APP_DIR="${ROOT}/apps/desktop/src-tauri/target/release/bundle/macos"
-PRODUCT_NAME="$(node -p "require('${ROOT}/apps/desktop/src-tauri/tauri.conf.json').productName" 2>/dev/null || echo '如是我闻')"
+PRODUCT_NAME="$(cd "$ROOT" && node -p "require('./apps/desktop/src-tauri/tauri.conf.json').productName" 2>/dev/null || echo '如是我闻')"
 
 stage_dmg() {
   local dmg staged=0
