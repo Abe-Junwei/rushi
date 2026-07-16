@@ -89,13 +89,13 @@
 | Auto-fit 壳高 | `PanelFitKind.autoFit/staticFit` → `heightMode:"auto"`（CSS `height:auto`+`max-height`） | `resolvePanelLayout` / `resolvePanelMaxHeightCap` | L3 **I1–I3、I5** |
 | Fill 壳高 | `PanelFitKind.fill` → `heightMode:"manual"`（px + 正文区 flex-1 内滚） | `useDraggablePanelController` | L3 **I4** |
 | Restore auto height | `userSized=false` → `heightMode:"auto"` + 居中 | 标题栏双击 | L3 **I5** |
-| Resize affordance | 8 向 hit zone + hover grip | `DraggablePanelResizeHandles` / `panels.css` | 拖角/边改大小；设置面板关闭再开尺寸保持 |
+| Resize affordance | 8 向透明 hit zone（无可见边线） | `DraggablePanelResizeHandles` / `panels.css` | 光标变 `*-resize`；拖角/边改大小；设置面板关闭再开尺寸保持 |
 
 ---
 
 ## 手测 H-FLOAT-RESIZE（壳层补充）
 
-1. [ ] 打开 **设置**：hover 面板边缘见 accent 色 grip；拖右下角放大；关闭再开尺寸保持
+1. [ ] 打开 **设置**：移到面板边缘光标变 resize；拖右下角放大；关闭再开尺寸保持
 2. [ ] **查找替换**（Auto-fit）：拖底边增高后列表区内滚；双击标题栏恢复紧凑高度
 3. [ ] **交付导出**（Fill）：拖宽后表单区仍内滚，页脚按钮完整可见
 

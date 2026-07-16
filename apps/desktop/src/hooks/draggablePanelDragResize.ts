@@ -25,6 +25,11 @@ export function resolveDragResizeViewportBounds(input: {
   };
 }
 
+/** True when a resize handle changes height (n/s or corner), not width-only e/w. */
+export function panelResizeLocksAutoHeight(mode: string): boolean {
+  return mode.includes("n") || mode.includes("s");
+}
+
 export function computeDragResizeState(
   mode: string,
   dx: number,

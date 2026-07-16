@@ -171,6 +171,7 @@ export function useDraggablePanelController({
     userSizedRef,
     userMovedRef,
     panelElementRef,
+    autoHeight,
     onResizeStart: handleResizeStart,
   });
 

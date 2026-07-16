@@ -6,6 +6,7 @@ import {
 } from "../components/draggablePanelGeometry";
 import {
   computeDragResizeState,
+  panelResizeLocksAutoHeight,
   resolveDragResizeViewportBounds,
 } from "./draggablePanelDragResize";
 
@@ -38,6 +39,8 @@ type UseDraggablePanelPointerDragArgs = {
   userMovedRef: React.MutableRefObject<boolean>;
   /** 壳层 DOM，用于 resize 起手读取实际渲染矩形（auto 高度 → px 基线）。 */
   panelElementRef: React.MutableRefObject<HTMLElement | null>;
+  /** true：未手调高度时随内容贴合；仅 n/s/角点 resize 才切 manual。 */
+  autoHeight?: boolean;
   /** resize 起手切换到 manual 高度模式（auto → manual）。 */
   onResizeStart: () => void;
 };
@@ -59,6 +62,7 @@ export function useDraggablePanelPointerDrag({
   userSizedRef,
   userMovedRef,
   panelElementRef,
+  autoHeight = false,
   onResizeStart,
 }: UseDraggablePanelPointerDragArgs) {
   const dragRef = useRef<DragSession | null>(null);
@@ -89,8 +93,11 @@ export function useDraggablePanelPointerDrag({
       setCenterMode(false);
       setPosition(rendered.position);
       if (mode !== "move") {
-        userSizedRef.current = true;
-        onResizeStart();
+        const locksAutoHeight = !autoHeight || panelResizeLocksAutoHeight(mode);
+        if (locksAutoHeight) {
+          userSizedRef.current = true;
+          onResizeStart();
+        }
         setSize(rendered.size);
       }
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
@@ -103,7 +110,7 @@ export function useDraggablePanelPointerDrag({
       };
       document.body.classList.add("csp-drag-session");
     },
-    [onResizeStart, panelElementRef, position, setCenterMode, setPosition, setSize, size, userSizedRef],
+    [autoHeight, onResizeStart, panelElementRef, position, setCenterMode, setPosition, setSize, size, userSizedRef],
   );
 
   useEffect(() => {
