@@ -25,38 +25,50 @@ export function useGlossaryLearnPromptController({ setError }: Args) {
     }
   }, []);
 
-  const dismissGlossaryLearnPrompt = useCallback((row: GlossaryLearnPromptRow) => {
-    dismissGlossaryPrompt(row.afterText);
+  const removePromptRow = useCallback((afterText: string) => {
+    dismissGlossaryPrompt(afterText);
     setDialog((prev) => {
       if (prev.phase !== "prompt") return prev;
-      const rows = prev.rows.filter((r) => r.afterText !== row.afterText);
+      const rows = prev.rows.filter((r) => r.afterText !== afterText);
       return rows.length ? { phase: "prompt", rows } : { phase: "closed" };
     });
   }, []);
 
+  const dismissGlossaryLearnPrompt = useCallback(
+    (row: GlossaryLearnPromptRow) => {
+      removePromptRow(row.afterText);
+    },
+    [removePromptRow],
+  );
   const confirmAddToGlossary = useCallback(
     async (row: GlossaryLearnPromptRow) => {
       setError("");
       try {
+        // 仅写入正形；错形（sampleBefore）禁止作 alias，否则 hotword_guard 会拒写。
         await glossaryAdd({
           term: row.afterText,
-          aliases: row.sampleBefore && row.sampleBefore !== row.afterText ? row.sampleBefore : "",
+          aliases: "",
           domain: "",
-          note: `手改记忆 ${row.hitCount} 次`,
+          note: `手改记忆 ${row.hitCount} 次${
+            row.sampleBefore && row.sampleBefore !== row.afterText
+              ? ` · 例 ${row.sampleBefore}→${row.afterText}`
+              : ""
+          }`,
           hotwordEnabled: true,
         });
-        dismissGlossaryPrompt(row.afterText);
+        removePromptRow(row.afterText);
         toast.success(`已将「${row.afterText}」加入术语表`);
-        setDialog((prev) => {
-          if (prev.phase !== "prompt") return prev;
-          const rows = prev.rows.filter((r) => r.afterText !== row.afterText);
-          return rows.length ? { phase: "prompt", rows } : { phase: "closed" };
-        });
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        if (msg.includes("已存在")) {
+          removePromptRow(row.afterText);
+          toast.success(`「${row.afterText}」已在术语表中`);
+          return;
+        }
+        setError(msg);
       }
     },
-    [setError],
+    [removePromptRow, setError],
   );
 
   const closeGlossaryLearnPrompt = useCallback(() => {

@@ -103,7 +103,11 @@ export function useProjectSaveController(args: Args) {
         if (!options?.quiet) {
           toast.success("保存成功");
         }
-        void checkGlossaryLearnAfterSave();
+        // 备注/冻结等 countHits:false 的保存不会产生新纠错计次，勿弹「加入术语表」。
+        const countHits = options?.countHits ?? !options?.finalizeIntent;
+        if (countHits) {
+          void checkGlossaryLearnAfterSave();
+        }
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
