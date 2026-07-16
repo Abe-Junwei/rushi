@@ -49,6 +49,7 @@ describe("useManualCorrectionMemoryDialog", () => {
 
     expect(saveManualCorrectionMemoryPair).toHaveBeenCalledWith("智控", "制控");
     expect(checkGlossaryLearnAfterSave).toHaveBeenCalledTimes(1);
+    expect(checkGlossaryLearnAfterSave).toHaveBeenCalledWith(["制控"]);
     expect(result.current.manualCorrectionMemoryDialog.phase).toBe("closed");
   });
 

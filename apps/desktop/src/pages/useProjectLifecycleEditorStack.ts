@@ -135,9 +135,6 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     mutations,
     dirty,
     pendingAiRevisedUidsRef,
-    checkGlossaryLearnAfterSave: () => {
-      void glossaryLearn.checkGlossaryLearnAfterSave();
-    },
   });
 
   const {

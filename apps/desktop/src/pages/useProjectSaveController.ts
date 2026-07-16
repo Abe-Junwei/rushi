@@ -45,7 +45,6 @@ type Args = {
   mutations: MutationsApi;
   dirty: SegmentDirtyApi;
   pendingAiRevisedUidsRef: React.MutableRefObject<Set<string>>;
-  checkGlossaryLearnAfterSave: () => void;
 };
 
 export function useProjectSaveController(args: Args) {
@@ -63,7 +62,6 @@ export function useProjectSaveController(args: Args) {
     mutations,
     dirty,
     pendingAiRevisedUidsRef,
-    checkGlossaryLearnAfterSave,
   } = args;
 
   const saveInFlightRef = useRef(false);
@@ -103,11 +101,7 @@ export function useProjectSaveController(args: Args) {
         if (!options?.quiet) {
           toast.success("保存成功");
         }
-        // 备注/冻结等 countHits:false 的保存不会产生新纠错计次，勿弹「加入术语表」。
-        const countHits = options?.countHits ?? !options?.finalizeIntent;
-        if (countHits) {
-          void checkGlossaryLearnAfterSave();
-        }
+        // 「加入术语表？」仅由「纳入更正记忆」触发，不在语段保存后扫全局 backlog。
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -118,7 +112,6 @@ export function useProjectSaveController(args: Args) {
     },
     [
       busy,
-      checkGlossaryLearnAfterSave,
       current,
       currentFileId,
       dirty,

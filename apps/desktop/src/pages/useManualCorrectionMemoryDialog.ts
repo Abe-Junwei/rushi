@@ -21,8 +21,8 @@ export type ManualCorrectionMemoryDialogState =
 type Args = {
   busy: boolean;
   setError: (msg: string) => void;
-  /** F6：纳入记忆后检查 hit≥3 是否应弹出进术语表提示（与语段保存后同源）。 */
-  checkGlossaryLearnAfterSave?: () => void | Promise<void>;
+  /** F6：纳入记忆后，仅针对本次正形检查 hit≥阈值是否应弹出进术语表提示。 */
+  checkGlossaryLearnAfterSave?: (focusAfterTexts: readonly string[]) => void | Promise<void>;
 };
 
 export function useManualCorrectionMemoryDialog({
@@ -68,7 +68,7 @@ export function useManualCorrectionMemoryDialog({
       }
       toast.success(`已纳入纠错记忆：「${validation.beforeText}」→「${validation.afterText}」`);
       setDialog({ phase: "closed" });
-      void checkGlossaryLearnAfterSave?.();
+      void checkGlossaryLearnAfterSave?.([validation.afterText]);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }

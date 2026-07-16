@@ -3,6 +3,7 @@ import { correctionGlossaryLearnPrompts, type GlossaryLearnPromptRow } from "../
 import { glossaryAdd } from "../tauri/glossaryApi";
 import { dismissGlossaryPrompt, filterUndismissedPrompts } from "../utils/glossaryPromptDismiss";
 import { toast } from "../services/ui/toast";
+import { filterGlossaryLearnPromptsForFocus } from "./glossaryLearnPromptFocus";
 
 export type GlossaryLearnPromptDialogState =
   | { phase: "closed" }
@@ -15,9 +16,13 @@ type Args = {
 export function useGlossaryLearnPromptController({ setError }: Args) {
   const [dialog, setDialog] = useState<GlossaryLearnPromptDialogState>({ phase: "closed" });
 
-  const checkAfterSave = useCallback(async () => {
+  /** 仅「纳入更正记忆」后调用；只提示本次正形是否刚达 hit≥阈值，不扫全局 backlog。 */
+  const checkAfterManualLearn = useCallback(async (focusAfterTexts: readonly string[]) => {
     try {
-      const rows = filterUndismissedPrompts(await correctionGlossaryLearnPrompts());
+      const rows = filterGlossaryLearnPromptsForFocus(
+        filterUndismissedPrompts(await correctionGlossaryLearnPrompts()),
+        focusAfterTexts,
+      );
       if (!rows.length) return;
       setDialog({ phase: "prompt", rows });
     } catch {
@@ -77,7 +82,7 @@ export function useGlossaryLearnPromptController({ setError }: Args) {
 
   return {
     glossaryLearnDialog: dialog,
-    checkGlossaryLearnAfterSave: checkAfterSave,
+    checkGlossaryLearnAfterSave: checkAfterManualLearn,
     dismissGlossaryLearnPrompt,
     confirmAddToGlossary,
     closeGlossaryLearnPrompt,

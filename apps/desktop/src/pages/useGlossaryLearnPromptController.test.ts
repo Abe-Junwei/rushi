@@ -54,7 +54,7 @@ describe("useGlossaryLearnPromptController", () => {
     const { result } = renderHook(() => useGlossaryLearnPromptController({ setError }));
 
     await act(async () => {
-      await result.current.checkGlossaryLearnAfterSave();
+      await result.current.checkGlossaryLearnAfterSave(["香板"]);
     });
     expect(result.current.glossaryLearnDialog.phase).toBe("prompt");
 
@@ -88,7 +88,7 @@ describe("useGlossaryLearnPromptController", () => {
     const { result } = renderHook(() => useGlossaryLearnPromptController({ setError }));
 
     await act(async () => {
-      await result.current.checkGlossaryLearnAfterSave();
+      await result.current.checkGlossaryLearnAfterSave(["香板"]);
     });
     expect(result.current.glossaryLearnDialog.phase).toBe("prompt");
 
@@ -102,6 +102,40 @@ describe("useGlossaryLearnPromptController", () => {
 
     expect(setError).not.toHaveBeenCalledWith(expect.stringMatching(/错形|不能写入/));
     expect(toast.success).toHaveBeenCalledWith(expect.stringContaining("已在术语表中"));
+    expect(result.current.glossaryLearnDialog.phase).toBe("closed");
+  });
+
+  it("only prompts for the focused afterText, not global backlog", async () => {
+    vi.mocked(correctionGlossaryLearnPrompts).mockResolvedValue([
+      { afterText: "香板", hitCount: 7, sampleBefore: "乡版" },
+      { afterText: "制控", hitCount: 3, sampleBefore: "智控" },
+    ]);
+    const { result } = renderHook(() =>
+      useGlossaryLearnPromptController({ setError: vi.fn() }),
+    );
+
+    await act(async () => {
+      await result.current.checkGlossaryLearnAfterSave(["制控"]);
+    });
+
+    expect(result.current.glossaryLearnDialog).toEqual({
+      phase: "prompt",
+      rows: [{ afterText: "制控", hitCount: 3, sampleBefore: "智控" }],
+    });
+  });
+
+  it("does not open when focus term is not yet stable", async () => {
+    vi.mocked(correctionGlossaryLearnPrompts).mockResolvedValue([
+      { afterText: "香板", hitCount: 7, sampleBefore: "乡版" },
+    ]);
+    const { result } = renderHook(() =>
+      useGlossaryLearnPromptController({ setError: vi.fn() }),
+    );
+
+    await act(async () => {
+      await result.current.checkGlossaryLearnAfterSave(["制控"]);
+    });
+
     expect(result.current.glossaryLearnDialog.phase).toBe("closed");
   });
 });
