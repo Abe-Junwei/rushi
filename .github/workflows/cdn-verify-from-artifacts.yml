@@ -1,0 +1,105 @@
+# Re-run OTA latest.json merge + CDN verify without rebuilding Mac/Win packages.
+# Use when tauri-macos / tauri-windows already succeeded but verify-cdn-release failed.
+#
+# Actions → CDN verify from artifacts → Run workflow
+#   source_run_id: failed Release build run id (e.g. 29474047758)
+#   tag: v1.0.0
+name: CDN verify from artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: GitHub Actions run id that produced macos/windows updater fragments
+        required: true
+        type: string
+      tag:
+        description: Release tag (e.g. v1.0.0)
+        required: true
+        type: string
+        default: v1.0.0
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: cdn-verify-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  CI: true
+  RUSHI_UPDATER_CDN_BASE: https://updates.rushi.app
+
+jobs:
+  verify-cdn-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download macOS release bundles
+        uses: actions/download-artifact@v6
+        with:
+          name: macos-release-bundles
+          path: artifacts/macos
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Download Windows release bundles
+        uses: actions/download-artifact@v6
+        with:
+          name: windows-release-bundles
+          path: artifacts/windows
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Download Windows OTA fragment
+        uses: actions/download-artifact@v6
+        continue-on-error: true
+        with:
+          name: windows-ota-fragment
+          path: artifacts/windows
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.source_run_id }}
+
+      - name: Merge and upload OTA manifest
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
+            exit 1
+          fi
+          command -v jq >/dev/null || brew install jq
+          # shellcheck source=scripts/ci-pip-venv-install.sh
+          source scripts/ci-pip-venv-install.sh awscli
+          MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1)"
+          WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1)"
+          if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then
+            echo "::error::Missing updater fragments in workflow artifacts (run ${{ inputs.source_run_id }})."
+            find artifacts -type f | head -80
+            exit 1
+          fi
+          echo "MAC_FRAGMENT=$MAC_FRAGMENT"
+          echo "WIN_FRAGMENT=$WIN_FRAGMENT"
+          bash scripts/ci-merge-updater-manifest.sh \
+            --tag "${{ inputs.tag }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --fragment "$MAC_FRAGMENT" \
+            --fragment "$WIN_FRAGMENT" \
+            --out dist/updater/latest.json \
+            --upload \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+
+      - name: Verify OTA manifest on CDN
+        run: |
+          bash scripts/ci-verify-updater-manifest.sh \
+            --tag "${{ inputs.tag }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
