@@ -33,7 +33,7 @@ if (-not (Test-Path -LiteralPath $cpuExe)) { throw "Missing sidecar: $cpuExe" }
 
 $cudaDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar-cuda"
 if (Test-Path -LiteralPath $cudaDir) {
-  Write-Host "Removing staged CUDA onedir before NSIS (CDN opt-in)…"
+  Write-Host "Removing staged CUDA onedir before NSIS - CDN opt-in"
   Remove-Item -Recurse -Force $cudaDir
 }
 
@@ -49,12 +49,12 @@ Write-Host "== sidecar health smoke =="
 if ($LASTEXITCODE -ne 0) { throw "sidecar health smoke failed" }
 
 if ($env:RUSHI_SKIP_BUNDLED_MODELS_STAGE -eq "0") {
-  Write-Host "== stage bundled ASR models (Plan B; explicit opt-in) =="
+  Write-Host "== stage bundled ASR models - Plan B explicit opt-in =="
   Invoke-Npm @("run", "asr:stage-bundled-models")
   & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh")
   if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
 } else {
-  Write-Host "SKIP: Plan B models omitted from Windows NSIS (set RUSHI_SKIP_BUNDLED_MODELS_STAGE=0 to force stage)."
+  Write-Host "SKIP: Plan B models omitted from Windows NSIS. Set RUSHI_SKIP_BUNDLED_MODELS_STAGE=0 to force stage."
 }
 
 Write-Host "== measure bundle size spike =="
@@ -63,7 +63,7 @@ Write-Host "== measure bundle size spike =="
 if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
 }
-Write-Host "== Tauri build (NSIS; manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL)) =="
+Write-Host "== Tauri build NSIS - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
 Push-Location (Join-Path $Root "apps\desktop")
 try {
   Invoke-Npm @("run", "tauri", "--", "build", "--bundles", "nsis")
