@@ -146,7 +146,7 @@ fn bundled_candidates_cpu_only_when_no_cuda_onedir() {
         .join("rushi-asr-sidecar");
     fs::create_dir_all(exe.parent().unwrap()).unwrap();
     fs::write(&exe, vec![0_u8; 2048]).unwrap();
-    let candidates = bundled_sidecar_candidates_from_roots(&[root.clone()]);
+    let candidates = bundled_sidecar_candidates_from_roots(std::slice::from_ref(&root));
     assert_eq!(candidates, vec![exe]);
     let _ = fs::remove_dir_all(&root);
 }

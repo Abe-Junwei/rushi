@@ -57,7 +57,7 @@
 - 传 `maxWidth` / `maxHeight` 限制缩放与 clamp（`FloatingPanelTemplate` 透传）。
 - **`CompactFloatingDialog`** 未传 `persistState` 时继承 preset 默认（`compactDialog` / `findReplace` → `true`）；显式 `persistState={false}` 可关闭（如 OTA 确认）。
 - **`environment` preset**（设置大面板）默认 `persistState: true`，位置与手拖尺寸写入 `panel-state-environment-v3`。
-- **默认/边界尺寸**随 [`uiDisplayScale`](../../../apps/desktop/src/services/ui/uiDisplayScale.ts) 的 `scaleUiPanelPx` 同比放大（100% 为基准）；用户已持久化的手拖尺寸不二次缩放。
+- **默认/边界尺寸**随 [`uiDisplayScale`](../../apps/desktop/src/services/ui/uiDisplayScale.ts) 的 `scaleUiPanelPx` 同比放大（100% 为基准）；用户已持久化的手拖尺寸不二次缩放。
 
 ## 拖拽改大小（边 / 角）
 
