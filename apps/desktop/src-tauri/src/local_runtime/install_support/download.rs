@@ -1,8 +1,8 @@
 use super::super::installer::progress::update_progress;
 use super::super::manifest::{artifact_sources, RuntimeComponent};
 use super::download_resume::{
-    artifact_download_paths, clear_resume_artifacts, ensure_resume_compatible,
-    existing_part_offset, gc_stale_download_parts, save_resume_meta, DownloadResumeMeta,
+    artifact_download_paths_in, clear_resume_artifacts, ensure_resume_compatible,
+    existing_part_offset, gc_stale_download_parts_in, save_resume_meta, DownloadResumeMeta,
 };
 use super::{
     ensure_not_cancelled, is_http_source, ARTIFACT_REQUEST_TIMEOUT, HTTP_CONNECT_TIMEOUT,
@@ -266,8 +266,29 @@ pub fn download_component_artifact(
     target: &Path,
     cancel: &Arc<AtomicBool>,
 ) -> Result<(), String> {
-    let (_, meta_path) = artifact_download_paths(app_root, component);
-    gc_stale_download_parts(app_root, component);
+    let downloads = super::download_resume::downloads_dir(app_root);
+    download_component_artifact_in(handle, app_root, &downloads, component, target, cancel)
+}
+
+/// Download into an explicit downloads directory (isolates CUDA vs LRC resume GC).
+pub fn download_component_artifact_in(
+    handle: &AppHandle,
+    app_root: &Path,
+    downloads_dir: &Path,
+    component: &RuntimeComponent,
+    target: &Path,
+    cancel: &Arc<AtomicBool>,
+) -> Result<(), String> {
+    let (expected_part, meta_path) = artifact_download_paths_in(downloads_dir, component);
+    if expected_part != target {
+        return Err(format!(
+            "artifact_target_mismatch:{}:{}",
+            target.display(),
+            expected_part.display()
+        ));
+    }
+    fs::create_dir_all(downloads_dir).map_err(|e| format!("artifact_downloads_dir_failed: {e}"))?;
+    gc_stale_download_parts_in(downloads_dir, target, &meta_path);
     ensure_resume_compatible(target, &meta_path, component)?;
     let sources = artifact_sources(component);
     let mut last_error = None;

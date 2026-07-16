@@ -17,8 +17,8 @@ pub fn downloads_dir(app_root: &Path) -> PathBuf {
     local_runtime_root(app_root).join("downloads")
 }
 
-pub fn artifact_download_paths(
-    app_root: &Path,
+pub fn artifact_download_paths_in(
+    downloads: &Path,
     component: &RuntimeComponent,
 ) -> (PathBuf, PathBuf) {
     let sha_tag = component
@@ -39,9 +39,21 @@ pub fn artifact_download_paths(
             }
         })
         .collect::<String>();
-    let part = downloads_dir(app_root).join(format!("{safe_version}-{sha_tag}.zip.part"));
+    let part = downloads.join(format!("{safe_version}-{sha_tag}.zip.part"));
     let meta = PathBuf::from(format!("{}.meta.json", part.display()));
     (part, meta)
+}
+
+pub fn artifact_download_paths(
+    app_root: &Path,
+    component: &RuntimeComponent,
+) -> (PathBuf, PathBuf) {
+    artifact_download_paths_in(&downloads_dir(app_root), component)
+}
+
+/// Resume meta only — keep the `.zip.part` payload for extract after a successful download.
+pub fn clear_resume_meta(meta_path: &Path) {
+    let _ = fs::remove_file(meta_path);
 }
 
 pub fn load_resume_meta(meta_path: &Path) -> Option<DownloadResumeMeta> {
@@ -90,12 +102,14 @@ pub fn ensure_resume_compatible(
     Ok(())
 }
 
-pub fn gc_stale_download_parts(app_root: &Path, component: &RuntimeComponent) {
-    let dir = downloads_dir(app_root);
-    let Ok(entries) = fs::read_dir(&dir) else {
+pub fn gc_stale_download_parts_in(
+    dir: &Path,
+    keep_part: &Path,
+    keep_meta: &Path,
+) {
+    let Ok(entries) = fs::read_dir(dir) else {
         return;
     };
-    let (keep_part, keep_meta) = artifact_download_paths(app_root, component);
     for entry in entries.flatten() {
         let path = entry.path();
         if path == keep_part || path == keep_meta {
@@ -114,6 +128,13 @@ pub fn gc_stale_download_parts(app_root: &Path, component: &RuntimeComponent) {
             };
         }
     }
+}
+
+#[allow(dead_code)] // retained for LRC callers / tests that GC the default downloads dir
+pub fn gc_stale_download_parts(app_root: &Path, component: &RuntimeComponent) {
+    let dir = downloads_dir(app_root);
+    let (keep_part, keep_meta) = artifact_download_paths_in(&dir, component);
+    gc_stale_download_parts_in(&dir, &keep_part, &keep_meta);
 }
 
 #[cfg(test)]
@@ -146,6 +167,44 @@ mod tests {
         assert_eq!(a, b);
         assert_eq!(ma, mb);
         assert!(a.to_string_lossy().contains("0.2.0"));
+    }
+
+    #[test]
+    fn artifact_paths_in_custom_dir_stay_isolated() {
+        let root = std::env::temp_dir().join(format!(
+            "rushi-download-resume-custom-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let downloads = root.join("cuda-downloads");
+        let c = sample_component();
+        let (part, meta) = artifact_download_paths_in(&downloads, &c);
+        assert!(part.starts_with(&downloads));
+        assert!(meta.to_string_lossy().ends_with(".meta.json"));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn clear_resume_meta_keeps_part_file() {
+        let root = std::env::temp_dir().join(format!(
+            "rushi-download-resume-meta-only-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let downloads = root.join("downloads");
+        let c = sample_component();
+        let (part, meta) = artifact_download_paths_in(&downloads, &c);
+        fs::create_dir_all(part.parent().unwrap()).unwrap();
+        fs::write(&part, b"payload").unwrap();
+        fs::write(&meta, b"{}").unwrap();
+        clear_resume_meta(&meta);
+        assert!(part.is_file());
+        assert!(!meta.is_file());
+        let _ = fs::remove_dir_all(root);
     }
 
     #[test]

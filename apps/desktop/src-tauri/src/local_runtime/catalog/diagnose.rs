@@ -5,7 +5,7 @@ use super::types::ManifestProbe;
 use crate::local_runtime::install_support::read_text_source;
 use crate::local_runtime::manifest::{
     current_platform_key, is_shell_version_compatible, parse_signed_manifest,
-    select_asr_sidecar_component,
+    select_asr_sidecar_component, select_asr_sidecar_cuda_component,
 };
 
 pub fn diagnose_configured_manifest() -> ManifestProbe {
@@ -71,6 +71,10 @@ pub fn diagnose_configured_manifest() -> ManifestProbe {
         };
     }
     let Some(component) = select_asr_sidecar_component(&parsed.manifest, &current_platform_key())
+        .or_else(|| {
+            // Windows CUDA-only CDN manifest is valid when CPU sidecar ships in the installer.
+            select_asr_sidecar_cuda_component(&parsed.manifest, &current_platform_key())
+        })
     else {
         return ManifestProbe {
             source: Some(source),

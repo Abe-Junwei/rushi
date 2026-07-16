@@ -10,7 +10,9 @@
 
 ## 机器门禁
 
-- [ ] `release.yml` **tauri-windows** 绿（tag push）
+- [ ] `release.yml` **tauri-windows** 绿（tag push）；NSIS **&lt; 2GB**（目标 &lt; 1.5GB）
+- [ ] NSIS / portable **不含** `rushi-asr-sidecar-cuda`（CPU-only 安装介质）
+- [ ] CDN `/<tag>/rushi-asr-sidecar-cuda-windows-x64.zip` + `/runtime/rushi-runtime-manifest.json` 可下载
 - [ ] `release.yml` **verify-cdn-release** 合并 `latest.json` 含 `windows-x86_64`
 - [ ] CDN `/<tag>/rushi-desktop-setup.exe` + `.sig` 可下载
 - [ ] `npm run typecheck` · `npm run test` · `check-architecture-guard` 无回归
@@ -22,9 +24,10 @@
 | ID | 步骤 | 期望 | 结果 |
 |----|------|------|------|
 | H-WIN-1 | CDN 下载 `rushi-desktop-setup.exe` 并安装 | 可启动 · 关于页版本与 tag 一致 | ☐ |
-| H-WIN-2 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见 | ☐ |
+| H-WIN-2 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见（CPU） | ☐ |
+| H-WIN-2b | （N 卡）环境页推荐 → 下载 CUDA → 重启侧车 | GPU 路径可用；取消/失败仍可 CPU 转写 | ☐ |
 | H-WIN-3 | 导出 Word | 成功 | ☐ |
-| H-WIN-4 | （可选）下载 portable zip | 解压可启动；**无**应用内更新 | ☐ |
+| H-WIN-4 | （可选）下载 portable zip | 解压可启动；**无**应用内更新；**无**内置 CUDA onedir | ☐ |
 
 ## H-WIN-OTA 手测
 

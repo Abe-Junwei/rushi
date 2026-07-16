@@ -1,8 +1,9 @@
 use super::progress::{append_runtime_log_line, update_progress};
 use crate::local_runtime::catalog::load_configured_manifest;
 use crate::local_runtime::install_support::{
-    artifact_download_paths, clear_resume_artifacts, disk_free_bytes, download_component_artifact,
-    ensure_not_cancelled, extract_zip, sha256_hex, verify_installed_runtime,
+    artifact_download_paths, clear_resume_artifacts, clear_resume_meta, disk_free_bytes,
+    download_component_artifact, ensure_not_cancelled, extract_zip, sha256_hex,
+    verify_installed_runtime,
 };
 use crate::local_runtime::integrity::{
     clear_installed_runtime, gc_stale_version_dirs, inspect_installed_runtime, local_runtime_root,
@@ -104,7 +105,8 @@ pub(super) fn run_install(
     if !component.sha256.trim().is_empty() && actual_sha != component.sha256.to_lowercase() {
         return Err("local_runtime_sha256_mismatch".into());
     }
-    clear_resume_artifacts(&tmp_zip, &tmp_meta);
+    // Keep the downloaded .zip.part for extract; only drop resume meta.
+    clear_resume_meta(&tmp_meta);
     update_progress(
         handle,
         "installing",
@@ -116,7 +118,7 @@ pub(super) fn run_install(
     );
     let _ = fs::remove_dir_all(&staging);
     extract_zip(&tmp_zip, &staging, &cancel)?;
-    let _ = fs::remove_file(&tmp_zip);
+    clear_resume_artifacts(&tmp_zip, &tmp_meta);
     let staged_exe = staging.join(&component.exe_relpath);
     if !staged_exe.is_file() {
         let _ = fs::remove_dir_all(&staging);

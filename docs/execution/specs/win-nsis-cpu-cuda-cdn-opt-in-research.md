@@ -64,10 +64,23 @@
 
 - [x] 调研 brief 完成
 - [x] policy §10 已修订
-- [ ] tag release 手测（见 verify-retag）
+- [x] 体积尖刺脚本：`scripts/ci-measure-windows-bundle-size.ps1`（CI / `release:win` 调用）
+- [x] Release：NSIS CPU-only；CUDA zip + signed manifest CDN
+- [x] UX：N 卡推荐下载（非强制）
+- [ ] tag release 手测（verify-retag）：重跑 `v1.0.0` 或 patch tag；确认 NSIS &lt; 2GB 与 CDN 三件套可访问
+
+### 体积尖刺结论（预估 / CI 实测）
+
+| 档 | 内容 | 预期 |
+|----|------|------|
+| A | CPU onedir + Plan B models | 应 &lt; 2GB（去 CUDA 后通常足够）→ **保留模型进包** |
+| B | 仅 CPU onedir | 更小；仅当 A 仍 ≥2GB 时启用第二刀外置模型 |
+
+CI 将 `dist/windows-bundle-size-spike.json` 写入 workflow artifact；以 runner 实测为准。
 
 **变更记录**
 
 | 日期 | 说明 |
 |------|------|
 | 2026-07-16 | 初版：NSIS 失败根因 + CPU-only + CUDA CDN opt-in |
+| 2026-07-16 | 实施：release / LRC / UX / 体积尖刺脚本落地 |

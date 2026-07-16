@@ -6,14 +6,18 @@ If this folder contains a PyInstaller onedir named:
   rushi-asr-sidecar/rushi-asr-sidecar       (macOS)
   rushi-asr-sidecar/rushi-asr-sidecar.exe   (Windows CPU)
 
-and on Windows optionally a second onedir:
+the desktop app will start it on launch when http://127.0.0.1:8741/health is not
+already reachable, and stop it on exit.
+
+Windows release installers ship **CPU only**. An optional CUDA onedir may be
+downloaded later into App Data (`bundled-asr/rushi-asr-sidecar-cuda/`) when an
+NVIDIA driver is detected. Local/dev builds may still place CUDA under resources:
 
   rushi-asr-sidecar-cuda/rushi-asr-sidecar-cuda.exe   (Windows CUDA torch)
 
-the desktop app will start one of them on launch when http://127.0.0.1:8741/health is not
-already reachable, and stop it on exit. On Windows, when an NVIDIA driver + nvidia-smi
-are present, the shell tries the CUDA bundle first (if built), then falls back to CPU
-if health does not come up. Set RUSHI_FORCE_BUNDLED_ASR_CPU=1 to skip CUDA selection.
+On Windows, when an NVIDIA driver + nvidia-smi are present, the shell tries the
+CUDA onedir first (App Data or resources), then falls back to CPU if health does
+not come up. Set RUSHI_FORCE_BUNDLED_ASR_CPU=1 to skip CUDA selection.
 
 Layout (onedir):
 

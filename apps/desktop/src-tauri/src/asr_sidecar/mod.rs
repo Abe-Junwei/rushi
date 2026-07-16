@@ -10,6 +10,7 @@ use crate::DbState;
 
 pub(crate) mod bundled;
 pub mod candidates;
+pub mod cuda_install;
 pub(crate) mod local_token;
 pub mod loopback;
 mod probe;

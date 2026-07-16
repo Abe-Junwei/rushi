@@ -8,7 +8,10 @@
 #   Tauri generates .app.tar.gz + .sig (mac) and rushi-desktop-setup.exe + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the installer.
-# No runtime manifest / OTA sidecar artifacts are produced.
+# Windows (2026-07+): NSIS/portable ship CPU sidecar only; CUDA onedir is a CDN opt-in zip
+#   + signed runtime manifest (component asr-sidecar-cuda). Secret:
+#   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
+#   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
 # on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
@@ -268,25 +271,23 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
 
-      - name: Build Windows FunASR sidecar (PyInstaller)
+      - name: Build Windows FunASR sidecar (CPU only for NSIS)
         run: npm run asr:build-sidecar-windows-cpu
         timeout-minutes: 120
 
-      - name: Build Windows FunASR sidecar (CUDA)
-        run: npm run asr:build-sidecar-windows-cuda
-        timeout-minutes: 120
-
-      - name: Verify bundled sidecar artifacts
+      - name: Verify bundled CPU sidecar artifacts
         shell: bash
         run: |
           EXE="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar.exe"
-          CUDA_EXE="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/rushi-asr-sidecar-cuda.exe"
           test -f "$EXE"
-          test -f "$CUDA_EXE"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/sidecar-build-stamp.txt"
-          test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/sidecar-build-stamp.txt"
+          # CUDA must NOT be present in the install tree before NSIS (CDN opt-in).
+          if [ -e "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" ]; then
+            echo "::error::CUDA onedir must not be staged before NSIS; remove rushi-asr-sidecar-cuda"
+            exit 1
+          fi
 
       - name: Detect Windows signing secrets
         id: win_sign
@@ -303,7 +304,7 @@ jobs:
           echo "enabled=true" >> "$GITHUB_OUTPUT"
           echo "Valid Windows signing secrets detected."
 
-      - name: Authenticode sign bundled sidecars (release tag)
+      - name: Authenticode sign CPU sidecar (release tag)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
         shell: pwsh
         env:
@@ -340,13 +341,29 @@ jobs:
         run: npm run asr:stage-bundled-models
         timeout-minutes: 180
 
+      - name: Measure Windows bundle size spike (CPU + models)
+        shell: pwsh
+        run: pwsh scripts/ci-measure-windows-bundle-size.ps1
+
       - name: Tauri build (NSIS installer + updater artifacts)
         working-directory: apps/desktop
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: https://updates.rushi.app/runtime/rushi-runtime-manifest.json
         run: npm run tauri -- build --bundles nsis
         timeout-minutes: 90
+
+      - name: Measure NSIS artifact size
+        shell: pwsh
+        run: |
+          $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe"
+          if (-not (Test-Path $nsis)) {
+            $alt = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter *-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($alt) { $nsis = $alt.FullName }
+          }
+          pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath $nsis
+        continue-on-error: false
 
       - name: Normalize Windows NSIS installer name
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -423,6 +440,51 @@ jobs:
           }
           Get-Item "windows-portable-x64.zip"
 
+      - name: Build Windows CUDA sidecar (CDN opt-in, after NSIS)
+        run: npm run asr:build-sidecar-windows-cuda
+        timeout-minutes: 120
+
+      - name: Authenticode sign CUDA sidecar (release tag)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
+        shell: pwsh
+        env:
+          SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+          RELEASE_BUILD: "1"
+        run: pwsh scripts/sign-windows-sidecar.ps1
+
+      - name: Package CUDA sidecar zip + checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          CUDA_DIR="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda"
+          test -f "${CUDA_DIR}/rushi-asr-sidecar-cuda.exe"
+          mkdir -p dist/cuda-cdn
+          ZIP_ABS="$(pwd)/dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip"
+          rm -f "$ZIP_ABS" "${ZIP_ABS}.sha256"
+          # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
+          (cd "apps/desktop/src-tauri/resources/bundled-asr" && zip -r -q "$ZIP_ABS" rushi-asr-sidecar-cuda)
+          sha256sum "$ZIP_ABS" > "${ZIP_ABS}.sha256"
+          ls -lh "$ZIP_ABS"
+
+      - name: Publish CUDA runtime manifest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
+            echo "::error::Missing RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX for CUDA manifest signing."
+            exit 1
+          fi
+          python -m pip install --upgrade cryptography
+          bash scripts/ci-publish-cuda-runtime-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
+
       - name: Generate SHA256 checksums (Windows)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: bash
@@ -447,6 +509,9 @@ jobs:
             ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sha256
             ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig
             ${{ env.BUNDLE_ROOT }}/nsis/updater-fragment.json
+            dist/cuda-cdn/**
+            dist/runtime-manifest/**
+            dist/windows-bundle-size-spike.json
           if-no-files-found: error
           retention-days: 14
 
@@ -474,6 +539,13 @@ jobs:
             --tag "${{ github.ref_name }}" \
             --mode windows-ota \
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows-cuda \
+            --cuda-zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
+            --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
 

@@ -1,6 +1,6 @@
 use super::progress::{
-    append_runtime_log_line, install_phase_running, install_progress, reset_cancel_handle,
-    update_progress,
+    append_runtime_log_line, cuda_install_active, install_phase_running, install_progress,
+    reset_cancel_handle, update_progress,
 };
 use super::run::run_install;
 use super::types::{LocalRuntimeDownloadResult, LocalRuntimeInstallerState};
@@ -18,6 +18,14 @@ pub fn local_runtime_download_sidecar(
     let Some(installer) = app.try_state::<LocalRuntimeInstallerState>() else {
         return Err("local_runtime_state_missing".into());
     };
+    if let Some(reason) = super::progress::refuse_lrc_start_reason(cuda_install_active(&app)) {
+        // CUDA CDN install reuses this module's download/progress helpers; running both
+        // at once would let their progress updates clobber each other's UI state.
+        return Ok(LocalRuntimeDownloadResult {
+            started: false,
+            reason: Some(reason.into()),
+        });
+    }
     let cancel_flag = Arc::new(AtomicBool::new(false));
     {
         let Ok(mut guard) = installer.0.lock() else {

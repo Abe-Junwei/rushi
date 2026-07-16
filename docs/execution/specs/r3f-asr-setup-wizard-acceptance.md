@@ -8,7 +8,7 @@
 | # | 议题 | 决策 |
 |---|------|------|
 | 1 | **开发版（`tauri dev`）默认路径** | **选项 B**：与安装包一致，**优先内置 bundled 侧车**（`retry` → health → `prepare-default`）。仅当资源目录无侧车产物时，再降级「高级」路径（托管 venv / 文档），**不**作为主按钮。 |
-| 2 | **Windows 终端用户 v1** | **仅内置双 exe**（`rushi-asr-sidecar.exe` + `rushi-asr-sidecar-cuda.exe`），应用内下模型；**v1 不对安装包用户执行 pip/选仓库**。 |
+| 2 | **Windows 终端用户 v1** | **安装包仅 CPU** `rushi-asr-sidecar.exe`；有 N 卡时环境页**推荐**下载 CUDA CDN 组件（非强制）；应用内下模型；**v1 不对安装包用户执行 pip/选仓库**。 |
 
 推论：
 

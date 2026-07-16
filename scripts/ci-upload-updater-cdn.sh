@@ -9,12 +9,14 @@ Usage:
   $0 --tag <vX.Y.Z> --mode macos-ota [--bundle-root PATH]
   $0 --tag <vX.Y.Z> --mode macos-dmg [--bundle-root PATH]
   $0 --tag <vX.Y.Z> --mode manifest --manifest-path PATH
+  $0 --tag <vX.Y.Z> --mode windows-cuda --cuda-zip PATH [--runtime-manifest PATH]
 
 Modes:
   macos-ota     app.tar.gz + .sig → CDN /<tag>/ (manifest merged separately)
   macos-dmg     *.dmg + *.sha256 → /<tag>/
   windows       windows-portable-x64.zip(+sha) and optional NSIS → /<tag>/
   windows-ota   rushi-desktop-setup.exe + .sig → CDN /<tag>/
+  windows-cuda  CUDA sidecar zip(+sha) → /<tag>/; optional runtime manifest → /runtime/
   manifest      latest.json → CDN root + /<tag>/
 EOF
   exit 1
@@ -26,6 +28,8 @@ BUNDLE_ROOT="apps/desktop/src-tauri/target/release/bundle"
 CDN_BASE="${RUSHI_UPDATER_CDN_BASE:-https://updates.rushi.app}"
 BUCKET="${R2_BUCKET:-rushi-updates}"
 MANIFEST_PATH=""
+CUDA_ZIP=""
+RUNTIME_MANIFEST=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -51,6 +55,14 @@ while [ $# -gt 0 ]; do
       ;;
     --manifest-path)
       MANIFEST_PATH="${2:-}"
+      shift 2
+      ;;
+    --cuda-zip)
+      CUDA_ZIP="${2:-}"
+      shift 2
+      ;;
+    --runtime-manifest)
+      RUNTIME_MANIFEST="${2:-}"
       shift 2
       ;;
     -h | --help)
@@ -167,6 +179,27 @@ case "$MODE" in
     upload_file "$SETUP_EXE" "${TAG}/rushi-desktop-setup.exe" "application/vnd.microsoft.portable-executable"
     upload_file "$SIG_FILE" "${TAG}/rushi-desktop-setup.exe.sig" "text/plain"
     echo "CDN Windows OTA: ${CDN_BASE}/${TAG}/rushi-desktop-setup.exe"
+    ;;
+  windows-cuda)
+    if [ -z "$CUDA_ZIP" ] || [ ! -f "$CUDA_ZIP" ]; then
+      echo "Missing --cuda-zip for mode=windows-cuda" >&2
+      exit 1
+    fi
+    base="$(basename "$CUDA_ZIP")"
+    upload_file "$CUDA_ZIP" "${TAG}/${base}" "application/zip"
+    if [ -f "${CUDA_ZIP}.sha256" ]; then
+      upload_file "${CUDA_ZIP}.sha256" "${TAG}/${base}.sha256" "text/plain"
+    fi
+    if [ -n "$RUNTIME_MANIFEST" ]; then
+      if [ ! -f "$RUNTIME_MANIFEST" ]; then
+        echo "Missing runtime manifest: $RUNTIME_MANIFEST" >&2
+        exit 1
+      fi
+      upload_file "$RUNTIME_MANIFEST" "runtime/rushi-runtime-manifest.json" "application/json"
+      upload_file "$RUNTIME_MANIFEST" "${TAG}/rushi-runtime-manifest.json" "application/json"
+      echo "CDN runtime manifest: ${CDN_BASE}/runtime/rushi-runtime-manifest.json"
+    fi
+    echo "CDN Windows CUDA: ${CDN_BASE}/${TAG}/${base}"
     ;;
   manifest)
     MANIFEST="${MANIFEST_PATH:-}"

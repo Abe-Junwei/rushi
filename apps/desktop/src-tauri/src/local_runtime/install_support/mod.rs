@@ -3,8 +3,10 @@ mod download_resume;
 mod extract;
 mod verify;
 
-pub use download::{download_component_artifact, read_text_source};
-pub use download_resume::{artifact_download_paths, clear_resume_artifacts};
+pub use download::{download_component_artifact, download_component_artifact_in, read_text_source};
+pub use download_resume::{
+    artifact_download_paths, artifact_download_paths_in, clear_resume_artifacts, clear_resume_meta,
+};
 pub use extract::extract_zip;
 pub use verify::verify_installed_runtime;
 

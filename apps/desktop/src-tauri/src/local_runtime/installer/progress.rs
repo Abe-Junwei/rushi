@@ -8,6 +8,54 @@ pub(crate) fn install_phase_running(phase: &str) -> bool {
     matches!(phase, "downloading" | "installing" | "verifying")
 }
 
+/// Pure busy check for CUDA installer state (cancel handle + running phase).
+/// Used by start-command mutual exclusion and by progress routing.
+pub(crate) fn cuda_install_busy(cancel_set: bool, phase: &str) -> bool {
+    cancel_set && install_phase_running(phase)
+}
+
+/// Refuse starting LRC download while CUDA CDN install is mid-flight.
+pub(crate) fn refuse_lrc_start_reason(cuda_busy: bool) -> Option<&'static str> {
+    cuda_busy.then_some("cuda_download_running")
+}
+
+/// Refuse starting CUDA download while LRC install is mid-flight.
+pub(crate) fn refuse_cuda_start_reason(lrc_busy: bool) -> Option<&'static str> {
+    lrc_busy.then_some("lrc_download_running")
+}
+
+pub(crate) fn cuda_install_active(handle: &AppHandle) -> bool {
+    let Some(cuda) = handle.try_state::<crate::asr_sidecar::cuda_install::AsrCudaInstallerState>()
+    else {
+        return false;
+    };
+    let Ok(guard) = cuda.0.lock() else {
+        return false;
+    };
+    cuda_install_busy(guard.cancel.is_some(), &guard.progress.phase)
+}
+
+/// True when the LRC sidecar installer itself is mid-flight (own state only).
+pub(crate) fn lrc_install_active(handle: &AppHandle) -> bool {
+    let Some(state) = handle.try_state::<LocalRuntimeInstallerState>() else {
+        return false;
+    };
+    let Ok(guard) = state.0.lock() else {
+        return false;
+    };
+    install_phase_running(&guard.progress.phase)
+}
+
+pub(crate) fn rewrite_progress_message_for_cuda(message: &str) -> String {
+    message
+        .replace("本机语音识别组件", "GPU 加速组件")
+        .replace("语音识别组件", "GPU 加速组件")
+        // LRC copy has no space before the noun; keep readable GPU phrasing.
+        .replace("下载GPU", "下载 GPU")
+        .replace("续传GPU", "续传 GPU")
+        .replace("复制GPU", "复制 GPU")
+}
+
 pub(crate) fn update_progress(
     handle: &AppHandle,
     phase: &str,
@@ -17,6 +65,22 @@ pub(crate) fn update_progress(
     total_bytes: Option<u64>,
     error: Option<String>,
 ) {
+    let message = message.into();
+    // CUDA CDN download reuses the LRC download helper; route progress to CUDA only
+    // so Local Runtime UI is not left stuck in "downloading".
+    if cuda_install_active(handle) {
+        crate::asr_sidecar::cuda_install::update_cuda_progress(
+            handle,
+            phase,
+            rewrite_progress_message_for_cuda(&message),
+            version,
+            downloaded_bytes,
+            total_bytes,
+            error,
+        );
+        return;
+    }
+
     let Some(state) = handle.try_state::<LocalRuntimeInstallerState>() else {
         return;
     };
@@ -24,7 +88,7 @@ pub(crate) fn update_progress(
     if let Ok(mut guard) = lock {
         guard.progress = LocalRuntimeInstallProgress {
             phase: phase.to_string(),
-            message: message.into(),
+            message,
             downloaded_bytes,
             total_bytes,
             version,

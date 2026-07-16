@@ -10,7 +10,9 @@ import type {
   WaveformPeaksCacheInfo,
 } from "../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
+import { useAsrCudaSidecarRecommend } from "../pages/useAsrCudaSidecarRecommend";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
+import { EnvAsrCudaRecommendBanner } from "./envLocalAsr/EnvAsrCudaRecommendBanner";
 import { EnvLocalAsrModelCard } from "./envLocalAsr/EnvLocalAsrModelCard";
 import { EnvLocalAsrStatusSection } from "./envLocalAsr/EnvLocalAsrStatusSection";
 import { EnvLocalAsrUtilitiesSection } from "./envLocalAsr/EnvLocalAsrUtilitiesSection";
@@ -75,6 +77,7 @@ export function EnvLocalAsrPanel({
     prepareModelCancelling,
     prepareModelProgress,
   });
+  const cudaRecommend = useAsrCudaSidecarRecommend();
 
   const showProminentSetup = !asrPresentation.chipOk;
 
@@ -84,6 +87,15 @@ export function EnvLocalAsrPanel({
         presentation={asrPresentation}
         busy={busy}
         refreshAsrHealth={refreshAsrHealth}
+      />
+
+      <EnvAsrCudaRecommendBanner
+        status={cudaRecommend.status}
+        busy={cudaRecommend.busy}
+        message={cudaRecommend.message}
+        onDownload={() => void cudaRecommend.startDownload()}
+        onCancel={() => void cudaRecommend.cancelDownload()}
+        onRestartSidecar={retryBundledAsrSidecar}
       />
 
       {showProminentSetup ? (

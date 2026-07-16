@@ -129,6 +129,37 @@ fn bundled_candidates_from_roots_deduplicate_same_executable() {
 }
 
 #[test]
+fn bundled_candidates_cpu_only_when_no_cuda_onedir() {
+    let root = std::env::temp_dir().join(format!(
+        "rushi-asr-sidecar-cpu-only-{}",
+        std::process::id()
+    ));
+    #[cfg(target_os = "windows")]
+    let exe = root
+        .join("bundled-asr")
+        .join("rushi-asr-sidecar")
+        .join("rushi-asr-sidecar.exe");
+    #[cfg(not(target_os = "windows"))]
+    let exe = root
+        .join("bundled-asr")
+        .join("rushi-asr-sidecar")
+        .join("rushi-asr-sidecar");
+    fs::create_dir_all(exe.parent().unwrap()).unwrap();
+    fs::write(&exe, vec![0_u8; 2048]).unwrap();
+    let candidates = bundled_sidecar_candidates_from_roots(&[root.clone()]);
+    assert_eq!(candidates, vec![exe]);
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn nvidia_probe_is_false_on_non_windows() {
+    #[cfg(not(target_os = "windows"))]
+    {
+        assert!(!super::candidates::windows_nvidia_probe_ok());
+    }
+}
+
+#[test]
 fn detects_transcribe_async_in_loopback_root() {
     let fresh = json!({
         "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",

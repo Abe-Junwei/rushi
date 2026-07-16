@@ -27,6 +27,11 @@ export function useLocalRuntimeInstallActions({
       setSetupOutcome("running");
       setSetupMessage("");
       const started = await localRuntimeApi.localRuntimeDownloadSidecar();
+      if (!started.started && started.reason === "cuda_download_running") {
+        setSetupMessage("GPU 加速组件正在下载，请稍后再下载 / 修复语音识别组件。");
+        setSetupOutcome("blocked");
+        return;
+      }
       if (!started.started && started.reason !== "already_running") {
         throw new Error(started.reason ?? "local_runtime_download_failed");
       }

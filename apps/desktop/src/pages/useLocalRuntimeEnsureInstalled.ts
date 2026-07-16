@@ -95,6 +95,17 @@ export function useLocalRuntimeEnsureInstalled({
         setSetupOutcome("error");
         return false;
       }
+      if (!started.started && started.reason === "cuda_download_running") {
+        setSetupSteps((steps) =>
+          patchStep(steps, "sidecar", {
+            status: "error",
+            detail: "GPU 加速组件正在下载，请稍后再试",
+          }),
+        );
+        setSetupMessage("GPU 加速组件正在下载，请稍后再下载 / 修复语音识别组件。");
+        setSetupOutcome("blocked");
+        return false;
+      }
       if (!started.started && started.reason !== "already_running") {
         setSetupSteps((steps) =>
           patchStep(steps, "sidecar", {

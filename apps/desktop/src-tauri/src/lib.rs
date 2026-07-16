@@ -109,6 +109,7 @@ pub fn run() {
                 asr_sidecar::supervisor::SupervisorSnapshot::new_session(),
             )));
             app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
+            app.manage(asr_sidecar::cuda_install::AsrCudaInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
             app.manage(project::TranscribeCancelState::default());
             app.manage(native_audio::NativeAudioState::default());
@@ -173,6 +174,9 @@ pub fn run() {
             local_runtime::recovery::commands::revalidate::local_runtime_revalidate_install,
             local_runtime::recovery::commands::clear::local_runtime_clear_install,
             local_runtime::recovery::commands::restore::local_runtime_restore_previous,
+            asr_sidecar::cuda_install::commands::asr_cuda_sidecar_status,
+            asr_sidecar::cuda_install::commands::asr_download_cuda_sidecar,
+            asr_sidecar::cuda_install::commands::asr_cancel_cuda_sidecar_download,
             project::picker_cmd::pick_audio_path,
             project::picker_cmd::pick_audio_paths,
             project::project_create_cmd::project_create_from_audio,

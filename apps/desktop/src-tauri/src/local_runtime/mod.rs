@@ -1,6 +1,6 @@
 pub(crate) mod catalog;
 mod errors;
-mod install_support;
+pub(crate) mod install_support;
 pub mod installer;
 pub mod integrity;
 pub mod manifest;
