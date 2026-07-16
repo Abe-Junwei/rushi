@@ -464,18 +464,20 @@ jobs:
         run: pwsh scripts/sign-windows-sidecar.ps1
 
       - name: Package CUDA sidecar zip + checksum
-        shell: bash
+        shell: pwsh
         run: |
-          set -euo pipefail
-          CUDA_DIR="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda"
-          test -f "${CUDA_DIR}/rushi-asr-sidecar-cuda.exe"
-          mkdir -p dist/cuda-cdn
-          ZIP_ABS="$(pwd)/dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip"
-          rm -f "$ZIP_ABS" "${ZIP_ABS}.sha256"
+          $ErrorActionPreference = "Stop"
+          $cudaDir = "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda"
+          $exe = Join-Path $cudaDir "rushi-asr-sidecar-cuda.exe"
+          if (-not (Test-Path -LiteralPath $exe)) { throw "Missing $exe" }
+          New-Item -ItemType Directory -Force -Path "dist/cuda-cdn" | Out-Null
+          $zip = Join-Path (Get-Location) "dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip"
+          if (Test-Path -LiteralPath $zip) { Remove-Item -Force $zip }
           # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
-          (cd "apps/desktop/src-tauri/resources/bundled-asr" && zip -r -q "$ZIP_ABS" rushi-asr-sidecar-cuda)
-          sha256sum "$ZIP_ABS" > "${ZIP_ABS}.sha256"
-          ls -lh "$ZIP_ABS"
+          Compress-Archive -Path $cudaDir -DestinationPath $zip
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
+          Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$hash  rushi-asr-sidecar-cuda-windows-x64.zip"
+          Get-Item $zip | Format-List Name, Length, FullName
 
       - name: Publish CUDA runtime manifest
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
