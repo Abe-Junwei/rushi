@@ -5,8 +5,6 @@ import {
   splitExportPolishJoinedBody,
 } from "./exportDocxPolish.helpers";
 import {
-  estimateExportPolishSeconds,
-  estimateExportPolishSecondsForSegments,
   exportModeRequiresLlmPolish,
   exportModeSupportsLlmPolish,
   exportWantsLlmPolish,
@@ -67,19 +65,6 @@ describe("exportDocxPolish", () => {
 
   it("blocks empty", () => {
     expect(resolveExportPolishBlockReason([seg("")])).toMatch(/没有可导出/);
-  });
-
-  it("estimates polish seconds scaling with char count and loopback", () => {
-    expect(estimateExportPolishSeconds(0, false)).toBe(5);
-    expect(estimateExportPolishSeconds(0, true)).toBe(15);
-    expect(estimateExportPolishSeconds(3_000, true)).toBe(21);
-    expect(estimateExportPolishSeconds(500_000, true)).toBe(900);
-    expect(estimateExportPolishSeconds(500_000, false)).toBe(180);
-  });
-
-  it("estimates polish seconds from current segments' char count", () => {
-    const secs = estimateExportPolishSecondsForSegments([seg("你好"), seg("世界")]);
-    expect(secs).toBeGreaterThanOrEqual(5);
   });
 
   it("ignores soft llm presentation block when runtime bridge is ready", () => {

@@ -38,21 +38,27 @@ describe("busyOverlayCopy export", () => {
     expect(copy.detail).toBeUndefined();
   });
 
-  it("polish export falls back to generic wording without an estimate", () => {
+  it("polish export falls back to generic wording without batch progress", () => {
     const copy = busyOverlayCopy("export_polish", null);
     expect(copy.title).toBe("正在导出 Word");
     expect(copy.lead).toBe("大模型润色并写入文档");
-    expect(copy.detail).toMatch(/数十秒/);
+    expect(copy.detail).toMatch(/数分钟/);
+    expect(copy.detail).not.toMatch(/预计/);
   });
 
-  it("polish export shows a seconds estimate for short bodies", () => {
-    const copy = busyOverlayCopy("export_polish", null, { exportPolishEstimateSecs: 45 });
-    expect(copy.detail).toBe("处理预计约 45 秒");
+  it("polish export shows batch i/N when multi-batch", () => {
+    const copy = busyOverlayCopy("export_polish", null, {
+      exportPolishProgress: { batch: 2, total: 5 },
+    });
+    expect(copy.lead).toBe("第 2/5 批");
+    expect(copy.detail).toBe("大模型润色中");
   });
 
-  it("polish export shows a minutes estimate for long bodies", () => {
-    const copy = busyOverlayCopy("export_polish", null, { exportPolishEstimateSecs: 360 });
-    expect(copy.detail).toBe("处理预计约 6 分钟");
+  it("polish export ignores single-batch progress in lead", () => {
+    const copy = busyOverlayCopy("export_polish", null, {
+      exportPolishProgress: { batch: 1, total: 1 },
+    });
+    expect(copy.lead).toBe("大模型润色并写入文档");
   });
 });
 

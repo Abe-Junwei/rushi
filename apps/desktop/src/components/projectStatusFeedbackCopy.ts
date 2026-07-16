@@ -63,15 +63,17 @@ export function transcribeCancelStoppingLabel(source: TranscribeSource): string 
   return source === "online" ? "正在停止…" : "正在停止…（当前段完成后结束）";
 }
 
-function formatExportPolishEtaLabel(estimateSecs: number): string {
-  if (estimateSecs < 90) return `约 ${estimateSecs} 秒`;
-  return `约 ${Math.round(estimateSecs / 60)} 分钟`;
+function formatExportPolishBatchLabel(batch: number, total: number): string {
+  return `第 ${batch}/${total} 批`;
 }
 
 export function busyOverlayCopy(
   reason: BusyReason | null,
   transcribeProgress: TranscribeProgress | null,
-  options?: { transcribeSource?: TranscribeSource; exportPolishEstimateSecs?: number },
+  options?: {
+    transcribeSource?: TranscribeSource;
+    exportPolishProgress?: { batch: number; total: number };
+  },
 ): BusyOverlayCopy {
   switch (reason) {
     case "transcribe":
@@ -98,14 +100,18 @@ export function busyOverlayCopy(
         lead: "写入文档",
       };
     case "export_polish": {
-      const estimateSecs = options?.exportPolishEstimateSecs;
+      const progress = options?.exportPolishProgress;
+      if (progress && progress.total > 1) {
+        return {
+          title: "正在导出 Word",
+          lead: formatExportPolishBatchLabel(progress.batch, progress.total),
+          detail: "大模型润色中",
+        };
+      }
       return {
         title: "正在导出 Word",
         lead: "大模型润色并写入文档",
-        detail:
-          estimateSecs != null
-            ? `处理预计${formatExportPolishEtaLabel(estimateSecs)}`
-            : "处理可能需要数十秒",
+        detail: "处理可能需要数分钟",
       };
     }
     case "stage_b":

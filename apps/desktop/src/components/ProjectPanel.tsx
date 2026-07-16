@@ -11,7 +11,7 @@ import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useWelcomeWorkflowShortcuts } from "../hooks/useWelcomeWorkflowShortcuts";
 import { useStableTranscriptionLayerInput } from "../pages/useStableTranscriptionLayerInput";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
-import { estimateExportPolishSecondsForSegments } from "../services/exportDocxPolish";
+import { useExportPolishProgress } from "../hooks/useExportPolishProgress";
 import { CollapsibleWorkspaceShell } from "./CollapsibleWorkspaceShell";
 import { WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
 import { hasRecordedProjectMetadata } from "../services/deliveryModeChecklist";
@@ -52,6 +52,8 @@ export function ProjectPanel() {
     dismissTranscribeDiag,
     cancelTranscribe,
   } = shell;
+
+  const exportPolishProgress = useExportPolishProgress(c.busyReason === "export_polish");
 
   useWelcomeWorkflowShortcuts({
     enabled: workspaceShellVariant !== "editor",
@@ -204,10 +206,8 @@ export function ProjectPanel() {
           reason={c.busyReason}
           elapsedSec={busyElapsedSec}
           transcribeProgress={c.transcribeProgress}
-          exportPolishEstimateSecs={
-            c.busyReason === "export_polish"
-              ? estimateExportPolishSecondsForSegments(c.segments)
-              : null
+          exportPolishProgress={
+            c.busyReason === "export_polish" ? exportPolishProgress : null
           }
         />
       ) : null}

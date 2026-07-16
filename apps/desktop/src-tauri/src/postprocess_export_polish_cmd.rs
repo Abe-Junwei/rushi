@@ -10,7 +10,7 @@ use futures_util::future::{AbortHandle, Abortable};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::time::Instant;
-use tauri::State;
+use tauri::{AppHandle, Emitter, State};
 use url::Url;
 
 use super::postprocess_export_polish::{self, ExportPolishParsed};
@@ -19,6 +19,22 @@ use super::{
     resolve_runtime_postprocess_config, PostprocessCancelState, PostprocessPromptOverrides,
     PostprocessRuntimeBridge,
 };
+
+const EXPORT_POLISH_PROGRESS_EVENT: &str = "export-polish-progress";
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExportPolishProgressPayload {
+    batch: usize,
+    total: usize,
+}
+
+fn emit_export_polish_progress(app: &AppHandle, batch: usize, total: usize) {
+    let _ = app.emit(
+        EXPORT_POLISH_PROGRESS_EVENT,
+        ExportPolishProgressPayload { batch, total },
+    );
+}
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +73,7 @@ struct ExportPolishLlmConfig {
 
 #[tauri::command]
 pub async fn postprocess_export_polish(
+    app: AppHandle,
     state: State<'_, DbState>,
     cancel_state: State<'_, PostprocessCancelState>,
     req: PostprocessExportPolishRequest,
@@ -152,6 +169,7 @@ pub async fn postprocess_export_polish(
         } else {
             None
         };
+        emit_export_polish_progress(&app, batch_no, batch_total);
         append_desktop_log_line(
             &state,
             &format!("INFO export_polish_batch {batch_no}/{batch_total} lines={batch_lines}"),
