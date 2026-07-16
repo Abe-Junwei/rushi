@@ -513,7 +513,7 @@ jobs:
             echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
             exit 1
           fi
-          python -m pip install --upgrade awscli
+          source scripts/ci-pip-venv-install.sh awscli
           bash scripts/ci-upload-updater-cdn.sh \
             --tag "${{ github.ref_name }}" \
             --mode windows \
@@ -549,7 +549,7 @@ jobs:
           R2_BUCKET: ${{ secrets.R2_BUCKET }}
         run: |
           set -euo pipefail
-          python -m pip install --upgrade awscli
+          source scripts/ci-pip-venv-install.sh awscli
           bash scripts/ci-upload-updater-cdn.sh \
             --tag "${{ github.ref_name }}" \
             --mode windows-ota \
@@ -609,7 +609,7 @@ jobs:
             echo "::error::Missing RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX for CUDA manifest signing."
             exit 1
           fi
-          python -m pip install --upgrade cryptography
+          source scripts/ci-pip-venv-install.sh cryptography
           bash scripts/ci-publish-cuda-runtime-manifest.sh \
             --tag "${{ github.ref_name }}" \
             --zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
@@ -631,7 +631,7 @@ jobs:
             echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
             exit 1
           fi
-          python -m pip install --upgrade awscli
+          source scripts/ci-pip-venv-install.sh awscli
           bash scripts/ci-upload-updater-cdn.sh \
             --tag "${{ github.ref_name }}" \
             --mode windows-cuda \
@@ -739,7 +739,7 @@ jobs:
             exit 1
           fi
           command -v jq >/dev/null || brew install jq
-          python3 -m pip install --upgrade awscli
+          source scripts/ci-pip-venv-install.sh awscli
           MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1)"
           WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1)"
           if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then

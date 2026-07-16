@@ -17,6 +17,7 @@ target/
 /*.app
 /如是我闻.app
 .venv/
+.venv-ci-tools/
 __pycache__/
 *.egg-info/
 .python-version
