@@ -118,21 +118,13 @@ if [ "$UPLOAD" = false ]; then
   exit 0
 fi
 
-if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
-  echo "Missing R2 credentials for --upload." >&2
-  exit 1
-fi
+# shellcheck source=scripts/ci-r2-env.sh
+source "$(cd "$(dirname "$0")" && pwd)/ci-r2-env.sh"
+BUCKET="${BUCKET:-$R2_BUCKET}"
 if ! command -v aws >/dev/null 2>&1; then
   echo "aws CLI is required for --upload." >&2
   exit 1
 fi
-
-export AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID"
-export AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY"
-export AWS_DEFAULT_REGION="${R2_REGION:-auto}"
-export AWS_EC2_METADATA_DISABLED=true
-export AWS_REQUEST_CHECKSUM_CALCULATION="${AWS_REQUEST_CHECKSUM_CALCULATION:-when_required}"
-export AWS_RESPONSE_CHECKSUM_VALIDATION="${AWS_RESPONSE_CHECKSUM_VALIDATION:-when_required}"
 
 S3=(aws --endpoint-url "$R2_ENDPOINT" s3)
 "${S3[@]}" cp "$OUT" "s3://${BUCKET}/latest.json" --content-type application/json
