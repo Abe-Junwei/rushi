@@ -4,7 +4,7 @@
 
 **Linux 桌面**：与策略 §1 一致，**不承诺**正式侧车/安装包矩阵；本清单仅覆盖 Windows x64。
 
-**分发策略（2026-07）**：NSIS / portable **仅含 CPU** onedir + Plan B 模型；CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
+**分发策略（2026-07）**：NSIS / portable **仅含 CPU** onedir（**不含** Plan B 模型权重，首跑 ModelScope）；CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
 
 ## 1. 物料
 

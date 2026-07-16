@@ -14,11 +14,6 @@ import {
   isBundledAsrModelsSeedActive,
 } from "../services/asr/asrPrepareActivityGate";
 import { ensureBundledAsrModelsSeededForPrepare } from "../services/asr/bundledAsrModelsSeedPrepare";
-import {
-  bundledModelsMissingTipsDev,
-  bundledModelsMissingTipsManaged,
-  packagedOrDevArray,
-} from "../services/packagedUserHints";
 import type { PrepareDefaultModelOptions, PrepareProgressSetOptions } from "./prepareModelTypes";
 import { runPrepareModelSidecarJob } from "./runPrepareModelSidecarJob";
 
@@ -119,17 +114,21 @@ export function usePrepareModelRun({
         setProgressIfChanged(100, { allowDecrease: true, monotonic: false });
         setFunasrInstallMessage(outcome.message);
         await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
-      } else {
+        setAsrModelPrepareActive(false);
+        setPrepareModelBusy(false);
+        return;
+      }
+      if (!outcome.noBundle) {
         setPrepareModelFailure({
           headline: outcome.message,
-          tips: outcome.noBundle
-            ? packagedOrDevArray(bundledModelsMissingTipsDev, bundledModelsMissingTipsManaged)
-            : ["可尝试重启应用，或环境页点「重试内置侧车」。", "若仍失败，请清除模型缓存后重启（会重新从安装包复制）。"],
+          tips: ["可尝试重启应用，或环境页点「重试内置侧车」。", "若仍失败，请清除模型缓存后重启（会重新从安装包复制）。"],
         });
+        setAsrModelPrepareActive(false);
+        setPrepareModelBusy(false);
+        return;
       }
-      setAsrModelPrepareActive(false);
-      setPrepareModelBusy(false);
-      return;
+      // noBundle: Windows NSIS may omit Plan B — continue with ModelScope prepare below.
+      setInstallMessageThrottled("安装包无内置模型，改为从 ModelScope 下载…", true);
     }
 
     if (!options?.force) {

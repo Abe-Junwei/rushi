@@ -42,10 +42,10 @@
 
 | 问题 | 结论 |
 |------|------|
-| 选定方案 | **B**：NSIS 仅 CPU + Plan B 模型；CUDA onedir 打 zip 上 CDN；manifest 组件 `asr-sidecar-cuda`；N 卡且无本地 CUDA → 环境页推荐下载 |
-| 不做什么 | NSISBI；CPU 包内热替换 torch+cu；强制下载 CUDA；首版不外置 Plan B 模型 |
+| 选定方案 | **B**：NSIS 仅 CPU；CUDA onedir 打 zip 上 CDN；manifest 组件 `asr-sidecar-cuda`；N 卡且无本地 CUDA → 环境页推荐下载 |
+| 不做什么 | NSISBI；CPU 包内热替换 torch+cu；强制下载 CUDA |
 | 与 architecture | 修订 [`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md) §0/§8/§10 |
-| 风险 | CPU+models 仍可能接近 2GB → CI 打印体积；第二刀再外置模型 |
+| 风险 | CPU+models 仍可能撞 makensis mmap（CI 2026-07-16 实测：CUDA-out 后仍失败）→ **第二刀已启用**：Windows NSIS **不打** Plan B 模型，首跑 ModelScope |
 
 ---
 
@@ -73,8 +73,8 @@
 
 | 档 | 内容 | 预期 |
 |----|------|------|
-| A | CPU onedir + Plan B models | 应 &lt; 2GB（去 CUDA 后通常足够）→ **保留模型进包** |
-| B | 仅 CPU onedir | 更小；仅当 A 仍 ≥2GB 时启用第二刀外置模型 |
+| A | CPU onedir + Plan B models | CUDA-out 后仍可能撞 makensis → **Windows 不再采用** |
+| B | 仅 CPU onedir | **Windows NSIS 现行**：首跑 ModelScope；macOS DMG 仍可带 Plan B |
 
 CI 将 `dist/windows-bundle-size-spike.json` 写入 workflow artifact；以 runner 实测为准。
 

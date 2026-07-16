@@ -141,10 +141,19 @@ export function useAsrSetupHealthFlow({
           const outcome = await ensureBundledAsrModelsSeededForPrepare({
             presentationSync: deps.bundledCopyPresentationSync,
           });
-          if (!outcome.ok) {
+          if (!outcome.ok && !outcome.noBundle) {
             setSetupMessage(outcome.message);
-            setSetupOutcome(outcome.noBundle ? "blocked" : "error");
+            setSetupOutcome("error");
             return;
+          }
+          if (!outcome.ok && outcome.noBundle) {
+            setSetupSteps((steps) =>
+              patchStep(steps, "model", {
+                status: "running",
+                detail: `安装包无内置模型，正在补齐 ${modelSnap.modelLabel}…`,
+              }),
+            );
+            await deps.prepareDefaultFunasrModel();
           }
         } else {
           await deps.prepareDefaultFunasrModel();

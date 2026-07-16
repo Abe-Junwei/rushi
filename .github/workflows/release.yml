@@ -7,9 +7,10 @@
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
 #   Tauri generates .app.tar.gz + .sig (mac) and rushi-desktop-setup.exe + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
-# Plan B (v0.1.8+): default Paraformer models are bundled into the installer.
-# Windows (2026-07+): NSIS/portable ship CPU sidecar only; CUDA onedir is a CDN opt-in zip
-#   + signed runtime manifest (component asr-sidecar-cuda). Secret:
+# Plan B (v0.1.8+): default Paraformer models are bundled into the **macOS** installer.
+# Windows (2026-07+): NSIS/portable ship CPU sidecar only; Plan B models are omitted
+#   (makensis still fails with CPU+models after CUDA CDN cut — second knife).
+#   CUDA onedir is a CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
 #
@@ -324,10 +325,14 @@ jobs:
         timeout-minutes: 10
 
       - name: Bootstrap ASR venv (bundled models)
+        # macOS keeps Plan B in the DMG; Windows NSIS still OOMs makensis with CPU+models
+        # (CI 2026-07-16: mmap ~1.27GiB after CUDA CDN cut). Models download at first run.
+        if: false
         shell: bash
         run: bash scripts/bootstrap-asr-venv.sh
 
       - name: Cache ModelScope download (Plan B staging)
+        if: false
         uses: actions/cache@v6
         with:
           path: dist/bundled-asr-models/.modelscope-cache
@@ -335,13 +340,17 @@ jobs:
           restore-keys: bundled-asr-models-v1-windows-
 
       - name: Stage bundled ASR models (Plan B)
+        # Second knife: omit Plan B weights from Windows NSIS (see win-nsis research §4 risk).
         shell: bash
         env:
-          STAGE_MODEL_MAX_ATTEMPTS: "8"
-        run: npm run asr:stage-bundled-models
-        timeout-minutes: 180
+          RUSHI_SKIP_BUNDLED_MODELS_STAGE: "1"
+        run: |
+          echo "Windows NSIS: skipping Plan B model stage (RUSHI_SKIP_BUNDLED_MODELS_STAGE=1)."
+          echo "First-run UI falls back to ModelScope prepare when installer has no modelscope/."
+          npm run asr:stage-bundled-models
+        timeout-minutes: 5
 
-      - name: Measure Windows bundle size spike (CPU + models)
+      - name: Measure Windows bundle size spike (CPU only; models omitted)
         shell: pwsh
         run: pwsh scripts/ci-measure-windows-bundle-size.ps1
 

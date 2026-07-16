@@ -2,7 +2,7 @@
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
-#   RUSHI_SKIP_BUNDLED_MODELS_STAGE=1
+#   RUSHI_SKIP_BUNDLED_MODELS_STAGE=0  # opt-in: stage Plan B into NSIS (default skip — makensis limit)
 #   RUSHI_SKIP_SIDECAR_SIGN=1
 #   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
 # Signing (optional): SIGNTOOL, SIGN_PFX, SIGN_PASS — see sign-windows-sidecar.ps1
@@ -48,13 +48,13 @@ Write-Host "== sidecar health smoke =="
 & pwsh (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1")
 if ($LASTEXITCODE -ne 0) { throw "sidecar health smoke failed" }
 
-if ($env:RUSHI_SKIP_BUNDLED_MODELS_STAGE -ne "1") {
-  Write-Host "== stage bundled ASR models (Plan B) =="
+if ($env:RUSHI_SKIP_BUNDLED_MODELS_STAGE -eq "0") {
+  Write-Host "== stage bundled ASR models (Plan B; explicit opt-in) =="
   Invoke-Npm @("run", "asr:stage-bundled-models")
   & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh")
   if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
 } else {
-  Write-Host "SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE=1"
+  Write-Host "SKIP: Plan B models omitted from Windows NSIS (set RUSHI_SKIP_BUNDLED_MODELS_STAGE=0 to force stage)."
 }
 
 Write-Host "== measure bundle size spike =="

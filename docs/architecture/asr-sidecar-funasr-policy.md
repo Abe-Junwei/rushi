@@ -103,10 +103,10 @@
 
 ## 10. Windows CUDA 包分发方式（已定，2026-07-16 修订）
 
-- **安装介质（NSIS / portable）**：**仅** `rushi-asr-sidecar.exe`（CPU onedir）+ Plan B 模型；**不含** CUDA onedir（避免 NSIS ~2GB 上限）。
+- **安装介质（NSIS / portable）**：**仅** `rushi-asr-sidecar.exe`（CPU onedir）；**不含** CUDA onedir；**Windows 亦不打** Plan B 模型权重（makensis 在 CPU+models 仍失败，见 2026-07-16 CI）——首跑走 ModelScope / 一键准备。
 - **可选 GPU 包**：Release CI 将 **`rushi-asr-sidecar-cuda` onedir** 打 zip 上传 CDN；`rushi-runtime-manifest.json` 含 **`asr-sidecar-cuda`** 组件（`windows-x86_64`）；桌面壳编译期注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL`。
 - **UX**：`windows_cuda_probe_ok()` 为真且本地无 CUDA onedir → 环境页 **推荐**（非强制）下载；失败或拒绝 → CPU 转写不受影响。
-- **模型**：Plan B 权重仍随安装包；外置模型为 **第二刀**（仅当 CPU+models 仍 ≥2GB）。
+- **模型**：macOS 安装包仍可带 Plan B；Windows 安装包以外置下载为主。**第二刀已启用**（相对原「模型随包」）。
 - 调研：[`win-nsis-cpu-cuda-cdn-opt-in-research.md`](../execution/specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)。
 
 ---
