@@ -197,9 +197,11 @@ describe("useExportController", () => {
     );
   });
 
-  it("exportDeliveryDocx uses the real audio file name for the DOCX footer, not the file label", async () => {
+  it("exportDeliveryDocx uses file display name with storage basename in parentheses", async () => {
     vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
-    const deps = makeDeps({ audioStoragePath: "/Users/x/recordings/raw_2026-07-15.wav" });
+    const deps = makeDeps({
+      audioStoragePath: "/Users/x/projects/p/40b08623-e33f-43ba-9e45-43e86f024ff2.wav",
+    });
     const { result } = renderHook(() => useExportController(deps));
 
     await act(async () => {
@@ -214,7 +216,9 @@ describe("useExportController", () => {
       expect.any(String),
       "verbatim",
       expect.any(Array),
-      expect.objectContaining({ recordingFileName: "raw_2026-07-15.wav" }),
+      expect.objectContaining({
+        recordingFileName: "访谈录音 (40b08623-e33f-43ba-9e45-43e86f024ff2.wav)",
+      }),
     );
   });
 

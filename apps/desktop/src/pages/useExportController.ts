@@ -22,7 +22,7 @@ import {
 import {
   safeExportBasename,
   docxExportBasename,
-  recordingFileNameFromAudioPath,
+  formatRecordingFileNameForExport,
 } from "../utils/safeExportBasename";
 import { toast } from "../services/ui/toast";
 import { pushExportFailureActivity } from "../services/ui/pushActivity";
@@ -90,9 +90,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
     [exportContextLabel],
   );
 
-  /** DOCX 文末「录音文件名」：优先取当前文件的真实音频文件名，无音频时回退为文件/项目名。 */
+  /** DOCX 文末「录音文件名」：显示名为主；磁盘存储名不同时括号备注（常见 `{uuid}.wav`）。 */
   const recordingFileName = useCallback(
-    () => recordingFileNameFromAudioPath(audioStoragePath) || exportContextLabel(),
+    () => formatRecordingFileNameForExport(exportContextLabel(), audioStoragePath),
     [audioStoragePath, exportContextLabel],
   );
 

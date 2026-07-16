@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   safeExportBasename,
   docxExportBasename,
+  formatRecordingFileNameForExport,
   recordingFileNameFromAudioPath,
 } from "./safeExportBasename";
 
@@ -73,5 +74,29 @@ describe("recordingFileNameFromAudioPath", () => {
     expect(recordingFileNameFromAudioPath(null)).toBe("");
     expect(recordingFileNameFromAudioPath(undefined)).toBe("");
     expect(recordingFileNameFromAudioPath("   ")).toBe("");
+  });
+});
+
+describe("formatRecordingFileNameForExport", () => {
+  it("shows display name with storage basename in parentheses when they differ", () => {
+    expect(
+      formatRecordingFileNameForExport(
+        "访谈录音",
+        "/Users/x/projects/p/40b08623-e33f-43ba-9e45-43e86f024ff2.wav",
+      ),
+    ).toBe("访谈录音 (40b08623-e33f-43ba-9e45-43e86f024ff2.wav)");
+  });
+
+  it("omits parentheses when display equals storage basename", () => {
+    expect(formatRecordingFileNameForExport("访谈录音.wav", "/tmp/访谈录音.wav")).toBe(
+      "访谈录音.wav",
+    );
+  });
+
+  it("falls back to whichever side is present", () => {
+    expect(formatRecordingFileNameForExport("访谈录音", null)).toBe("访谈录音");
+    expect(
+      formatRecordingFileNameForExport("", "/tmp/40b08623-e33f-43ba-9e45-43e86f024ff2.wav"),
+    ).toBe("40b08623-e33f-43ba-9e45-43e86f024ff2.wav");
   });
 });

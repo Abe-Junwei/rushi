@@ -43,3 +43,19 @@ export function recordingFileNameFromAudioPath(audioPath: string | null | undefi
   const parts = trimmed.split(/[\\/]/).filter(Boolean);
   return parts.length > 0 ? parts[parts.length - 1] : "";
 }
+
+/**
+ * DOCX 文末「录音文件名」：显示名（files.name）为主；若磁盘存储名不同（常见为 `{uuid}.wav`），括号备注。
+ * 例：`访谈录音.wav (40b08623-e33f-43ba-9e45-43e86f024ff2.wav)`
+ */
+export function formatRecordingFileNameForExport(
+  displayName: string | null | undefined,
+  audioPath: string | null | undefined,
+): string {
+  const display = (displayName ?? "").trim();
+  const stored = recordingFileNameFromAudioPath(audioPath);
+  if (display && stored && display !== stored) {
+    return `${display} (${stored})`;
+  }
+  return display || stored;
+}
