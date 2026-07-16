@@ -48,6 +48,8 @@ if ($null -ne $cpuBytes -and $null -ne $modelsBytes) {
   $limit = [int64](2GB)
   if ($cpuPlusModels -ge $limit) {
     Write-Host "DECISION: CPU+models still >= 2GB — second cut (externalize models) REQUIRED."
+  } elseif ($null -ne $modelsBytes -and $modelsBytes -lt 1MB) {
+    Write-Host "DECISION: Plan B models omitted from this staging (Windows second knife); CUDA stays CDN-only."
   } else {
     Write-Host "DECISION: CPU+models < 2GB — keep Plan B models in installer; CUDA stays CDN-only."
   }

@@ -40,7 +40,7 @@ fi
 
 CDN_BASE="${CDN_BASE%/}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-APP_VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
+APP_VERSION="$(cd "$ROOT" && node -p "require('./apps/desktop/package.json').version")"
 LATEST_URL="${CDN_BASE}/latest.json"
 
 http_code() {

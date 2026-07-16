@@ -58,7 +58,9 @@ CDN_BASE="${CDN_BASE%/}"
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # OTA compares against tauri.conf.json / package.json — not git tag suffix.
-VERSION="$(node -p "require('${ROOT}/apps/desktop/package.json').version")"
+# Resolve via cwd-relative require so Git Bash paths work on Windows runners
+# (node cannot require('/d/a/.../package.json')).
+VERSION="$(cd "$ROOT" && node -p "require('./apps/desktop/package.json').version")"
 
 case "$PLATFORM" in
   darwin-aarch64)
