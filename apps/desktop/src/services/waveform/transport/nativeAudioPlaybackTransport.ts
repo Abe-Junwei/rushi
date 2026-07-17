@@ -14,6 +14,7 @@ import type {
   PlaybackTransportEvents,
   PlaybackTransportLoadInput,
 } from "./playbackTransport";
+import { SEEK_SETTLE_WINDOW_MS } from "../../../utils/waveformSeekSettle";
 
 /** Must cover Rust PREBUFFER_MS (120) plus IPC slack. */
 const STATE_ACK_TIMEOUT_MS = 2_000;
@@ -32,17 +33,19 @@ const DISPLAY_SMOOTH_MAX_DRIFT_SEC = 0.05;
  * seek target. A lagging pre-seek tick would otherwise re-anchor authority ahead of
  * the new position; the smooth display then forward-jumps (maxDrift) and the
  * playhead thrashs for a few frames after click-seek while playing.
+ *
+ * Both post-seek windows share {@link SEEK_SETTLE_WINDOW_MS} (and the same seeked-ACK
+ * anchor as the UI grounding/follow-suppress) so every settle guard releases in the
+ * same frame — no staggered corrections that read as left-right flicker at high zoom.
  */
-/** Cover visual grounding (400ms) — shorter windows let Windows Channel lag re-anchor. */
-const SEEK_STALE_GUARD_MS = 500;
+const SEEK_STALE_GUARD_MS = SEEK_SETTLE_WINDOW_MS;
 const SEEK_STALE_GUARD_TOLERANCE_SEC = 0.35;
 /**
- * After seek, keep maxDrift jumps off longer than the stale-TU guard. Decode
- * underrun/resume catch-ups inside this window would otherwise forward-jump
- * display by ≥50ms — at high px/s that is a violent multi-frame thrash.
+ * After seek, keep maxDrift jumps off for the settle window. Decode underrun/resume
+ * catch-ups inside it would otherwise forward-jump display by ≥50ms — at high px/s
+ * that is a violent multi-frame thrash.
  */
-/** Must stay ≥ SEEK_STALE_GUARD_MS so late anchors cannot maxDrift-jump display. */
-const SEEK_SETTLE_NO_JUMP_MS = 600;
+const SEEK_SETTLE_NO_JUMP_MS = SEEK_SETTLE_WINDOW_MS;
 
 /**
  * First-order low-pass tracking of the authority-projected time, with an

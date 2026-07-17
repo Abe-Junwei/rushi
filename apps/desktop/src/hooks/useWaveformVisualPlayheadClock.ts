@@ -8,6 +8,7 @@ import {
   isWaveformScrollProfileEnabled,
   waveformScrollProfileAudioProcess,
 } from "../services/waveform/waveformScrollProfile";
+import { SEEK_SETTLE_WINDOW_MS } from "../utils/waveformSeekSettle";
 
 /** Lower priority runs first within a frame (scroll-follow before playhead transform). */
 export type PlayheadFramePriority = number;
@@ -18,10 +19,12 @@ export const PLAYHEAD_FRAME_PRIORITY_PLAYHEAD = 1;
 /** Zombie safety only — normal release is {@link endVisualSeek} after transport seeked ACK. */
 const VISUAL_SEEK_ZOMBIE_MS = 2_000;
 /**
- * After seeked ACK, reject backward engine display for this window (matches native
- * SEEK_SETTLE_NO_JUMP_MS). Edge mode maps time→x — a lagging display yanks the needle.
+ * After seeked ACK, reject backward engine display for this window. Shares the one
+ * {@link SEEK_SETTLE_WINDOW_MS} (and seeked-ACK anchor) with native stale/settle
+ * guards + follow-suppress so all release together. Edge mode maps time→x — a
+ * lagging display yanks the needle.
  */
-const SEEK_DISPLAY_GROUNDING_MS = 400;
+const SEEK_DISPLAY_GROUNDING_MS = SEEK_SETTLE_WINDOW_MS;
 const SEEK_DISPLAY_GROUNDING_TOLERANCE_SEC = 0.03;
 
 /**

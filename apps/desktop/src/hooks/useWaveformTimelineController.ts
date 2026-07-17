@@ -20,8 +20,13 @@ import { setWaveSurferVisualProgressRatioReader } from "../services/waveform/wav
 import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
 import { useFileViewStateRestoreEffect } from "./useFileViewStateRestoreEffect";
-import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import {
+  scheduleTierScrollFrame,
+  setPlaybackFractionalPx,
+} from "../utils/tierScrollFrameCoordinator";
+import { clearPlaybackFollowDriving } from "../utils/waveformPlaybackSubpixel";
 import { snapPlaybackViewportAfterSeek } from "../utils/snapPlaybackViewportAfterSeek";
+import { SEEK_SETTLE_WINDOW_MS } from "../utils/waveformSeekSettle";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -180,14 +185,22 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   // clear/sink cannot fight the seek snap (center follow is idempotent; edge is not).
   beginVisualSeekRef.current = (timeSec: number, opts?: { deferViewportFrame?: boolean }) => {
     playbackFollowSuppressUntilRef.current = Number.POSITIVE_INFINITY;
+    // Kill stale follow state before the settle window: the skip-snap path (playing
+    // edge listen-jump) never runs snapPlaybackViewportAfterSeek, so a leftover
+    // driving flag + fractional residual would make the suppressed-frame playhead
+    // fallback hard-pin at the anchor / offset the needle — a large zoom-amplified
+    // jump the moment it flips to real geometry. Snap paths re-set these right after.
+    clearPlaybackFollowDriving();
+    setPlaybackFractionalPx(0);
     visualPlayheadClock.beginVisualSeek(timeSec, opts);
   };
   endVisualSeekRef.current = (timeSec: number) => {
     visualPlayheadClock.endVisualSeek(timeSec);
     // Grounding: keep follow frozen after seeked so scroll/frac=0 + content transform
-    // repaint before mid-band sink / pageDrive resume. Match visual-clock grounding
-    // (400ms) — 120ms was too short on Windows Channel lag (scroll without seek land).
-    playbackFollowSuppressUntilRef.current = performance.now() + 400;
+    // repaint before mid-band sink / pageDrive resume. Shares the one
+    // SEEK_SETTLE_WINDOW_MS (seeked-ACK anchor) with the native stale/settle guards
+    // and visual-clock grounding so every settle window releases in the same frame.
+    playbackFollowSuppressUntilRef.current = performance.now() + SEEK_SETTLE_WINDOW_MS;
   };
   getDisplayPlayheadTimeSecRef.current = visualPlayheadClock.getDisplayPlayheadTimeSec;
   onWsAudioprocessRef.current = visualPlayheadClock.onWsAudioprocess;
