@@ -24,7 +24,7 @@
 | Resolve | 相对路径 join 基准；绝对路径接受「在媒体基准下」或「在 app_data 根下（legacy）」 |
 | 写入 | create/import/bundle 新音频：copy 到 `{media_base}/projects/…`，持久化相对路径 |
 | UI | 偏好设置：媒体路径 + 选择 / 恢复默认（纪律说明不进 prefs，见 research） |
-| 命令 | `get_media_base_dir_info` / `set_media_base_dir_pref` / `pick_media_base_dir` / `get_app_data_root_path` |
+| 命令 | `get_media_base_dir_info` / `get_app_data_root_path`；搬迁走 `pick_media_base_dir_preview` + `commit_media_base_dir_change`；遗留 `set_media_base_dir_pref` / `pick_media_base_dir` 仅空库可改 pref（有媒体则拒） |
 | asset scope | 切换媒体基准时即时 `allow_directory`（无需重启即可继续访问新目录下的媒体） |
 
 ### 不做（本片）
@@ -39,8 +39,7 @@
 | UI | 维度 | 真源 |
 |----|------|------|
 | 媒体基准目录 | L1 | `prefs/media_base_dir.txt` |
-| 数据库与模型（本机） | L2 | `DbState.root` |
-| 网盘警告 | L3 | 静态文案 |
+| 数据库与模型（本机） | L2 | `DbState.root`（只读展示；偏好文案说明勿把整库放进网盘） |
 
 ## 落位文件
 
@@ -56,7 +55,7 @@
 - [x] `npm run typecheck`
 - [x] `npm run test`
 - [x] `node scripts/check-architecture-guard.mjs`（无新增 error；既有 hotspot 警告仍在）
-- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml media_base`（6 passed；含 Windows `\\?\` 剥离）
+- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml media_base`（含 Windows `\\?\` 剥离、搬迁半态绝对路径、遗留命令守卫）
 
 ## Focused tests
 

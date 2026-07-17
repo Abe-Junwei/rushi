@@ -152,8 +152,42 @@ fn move_peaks_for_file(src_peaks: &Path, dest_peaks: &Path, file_id: &str) -> Re
     Ok(())
 }
 
+/// Absolute path for DB while relocate is in progress (pref still points at source).
+/// Relative paths would join the old media base and break mid-move / on failure.
+fn store_absolute_under_dest(dest_audio: &Path) -> Result<String, String> {
+    let can = fs::canonicalize(dest_audio)
+        .map_err(|e| format!("无法规范化搬迁后音频路径: {e}"))?;
+    Ok(path_to_user_string(&can))
+}
+
+fn resolve_for_relocate(
+    st: &DbState,
+    file_id: &str,
+    audio_path: &str,
+    dest_proj: &Path,
+) -> Result<PathBuf, String> {
+    match crate::media_base_dir::resolve_audio_path(st, audio_path) {
+        Ok(p) => Ok(p),
+        Err(e) => {
+            // Partial retry: file may already sit at destination from a prior failed run.
+            let leaf = Path::new(audio_path)
+                .file_name()
+                .ok_or_else(|| format!("无法解析音频（{file_id}）：{e}"))?;
+            let dest_audio = dest_proj.join(leaf);
+            if dest_audio.is_file() {
+                fs::canonicalize(&dest_audio).map_err(|err| {
+                    format!("无法规范化已在目标的音频（{file_id}）：{err}")
+                })
+            } else {
+                Err(format!("无法解析音频（{file_id}）：{e}"))
+            }
+        }
+    }
+}
+
 /// Relocate all managed media from current media base (+ legacy app_data peaks) to `dest_base`.
-/// Updates `audio_path` per file as moved. Caller writes pref after success and clears allow root.
+/// Writes **absolute** `audio_path` under dest while pref is still the source; caller switches
+/// pref then relativizes. Clears allow root only after full commit success.
 fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
     let src_base = resolve_media_base(st)?;
     let dest_can = fs::canonicalize(dest_base).map_err(|e| format!("无法解析目标目录: {e}"))?;
@@ -166,6 +200,7 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
 
     let rows = list_audio_rows(st)?;
     let conn = open_db(st)?;
+    let mut failures: Vec<String> = Vec::new();
 
     for (file_id, project_id, audio_path) in rows {
         let dest_proj = audio_project_dir(&dest_can, &project_id);
@@ -174,40 +209,44 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
         // Peaks: prefer media-base project dir, else legacy app_data project dir.
         let src_media_peaks = peaks_dir(&audio_project_dir(&src_can, &project_id));
         let src_legacy_peaks = peaks_dir(&st.root.join("projects").join(&project_id));
-        if src_media_peaks != dest_peaks {
-            move_peaks_for_file(&src_media_peaks, &dest_peaks, &file_id)?;
-        }
-        if src_legacy_peaks != dest_peaks && src_legacy_peaks != src_media_peaks {
-            move_peaks_for_file(&src_legacy_peaks, &dest_peaks, &file_id)?;
-        }
-
-        let resolved = match crate::media_base_dir::resolve_audio_path(st, &audio_path) {
-            Ok(p) => p,
-            Err(_) => {
-                // Try absolute under src without full resolve if already moved.
-                continue;
+        if let Err(e) = (|| -> Result<(), String> {
+            if src_media_peaks != dest_peaks {
+                move_peaks_for_file(&src_media_peaks, &dest_peaks, &file_id)?;
             }
-        };
-        let file_name = resolved
-            .file_name()
-            .ok_or_else(|| "音频路径无效".to_string())?;
-        let dest_audio = dest_proj.join(file_name);
-        if resolved != dest_audio {
-            move_path(&resolved, &dest_audio)?;
+            if src_legacy_peaks != dest_peaks && src_legacy_peaks != src_media_peaks {
+                move_peaks_for_file(&src_legacy_peaks, &dest_peaks, &file_id)?;
+            }
+
+            let resolved = resolve_for_relocate(st, &file_id, &audio_path, &dest_proj)?;
+            let file_name = resolved
+                .file_name()
+                .ok_or_else(|| "音频路径无效".to_string())?;
+            let dest_audio = dest_proj.join(file_name);
+            if resolved != dest_audio {
+                move_path(&resolved, &dest_audio)?;
+            }
+            // Absolute while pref still points at source (relocate-allow scopes reads).
+            let stored = store_absolute_under_dest(&dest_audio)?;
+            conn.execute(
+                "UPDATE files SET audio_path = ?1, updated_at_ms = ?2 WHERE id = ?3",
+                params![
+                    stored,
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as i64)
+                        .unwrap_or(0),
+                    file_id
+                ],
+            )
+            .map_err(|e| format!("回写 audio_path 失败: {e}"))?;
+            Ok(())
+        })() {
+            failures.push(e);
         }
-        let stored = persist_audio_storage_path(&dest_can, &dest_audio)?;
-        conn.execute(
-            "UPDATE files SET audio_path = ?1, updated_at_ms = ?2 WHERE id = ?3",
-            params![
-                stored,
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_millis() as i64)
-                    .unwrap_or(0),
-                file_id
-            ],
-        )
-        .map_err(|e| format!("回写 audio_path 失败: {e}"))?;
+    }
+
+    if !failures.is_empty() {
+        return Err(failures.join("；"));
     }
 
     // Best-effort: move leftover project dirs (empty peaks folders etc.)
@@ -376,10 +415,28 @@ mod tests {
         drop(conn);
 
         relocate_all_to(&st, &media_b).unwrap();
+        // Mid-relocate: pref still at A; DB should hold absolute under B and still resolve.
+        let conn = open_db(&st).unwrap();
+        let mid_path: String = conn
+            .query_row(
+                "SELECT audio_path FROM files WHERE id = ?1",
+                params![file_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        drop(conn);
+        assert!(
+            crate::media_base_dir::path_is_absolute_storage(&mid_path)
+                || Path::new(&mid_path).is_absolute(),
+            "mid-relocate path should be absolute: {mid_path}"
+        );
+        let mid_resolved = crate::media_base_dir::resolve_audio_path(&st, &mid_path).unwrap();
+        let dest_audio = audio_project_dir(&media_b, &project_id).join(format!("{file_id}.wav"));
+        assert_eq!(mid_resolved, fs::canonicalize(&dest_audio).unwrap());
+
         write_media_base_pref(&st, media_b.to_str().unwrap()).unwrap();
         write_relocate_allow_root(&st, None).unwrap();
 
-        let dest_audio = audio_project_dir(&media_b, &project_id).join(format!("{file_id}.wav"));
         assert!(dest_audio.is_file());
         assert!(peak_file_path(
             &peaks_dir(&audio_project_dir(&media_b, &project_id)),
@@ -387,6 +444,65 @@ mod tests {
             0
         )
         .is_file());
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn mid_relocate_absolute_resolves_while_pref_still_source() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        write_media_base_pref(&st, media_a.to_str().unwrap()).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_id = Uuid::new_v4().to_string();
+        let dest_audio = audio_project_dir(&media_b, &project_id).join(format!("{file_id}.wav"));
+        fs::create_dir_all(dest_audio.parent().unwrap()).unwrap();
+        fs::write(&dest_audio, b"wav").unwrap();
+        write_relocate_allow_root(&st, Some(&media_b)).unwrap();
+
+        let abs = path_to_user_string(&fs::canonicalize(&dest_audio).unwrap());
+        let resolved = crate::media_base_dir::resolve_audio_path(&st, &abs).unwrap();
+        assert_eq!(resolved, fs::canonicalize(&dest_audio).unwrap());
+
+        // Relative under dest also joins relocate-allow while allow is set.
+        let rel = format!("projects/{project_id}/{file_id}.wav");
+        let resolved_rel = crate::media_base_dir::resolve_audio_path(&st, &rel).unwrap();
+        assert_eq!(resolved_rel, fs::canonicalize(&dest_audio).unwrap());
+
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn relocate_fails_when_audio_unresolvable() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        write_media_base_pref(&st, media_a.to_str().unwrap()).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_id = Uuid::new_v4().to_string();
+        let conn = open_db(&st).unwrap();
+        let t = 1_i64;
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, 'p', ?2, ?2)",
+            params![project_id, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'n', 'audio_only', ?3, ?4, ?4)",
+            params![file_id, project_id, "projects/missing/nope.wav", t],
+        )
+        .unwrap();
+        drop(conn);
+
+        let err = relocate_all_to(&st, &media_b).unwrap_err();
+        assert!(err.contains(&file_id) || err.contains("无法解析"));
         let _ = fs::remove_dir_all(tmp);
     }
 }

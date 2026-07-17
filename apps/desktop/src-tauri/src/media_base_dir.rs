@@ -134,7 +134,7 @@ pub fn persist_audio_storage_path(media_base: &Path, file: &Path) -> Result<Stri
     Ok(path_to_user_string(&file_can))
 }
 
-fn path_is_absolute_storage(raw: &str) -> bool {
+pub(crate) fn path_is_absolute_storage(raw: &str) -> bool {
     let p = Path::new(raw);
     if p.is_absolute() {
         return true;
@@ -194,31 +194,21 @@ fn map_access_io_error(err: &std::io::Error, candidate: &Path) -> String {
     format!("无法解析音频文件路径: {msg}")
 }
 
-/// Dual-read resolve: relative → join media base; absolute → must sit under media base or legacy app_data root.
-/// Symlinks are allowed only when the canonical target stays under an allowed root (controlled allow).
-pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, String> {
-    let trimmed = raw_path.trim();
-    if trimmed.is_empty() {
-        return Err("音频路径为空".into());
-    }
-    let media_base = resolve_media_base(st)?;
-    let candidate = if path_is_absolute_storage(trimmed) {
-        PathBuf::from(trimmed)
-    } else {
-        let rel = trimmed.trim_start_matches(['/', '\\']);
-        media_base.join(rel)
-    };
-
+fn resolve_candidate_under_roots(
+    st: &DbState,
+    media_base: &Path,
+    candidate: &Path,
+) -> Result<PathBuf, String> {
     let sm =
-        std::fs::symlink_metadata(&candidate).map_err(|e| map_access_io_error(&e, &candidate))?;
+        std::fs::symlink_metadata(candidate).map_err(|e| map_access_io_error(&e, candidate))?;
     let was_symlink = sm.file_type().is_symlink();
     if looks_like_cloud_placeholder(&sm) {
         return Err(CLOUD_PLACEHOLDER_HINT.into());
     }
 
     let file_can =
-        std::fs::canonicalize(&candidate).map_err(|e| map_access_io_error(&e, &candidate))?;
-    let under_media = under_canonical_root(&media_base, &file_can);
+        std::fs::canonicalize(candidate).map_err(|e| map_access_io_error(&e, candidate))?;
+    let under_media = under_canonical_root(media_base, &file_can);
     let under_legacy = under_canonical_root(&st.root, &file_can);
     let under_relocate =
         read_relocate_allow_root(st).is_some_and(|extra| under_canonical_root(&extra, &file_can));
@@ -232,6 +222,38 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
         return Err("音频文件不存在或不是普通文件".into());
     }
     Ok(file_can)
+}
+
+/// Dual-read resolve: relative → join media base (and relocate-allow root while a move is in progress);
+/// absolute → must sit under media base, app_data, or relocate-allow.
+/// Symlinks are allowed only when the canonical target stays under an allowed root.
+pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, String> {
+    let trimmed = raw_path.trim();
+    if trimmed.is_empty() {
+        return Err("音频路径为空".into());
+    }
+    let media_base = resolve_media_base(st)?;
+    if path_is_absolute_storage(trimmed) {
+        return resolve_candidate_under_roots(st, &media_base, Path::new(trimmed));
+    }
+
+    let rel = trimmed.trim_start_matches(['/', '\\']);
+    let mut candidates = Vec::new();
+    // During in-progress relocate, prefer the destination root so mid-move absolute→relative
+    // mistakes still resolve; also supports absolute written under dest.
+    if let Some(allow) = read_relocate_allow_root(st) {
+        candidates.push(allow.join(rel));
+    }
+    candidates.push(media_base.join(rel));
+
+    let mut last_err = String::from("无法解析音频文件路径");
+    for candidate in candidates {
+        match resolve_candidate_under_roots(st, &media_base, &candidate) {
+            Ok(p) => return Ok(p),
+            Err(e) => last_err = e,
+        }
+    }
+    Err(last_err)
 }
 
 #[derive(serde::Serialize)]
@@ -262,20 +284,17 @@ pub fn get_app_data_root_path(state: State<'_, DbState>) -> Result<String, Strin
     Ok(path_to_user_string(&state.inner().root))
 }
 
+/// Legacy command: empty-library pref switch only. When media exists, refuse (use relocate UI).
 #[tauri::command]
 pub fn set_media_base_dir_pref(
     path: Option<String>,
     app: AppHandle,
     state: State<'_, DbState>,
 ) -> Result<MediaBaseDirInfo, String> {
-    let st = state.inner();
-    let value = path.unwrap_or_default();
-    write_media_base_pref(st, &value)?;
-    let info = get_media_base_dir_info(state)?;
-    crate::project::asset_scope::allow_media_base_directory(&app, Path::new(&info.media_base_dir));
-    Ok(info)
+    crate::media_base_relocate::commit_media_base_dir_change(path, false, app, state)
 }
 
+/// Legacy command: pick + empty-library pref switch only (no silent relocate bypass).
 #[tauri::command]
 pub fn pick_media_base_dir(
     app: AppHandle,
@@ -287,10 +306,13 @@ pub fn pick_media_base_dir(
     let Some(dir) = picked else {
         return Ok(None);
     };
-    write_media_base_pref(state.inner(), &dir.to_string_lossy())?;
-    let info = get_media_base_dir_info(state)?;
-    crate::project::asset_scope::allow_media_base_directory(&app, Path::new(&info.media_base_dir));
-    Ok(Some(info))
+    let path = path_to_user_string(&dir);
+    Ok(Some(crate::media_base_relocate::commit_media_base_dir_change(
+        Some(path),
+        false,
+        app,
+        state,
+    )?))
 }
 
 #[cfg(test)]
@@ -428,6 +450,27 @@ mod tests {
         let err = resolve_audio_path(&st, "projects/p1/escape.wav").unwrap_err();
         assert!(err.contains("符号链接") || err.contains("媒体基准") || err.contains("应用数据根"));
         let _ = fs::remove_file(outside);
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn symlink_inside_media_base_resolves_windows() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media");
+        let proj = media.join("projects").join("p1");
+        fs::create_dir_all(&proj).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        let target = proj.join("real.wav");
+        fs::write(&target, b"wav").unwrap();
+        let link = proj.join("link.wav");
+        if std::os::windows::fs::symlink_file(&target, &link).is_err() {
+            // Symlink privilege not available (non-admin / Developer Mode off).
+            let _ = fs::remove_dir_all(tmp);
+            return;
+        }
+        let resolved = resolve_audio_path(&st, "projects/p1/link.wav").unwrap();
+        assert_eq!(resolved, fs::canonicalize(&target).unwrap());
         let _ = fs::remove_dir_all(tmp);
     }
 }

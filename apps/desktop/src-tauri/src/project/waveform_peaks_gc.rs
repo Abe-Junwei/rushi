@@ -151,6 +151,33 @@ fn peaks_usage_for_project(
     Ok((total_bytes, orphan_bytes, orphan_ids))
 }
 
+fn project_dirs_for_peaks_scan(st: &DbState, project_id: &str) -> Vec<PathBuf> {
+    let legacy = project_storage_dir(&st.root, project_id);
+    let media = crate::media_base_dir::media_project_dir(st, project_id)
+        .unwrap_or_else(|_| legacy.clone());
+    let mut dirs = vec![media];
+    if dirs[0] != legacy {
+        dirs.push(legacy);
+    }
+    dirs
+}
+
+fn gc_orphan_peaks_in_project_dir(
+    project_dir: &Path,
+    active_ids: &HashSet<String>,
+) -> Result<WaveformPeaksGcReport, String> {
+    let peaks_root = peaks_dir(project_dir);
+    let (_, _, orphan_ids) = peaks_usage_for_project(project_dir, active_ids)?;
+    let mut report = WaveformPeaksGcReport::default();
+    for file_id in orphan_ids {
+        let before = peaks_dir_size_for_file(&peaks_root, &file_id);
+        remove_peaks_for_file(&peaks_root, &file_id);
+        report.removed_file_sets = report.removed_file_sets.saturating_add(1);
+        report.freed_bytes = report.freed_bytes.saturating_add(before);
+    }
+    Ok(report)
+}
+
 pub fn inspect_waveform_peaks_cache(st: &DbState) -> Result<WaveformPeaksCacheInfo, String> {
     let root = projects_root(&st.root);
     let active_projects = list_project_ids(st)?;
@@ -160,13 +187,13 @@ pub fn inspect_waveform_peaks_cache(st: &DbState) -> Result<WaveformPeaksCacheIn
 
     for project_id in &active_projects {
         let active_ids = active_file_ids(st, project_id)?;
-        let project_dir = crate::media_base_dir::media_project_dir(st, project_id)
-            .unwrap_or_else(|_| project_storage_dir(&st.root, project_id));
-        let (project_total, project_orphan, orphan_ids) =
-            peaks_usage_for_project(&project_dir, &active_ids)?;
-        total_bytes = total_bytes.saturating_add(project_total);
-        orphan_bytes = orphan_bytes.saturating_add(project_orphan);
-        orphan_file_sets = orphan_file_sets.saturating_add(orphan_ids.len() as u32);
+        for project_dir in project_dirs_for_peaks_scan(st, project_id) {
+            let (project_total, project_orphan, orphan_ids) =
+                peaks_usage_for_project(&project_dir, &active_ids)?;
+            total_bytes = total_bytes.saturating_add(project_total);
+            orphan_bytes = orphan_bytes.saturating_add(project_orphan);
+            orphan_file_sets = orphan_file_sets.saturating_add(orphan_ids.len() as u32);
+        }
     }
 
     let orphan_dirs = orphan_project_dirs(&st.root, &active_projects);
@@ -190,16 +217,13 @@ pub fn gc_orphan_peaks_for_project(
     project_id: &str,
 ) -> Result<WaveformPeaksGcReport, String> {
     let active_ids = active_file_ids(st, project_id)?;
-    let project_dir = crate::media_base_dir::media_project_dir(st, project_id)
-        .unwrap_or_else(|_| project_storage_dir(&st.root, project_id));
-    let peaks_root = peaks_dir(&project_dir);
-    let (_, _, orphan_ids) = peaks_usage_for_project(&project_dir, &active_ids)?;
     let mut report = WaveformPeaksGcReport::default();
-    for file_id in orphan_ids {
-        let before = peaks_dir_size_for_file(&peaks_root, &file_id);
-        remove_peaks_for_file(&peaks_root, &file_id);
-        report.removed_file_sets = report.removed_file_sets.saturating_add(1);
-        report.freed_bytes = report.freed_bytes.saturating_add(before);
+    for project_dir in project_dirs_for_peaks_scan(st, project_id) {
+        let partial = gc_orphan_peaks_in_project_dir(&project_dir, &active_ids)?;
+        report.removed_file_sets = report
+            .removed_file_sets
+            .saturating_add(partial.removed_file_sets);
+        report.freed_bytes = report.freed_bytes.saturating_add(partial.freed_bytes);
     }
     Ok(report)
 }

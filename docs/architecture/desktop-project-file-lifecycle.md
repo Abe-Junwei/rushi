@@ -95,8 +95,8 @@ FileHub / Editor → closeProject → Welcome
 
 - **DB / models / secrets / logs**：始终在本机 `DbState.root`（app_data），禁止放消费级网盘。
 - **媒体基准**（`prefs/media_base_dir.txt`）：新音频与 peaks 落在 `{media_base}/projects/{projectId}/`；`files.audio_path` 优先存相对该基准的路径。
-- **改基准**：有受管媒体时必须搬迁（薄片 2），不可仅改指针。
-- **读路径**：`media_base_dir::resolve_audio_path`（scoped；受控 symlink；网盘占位返回可执行错误文案）。
+- **改基准**：有受管媒体时必须搬迁（薄片 2），不可仅改指针。搬迁进行中 DB 写**绝对路径**（`relocate-allow` 扩 scope）；pref 切换成功后再相对化。失败时保留 allow，避免半态不可读。
+- **读路径**：`media_base_dir::resolve_audio_path`（scoped；相对路径优先 join relocate-allow；受控 symlink；网盘占位返回可执行错误文案）。
 - **换机**：语段/项目元数据走项目包或未来协作轨；媒体靠网盘同步 + 相对路径。
 
 ## 相关代码
