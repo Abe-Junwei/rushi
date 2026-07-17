@@ -178,7 +178,7 @@ pub fn pick_media_base_dir(
     state: State<'_, DbState>,
 ) -> Result<Option<MediaBaseDirInfo>, String> {
     let picked = rfd::FileDialog::new()
-        .set_title("选择媒体基准目录（可放网盘；数据库仍在本机）")
+        .set_title("选择媒体存放目录")
         .pick_folder();
     let Some(dir) = picked else {
         return Ok(None);

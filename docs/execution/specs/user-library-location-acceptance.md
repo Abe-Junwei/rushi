@@ -21,7 +21,7 @@
 | Pref | `prefs/media_base_dir.txt`；空 = 默认 `DbState.root` |
 | Resolve | 相对路径 join 基准；绝对路径接受「在媒体基准下」或「在 app_data 根下（legacy）」 |
 | 写入 | create/import/bundle 新音频：copy 到 `{media_base}/projects/…`，持久化相对路径 |
-| UI | 偏好设置：媒体基准路径、选择文件夹、恢复默认；DB 本地说明 + 网盘警告 |
+| UI | 偏好设置：媒体路径 + 选择 / 恢复默认（纪律说明不进 prefs，见 research） |
 | 命令 | `get_media_base_dir_info` / `set_media_base_dir_pref` / `pick_media_base_dir` / `get_app_data_root_path` |
 | asset scope | 切换媒体基准时即时 `allow_directory`（无需重启即可继续访问新目录下的媒体） |
 
@@ -66,7 +66,7 @@
 
 ## 手测清单
 
-1. 打开环境 → 偏好设置：可见「内容库位置」区；DB 路径只读；有网盘警告。
+1. 打开环境 → 偏好设置：可见「内容库位置」；路径 + 选择 / 恢复默认，无长篇说明堆叠。
 2. 选择一非默认本地目录为媒体基准 → 导入音频 → 文件出现在该目录 `projects/…` → 可播放/转写。
 3. 恢复默认媒体基准后，旧项目（绝对路径）仍可打开。
 4. （可选）将媒体基准指到网盘「始终保留本地」文件夹冒烟；**不要**把 app_data 整库放进网盘。

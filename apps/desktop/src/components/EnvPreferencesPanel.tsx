@@ -32,7 +32,6 @@ import {
   resolveStoredTranscriptFontPx,
   resolveStoredWaveformHeightPx,
   subscribeWaveformPrefs,
-  WAVEFORM_HEIGHT_DEFAULT,
   WAVEFORM_HEIGHT_MAX,
   WAVEFORM_HEIGHT_MIN,
   writeStoredP1TranscriptFontPx,
@@ -153,8 +152,6 @@ export function EnvPreferencesPanel() {
 
   return (
     <div className={ENV_PANEL_PAGE_CLASS} data-purpose="env-preferences-page">
-      <EnvLibraryLocationSection />
-
       <EnvPrefGroupShell title="外观" description="界面主题、强调色与界面缩放；变更后立即生效。">
         <EnvAppearanceSections />
       </EnvPrefGroupShell>
@@ -224,9 +221,9 @@ export function EnvPreferencesPanel() {
             </div>
           </div>
 
-          <div className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className={PANEL_TYPOGRAPHY.fieldLabel}>默认播放速度</span>
-            <div className="max-w-[12rem]">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className={ENV_PANEL_FORM_FIELD_CLASS}>
+              <span className={PANEL_TYPOGRAPHY.fieldLabel}>默认播放速度</span>
               <EnvPanelSelect
                 id="pref-playback-rate"
                 aria-label="默认播放速度"
@@ -235,11 +232,9 @@ export function EnvPreferencesPanel() {
                 onChange={setGlobalPlaybackRate}
               />
             </div>
-          </div>
 
-          <div className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className={PANEL_TYPOGRAPHY.fieldLabel}>语段正文字号</span>
-            <div className="max-w-[12rem]">
+            <div className={ENV_PANEL_FORM_FIELD_CLASS}>
+              <span className={PANEL_TYPOGRAPHY.fieldLabel}>语段正文字号</span>
               <EnvPanelSelect
                 id="pref-transcript-font"
                 aria-label="语段正文字号"
@@ -248,31 +243,33 @@ export function EnvPreferencesPanel() {
                 onChange={setTranscriptFontPx}
               />
             </div>
-          </div>
 
-          <label htmlFor="pref-waveform-height" className={ENV_PANEL_FORM_FIELD_CLASS}>
-            <span className={PANEL_TYPOGRAPHY.fieldLabel}>波形区域高度</span>
-            <input
-              id="pref-waveform-height"
-              className={`${CONTROL_TEXT_INPUT} max-w-[12rem]`}
-              type="number"
-              inputMode="numeric"
-              min={WAVEFORM_HEIGHT_MIN}
-              max={WAVEFORM_HEIGHT_MAX}
-              step={1}
-              value={waveformHeightInputValue}
-              onChange={(e) => setWaveformHeightDraft(e.target.value)}
-              onBlur={(e) => commitWaveformHeightInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key !== "Enter") return;
-                commitWaveformHeightInput(e.currentTarget.value);
-                e.currentTarget.blur();
-              }}
-            />
-            <span className={PANEL_TYPOGRAPHY.meta}>
-              {WAVEFORM_HEIGHT_MIN}–{WAVEFORM_HEIGHT_MAX}px；默认 {WAVEFORM_HEIGHT_DEFAULT}px
-            </span>
-          </label>
+            <label htmlFor="pref-waveform-height" className={ENV_PANEL_FORM_FIELD_CLASS}>
+              <span className={PANEL_TYPOGRAPHY.fieldLabel}>
+                波形高度
+                <span className="ml-1 font-normal text-notion-text-muted">
+                  ({WAVEFORM_HEIGHT_MIN}–{WAVEFORM_HEIGHT_MAX})
+                </span>
+              </span>
+              <input
+                id="pref-waveform-height"
+                className={CONTROL_TEXT_INPUT}
+                type="number"
+                inputMode="numeric"
+                min={WAVEFORM_HEIGHT_MIN}
+                max={WAVEFORM_HEIGHT_MAX}
+                step={1}
+                value={waveformHeightInputValue}
+                onChange={(e) => setWaveformHeightDraft(e.target.value)}
+                onBlur={(e) => commitWaveformHeightInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key !== "Enter") return;
+                  commitWaveformHeightInput(e.currentTarget.value);
+                  e.currentTarget.blur();
+                }}
+              />
+            </label>
+          </div>
 
           <div>
             <button
@@ -285,6 +282,8 @@ export function EnvPreferencesPanel() {
           </div>
         </div>
       </EnvPrefGroupShell>
+
+      <EnvLibraryLocationSection />
     </div>
   );
 }

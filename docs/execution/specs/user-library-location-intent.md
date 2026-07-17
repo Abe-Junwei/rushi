@@ -5,7 +5,7 @@
 
 ## 目标
 
-落地 Zotero 式二分的第一刀：**媒体基准目录（Media base directory）** 可配置；新导入音频写入该基准下并以**相对路径**落库；读路径 dual-read（相对 + 旧绝对）；设置页展示 DB 本地真源说明与网盘警告。
+落地 Zotero 式二分的第一刀：**媒体基准目录（Media base directory）** 可配置；新导入音频写入该基准下并以**相对路径**落库；读路径 dual-read（相对 + 旧绝对）。偏好页只露路径与选择/恢复（业内 Files & Folders 式）；DB 本机纪律与网盘警告落在 research/文档，不进 prefs 堆叠（打开数据目录已有 ASR 工具入口）。
 
 ## 切片划分
 
@@ -27,9 +27,9 @@
 
 | UI 控件 | 状态维度 | 真源 | 禁止误绑 |
 |---------|----------|------|----------|
-| 「媒体基准目录」路径 + 选择按钮 | **L1 媒体基准** | `prefs/media_base_dir.txt`（空 = 默认 `DbState.root`） | 禁止用 DB 路径或 `open_app_data_folder` 冒充媒体基准 |
-| 「数据库与模型（本机）」只读说明 | **L2 本地库根** | `DbState.root` / `open_app_data_folder` | 禁止暗示可同步或可选网盘 |
-| 网盘警告文案 | **L3 产品纪律** | 静态文案（research §4/§5） | 禁止「一键同步到网盘」类 CTA |
+| 「内容库位置」路径 + 选择 / 恢复默认 | **L1 媒体基准** | `prefs/media_base_dir.txt`（空 = 默认 `DbState.root`） | 禁止用 DB 路径冒充媒体基准；prefs 不堆 L2/L3 长文 |
+| （非本区）打开数据目录 | **L2 本地库根** | `DbState.root` / `open_app_data_folder`（ASR 工具等既有入口） | 禁止暗示可同步或可选网盘 |
+| research / 用户指南 | **L3 产品纪律** | research §4/§5 | 禁止「一键同步到网盘」类 CTA |
 
 ## 验证方式
 
