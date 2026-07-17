@@ -133,7 +133,15 @@ export function useWaveformVisualPlayheadClock(input: {
         }
       } else {
         seekDisplayGroundingRef.current = null;
-        visualTimeSecRef.current = clamped;
+        // ADR-0008 rule 2 (monotonic clamp): while playing, reject backward engine
+        // samples. Out-of-order / lagging pre-seek TimeUpdates arriving after the
+        // grounding window clears would otherwise rewind the ref for a frame — read
+        // by the tier-scroll playhead paint as a zoom-amplified left-right flicker.
+        // Backward seeks are legitimate but always re-pin via beginVisualSeek
+        // (syncPausedTime, bypassing this path), so this cannot block them.
+        visualTimeSecRef.current = live.isPlaying
+          ? Math.max(visualTimeSecRef.current, clamped)
+          : clamped;
       }
       if (scheduleFrame) {
         schedulePlaybackViewportFrame(visualTimeSecRef.current);

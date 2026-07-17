@@ -480,6 +480,53 @@ describe("useWaveformVisualPlayheadClock single tick", () => {
     expect(result.current.getVisualPlayheadTimeSec()).toBeCloseTo(5.01, 2);
   });
 
+  it("does not rewind display for a stale backward engine sample after grounding clears (playing)", () => {
+    // Regression: an out-of-order / lagging pre-seek TimeUpdate arriving once the
+    // grounding window has cleared must not rewind visualTimeSecRef for a frame —
+    // the tier-scroll playhead paint reads it live and would flicker (zoom-amplified).
+    const raf = stubQueuedRaf();
+    let mediaSec = 12;
+
+    const { result } = renderHook(() =>
+      useWaveformVisualPlayheadClock({
+        isPlaying: true,
+        isReady: true,
+        durationSec: 30,
+        currentTimeSec: 12,
+        playbackRate: 1,
+        getEngineDisplayTimeSec: () => mediaSec,
+        getRawMediaIsPlaying: () => true,
+      }),
+    );
+
+    act(() => {
+      result.current.beginVisualSeek(5);
+      flushTierScrollFrameForTests();
+    });
+    // End seek; engine reaches target so grounding clears.
+    act(() => {
+      result.current.endVisualSeek(5);
+      mediaSec = 5.0;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    // Normal forward advance past the target.
+    act(() => {
+      mediaSec = 5.4;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBeCloseTo(5.4, 2);
+
+    // Stale backward sample — needle must hold, not rewind to 5.1.
+    act(() => {
+      mediaSec = 5.1;
+      raf.flushOne();
+      flushTierScrollFrameForTests();
+    });
+    expect(result.current.getVisualPlayheadTimeSec()).toBeCloseTo(5.4, 2);
+  });
+
   it("pause pin via syncDisplayPlayheadAfterSeek does not leave VisualSeeking stuck", () => {
     // Natural-end finally latches display to endSec while React isPlaying is still
     // true; a late rAF freeze must not re-apply media overshoot past the band.
