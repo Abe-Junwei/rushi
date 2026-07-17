@@ -33,6 +33,8 @@ export type CompactConfirmDialogProps = {
   persistState?: boolean;
   layoutRev?: number;
   rootRole?: string;
+  /** 从更高层浮层（如设置面板 z-110）内部弹出时须抬层，否则会被父面板压住而“看不见”。 */
+  panelZIndex?: number;
   children: ReactNode;
 };
 
@@ -54,6 +56,7 @@ export function CompactConfirmDialog({
   persistState,
   layoutRev = COMPACT_CONFIRM_LAYOUT_REV_BASE,
   rootRole = "alertdialog",
+  panelZIndex,
   children,
 }: CompactConfirmDialogProps) {
   const confirmClass = confirmVariant === "danger" ? CONTROL_BTN_DANGER : CONTROL_BTN_PRIMARY;
@@ -75,6 +78,7 @@ export function CompactConfirmDialog({
       persistState={persistState}
       layoutRev={layoutRev}
       rootRole={rootRole}
+      panelZIndex={panelZIndex}
       footer={
         <>
           <button

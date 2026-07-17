@@ -155,6 +155,7 @@ export function EnvLibraryLocationSection() {
         cancelLabel="取消"
         fallbackHeight={220}
         defaultWidth={420}
+        panelZIndex={120}
       >
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           将把 {pending?.summary.fileCount ?? 0} 个音频文件（及波形缓存）搬到：
