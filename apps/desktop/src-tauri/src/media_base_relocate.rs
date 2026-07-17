@@ -2,10 +2,11 @@
 
 use crate::media_base_dir::{
     audio_project_dir, path_to_user_string, persist_audio_storage_path, read_media_base_pref_raw,
-    resolve_media_base, write_media_base_pref, write_relocate_allow_root, MediaBaseDirInfo,
+    resolve_media_base, strip_windows_verbatim_prefix, write_media_base_pref,
+    write_relocate_allow_root, MediaBaseDirInfo,
 };
 use crate::native_audio::NativeAudioState;
-use crate::project::utils::open_db;
+use crate::project::utils::{append_desktop_log_line, open_db};
 use crate::project::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 use crate::DbState;
 use rusqlite::params;
@@ -146,23 +147,36 @@ pub fn managed_media_summary(st: &DbState) -> Result<MediaBaseManagedSummary, St
     })
 }
 
-fn move_peaks_for_file(src_peaks: &Path, dest_peaks: &Path, file_id: &str) -> Result<(), String> {
+/// Peaks are rebuildable; WebView / PeakCache often keeps `.dat` open on Windows.
+/// Never fail the whole library relocate because a peak file is locked.
+fn move_peaks_for_file_best_effort(src_peaks: &Path, dest_peaks: &Path, file_id: &str) {
     if !src_peaks.is_dir() {
-        return Ok(());
+        return;
     }
-    fs::create_dir_all(dest_peaks).map_err(|e| e.to_string())?;
+    if fs::create_dir_all(dest_peaks).is_err() {
+        return;
+    }
     for (level, _) in PEAK_LEVELS {
         let from = peak_file_path(src_peaks, file_id, level);
         if from.is_file() {
             let to = peak_file_path(dest_peaks, file_id, level);
-            move_path(&from, &to)?;
+            let _ = move_path(&from, &to);
         }
     }
     let meta_from = peak_meta_path(src_peaks, file_id);
     if meta_from.is_file() {
-        move_path(&meta_from, &peak_meta_path(dest_peaks, file_id))?;
+        let _ = move_path(&meta_from, &peak_meta_path(dest_peaks, file_id));
     }
-    Ok(())
+}
+
+fn paths_same_file(a: &Path, b: &Path) -> bool {
+    if a == b {
+        return true;
+    }
+    match (fs::canonicalize(a), fs::canonicalize(b)) {
+        (Ok(ca), Ok(cb)) => ca == cb,
+        _ => false,
+    }
 }
 
 /// Absolute path for DB while relocate is in progress (pref still points at source).
@@ -179,11 +193,12 @@ fn resolve_for_relocate(
     audio_path: &str,
     dest_proj: &Path,
 ) -> Result<PathBuf, String> {
-    match crate::media_base_dir::resolve_audio_path(st, audio_path) {
+    let normalized = strip_windows_verbatim_prefix(audio_path);
+    match crate::media_base_dir::resolve_audio_path(st, &normalized) {
         Ok(p) => Ok(p),
         Err(e) => {
             // Partial retry: file may already sit at destination from a prior failed run.
-            let leaf = Path::new(audio_path)
+            let leaf = Path::new(&normalized)
                 .file_name()
                 .ok_or_else(|| format!("无法解析音频（{file_id}）：{e}"))?;
             let dest_audio = dest_proj.join(leaf);
@@ -224,10 +239,10 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
         let src_legacy_peaks = peaks_dir(&st.root.join("projects").join(&project_id));
         if let Err(e) = (|| -> Result<(), String> {
             if src_media_peaks != dest_peaks {
-                move_peaks_for_file(&src_media_peaks, &dest_peaks, &file_id)?;
+                move_peaks_for_file_best_effort(&src_media_peaks, &dest_peaks, &file_id);
             }
             if src_legacy_peaks != dest_peaks && src_legacy_peaks != src_media_peaks {
-                move_peaks_for_file(&src_legacy_peaks, &dest_peaks, &file_id)?;
+                move_peaks_for_file_best_effort(&src_legacy_peaks, &dest_peaks, &file_id);
             }
 
             let resolved = resolve_for_relocate(st, &file_id, &audio_path, &dest_proj)?;
@@ -235,7 +250,7 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
                 .file_name()
                 .ok_or_else(|| "音频路径无效".to_string())?;
             let dest_audio = dest_proj.join(file_name);
-            if resolved != dest_audio {
+            if !paths_same_file(&resolved, &dest_audio) {
                 move_path(&resolved, &dest_audio)?;
             }
             // Absolute while pref still points at source (relocate-allow scopes reads).
@@ -254,6 +269,10 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
             .map_err(|e| format!("回写 audio_path 失败: {e}"))?;
             Ok(())
         })() {
+            append_desktop_log_line(
+                st,
+                &format!("WARN media_base_relocate file={file_id}: {e}"),
+            );
             failures.push(e);
         }
     }
@@ -321,25 +340,37 @@ pub fn commit_media_base_dir_change(
         prepare_for_relocate(&app)?;
     }
 
-    let dest: PathBuf = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+    // Always canonicalize (including restore-default → app_data) so persist/strip_prefix match.
+    let dest_raw: PathBuf = match path
+        .as_deref()
+        .map(strip_windows_verbatim_prefix)
+        .filter(|s| !s.is_empty())
+    {
         None => st.root.clone(),
         Some(p) => {
-            let pb = PathBuf::from(p);
+            let pb = PathBuf::from(&p);
             if !pb.is_dir() {
                 return Err("媒体基准目录不存在或不是文件夹。".into());
             }
-            fs::canonicalize(&pb).map_err(|e| format!("无法解析媒体基准目录：{e}"))?
+            pb
         }
     };
+    let dest = fs::canonicalize(&dest_raw).map_err(|e| format!("无法解析媒体基准目录：{e}"))?;
 
     if summary.needs_relocate {
         relocate_all_to(st, &dest).map_err(|e| {
+            append_desktop_log_line(st, &format!("WARN media_base_relocate failed: {e}"));
             // Keep allow root so partially moved absolute/relative files under dest still resolve.
             format!("搬迁未完成（媒体基准未切换）：{e}")
         })?;
     }
 
-    let pref_value = if path.as_deref().map(str::trim).unwrap_or("").is_empty() {
+    let restore_default = path
+        .as_deref()
+        .map(strip_windows_verbatim_prefix)
+        .unwrap_or_default()
+        .is_empty();
+    let pref_value = if restore_default {
         String::new()
     } else {
         path_to_user_string(&dest)
@@ -347,11 +378,12 @@ pub fn commit_media_base_dir_change(
     write_media_base_pref(st, &pref_value)?;
     write_relocate_allow_root(st, None)?;
 
-    // Relativize any absolute paths now under the new base.
+    // Relativize any absolute paths now under the new base (incl. legacy `\\?\` abs paths).
     if let Ok(rows) = list_audio_rows(st) {
         if let Ok(conn) = open_db(st) {
             for (file_id, _, audio_path) in rows {
-                if let Ok(resolved) = crate::media_base_dir::resolve_audio_path(st, &audio_path) {
+                let normalized = strip_windows_verbatim_prefix(&audio_path);
+                if let Ok(resolved) = crate::media_base_dir::resolve_audio_path(st, &normalized) {
                     if let Ok(stored) = persist_audio_storage_path(&dest, &resolved) {
                         let _ = conn.execute(
                             "UPDATE files SET audio_path = ?1 WHERE id = ?2",
@@ -535,6 +567,84 @@ mod tests {
             )
             .unwrap();
         }
+    }
+
+    #[test]
+    fn relocate_mixed_legacy_absolute_and_relative_under_verbatim_pref() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        // Simulate legacy pref that still stores `\\?\` (healed on read).
+        let pref_raw = format!(
+            "{}{}",
+            if cfg!(windows) { r"\\?\" } else { "" },
+            media_a.display()
+        );
+        fs::create_dir_all(st.root.join("prefs")).unwrap();
+        fs::write(st.root.join("prefs/media_base_dir.txt"), format!("{pref_raw}\n")).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_rel = Uuid::new_v4().to_string();
+        let file_abs = Uuid::new_v4().to_string();
+
+        let proj_a = audio_project_dir(&media_a, &project_id);
+        fs::create_dir_all(peaks_dir(&proj_a)).unwrap();
+        let audio_rel = proj_a.join(format!("{file_rel}.wav"));
+        fs::write(&audio_rel, b"rel").unwrap();
+        fs::write(peak_file_path(&peaks_dir(&proj_a), &file_rel, 0), b"p").unwrap();
+        let stored_rel = persist_audio_storage_path(&media_a, &audio_rel).unwrap();
+
+        let legacy_dir = st.root.join("projects").join(&project_id);
+        fs::create_dir_all(peaks_dir(&legacy_dir)).unwrap();
+        let audio_abs = legacy_dir.join(format!("{file_abs}.mp3"));
+        fs::write(&audio_abs, b"abs").unwrap();
+        fs::write(peak_file_path(&peaks_dir(&legacy_dir), &file_abs, 0), b"p").unwrap();
+        // Legacy DB rows often store canonicalize()'s verbatim `\\?\` form.
+        let stored_abs = fs::canonicalize(&audio_abs)
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+
+        let conn = open_db(&st).unwrap();
+        let t = 1_i64;
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, 'p', ?2, ?2)",
+            params![project_id, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'rel', 'audio_only', ?3, ?4, ?4)",
+            params![file_rel, project_id, stored_rel, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'abs', 'audio_only', ?3, ?4, ?4)",
+            params![file_abs, project_id, stored_abs, t],
+        )
+        .unwrap();
+        drop(conn);
+
+        simulate_full_relocate_commit(&st, &media_b);
+        assert!(audio_project_dir(&media_b, &project_id)
+            .join(format!("{file_rel}.wav"))
+            .is_file());
+        assert!(audio_project_dir(&media_b, &project_id)
+            .join(format!("{file_abs}.mp3"))
+            .is_file());
+
+        // Restore toward app_data root (default).
+        simulate_full_relocate_commit(&st, &st.root.clone());
+        assert!(st
+            .root
+            .join("projects")
+            .join(&project_id)
+            .join(format!("{file_rel}.wav"))
+            .is_file());
+        let _ = fs::remove_dir_all(tmp);
     }
 
     #[test]

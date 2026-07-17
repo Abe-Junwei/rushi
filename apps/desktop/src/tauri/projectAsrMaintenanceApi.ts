@@ -166,12 +166,16 @@ export async function pickMediaBaseDirPreview(): Promise<MediaBasePickPreview | 
   return invoke<MediaBasePickPreview | null>("pick_media_base_dir_preview");
 }
 
-/** `path = null` restores default. When library has media, `relocate` must be true. */
+/** `path = null` / `""` restores default. When library has media, `relocate` must be true. */
 export async function commitMediaBaseDirChange(
   path: string | null,
   relocate: boolean,
 ): Promise<MediaBaseDirInfo> {
-  return invoke<MediaBaseDirInfo>("commit_media_base_dir_change", { path, relocate });
+  // Prefer empty string over null — more reliable Option<String> IPC on Tauri 2.
+  return invoke<MediaBaseDirInfo>("commit_media_base_dir_change", {
+    path: path?.trim() ? path.trim() : "",
+    relocate,
+  });
 }
 
 /** Canonical desktop models directory (matches bundled sidecar `RUSHI_MODELS_ROOT`). */

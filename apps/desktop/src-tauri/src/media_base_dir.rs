@@ -12,7 +12,12 @@ const RELOCATE_ALLOW_REL: &str = "prefs/media_base_relocate_allow.txt";
 
 /// User-facing absolute path: strip Windows `\\?\` / `\\?\UNC\` from `canonicalize`.
 pub(crate) fn path_to_user_string(path: &Path) -> String {
-    let s = path.to_string_lossy();
+    strip_windows_verbatim_prefix(&path.to_string_lossy())
+}
+
+/// Strip `\\?\` / `\\?\UNC\` from a path string (pref / DB may still store legacy verbatim form).
+pub(crate) fn strip_windows_verbatim_prefix(raw: &str) -> String {
+    let s = raw.trim();
     #[cfg(windows)]
     {
         if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
@@ -22,19 +27,28 @@ pub(crate) fn path_to_user_string(path: &Path) -> String {
             return rest.to_string();
         }
     }
-    s.into_owned()
+    s.to_string()
 }
 
 pub fn pref_path(st: &DbState) -> PathBuf {
     st.root.join(PREF_REL)
 }
 
-/// Raw pref text (trimmed). Empty means default (`DbState.root`).
+/// Raw pref text (trimmed, verbatim prefix stripped). Empty means default (`DbState.root`).
 pub fn read_media_base_pref_raw(st: &DbState) -> String {
     let p = pref_path(st);
-    std::fs::read_to_string(&p)
+    let raw = std::fs::read_to_string(&p)
         .map(|s| s.trim().to_string())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    if raw.is_empty() {
+        return raw;
+    }
+    let healed = strip_windows_verbatim_prefix(&raw);
+    // Lazily rewrite prefs written before verbatim stripping (e.g. `\\?\D:\…`).
+    if healed != raw {
+        let _ = std::fs::write(&p, format!("{healed}\n"));
+    }
+    healed
 }
 
 pub fn write_media_base_pref(st: &DbState, absolute_or_empty: &str) -> Result<(), String> {
@@ -228,13 +242,13 @@ fn resolve_candidate_under_roots(
 /// absolute → must sit under media base, app_data, or relocate-allow.
 /// Symlinks are allowed only when the canonical target stays under an allowed root.
 pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, String> {
-    let trimmed = raw_path.trim();
+    let trimmed = strip_windows_verbatim_prefix(raw_path);
     if trimmed.is_empty() {
         return Err("音频路径为空".into());
     }
     let media_base = resolve_media_base(st)?;
-    if path_is_absolute_storage(trimmed) {
-        return resolve_candidate_under_roots(st, &media_base, Path::new(trimmed));
+    if path_is_absolute_storage(&trimmed) {
+        return resolve_candidate_under_roots(st, &media_base, Path::new(&trimmed));
     }
 
     let rel = trimmed.trim_start_matches(['/', '\\']);
@@ -391,6 +405,7 @@ mod tests {
                 path_to_user_string(Path::new(r"\\?\UNC\server\share\a")),
                 r"\\server\share\a"
             );
+            assert_eq!(strip_windows_verbatim_prefix(r"\\?\D:\转录"), r"D:\转录");
         }
         assert_eq!(path_to_user_string(Path::new(r"D:\转录")), r"D:\转录");
     }

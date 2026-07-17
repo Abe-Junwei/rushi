@@ -9,6 +9,7 @@ import {
   type MediaBaseDirInfo,
   type MediaBaseManagedSummary,
 } from "../tauri/projectApi";
+import { tauriCommandErrorMessage } from "../tauri/commandError";
 import { ENV_PANEL_FORM_FIELD_CLASS, ENV_PANEL_FORM_FIELDS_CLASS } from "../utils/environmentPanelNav";
 import { CompactConfirmDialog } from "./CompactConfirmDialog";
 import { EnvPrefGroupShell } from "./EnvPrefGroupShell";
@@ -41,20 +42,6 @@ export function EnvLibraryLocationSection() {
     void refresh();
   }, [refresh]);
 
-  const formatErr = (e: unknown): string => {
-    if (typeof e === "string") return e;
-    if (e instanceof Error) return e.message;
-    if (e && typeof e === "object" && "message" in e) {
-      const msg = (e as { message: unknown }).message;
-      if (typeof msg === "string" && msg.trim()) return msg;
-    }
-    try {
-      return JSON.stringify(e);
-    } catch {
-      return String(e);
-    }
-  };
-
   const runCommit = useCallback(async (path: string | null, relocate: boolean) => {
     setBusy(true);
     try {
@@ -63,7 +50,7 @@ export function EnvLibraryLocationSection() {
       setPending(null);
       setError(null);
     } catch (e) {
-      setError(formatErr(e));
+      setError(tauriCommandErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -84,7 +71,7 @@ export function EnvLibraryLocationSection() {
       }
       setPending({ path: preview.path, summary: preview.summary });
     } catch (e) {
-      setError(formatErr(e));
+      setError(tauriCommandErrorMessage(e));
     } finally {
       setBusy(false);
     }
@@ -103,7 +90,7 @@ export function EnvLibraryLocationSection() {
       }
       setPending({ path: null, summary });
     } catch (e) {
-      setError(formatErr(e));
+      setError(tauriCommandErrorMessage(e));
     } finally {
       setBusy(false);
     }
