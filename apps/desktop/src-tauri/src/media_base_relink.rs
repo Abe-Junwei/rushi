@@ -10,7 +10,8 @@
 
 use crate::media_base_dir::audio_project_dir;
 use crate::media_base_relocate::{
-    list_audio_rows, paths_same_file, resolve_for_relocate, store_absolute_under_dest,
+    dest_audio_leaf, list_audio_rows, paths_same_file, resolve_for_relocate,
+    store_absolute_under_dest,
 };
 use crate::project::utils::open_db;
 use crate::DbState;
@@ -32,10 +33,7 @@ pub(crate) fn relink_from_missing_source(st: &DbState, dest_base: &Path) {
         let Ok(resolved) = resolve_for_relocate(st, &file_id, &audio_path, &dest_proj) else {
             continue;
         };
-        let Some(file_name) = resolved.file_name() else {
-            continue;
-        };
-        let dest_audio = dest_proj.join(file_name);
+        let dest_audio = dest_proj.join(dest_audio_leaf(&file_id, &resolved));
         if !paths_same_file(&resolved, &dest_audio) {
             // Source unreachable means the only trustworthy match is one already sitting
             // at the destination; anything else would require a move we can't verify.

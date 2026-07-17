@@ -238,6 +238,31 @@ fn resolve_candidate_under_roots(
     Ok(file_can)
 }
 
+/// Relocate-only: accept an absolute path to an existing regular file even when it sits
+/// **outside** media_base / app_data / relocate-allow (orphaned absolute rows from older
+/// imports, failed mid-moves, or external copies).
+///
+/// This must **not** be used for playback. After relocate moves the file under a managed
+/// root, callers must persist a scoped path and go through [`resolve_audio_path`].
+pub(crate) fn resolve_absolute_existing_for_relocate(raw: &str) -> Result<PathBuf, String> {
+    let trimmed = strip_windows_verbatim_prefix(raw);
+    if !path_is_absolute_storage(&trimmed) {
+        return Err("不是绝对路径".into());
+    }
+    let candidate = Path::new(&trimmed);
+    let sm =
+        std::fs::symlink_metadata(candidate).map_err(|e| map_access_io_error(&e, candidate))?;
+    if looks_like_cloud_placeholder(&sm) {
+        return Err(CLOUD_PLACEHOLDER_HINT.into());
+    }
+    let file_can =
+        std::fs::canonicalize(candidate).map_err(|e| map_access_io_error(&e, candidate))?;
+    if !file_can.is_file() {
+        return Err("音频文件不存在或不是普通文件".into());
+    }
+    Ok(file_can)
+}
+
 /// Dual-read resolve: relative → join media base (and relocate-allow root while a move is in progress);
 /// absolute → must sit under media base, app_data, or relocate-allow.
 /// Symlinks are allowed only when the canonical target stays under an allowed root.

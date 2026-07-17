@@ -215,8 +215,25 @@ pub(crate) fn store_absolute_under_dest(dest_audio: &Path) -> Result<String, Str
     Ok(path_to_user_string(&can))
 }
 
+/// Destination leaf is always `{file_id}.{ext}` so two orphans that share a human
+/// basename (e.g. both `interview.wav`) never collide under the same project dir.
+pub(crate) fn dest_audio_leaf(file_id: &str, source_path: &Path) -> PathBuf {
+    let ext = source_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("dat")
+        .to_ascii_lowercase();
+    PathBuf::from(format!("{file_id}.{ext}"))
+}
+
 /// Resolve a managed file for relocate/relink purposes; also used by `media_base_relink`
 /// when the source base itself is unreachable (falls through to the dest-side check below).
+///
+/// Order:
+/// 1. Scoped [`resolve_audio_path`] (media base / app_data / relocate-allow)
+/// 2. Orphan absolute path that still exists on disk (adopt into dest — relocate only)
+/// 3. File already at destination under `{file_id}.{ext}` (partial retry; unique per file)
+/// 4. DB path already absolute under `dest_proj` (legacy mid-move leaf names)
 pub(crate) fn resolve_for_relocate(
     st: &DbState,
     file_id: &str,
@@ -226,19 +243,36 @@ pub(crate) fn resolve_for_relocate(
     let normalized = strip_windows_verbatim_prefix(audio_path);
     match crate::media_base_dir::resolve_audio_path(st, &normalized) {
         Ok(p) => Ok(p),
-        Err(e) => {
-            // Partial retry: file may already sit at destination from a prior failed run.
-            let leaf = Path::new(&normalized)
-                .file_name()
-                .ok_or_else(|| format!("无法解析音频（{file_id}）：{e}"))?;
-            let dest_audio = dest_proj.join(leaf);
-            if dest_audio.is_file() {
-                fs::canonicalize(&dest_audio).map_err(|err| {
-                    format!("无法规范化已在目标的音频（{file_id}）：{err}")
-                })
-            } else {
-                Err(format!("无法解析音频（{file_id}）：{e}"))
+        Err(scoped_err) => {
+            // Adopt real on-disk orphans before any dest-side guess (avoids binding a
+            // second file to another row's already-moved basename).
+            if let Ok(p) =
+                crate::media_base_dir::resolve_absolute_existing_for_relocate(&normalized)
+            {
+                return Ok(p);
             }
+            let leaf = dest_audio_leaf(file_id, Path::new(&normalized));
+            let dest_audio = dest_proj.join(&leaf);
+            if dest_audio.is_file() {
+                return fs::canonicalize(&dest_audio).map_err(|err| {
+                    format!("无法规范化已在目标的音频（{file_id}）：{err}")
+                });
+            }
+            // Legacy mid-move: absolute path already under dest_proj with a non-id leaf.
+            if crate::media_base_dir::path_is_absolute_storage(&normalized) {
+                let candidate = Path::new(&normalized);
+                if candidate.is_file() {
+                    if let (Ok(c), Ok(d)) = (fs::canonicalize(candidate), fs::canonicalize(dest_proj))
+                    {
+                        if c.starts_with(&d) {
+                            return Ok(c);
+                        }
+                    }
+                }
+            }
+            Err(format!(
+                "无法解析音频（{file_id}）：{scoped_err}（目标布局亦无匹配文件）"
+            ))
         }
     }
 }
@@ -276,10 +310,7 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
             }
 
             let resolved = resolve_for_relocate(st, &file_id, &audio_path, &dest_proj)?;
-            let file_name = resolved
-                .file_name()
-                .ok_or_else(|| "音频路径无效".to_string())?;
-            let dest_audio = dest_proj.join(file_name);
+            let dest_audio = dest_proj.join(dest_audio_leaf(&file_id, &resolved));
             if !paths_same_file(&resolved, &dest_audio) {
                 move_path(&resolved, &dest_audio)?;
             }
@@ -619,6 +650,132 @@ mod tests {
         let err = relocate_all_to(&st, &media_b).unwrap_err();
         assert!(err.contains(&file_id) || err.contains("无法解析"));
         let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn relocate_adopts_orphan_absolute_outside_scoped_roots() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        // Must be outside DbState.root (tmp), otherwise under_legacy would accept it.
+        let orphan_root =
+            std::env::temp_dir().join(format!("rushi-orphan-outside-{}", Uuid::new_v4()));
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        fs::create_dir_all(&orphan_root).unwrap();
+        write_media_base_pref(&st, media_a.to_str().unwrap()).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_rel = Uuid::new_v4().to_string();
+        let file_orphan = Uuid::new_v4().to_string();
+
+        let proj_a = audio_project_dir(&media_a, &project_id);
+        fs::create_dir_all(&proj_a).unwrap();
+        let audio_rel = proj_a.join(format!("{file_rel}.wav"));
+        fs::write(&audio_rel, b"rel").unwrap();
+        let stored_rel = persist_audio_storage_path(&media_a, &audio_rel).unwrap();
+
+        // Absolute path outside media base AND app_data (mirrors real F:\… orphan rows).
+        let audio_orphan = orphan_root.join(format!("{file_orphan}.mp3"));
+        fs::write(&audio_orphan, b"orphan").unwrap();
+        let stored_orphan = path_to_user_string(&fs::canonicalize(&audio_orphan).unwrap());
+        assert!(
+            crate::media_base_dir::resolve_audio_path(&st, &stored_orphan).is_err(),
+            "playback scope must still reject orphan absolute paths"
+        );
+
+        let conn = open_db(&st).unwrap();
+        let t = 1_i64;
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, 'p', ?2, ?2)",
+            params![project_id, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'rel', 'audio_only', ?3, ?4, ?4)",
+            params![file_rel, project_id, stored_rel, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'orphan', 'audio_only', ?3, ?4, ?4)",
+            params![file_orphan, project_id, stored_orphan, t],
+        )
+        .unwrap();
+        drop(conn);
+
+        simulate_full_relocate_commit(&st, &media_b);
+        assert!(audio_project_dir(&media_b, &project_id)
+            .join(format!("{file_rel}.wav"))
+            .is_file());
+        assert!(audio_project_dir(&media_b, &project_id)
+            .join(format!("{file_orphan}.mp3"))
+            .is_file());
+        assert!(
+            !audio_orphan.exists(),
+            "orphan source should be moved, not copied-left"
+        );
+        let _ = fs::remove_dir_all(tmp);
+        let _ = fs::remove_dir_all(orphan_root);
+    }
+
+    #[test]
+    fn relocate_two_orphans_same_basename_stay_distinct() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        let orphan_root =
+            std::env::temp_dir().join(format!("rushi-orphan-dup-{}", Uuid::new_v4()));
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        let orphan_a_dir = orphan_root.join("a");
+        let orphan_b_dir = orphan_root.join("b");
+        fs::create_dir_all(&orphan_a_dir).unwrap();
+        fs::create_dir_all(&orphan_b_dir).unwrap();
+        write_media_base_pref(&st, media_a.to_str().unwrap()).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_a = Uuid::new_v4().to_string();
+        let file_b = Uuid::new_v4().to_string();
+        // Same human basename — the bug class Bugbot flagged.
+        let path_a = orphan_a_dir.join("interview.wav");
+        let path_b = orphan_b_dir.join("interview.wav");
+        fs::write(&path_a, b"audio-A").unwrap();
+        fs::write(&path_b, b"audio-B").unwrap();
+        let stored_a = path_to_user_string(&fs::canonicalize(&path_a).unwrap());
+        let stored_b = path_to_user_string(&fs::canonicalize(&path_b).unwrap());
+
+        let conn = open_db(&st).unwrap();
+        let t = 1_i64;
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, 'p', ?2, ?2)",
+            params![project_id, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'A', 'audio_only', ?3, ?4, ?4)",
+            params![file_a, project_id, stored_a, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'B', 'audio_only', ?3, ?4, ?4)",
+            params![file_b, project_id, stored_b, t],
+        )
+        .unwrap();
+        drop(conn);
+
+        simulate_full_relocate_commit(&st, &media_b);
+        let dest_a = audio_project_dir(&media_b, &project_id).join(format!("{file_a}.wav"));
+        let dest_b = audio_project_dir(&media_b, &project_id).join(format!("{file_b}.wav"));
+        assert_eq!(fs::read(&dest_a).unwrap(), b"audio-A");
+        assert_eq!(fs::read(&dest_b).unwrap(), b"audio-B");
+        assert!(!path_a.exists());
+        assert!(!path_b.exists());
+        let _ = fs::remove_dir_all(tmp);
+        let _ = fs::remove_dir_all(orphan_root);
     }
 
     fn simulate_full_relocate_commit(st: &DbState, dest: &Path) {
