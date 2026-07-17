@@ -5,6 +5,7 @@ import {
   subscribeTierScrollFrame,
   readPlaybackRenderSnapshot,
   isTierScrollFrameActive,
+  readPlaybackTimeDuringViewportFrame,
 } from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetricsDuringScrollFrame,
@@ -147,7 +148,15 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   useEffect(() => {
     if (!isReady) return;
     const onScrollFrame = () => {
-      writePosition(argsRef.current.getDisplayPlayheadTimeSec());
+      // Inside a playback frame, paint from the frame's coherent bus time — NOT the
+      // live getDisplayPlayheadTimeSec() (visualTimeSecRef). During the post-seek
+      // settle an out-of-band engine timeUpdate can rewind visualTimeSecRef to the
+      // seek target between frame-schedule and render; since this tier subscriber
+      // paints last it would win with the stale time, yanking the needle back one
+      // frame — a time wobble amplified by pxPerSec (the high-zoom seek flicker).
+      // On pure scroll frames (no playback tick) frameTime is null → fall back.
+      const frameTime = readPlaybackTimeDuringViewportFrame();
+      writePosition(frameTime ?? argsRef.current.getDisplayPlayheadTimeSec());
     };
     return subscribeTierScrollFrame(onScrollFrame);
   }, [isReady, writePosition]);
