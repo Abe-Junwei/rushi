@@ -262,6 +262,58 @@ describe("nativeAudioPlaybackTransport", () => {
     vi.useRealTimers();
   });
 
+  it("hands UI control back via the wall-clock breaker when the seeked ACK is slow", async () => {
+    vi.useFakeTimers();
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 30 });
+    const seeked: number[] = [];
+    t.subscribe({ onSeeked: (s) => seeked.push(s) });
+
+    // Driver reset is slow — no seeked ACK within the breaker window.
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    let resolved = false;
+    const seekPromise = t.seek(12).then(() => {
+      resolved = true;
+    });
+
+    await vi.advanceTimersByTimeAsync(119);
+    expect(resolved).toBe(false); // still inside the perceptual window
+    await vi.advanceTimersByTimeAsync(2);
+    await seekPromise;
+    expect(resolved).toBe(true); // released at ~120ms, not the 2s ACK timeout
+    expect(seeked).toContain(12); // optimistic target latched
+    expect(t.getCurrentTime()).toBeCloseTo(12, 3);
+
+    await t.dispose();
+    vi.useRealTimers();
+  });
+
+  it("lets a newer seek supersede an in-flight one without stale re-anchor", async () => {
+    vi.useFakeTimers();
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 30 });
+
+    // First seek's ACK never arrives before it is superseded.
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    const first = t.seek(5);
+
+    // Second seek lands its ACK and re-targets guard/anchor.
+    vi.mocked(nativeAudioSeek).mockImplementationOnce((sec: number) => {
+      emitEngine({ event: "seeked", data: { sec } });
+      return Promise.resolve();
+    });
+    await t.seek(20);
+    expect(t.getCurrentTime()).toBeCloseTo(20, 3);
+
+    // Draining timers must not let the first seek's snapshot/breaker re-anchor to 5.
+    await vi.advanceTimersByTimeAsync(1_000);
+    await first;
+    expect(t.getCurrentTime()).toBeCloseTo(20, 3);
+
+    await t.dispose();
+    vi.useRealTimers();
+  });
+
   it("interpolates display time while playing and latches on pause", async () => {
     let now = 1_000;
     vi.spyOn(performance, "now").mockImplementation(() => now);

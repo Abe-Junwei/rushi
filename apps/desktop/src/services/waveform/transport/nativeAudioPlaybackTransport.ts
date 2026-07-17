@@ -48,6 +48,17 @@ const SEEK_STALE_GUARD_TOLERANCE_SEC = 0.35;
 const SEEK_SETTLE_NO_JUMP_MS = SEEK_SETTLE_WINDOW_MS;
 
 /**
+ * Wall-clock UI-release breaker. Windows is not hard-realtime: a WASAPI/ASIO seek
+ * (stop → clear buffer → re-feed → start) can take 60–150ms, so blocking on the
+ * seeked ACK (up to STATE_ACK_TIMEOUT) before resolving would stall rapid seeks.
+ * If the ACK is slower than the human-perceptible limit we hand UI control back
+ * with the optimistic target latch; the real/late ACK still re-anchors via
+ * applyEvent, and a genuinely lost ACK is reconciled by the background snapshot.
+ * A superseding seek aborts the in-flight one so the channel is never left pending.
+ */
+const SEEK_ABORT_BREAKER_MS = 120;
+
+/**
  * First-order low-pass tracking of the authority-projected time, with an
  * anti-rebound monotonic clamp. Converts the periodic high-water freeze
  * (on lagging `timeUpdate` re-anchors) into a smooth deceleration / plateau
@@ -116,6 +127,8 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
   let seekStaleGuardTargetSec = 0;
   /** Wall-clock deadline: smooth without maxDrift forward jumps after seek. */
   let seekSettleNoJumpUntilMs = 0;
+  /** Abort the in-flight seek's ACK waiter/breaker when a newer seek supersedes it. */
+  let pendingSeekAbort: (() => void) | null = null;
 
   const emit = (fn: (h: PlaybackTransportEvents) => void) => {
     for (const h of [...listeners]) fn(h);
@@ -447,6 +460,9 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
     async seek(timeSec: number) {
       if (disposed) return;
       const target = timeSec;
+      // A newer seek supersedes any in-flight one: abort its ACK waiter + breaker so
+      // a stale ACK cannot re-anchor this target and the channel is not left pending.
+      pendingSeekAbort?.();
       // Optimistic re-anchor: do not keep extrapolating the pre-seek line while
       // IPC/decode catch up — that left display far ahead of the UI seek latch.
       armSeekStaleGuard(target);
@@ -462,22 +478,57 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         "seek",
         { emitErrorOnTimeout: false },
       );
+
+      let aborted = false;
+      let settled = false;
+      let breakerTimer: number | null = null;
+      const clearBreaker = () => {
+        if (breakerTimer != null) {
+          window.clearTimeout(breakerTimer);
+          breakerTimer = null;
+        }
+      };
+      // Emit the optimistic target once — used by both the breaker and the softFail
+      // reconcile fallback so a slow/stalled ACK never double-emits or overrides a
+      // confirmed position.
+      const releaseOptimistic = () => {
+        if (settled || aborted) return;
+        settled = true;
+        clearBreaker();
+        emit((h) => h.onSeeked?.(target));
+        emit((h) => h.onTimeUpdate?.(target));
+      };
+      const abort = () => {
+        aborted = true;
+        clearBreaker();
+        ack.cancel();
+        if (pendingSeekAbort === abort) pendingSeekAbort = null;
+      };
+      pendingSeekAbort = abort;
+
       try {
         await nativeAudioSeek(timeSec);
       } catch (err) {
-        ack.cancel();
+        abort();
         throw err;
       }
-      const ok = await awaitAckOrSnapshot(
+      if (disposed || aborted) return;
+
+      // Background source-of-truth settle (kept for correctness): real ACK, else
+      // snapshot reconcile, else optimistic target. Abortable by a superseding seek.
+      const settle = awaitAckOrSnapshot(
         ack,
         async () => {
+          if (aborted || disposed) return true;
           try {
             const snap = await nativeAudioSnapshot();
-            if (disposed) return true;
+            if (aborted || disposed) return true;
             const sec = snap.currentTimeSec;
             armSeekStaleGuard(sec);
             anchorTime(sec);
             resetDisplayClock(sec);
+            settled = true;
+            clearBreaker();
             emit((h) => h.onSeeked?.(sec));
             emit((h) => h.onTimeUpdate?.(sec));
             return true;
@@ -487,12 +538,34 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         },
         "seek",
         { softFail: true },
-      );
-      if (!ok) {
-        // Optimistic latch already applied — keep UI seekable under Channel stalls.
-        emit((h) => h.onSeeked?.(target));
-        emit((h) => h.onTimeUpdate?.(target));
-      }
+      )
+        .then((ok) => {
+          if (ok) {
+            // Real ACK / snapshot already emitted the confirmed position.
+            settled = true;
+            clearBreaker();
+          } else if (!aborted) {
+            releaseOptimistic();
+          }
+        })
+        .catch(() => {
+          /* recoverable ACK miss already surfaced via snapshot reconcile */
+        })
+        .finally(() => {
+          if (pendingSeekAbort === abort) pendingSeekAbort = null;
+        });
+
+      // Wall-clock breaker: hand UI control back within the perceptual limit even if
+      // the driver reset is slow; the background settle keeps reconciling meanwhile.
+      const breaker = new Promise<void>((resolve) => {
+        breakerTimer = window.setTimeout(() => {
+          breakerTimer = null;
+          releaseOptimistic();
+          resolve();
+        }, SEEK_ABORT_BREAKER_MS);
+      });
+
+      await Promise.race([settle, breaker]);
     },
     async setRate(nextRate: number) {
       if (disposed) return;
@@ -527,6 +600,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
     },
     async dispose() {
       disposed = true;
+      pendingSeekAbort?.();
       listeners.clear();
       try {
         await nativeAudioStop();
