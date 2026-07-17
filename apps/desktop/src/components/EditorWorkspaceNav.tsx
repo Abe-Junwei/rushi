@@ -1,23 +1,30 @@
 import {
-  IconChevronLeft as ChevronLeft,
+  IconArrowLeft as ArrowLeft,
   IconLayoutSidebarLeftExpand as PanelLeftOpen,
 } from "@tabler/icons-react";
-import { CONTROL_BTN_BREADCRUMB, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
+import {
+  CONTROL_BTN_BREADCRUMB,
+  CONTROL_BTN_ICON_GHOST,
+  CONTROL_BTN_TOOLBAR_GHOST,
+} from "../config/controlStyles";
 import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-/** 工作区顶栏：图标后退 + 面包屑（常态无灰底，hover 才显底） */
+/** 工作区顶栏：侧栏展开（纯图标） */
 const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outline-offset-1`;
 
 /** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
 const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
+
+/** 返回：左箭头 + 文案（与面包屑用 gap 分开） */
+const NAV_BACK_BTN = `${CONTROL_BTN_TOOLBAR_GHOST} shadow-none focus-visible:outline-offset-1`;
 
 export type EditorWorkspaceNavProps = {
   projectName: string;
   currentLabel: string;
   /** 当前打开文件有未保存语段修改 */
   hasUnsavedEdits?: boolean;
-  /** Chevron：打开文件时回到项目内页；未打开文件时离开项目 */
+  /** 打开文件时回到项目内页；未打开文件时离开项目 */
   onBack: () => void;
   /** 已打开文件时点击项目名，与 onBack 同为回到项目文件列表 */
   onProjectHome?: () => void;
@@ -27,7 +34,7 @@ export type EditorWorkspaceNavProps = {
 };
 
 /**
- * Notion / Linear 式页头导航：Chevron + 可点项目名 + 当前文件；窄屏仅显示当前页。
+ * Notion / Linear 式页头导航：← 返回 + 可点项目名 + 当前文件；窄屏仅显示当前页。
  */
 export function EditorWorkspaceNav({
   projectName,
@@ -45,7 +52,7 @@ export function EditorWorkspaceNav({
   const projectAction = fileOpen && onProjectHome ? onProjectHome : undefined;
 
   return (
-    <div className="flex min-w-0 flex-1 items-center gap-0.5">
+    <div className="flex min-w-0 flex-1 items-center gap-2">
       {sidebarCollapse?.collapsed ? (
         <button
           type="button"
@@ -60,16 +67,17 @@ export function EditorWorkspaceNav({
       ) : null}
       <button
         type="button"
-        className={NAV_ICON_BTN}
+        className={NAV_BACK_BTN}
         disabled={disabled}
         onClick={onBack}
         aria-label={resolvedBackLabel}
         title={resolvedBackLabel}
       >
-        <ChevronLeft className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <ArrowLeft className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <span>返回</span>
       </button>
       <nav
-        className="flex min-w-0 flex-1 items-center overflow-hidden pl-0.5"
+        className="flex min-w-0 flex-1 items-center overflow-hidden pl-1"
         aria-label="当前位置"
       >
         {/* 窄屏：仅当前页（打开文件时）或仅项目名（项目内页） */}
