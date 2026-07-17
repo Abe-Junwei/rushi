@@ -227,8 +227,13 @@ fn move_file_to_project_relocates_db_and_managed_audio() {
         )
         .unwrap();
     assert_eq!(project_id, dest_id);
+    // audio_path is persisted relative to media base (default: app root).
+    assert!(
+        !crate::media_base_dir::path_is_absolute_storage(&new_audio),
+        "expected media-base-relative audio_path, got {new_audio}"
+    );
     let dest_dir = fs::canonicalize(project_storage_dir(&st.root, &dest_id)).unwrap();
-    let new_audio_path = PathBuf::from(&new_audio);
+    let new_audio_path = crate::media_base_dir::resolve_audio_path(&st, &new_audio).unwrap();
     assert!(new_audio_path.is_file());
     assert!(new_audio_path.starts_with(&dest_dir));
     assert!(!audio.is_file());
@@ -500,7 +505,14 @@ fn copy_file_to_project_duplicates_segments_and_keeps_source() {
             |r| r.get(0),
         )
         .unwrap();
-    assert!(PathBuf::from(&dest_audio).is_file());
+    // audio_path is persisted relative to media base (default: app root).
+    assert!(
+        !crate::media_base_dir::path_is_absolute_storage(&dest_audio),
+        "expected media-base-relative audio_path, got {dest_audio}"
+    );
+    let dest_audio_resolved =
+        crate::media_base_dir::resolve_audio_path(&st, &dest_audio).unwrap();
+    assert!(dest_audio_resolved.is_file());
     assert_ne!(dest_audio, audio_path);
     let dest_segs: i64 = conn
         .query_row(
