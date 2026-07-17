@@ -51,12 +51,6 @@ pub enum CommandError {
     #[error("该文件没有可导出的音频，或文件不属于当前项目。")]
     BundleNoExportableAudio,
 
-    #[error("项目音频不存在：{path}")]
-    BundleAudioMissing { path: String },
-
-    #[error("项目音频文件名无效。")]
-    BundleInvalidAudioFileName,
-
     #[error("无法导入：不是受支持的 Rushi 项目包。")]
     BundleUnsupportedKind,
 
@@ -175,8 +169,6 @@ impl CommandError {
             Self::WriteLexiconBundle(_) => "write_lexicon_bundle",
             Self::ReadLexiconBundle(_) => "read_lexicon_bundle",
             Self::BundleNoExportableAudio => "bundle_no_exportable_audio",
-            Self::BundleAudioMissing { .. } => "bundle_audio_missing",
-            Self::BundleInvalidAudioFileName => "bundle_invalid_audio_file_name",
             Self::BundleUnsupportedKind => "bundle_unsupported_kind",
             Self::BundleUnsupportedVersion { .. } => "bundle_unsupported_version",
             Self::BundleInvalidAudioName => "bundle_invalid_audio_name",

@@ -6,9 +6,7 @@
 
 use crate::command_error::{CommandError, CommandResult};
 use crate::media_base_dir::{audio_project_dir, persist_audio_storage_path, resolve_audio_path};
-use crate::project::waveform_peaks::{
-    peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS,
-};
+use crate::project::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 use crate::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -41,6 +39,17 @@ pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 500 * 1024 * 1024;
 pub(super) const MAX_BUNDLE_SEGMENT_COUNT: usize = 10;
 #[cfg(not(test))]
 pub(super) const MAX_BUNDLE_SEGMENT_COUNT: usize = 100_000;
+
+type ProjectMetaRow = (
+    String,
+    i64,
+    i64,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct ProjectBundleManifest {
@@ -247,9 +256,7 @@ fn load_segments_from_db(st: &DbState, file_id: &str) -> CommandResult<Vec<Segme
 fn load_edit_log(st: &DbState, project_id: &str) -> CommandResult<Vec<ProjectBundleEditLogEntry>> {
     let conn = open_db(st).map_err(CommandError::db_pool)?;
     let mut stmt = conn
-        .prepare(
-            "SELECT at_ms, kind, detail FROM edit_log WHERE project_id = ?1 ORDER BY id ASC",
-        )
+        .prepare("SELECT at_ms, kind, detail FROM edit_log WHERE project_id = ?1 ORDER BY id ASC")
         .map_err(CommandError::from)?;
     let rows = stmt
         .query_map(params![project_id], |r| {
@@ -377,10 +384,10 @@ fn insert_segments(
 fn resolve_audio_for_export(st: &DbState, audio_storage: &str) -> Result<PathBuf, String> {
     match resolve_audio_path(st, audio_storage) {
         Ok(p) => Ok(p),
-        Err(scoped_err) => crate::media_base_dir::resolve_absolute_existing_for_relocate(
-            audio_storage,
-        )
-        .map_err(|adopt_err| format!("{scoped_err}；{adopt_err}")),
+        Err(scoped_err) => {
+            crate::media_base_dir::resolve_absolute_existing_for_relocate(audio_storage)
+                .map_err(|adopt_err| format!("{scoped_err}；{adopt_err}"))
+        }
     }
 }
 
@@ -401,16 +408,7 @@ pub(super) fn export_project_bundle_to_path(
     }
 
     let conn = open_db(st).map_err(CommandError::db_pool)?;
-    let (name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber): (
-        String,
-        i64,
-        i64,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    ) = conn
+    let (name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber): ProjectMetaRow = conn
         .query_row(
             "SELECT name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber \
              FROM projects WHERE id = ?1",
@@ -506,7 +504,8 @@ pub(super) fn export_project_bundle_to_path(
             .unwrap_or_else(|_| st.root.join("projects").join(project_id));
         let peaks_root = peaks_dir(&media_proj);
         let legacy_peaks = peaks_dir(&st.root.join("projects").join(project_id));
-        let mut peaks_packed = write_peaks_into_zip(&mut zip, &peaks_root, file_id, &peaks_zip_prefix)?;
+        let mut peaks_packed =
+            write_peaks_into_zip(&mut zip, &peaks_root, file_id, &peaks_zip_prefix)?;
         if !peaks_packed && legacy_peaks != peaks_root {
             peaks_packed =
                 write_peaks_into_zip(&mut zip, &legacy_peaks, file_id, &peaks_zip_prefix)?;
@@ -743,7 +742,7 @@ fn import_v2(
     )
 }
 
-#[allow(clippy::type_complexity)]
+#[allow(clippy::type_complexity, clippy::too_many_arguments)]
 fn import_project_from_parts(
     st: &DbState,
     zip_path: &Path,
@@ -800,7 +799,8 @@ fn import_project_from_parts(
         )
         .map_err(CommandError::from)?;
 
-        for (old_fid, file_name, file_type, audio_leaf, audio_bytes, segments, peaks_prefix) in files
+        for (old_fid, file_name, file_type, audio_leaf, audio_bytes, segments, peaks_prefix) in
+            files
         {
             let new_file_id = Uuid::new_v4().to_string();
             let ext = Path::new(audio_leaf)

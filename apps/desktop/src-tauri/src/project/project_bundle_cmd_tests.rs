@@ -183,7 +183,10 @@ fn export_and_import_project_bundle_round_trip() {
             .collect()
     };
     assert!(edit_kinds.contains(&"save_segments".to_string()));
-    assert_eq!(edit_kinds.last().map(String::as_str), Some("import_project_bundle"));
+    assert_eq!(
+        edit_kinds.last().map(String::as_str),
+        Some("import_project_bundle")
+    );
 
     let (kind, text_stage, finalize_via, annotation): (
         Option<String>,
@@ -639,7 +642,7 @@ fn import_sorts_segments_by_idx_before_persist() {
         .unwrap();
     zip.start_file("project.json", zip_opts()).unwrap();
     zip.write_all(&serde_json::to_vec(&doc).unwrap()).unwrap();
-    zip.start_file(&format!("audio/{file_id}.wav"), zip_opts())
+    zip.start_file(format!("audio/{file_id}.wav"), zip_opts())
         .unwrap();
     zip.write_all(b"tiny").unwrap();
     zip.finish().unwrap();
@@ -648,9 +651,7 @@ fn import_sorts_segments_by_idx_before_persist() {
     let conn = open_db(&st).unwrap();
     let texts: Vec<String> = {
         let mut stmt = conn
-            .prepare(
-                "SELECT text FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
-            )
+            .prepare("SELECT text FROM segments WHERE file_id = ?1 ORDER BY idx ASC")
             .unwrap();
         stmt.query_map(params![&imported.files[0].id], |r| r.get(0))
             .unwrap()
