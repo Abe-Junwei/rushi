@@ -902,11 +902,15 @@ mod tests {
     #[test]
     fn build_docx_to_path_writes_atomically_and_cleans_tmp_file() {
         use super::export_docx_build::build_docx_to_path;
+        use std::time::{SystemTime, UNIX_EPOCH};
 
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
         let path = std::env::temp_dir().join(format!(
-            "rushi-test-atomic-{}-{:?}.docx",
+            "rushi-test-atomic-{}-{unique}.docx",
             std::process::id(),
-            std::time::SystemTime::now()
         ));
         let _ = std::fs::remove_file(&path);
 
@@ -942,13 +946,17 @@ mod tests {
     #[test]
     fn build_docx_to_path_leaves_no_target_when_write_fails() {
         use super::export_docx_build::build_docx_to_path;
+        use std::time::{SystemTime, UNIX_EPOCH};
 
         // Parent directory intentionally does not exist, so creating the `.tmp`
         // file fails before anything is ever written or renamed to `path`.
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0);
         let dir = std::env::temp_dir().join(format!(
-            "rushi-test-missing-dir-{}-{:?}",
+            "rushi-test-missing-dir-{}-{unique}",
             std::process::id(),
-            std::time::SystemTime::now()
         ));
         let path = dir.join("out.docx");
 
