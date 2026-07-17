@@ -97,7 +97,7 @@
 **空态（Body 内）**
 
 - 虚线框 `border-dashed`、居中文案 12px muted  
-- 文案示例：「暂无最近文件，请先新建项目或导入文件。」
+- 文案示例：「暂无最近文件，请先新建项目或导入内容包。」
 
 ---
 
@@ -128,12 +128,12 @@
 | 区块 | 内容 | 与 Hub 差异 |
 |------|------|-------------|
 | **Header** | 左：无项目图标；**Serif** 标题「欢迎回来」32px medium；副文案 14px muted 居中或左对齐（**推荐左对齐与 Hub 对齐**） | Hub 用 Folder 图标 + Sans 项目名 |
-| **Header 下** | 全宽主按钮区：`新建项目` Primary Prominent 40px 高，最大宽 320px | Hub 无此 CTA |
+| **Header 下** | 横排：`新建项目` Primary Prominent · 文案「或」· `导入内容包` Secondary Prominent（均 40px 高）；媒体首文件仍走新建模态，zip 内容包走次按钮 | Hub 无此冷启动 CTA |
 | **Body** | 标题行：saffron **Mic** 图标 +「最近文件」+ 右「N 个文件」 | 与 Hub「项目文件」对称 |
 | **Body 列表** | FileRow × up to 8 | **同 FileRow** |
-| **Footer** | **省略**（导入在「新建项目」模态完成） | Hub 保留 Footer 导入 |
+| **Footer** | **省略**（音频/文本导入仍在「新建项目」模态；内容包在 Header 次 CTA） | Hub 保留 Footer 媒体导入 |
 
-> **统一性取舍**：欢迎页 Footer 不放导入，避免与「新建项目」重复；文件行与 Hub 100% 一致即可建立同族感。
+> **统一性取舍**：欢迎页 Footer 不放媒体导入，避免与「新建项目」模态重复；内容包 zip 用 Secondary Prominent 放在新建右侧，中间「或」表示二选一冷启动，视觉仍一主一次。
 
 ### 4.3 欢迎页 Frame 清单
 
@@ -263,9 +263,9 @@ Design a desktop transcription app "Notion Zen" workspace. Two main screens must
 
 Screen 1 — Welcome (with 320px left sidebar in #f7f7f5):
 - Main area: vertically and horizontally centered Stage Card.
-- Card header: serif title "欢迎回来", muted subtitle, full-width saffron primary button "新建项目" (40px height).
+- Card header: serif title "欢迎回来", muted subtitle; horizontal CTAs: saffron primary "新建项目", muted "或", secondary "导入内容包" (both buttons 40px height).
 - Card body: section "最近文件" with saffron mic icon, file count right; list of FileRow items (bordered rounded rows, filename + meta, saffron "打开" link on the right).
-- No footer import on welcome card.
+- No footer media-import on welcome card (content-pack zip is the secondary header CTA).
 
 Screen 2 — Project File Hub (no sidebar, editor top bar with breadcrumb "Project / 选择文件"):
 - Same Stage Card dimensions and styling as Welcome.
@@ -283,7 +283,7 @@ FileRow must be pixel-identical on both screens. Plenty of whitespace but NO orp
 ```text
 桌面转写应用，Notion Zen 风格。欢迎页与项目文件 Hub 必须共用同一「工作区卡片」：宽 672px、圆角 6px、1px 浅灰边框、顶部 4px 琥珀色强调条。
 
-欢迎页：左侧 320px 浅灰导航 + 右侧主区居中卡片。卡片内：衬线标题「欢迎回来」、说明、主按钮「新建项目」、下方「最近文件」列表（带边框文件行 + 右侧「打开」）。
+欢迎页：左侧 320px 浅灰导航 + 右侧主区居中卡片。卡片内：衬线标题「欢迎回来」、说明、横排「新建项目」或「导入内容包」、下方「最近文件」列表（带边框文件行 + 右侧「打开」）。
 
 项目 Hub：无侧栏，顶栏面包屑。主区居中**同款卡片**。卡片头：文件夹图标 + 项目名 + 元信息 + 右侧操作图标；中部项目文件列表（文件行与欢迎页完全一致）；底部浅灰区「继续导入」+ 两个次要按钮。
 

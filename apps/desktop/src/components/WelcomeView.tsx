@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  IconDownload as Download,
   IconPlus as Plus,
 } from "@tabler/icons-react";
-import { CONTROL_BTN_PRIMARY_PROMINENT } from "../config/controlStyles";
+import {
+  CONTROL_BTN_PRIMARY_PROMINENT,
+  CONTROL_BTN_SECONDARY_PROMINENT,
+} from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import {
   WORKSPACE_HOME_SHELL_PURPOSE,
@@ -178,19 +182,50 @@ export function WelcomeView({
                     欢迎回来
                   </h1>
                   <p className="text-sm leading-relaxed text-notion-text-muted">
-                    继续您的转写任务或开始新的项目
+                    继续您的转写，或从内容包恢复项目
                   </p>
                 </div>
-                <button
-                  type="button"
-                  className={`${CONTROL_BTN_PRIMARY_PROMINENT} w-full max-w-[320px] gap-2`}
-                  disabled={c.busy}
-                  onClick={() => setShowCreateModal(true)}
-                  data-purpose="welcome-actions"
+                <div
+                  className="flex flex-wrap items-center justify-center gap-3"
+                  data-purpose="welcome-cta-row"
                 >
-                  <Plus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                  <span>新建项目</span>
-                </button>
+                  <button
+                    type="button"
+                    className={`${CONTROL_BTN_PRIMARY_PROMINENT} w-[12.5rem] gap-2`}
+                    disabled={c.busy}
+                    onClick={() => setShowCreateModal(true)}
+                    data-purpose="welcome-actions"
+                  >
+                    <Plus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                    <span>新建项目</span>
+                  </button>
+                  <span className="text-sm text-notion-text-muted" aria-hidden>
+                    或
+                  </span>
+                  <button
+                    type="button"
+                    className={`${CONTROL_BTN_SECONDARY_PROMINENT} w-[12.5rem] gap-2`}
+                    disabled={c.busy}
+                    onClick={() => {
+                      void (async () => {
+                        try {
+                          await c.importProjectBundle();
+                        } catch (e) {
+                          c.setError(e instanceof Error ? e.message : String(e));
+                        }
+                      })();
+                    }}
+                    data-purpose="welcome-import-bundle"
+                    aria-label="导入内容包"
+                  >
+                    <Download
+                      className={LUCIDE_ICON_SIZE_LG}
+                      strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                      aria-hidden
+                    />
+                    <span>导入内容包</span>
+                  </button>
+                </div>
               </header>
 
               {onboarding.visible ? (
@@ -234,7 +269,7 @@ export function WelcomeView({
                   ) : (
                     <li>
                       <p className="rounded-md bg-notion-sidebar/55 px-2.5 py-4 text-sm text-notion-text-muted">
-                        暂无最近文件，请先新建项目或导入文件。
+                        暂无最近文件，请先新建项目或导入内容包。
                       </p>
                     </li>
                   )}
