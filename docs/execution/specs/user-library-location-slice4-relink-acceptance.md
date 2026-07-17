@@ -18,7 +18,7 @@
 
 ## 不做
 
-Tier 2（按文件名深度搜索的批量重连向导）；项目列表级「媒体缺失」主动 badge；放宽 `resolve_audio_path` scoped 校验规则；外置盘/网盘插拔后台自动重连；改动 `relocate_all_to` 现有搬迁逻辑。
+Tier 2（按文件名深度搜索的批量重连向导；用户已决定不做，非临时延后）；项目列表级「媒体缺失」主动 badge；放宽 `resolve_audio_path` scoped 校验规则；外置盘/网盘插拔后台自动重连；改动 `relocate_all_to` 现有搬迁逻辑。
 
 ## 自动化
 

@@ -114,4 +114,4 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-07-17 | 初版：业内对照 Lightroom / Zotero / DaVinci Resolve 三方重连模式，选定「结构化重指针（Tier 1）+ 文件名搜索兜底（Tier 2）」分层方案 |
-| 2026-07-17 | Tier 1 已实现（`media_base_relink.rs` + `get_media_base_dir_info`/`resolve_audio_path` 容错）；Tier 2 仍未做，留后续薄片 |
+| 2026-07-17 | Tier 1 已实现（`media_base_relink.rs` + `get_media_base_dir_info`/`resolve_audio_path` 容错）；用户决定 **Tier 2 不做**（按文件名深度搜索的批量重连向导），本片到此收尾 |
