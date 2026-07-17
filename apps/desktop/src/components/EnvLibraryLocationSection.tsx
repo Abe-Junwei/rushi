@@ -41,6 +41,20 @@ export function EnvLibraryLocationSection() {
     void refresh();
   }, [refresh]);
 
+  const formatErr = (e: unknown): string => {
+    if (typeof e === "string") return e;
+    if (e instanceof Error) return e.message;
+    if (e && typeof e === "object" && "message" in e) {
+      const msg = (e as { message: unknown }).message;
+      if (typeof msg === "string" && msg.trim()) return msg;
+    }
+    try {
+      return JSON.stringify(e);
+    } catch {
+      return String(e);
+    }
+  };
+
   const runCommit = useCallback(async (path: string | null, relocate: boolean) => {
     setBusy(true);
     try {
@@ -49,49 +63,51 @@ export function EnvLibraryLocationSection() {
       setPending(null);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatErr(e));
     } finally {
       setBusy(false);
     }
   }, []);
 
   const onPick = useCallback(async () => {
+    if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       const preview = await pickMediaBaseDirPreview();
-      if (!preview) {
-        setBusy(false);
-        return;
-      }
+      if (!preview) return;
       if (!preview.summary.needsRelocate) {
+        // Keep busy through commit; runCommit owns the flag from here.
+        setBusy(false);
         await runCommit(preview.path, false);
         return;
       }
       setPending({ path: preview.path, summary: preview.summary });
-      setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatErr(e));
     } finally {
       setBusy(false);
     }
-  }, [runCommit]);
+  }, [busy, runCommit]);
 
   const onReset = useCallback(async () => {
+    if (busy) return;
     setBusy(true);
+    setError(null);
     try {
       const summary = await getMediaBaseManagedSummary();
       if (!summary.needsRelocate) {
+        setBusy(false);
         await runCommit(null, false);
         return;
       }
       setPending({ path: null, summary });
-      setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(formatErr(e));
     } finally {
       setBusy(false);
     }
-  }, [runCommit]);
+  }, [busy, runCommit]);
 
   const pendingLabel =
     pending?.path == null ? "应用数据目录（默认）" : pending.path;
@@ -160,7 +176,7 @@ export function EnvLibraryLocationSection() {
           {pendingLabel}
         </p>
         <p className={`m-0 mt-3 ${PANEL_TYPOGRAPHY.meta}`}>
-          若目标在网盘，请设为「始终保留在此设备」。目录将含波形缓存。项目与数据库仍在本机。
+          搬迁时会停止当前音频播放。若目标在网盘，请设为「始终保留在此设备」。目录将含波形缓存。项目与数据库仍在本机。
         </p>
       </CompactConfirmDialog>
     </>

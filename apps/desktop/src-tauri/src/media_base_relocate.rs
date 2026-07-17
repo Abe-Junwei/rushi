@@ -13,16 +13,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager, State};
 
-fn assert_idle_for_relocate(app: &AppHandle) -> Result<(), String> {
+fn prepare_for_relocate(app: &AppHandle) -> Result<(), String> {
     if crate::asr_sidecar::warm::transcribe_in_flight() {
         return Err("正在转写，请结束后再搬迁媒体库。".into());
     }
+    // Native decode keeps the media file open even when paused; Windows rename/move
+    // then fails with sharing violation — which looks like "can't change library again"
+    // after the first successful pref switch once a project has been loaded.
     if let Some(audio) = app.try_state::<NativeAudioState>() {
-        if let Ok(snap) = audio.with_player(|p| Ok(p.snapshot())) {
-            if snap.playing {
-                return Err("正在播放，请暂停后再搬迁媒体库。".into());
-            }
-        }
+        audio.stop();
     }
     Ok(())
 }
@@ -42,6 +41,19 @@ pub struct MediaBasePickPreview {
     pub summary: MediaBaseManagedSummary,
 }
 
+fn map_move_io_error(context: &str, err: std::io::Error) -> String {
+    let raw = err.to_string();
+    // Win32 ERROR_SHARING_VIOLATION (32) / ERROR_LOCK_VIOLATION (33)
+    let busy = err.raw_os_error() == Some(32)
+        || err.raw_os_error() == Some(33)
+        || raw.to_ascii_lowercase().contains("being used by another process");
+    if busy {
+        format!("{context}：文件被占用。请关闭当前打开的项目音频后重试（{raw}）")
+    } else {
+        format!("{context}: {raw}")
+    }
+}
+
 fn move_path(from: &Path, to: &Path) -> Result<(), String> {
     if !from.exists() {
         return Ok(());
@@ -51,7 +63,7 @@ fn move_path(from: &Path, to: &Path) -> Result<(), String> {
     }
     if to.exists() {
         if to.is_file() {
-            fs::remove_file(to).map_err(|e| format!("覆盖目标失败: {e}"))?;
+            fs::remove_file(to).map_err(|e| map_move_io_error("覆盖目标失败", e))?;
         } else if to.is_dir() {
             // Merge: move children when dest dir already exists.
             if from.is_dir() {
@@ -63,18 +75,19 @@ fn move_path(from: &Path, to: &Path) -> Result<(), String> {
                 let _ = fs::remove_dir(from);
                 return Ok(());
             }
-            fs::remove_dir_all(to).map_err(|e| format!("覆盖目标目录失败: {e}"))?;
+            fs::remove_dir_all(to).map_err(|e| map_move_io_error("覆盖目标目录失败", e))?;
         }
     }
-    fs::rename(from, to).or_else(|_| {
+    fs::rename(from, to).or_else(|rename_err| {
         if from.is_file() {
             fs::copy(from, to)
-                .map(|_| ())
                 .and_then(|_| fs::remove_file(from))
-                .map_err(|e| format!("跨卷复制失败: {e}"))
+                .map_err(|e| map_move_io_error("跨卷复制失败", e))
+        } else if rename_err.raw_os_error() == Some(32) || rename_err.raw_os_error() == Some(33) {
+            Err(map_move_io_error("搬迁目录失败", rename_err))
         } else {
             copy_dir_recursive(from, to)?;
-            fs::remove_dir_all(from).map_err(|e| format!("删除源目录失败: {e}"))
+            fs::remove_dir_all(from).map_err(|e| map_move_io_error("删除源目录失败", e))
         }
     })
 }
@@ -305,7 +318,7 @@ pub fn commit_media_base_dir_change(
         return Err("库中已有媒体文件，必须搬迁到新位置，不能仅改路径。".into());
     }
     if summary.needs_relocate {
-        assert_idle_for_relocate(&app)?;
+        prepare_for_relocate(&app)?;
     }
 
     let dest: PathBuf = match path.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
@@ -503,6 +516,97 @@ mod tests {
 
         let err = relocate_all_to(&st, &media_b).unwrap_err();
         assert!(err.contains(&file_id) || err.contains("无法解析"));
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    fn simulate_full_relocate_commit(st: &DbState, dest: &Path) {
+        relocate_all_to(st, dest).unwrap();
+        write_media_base_pref(st, &path_to_user_string(dest)).unwrap();
+        write_relocate_allow_root(st, None).unwrap();
+        let dest_can = fs::canonicalize(dest).unwrap();
+        let rows = list_audio_rows(st).unwrap();
+        let conn = open_db(st).unwrap();
+        for (file_id, _, audio_path) in rows {
+            let resolved = crate::media_base_dir::resolve_audio_path(st, &audio_path).unwrap();
+            let stored = persist_audio_storage_path(&dest_can, &resolved).unwrap();
+            conn.execute(
+                "UPDATE files SET audio_path = ?1 WHERE id = ?2",
+                params![stored, file_id],
+            )
+            .unwrap();
+        }
+    }
+
+    #[test]
+    fn relocate_twice_a_to_b_to_c() {
+        let (tmp, st) = temp_state();
+        let media_a = tmp.join("a");
+        let media_b = tmp.join("b");
+        let media_c = tmp.join("c");
+        fs::create_dir_all(&media_a).unwrap();
+        fs::create_dir_all(&media_b).unwrap();
+        fs::create_dir_all(&media_c).unwrap();
+        write_media_base_pref(&st, media_a.to_str().unwrap()).unwrap();
+
+        let project_id = Uuid::new_v4().to_string();
+        let file_id = Uuid::new_v4().to_string();
+        let proj = audio_project_dir(&media_a, &project_id);
+        fs::create_dir_all(peaks_dir(&proj)).unwrap();
+        let audio = proj.join(format!("{file_id}.wav"));
+        fs::write(&audio, b"wav").unwrap();
+        let stored = persist_audio_storage_path(&media_a, &audio).unwrap();
+        let conn = open_db(&st).unwrap();
+        let t = 1_i64;
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, 'p', ?2, ?2)",
+            params![project_id, t],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, 'n', 'audio_only', ?3, ?4, ?4)",
+            params![file_id, project_id, stored, t],
+        )
+        .unwrap();
+        drop(conn);
+
+        simulate_full_relocate_commit(&st, &media_b);
+        let path_b: String = open_db(&st)
+            .unwrap()
+            .query_row(
+                "SELECT audio_path FROM files WHERE id = ?1",
+                params![file_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert!(
+            !crate::media_base_dir::path_is_absolute_storage(&path_b),
+            "after B should be relative: {path_b}"
+        );
+        assert!(audio_project_dir(&media_b, &project_id)
+            .join(format!("{file_id}.wav"))
+            .is_file());
+
+        simulate_full_relocate_commit(&st, &media_c);
+        assert!(audio_project_dir(&media_c, &project_id)
+            .join(format!("{file_id}.wav"))
+            .is_file());
+        let path_c: String = open_db(&st)
+            .unwrap()
+            .query_row(
+                "SELECT audio_path FROM files WHERE id = ?1",
+                params![file_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        let resolved = crate::media_base_dir::resolve_audio_path(&st, &path_c).unwrap();
+        assert_eq!(
+            resolved,
+            fs::canonicalize(
+                audio_project_dir(&media_c, &project_id).join(format!("{file_id}.wav"))
+            )
+            .unwrap()
+        );
         let _ = fs::remove_dir_all(tmp);
     }
 }

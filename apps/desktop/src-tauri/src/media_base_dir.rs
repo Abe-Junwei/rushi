@@ -238,13 +238,15 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
     }
 
     let rel = trimmed.trim_start_matches(['/', '\\']);
-    let mut candidates = Vec::new();
-    // During in-progress relocate, prefer the destination root so mid-move absolute→relative
-    // mistakes still resolve; also supports absolute written under dest.
+    // Prefer current media base (source during relocate). Fall back to relocate-allow
+    // so mid-move relative paths under the destination still resolve.
+    let mut candidates = vec![media_base.join(rel)];
     if let Some(allow) = read_relocate_allow_root(st) {
-        candidates.push(allow.join(rel));
+        let under_allow = allow.join(rel);
+        if under_allow != candidates[0] {
+            candidates.push(under_allow);
+        }
     }
-    candidates.push(media_base.join(rel));
 
     let mut last_err = String::from("无法解析音频文件路径");
     for candidate in candidates {
