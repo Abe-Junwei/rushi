@@ -2,8 +2,29 @@ import { describe, expect, it } from "vitest";
 import {
   resolvePlaybackScrollFollowTargetPx,
   resolveEdgeSeekAnchorScrollPx,
+  shouldSkipInteractiveSeekViewportSnap,
   WAVEFORM_EDGE_FOLLOW,
 } from "./waveformPlaybackScrollFollow";
+
+describe("shouldSkipInteractiveSeekViewportSnap", () => {
+  it("skips the anchor snap for an edge-mode interactive seek (paused click)", () => {
+    expect(
+      shouldSkipInteractiveSeekViewportSnap({ suppressFollow: true, followMode: "edge" }),
+    ).toBe(true);
+  });
+
+  it("keeps the snap for center mode so the playhead stays centered", () => {
+    expect(
+      shouldSkipInteractiveSeekViewportSnap({ suppressFollow: true, followMode: "center" }),
+    ).toBe(false);
+  });
+
+  it("keeps the snap when the seek does not suppress follow (e.g. keyboard nudge)", () => {
+    expect(
+      shouldSkipInteractiveSeekViewportSnap({ suppressFollow: false, followMode: "edge" }),
+    ).toBe(false);
+  });
+});
 
 describe("resolvePlaybackScrollFollowTargetPx", () => {
   const base = {

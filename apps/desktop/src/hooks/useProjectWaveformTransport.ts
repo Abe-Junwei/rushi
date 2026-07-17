@@ -10,6 +10,7 @@ import {
   type TransportIntent,
 } from "../services/waveform/transport";
 import { resolveWaveformPlayheadChromeMode } from "../utils/waveformPlayheadChrome";
+import { shouldSkipInteractiveSeekViewportSnap } from "../utils/waveformPlaybackScrollFollow";
 import { noteMediaPaused, runGatedMediaPlay } from "../utils/mediaPlayGate";
 import { logDesktopUi } from "../services/desktopUiLog";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
@@ -120,12 +121,14 @@ export function useProjectWaveformTransport(args: {
           }
           const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
           const followMode = optsRef.current.playbackScrollFollowModeRef?.current ?? "edge";
-          // Live media flag — React `isPlaying` in this closure can be stale (deps omit
-          // it), which wrongly enabled edge seek-land snap while audio was playing.
-          const livePlaying = Boolean(resolveHost()?.isPlaying());
-          const skipViewportSnap = Boolean(
-            seekOpts?.suppressFollow && livePlaying && followMode === "edge",
-          );
+          // Edge/page mode never force-anchors an interactive seek — playing (listen-jump)
+          // and paused (click seek) both land the playhead where the user clicked. Gating
+          // this on isPlaying pinned the paused click to the ~15% anchor and scrolled the
+          // waveform instead of seeking.
+          const skipViewportSnap = shouldSkipInteractiveSeekViewportSnap({
+            suppressFollow: Boolean(seekOpts?.suppressFollow),
+            followMode,
+          });
           await applyPeaksOrderedSeek({
             timeSec,
             durationSec: d,

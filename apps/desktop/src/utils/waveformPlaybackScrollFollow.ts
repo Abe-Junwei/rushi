@@ -4,6 +4,25 @@ import { scrollPxCenterTimeInViewport, timeToTimelinePx } from "./waveformProjec
 export type WaveformPlaybackScrollFollowMode = "center" | "edge";
 
 /**
+ * Whether an interactive seek should move the playhead only and leave tier scroll
+ * where it is (skip the seek-land viewport snap).
+ *
+ * Edge/page mode (Audacity-style): an interactive seek never force-anchors scroll —
+ * the playhead lands exactly where the user clicked, in **both** playing (listen-jump)
+ * and paused (click seek) states. The force-left-anchor was only ever meant for the
+ * continuous follow while playing, not for interactive seeks; applying it on a paused
+ * click pinned the playhead to the ~15% anchor and scrolled the waveform instead.
+ *
+ * Center mode always snaps so the playhead stays centered.
+ */
+export function shouldSkipInteractiveSeekViewportSnap(input: {
+  suppressFollow: boolean;
+  followMode: WaveformPlaybackScrollFollowMode;
+}): boolean {
+  return input.suppressFollow && input.followMode === "edge";
+}
+
+/**
  * Edge follow (Audacity / Pro Tools Follow Playhead): playhead moves freely in the
  * middle band; scroll only when it nears the viewport edges, anchoring with hysteresis.
  */
