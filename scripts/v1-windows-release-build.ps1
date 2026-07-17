@@ -14,9 +14,11 @@ $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 
 function Invoke-Npm {
-  param([Parameter(Mandatory)][string[]] $Args)
-  & npm @Args
-  if ($LASTEXITCODE -ne 0) { throw "npm $($Args -join ' ') failed with exit $LASTEXITCODE" }
+  # Do not name the param $Args — that shadows PowerShell's automatic $Args and
+  # leaves the splat empty (npm prints help and exits non-zero).
+  param([Parameter(Mandatory)][string[]] $NpmArgs)
+  & npm @NpmArgs
+  if ($LASTEXITCODE -ne 0) { throw "npm $($NpmArgs -join ' ') failed with exit $LASTEXITCODE" }
 }
 
 Write-Host "== Windows release preflight =="
@@ -93,7 +95,14 @@ Copy-Item (Join-Path $TauriRoot "resources") (Join-Path $Stage "resources") -Rec
 
 $Zip = Join-Path $Root "windows-portable-x64.zip"
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
-Compress-Archive -Path (Join-Path $Stage "*") -DestinationPath $Zip
+# Compress-Archive OOMs on ~1GiB sidecar onedir; tar streams and is reliable on Win10+.
+Push-Location $Stage
+try {
+  & tar -a -c -f $Zip *
+  if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE" }
+} finally {
+  Pop-Location
+}
 
 $HashPath = "$Zip.sha256"
 (Get-FileHash -Algorithm SHA256 -Path $Zip).Hash.ToLower() | Set-Content -Path $HashPath -NoNewline
