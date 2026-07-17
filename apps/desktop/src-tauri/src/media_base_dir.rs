@@ -9,6 +9,21 @@ use tauri::{AppHandle, State};
 
 const PREF_REL: &str = "prefs/media_base_dir.txt";
 
+/// User-facing absolute path: strip Windows `\\?\` / `\\?\UNC\` from `canonicalize`.
+fn path_to_user_string(path: &Path) -> String {
+    let s = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+            return format!(r"\\{rest}");
+        }
+        if let Some(rest) = s.strip_prefix(r"\\?\") {
+            return rest.to_string();
+        }
+    }
+    s.into_owned()
+}
+
 pub fn pref_path(st: &DbState) -> PathBuf {
     st.root.join(PREF_REL)
 }
@@ -36,7 +51,7 @@ pub fn write_media_base_pref(st: &DbState, absolute_or_empty: &str) -> Result<()
             return Err("媒体基准目录不存在或不是文件夹。".into());
         }
         let can = std::fs::canonicalize(&pb).map_err(|e| format!("无法解析媒体基准目录：{e}"))?;
-        std::fs::write(&tmp, format!("{}\n", can.display()))
+        std::fs::write(&tmp, format!("{}\n", path_to_user_string(&can)))
             .map_err(|e| format!("无法写入媒体基准偏好：{e}"))?;
     }
     std::fs::rename(&tmp, &path).map_err(|e| format!("无法写入媒体基准偏好：{e}"))
@@ -75,7 +90,7 @@ pub fn persist_audio_storage_path(media_base: &Path, file: &Path) -> Result<Stri
         return Ok(s);
     }
     // Fallback: absolute (should be rare)
-    Ok(file_can.to_string_lossy().to_string())
+    Ok(path_to_user_string(&file_can))
 }
 
 fn path_is_absolute_storage(raw: &str) -> bool {
@@ -147,15 +162,15 @@ pub fn get_media_base_dir_info(state: State<'_, DbState>) -> Result<MediaBaseDir
     let raw = read_media_base_pref_raw(st);
     let media_base = resolve_media_base(st)?;
     Ok(MediaBaseDirInfo {
-        media_base_dir: media_base.to_string_lossy().to_string(),
+        media_base_dir: path_to_user_string(&media_base),
         is_custom: !raw.is_empty(),
-        app_data_root: st.root.to_string_lossy().to_string(),
+        app_data_root: path_to_user_string(&st.root),
     })
 }
 
 #[tauri::command]
 pub fn get_app_data_root_path(state: State<'_, DbState>) -> Result<String, String> {
-    Ok(state.inner().root.to_string_lossy().to_string())
+    Ok(path_to_user_string(&state.inner().root))
 }
 
 #[tauri::command]
@@ -251,6 +266,39 @@ mod tests {
         let err = resolve_audio_path(&st, outside.to_str().unwrap()).unwrap_err();
         assert!(err.contains("媒体基准") || err.contains("应用数据根"));
         let _ = fs::remove_file(outside);
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn path_to_user_string_strips_windows_verbatim_prefix() {
+        #[cfg(windows)]
+        {
+            assert_eq!(path_to_user_string(Path::new(r"\\?\D:\转录")), r"D:\转录");
+            assert_eq!(
+                path_to_user_string(Path::new(r"\\?\UNC\server\share\a")),
+                r"\\server\share\a"
+            );
+        }
+        assert_eq!(path_to_user_string(Path::new(r"D:\转录")), r"D:\转录");
+    }
+
+    #[test]
+    fn write_pref_stores_user_facing_path_without_verbatim_prefix() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media-cloud");
+        fs::create_dir_all(&media).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        let raw = read_media_base_pref_raw(&st);
+        assert!(!raw.is_empty());
+        assert!(
+            !raw.contains(r"\\?\"),
+            "pref should not store verbatim prefix: {raw}"
+        );
+        let shown = path_to_user_string(&resolve_media_base(&st).unwrap());
+        assert!(
+            !shown.contains(r"\\?\"),
+            "UI path should not show verbatim prefix: {shown}"
+        );
         let _ = fs::remove_dir_all(tmp);
     }
 }

@@ -1,6 +1,8 @@
 # Acceptance：用户库位置与跨设备同步（媒体基准目录 · 薄片 1）
 
-> **状态**：薄片 1 已落地（自动化门禁绿；手测 ☐）  
+> **状态**：薄片 1 已落地（自动化门禁绿；手测部分 ✅：CJK 路径）  
+
+
 
 > **调研门禁**：[`user-library-location-sync-research.md`](./user-library-location-sync-research.md)（已采纳）  
 > **Intent**：[`user-library-location-intent.md`](./user-library-location-intent.md)
@@ -54,7 +56,7 @@
 - [x] `npm run typecheck`
 - [x] `npm run test`
 - [x] `node scripts/check-architecture-guard.mjs`（无新增 error；既有 hotspot 警告仍在）
-- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml media_base`（4 passed）
+- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml media_base`（6 passed；含 Windows `\\?\` 剥离）
 
 ## Focused tests
 
@@ -63,10 +65,11 @@
 - [x] 旧绝对路径（在 app_data 根下）仍 resolve
 - [x] 根外绝对路径拒绝
 - [x] 写入相对化：文件在基准下时 DB 存相对段
+- [x] UI/pref 路径不暴露 Windows `\\?\` 前缀
 
 ## 手测清单
 
-1. 打开环境 → 偏好设置：可见「内容库位置」；路径 + 选择 / 恢复默认，无长篇说明堆叠。
-2. 选择一非默认本地目录为媒体基准 → 导入音频 → 文件出现在该目录 `projects/…` → 可播放/转写。
-3. 恢复默认媒体基准后，旧项目（绝对路径）仍可打开。
-4. （可选）将媒体基准指到网盘「始终保留本地」文件夹冒烟；**不要**把 app_data 整库放进网盘。
+1. [ ] 打开环境 → 偏好设置：可见「内容库位置」；路径 + 选择 / 恢复默认，无长篇说明堆叠。
+2. [x] 选择含 **CJK** 的非默认本地目录为媒体基准（例：`D:\转录`）→ UI 显示无 `\\?\` → 导入音频 → 文件出现在该目录 `projects/…` → 可播放/转写。（2026-07-17 确认通过）
+3. [ ] 恢复默认媒体基准后，旧项目（绝对路径）仍可打开。
+4. [ ] （可选）将媒体基准指到网盘「始终保留本地」文件夹冒烟；**不要**把 app_data 整库放进网盘。
