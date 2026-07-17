@@ -249,12 +249,13 @@ pub fn resolve_audio_path_under_root(root: &Path, raw_path: &str) -> Result<Path
     }
     let pb = PathBuf::from(trimmed);
     let sm = fs::symlink_metadata(&pb).map_err(|e| format!("无法读取音频文件元数据: {e}"))?;
-    if sm.file_type().is_symlink() {
-        return Err("拒绝读取：音频文件为符号链接。".into());
-    }
+    let was_symlink = sm.file_type().is_symlink();
     let root_can = fs::canonicalize(root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
     let file_can = fs::canonicalize(&pb).map_err(|e| format!("无法解析音频文件路径: {e}"))?;
     if file_can.strip_prefix(&root_can).is_err() {
+        if was_symlink {
+            return Err("拒绝读取：符号链接目标不在应用数据根之下。".into());
+        }
         return Err("拒绝读取：音频文件不在应用数据根之下。".into());
     }
     if !file_can.is_file() {

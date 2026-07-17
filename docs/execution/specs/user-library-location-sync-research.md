@@ -112,6 +112,15 @@ flowchart LR
 
 业内对照补充：Relocate 向导派（非 Zotero 静默改指针）；peaks 随迁为自包含项目夹选择，非网盘同步刚需。
 
+### 4.2 薄片 3 决策 delta（2026-07-17）
+
+| 问题 | 结论 |
+|------|------|
+| symlink | **受控允许**：`canonicalize` 跟随链接后，目标必须在媒体基准 / app_data / relocate-allow 内；逃逸仍拒。取消「一律拒 symlink」。 |
+| Files On-Demand | 检测未完整在本地（Windows `FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS` 等）→ **可读错误**（始终保留在此设备 / 等待同步）；**不**自动 hydrate。 |
+| 换机 | 手测矩阵：项目包传 DB + 网盘同步媒体 + 各机媒体基准指向同步文件夹；见 slice3 acceptance。 |
+| ADR | 本片仅更新 lifecycle 文档；不新开 ADR。 |
+
 ---
 
 ## 5. 明确不做什么
@@ -150,3 +159,4 @@ flowchart LR
 | 2026-07-17 | 初版；选定 A（Zotero 式二分），业内对照 + 反面证据 + 落位预告 |
 | 2026-07-17 | 用户签收：可进入 intent/acceptance；编码仍须等三件套 |
 | 2026-07-17 | §4.1 薄片 2 delta：Relocate 弹窗（禁仅改路径）+ peaks 随媒体；签收「接受默认」 |
+| 2026-07-17 | §4.2 薄片 3 delta：受控 symlink + On-Demand 文案 + 换机矩阵 |

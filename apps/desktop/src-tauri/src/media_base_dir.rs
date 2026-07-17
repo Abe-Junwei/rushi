@@ -154,7 +154,48 @@ fn under_canonical_root(root: &Path, file_can: &Path) -> bool {
     file_can.strip_prefix(&root_can).is_ok()
 }
 
+const CLOUD_PLACEHOLDER_HINT: &str =
+    "音频尚未完整下载到本机（网盘「按需」占位）。请在文件资源管理器中对该文件或文件夹选择「始终保留在此设备」，待同步完成后再试。";
+
+/// Windows OneDrive / cloud filer: not fully present locally.
+#[cfg(windows)]
+fn looks_like_cloud_placeholder(meta: &std::fs::Metadata) -> bool {
+    use std::os::windows::fs::MetadataExt;
+    const FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS: u32 = 0x0040_0000;
+    const FILE_ATTRIBUTE_RECALL_ON_OPEN: u32 = 0x0004_0000;
+    const FILE_ATTRIBUTE_UNPINNED: u32 = 0x0010_0000;
+    const FILE_ATTRIBUTE_OFFLINE: u32 = 0x0000_1000;
+    let attrs = meta.file_attributes();
+    (attrs & FILE_ATTRIBUTE_RECALL_ON_DATA_ACCESS) != 0
+        || (attrs & FILE_ATTRIBUTE_RECALL_ON_OPEN) != 0
+        || ((attrs & FILE_ATTRIBUTE_UNPINNED) != 0 && (attrs & FILE_ATTRIBUTE_OFFLINE) != 0)
+}
+
+#[cfg(not(windows))]
+fn looks_like_cloud_placeholder(_meta: &std::fs::Metadata) -> bool {
+    false
+}
+
+fn map_access_io_error(err: &std::io::Error, candidate: &Path) -> String {
+    if let Ok(meta) = std::fs::symlink_metadata(candidate) {
+        if looks_like_cloud_placeholder(&meta) {
+            return CLOUD_PLACEHOLDER_HINT.into();
+        }
+    }
+    let msg = err.to_string();
+    let lower = msg.to_ascii_lowercase();
+    if lower.contains("cloud")
+        || lower.contains("offline")
+        || lower.contains("0x8007016a")
+        || lower.contains("0x8007016A")
+    {
+        return CLOUD_PLACEHOLDER_HINT.into();
+    }
+    format!("无法解析音频文件路径: {msg}")
+}
+
 /// Dual-read resolve: relative → join media base; absolute → must sit under media base or legacy app_data root.
+/// Symlinks are allowed only when the canonical target stays under an allowed root (controlled allow).
 pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, String> {
     let trimmed = raw_path.trim();
     if trimmed.is_empty() {
@@ -168,18 +209,23 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
         media_base.join(rel)
     };
 
-    let sm = std::fs::symlink_metadata(&candidate)
-        .map_err(|e| format!("无法读取音频文件元数据: {e}"))?;
-    if sm.file_type().is_symlink() {
-        return Err("拒绝读取：音频文件为符号链接。".into());
+    let sm =
+        std::fs::symlink_metadata(&candidate).map_err(|e| map_access_io_error(&e, &candidate))?;
+    let was_symlink = sm.file_type().is_symlink();
+    if looks_like_cloud_placeholder(&sm) {
+        return Err(CLOUD_PLACEHOLDER_HINT.into());
     }
+
     let file_can =
-        std::fs::canonicalize(&candidate).map_err(|e| format!("无法解析音频文件路径: {e}"))?;
+        std::fs::canonicalize(&candidate).map_err(|e| map_access_io_error(&e, &candidate))?;
     let under_media = under_canonical_root(&media_base, &file_can);
     let under_legacy = under_canonical_root(&st.root, &file_can);
     let under_relocate =
         read_relocate_allow_root(st).is_some_and(|extra| under_canonical_root(&extra, &file_can));
     if !under_media && !under_legacy && !under_relocate {
+        if was_symlink {
+            return Err("拒绝读取：符号链接目标不在媒体基准目录或应用数据根之下。".into());
+        }
         return Err("拒绝读取：音频文件不在媒体基准目录或应用数据根之下。".into());
     }
     if !file_can.is_file() {
@@ -342,6 +388,46 @@ mod tests {
             !shown.contains(r"\\?\"),
             "UI path should not show verbatim prefix: {shown}"
         );
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn cloud_placeholder_hint_mentions_keep_on_device() {
+        assert!(CLOUD_PLACEHOLDER_HINT.contains("始终保留"));
+        assert!(CLOUD_PLACEHOLDER_HINT.contains("网盘") || CLOUD_PLACEHOLDER_HINT.contains("按需"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_inside_media_base_resolves() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media");
+        let proj = media.join("projects").join("p1");
+        fs::create_dir_all(&proj).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        let target = proj.join("real.wav");
+        fs::write(&target, b"wav").unwrap();
+        let link = proj.join("link.wav");
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+        let resolved = resolve_audio_path(&st, "projects/p1/link.wav").unwrap();
+        assert_eq!(resolved, fs::canonicalize(&target).unwrap());
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlink_outside_media_base_rejected() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media");
+        fs::create_dir_all(media.join("projects").join("p1")).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        let outside = std::env::temp_dir().join(format!("rushi-symlink-out-{}", Uuid::new_v4()));
+        fs::write(&outside, b"x").unwrap();
+        let link = media.join("projects").join("p1").join("escape.wav");
+        std::os::unix::fs::symlink(&outside, &link).unwrap();
+        let err = resolve_audio_path(&st, "projects/p1/escape.wav").unwrap_err();
+        assert!(err.contains("符号链接") || err.contains("媒体基准") || err.contains("应用数据根"));
+        let _ = fs::remove_file(outside);
         let _ = fs::remove_dir_all(tmp);
     }
 }

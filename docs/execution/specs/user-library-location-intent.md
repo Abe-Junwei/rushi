@@ -12,8 +12,8 @@
 | 切片 | 范围 | 交付 |
 |------|------|------|
 | **1（本片）** | `media_base_dir` pref + dual-read resolve + 新导入相对写入 + 偏好设置 UI | 自动门禁绿；手测：改基准 → 导入 → 播放/转写 |
-| **2（后续）** | 存量绝对路径一次性相对化迁移、媒体搬迁向导、Files On-Demand/symlink 受控策略 | 另开 acceptance |
-| **3（后续）** | 换机手测矩阵（项目包 + 网盘媒体）深化；必要时 ADR | 文档 + 手测 |
+| **2** | 搬迁向导 + peaks 随媒体 | [`user-library-location-slice2-*`](./user-library-location-slice2-intent.md) |
+| **3** | 换机手测矩阵 + On-Demand 文案 + 受控 symlink；lifecycle 契约（不开新 ADR） | [`user-library-location-slice3-*`](./user-library-location-slice3-intent.md) |
 
 ## 边界（不做 · 本片）
 

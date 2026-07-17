@@ -89,6 +89,16 @@ FileHub / Editor → closeProject → Welcome
 - 编辑器面包屑：saffron ●（`hasUnsavedFileEdits`）
 - 底栏：`autoSaveFooterStatus`（pending / saving / saved）
 
+## 媒体基准与相对路径（长期契约）
+
+> 调研：[`user-library-location-sync-research.md`](../execution/specs/user-library-location-sync-research.md)
+
+- **DB / models / secrets / logs**：始终在本机 `DbState.root`（app_data），禁止放消费级网盘。
+- **媒体基准**（`prefs/media_base_dir.txt`）：新音频与 peaks 落在 `{media_base}/projects/{projectId}/`；`files.audio_path` 优先存相对该基准的路径。
+- **改基准**：有受管媒体时必须搬迁（薄片 2），不可仅改指针。
+- **读路径**：`media_base_dir::resolve_audio_path`（scoped；受控 symlink；网盘占位返回可执行错误文案）。
+- **换机**：语段/项目元数据走项目包或未来协作轨；媒体靠网盘同步 + 相对路径。
+
 ## 相关代码
 
 | 模块 | 路径 |
@@ -99,3 +109,4 @@ FileHub / Editor → closeProject → Welcome
 | Hub 变更 | `apps/desktop/src/pages/useProjectFileMutationController.ts` |
 | 项目 CRUD / 元信息 | `apps/desktop/src/pages/useProjectMutationController.ts` |
 | Rust 去重 | `apps/desktop/src-tauri/src/project/import_duplicate.rs` |
+| 媒体基准 / 搬迁 | `apps/desktop/src-tauri/src/media_base_dir.rs` · `media_base_relocate.rs` |
