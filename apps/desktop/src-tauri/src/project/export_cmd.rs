@@ -7,13 +7,14 @@ use std::process::Command;
 use tauri::State;
 
 use super::library_bundle_cmd::{
-    export_library_bundle_to_path, import_library_bundle_from_path, LIBRARY_BUNDLE_KIND,
+    export_library_bundle_to_path, import_library_bundle_from_path, ImportExchangeBundleResult,
+    LIBRARY_BUNDLE_KIND,
 };
 use super::project_bundle_cmd::{
     export_project_bundle_to_path, import_project_bundle_from_path, peek_exchange_bundle_kind,
     PROJECT_BUNDLE_KIND,
 };
-use super::types::{ProjectDetail, SegmentDto};
+use super::types::SegmentDto;
 
 /// 弹出系统「另存为」并写入 UTF-8 文本（Tauri WebView 内程序化 `<a download>` 常无效果）。
 #[tauri::command]
@@ -150,7 +151,7 @@ pub async fn export_library_bundle(
 #[tauri::command]
 pub async fn import_project_bundle(
     state: State<'_, DbState>,
-) -> Result<Option<ProjectDetail>, CommandErrorDto> {
+) -> Result<Option<ImportExchangeBundleResult>, CommandErrorDto> {
     let st = state.inner().clone();
     let picked = tauri::async_runtime::spawn_blocking(|| {
         rfd::FileDialog::new()
@@ -171,7 +172,14 @@ pub async fn import_project_bundle(
         let kind = peek_exchange_bundle_kind(&zip_path)?;
         match kind.as_str() {
             k if k == PROJECT_BUNDLE_KIND => {
-                import_project_bundle_from_path(&st, &zip_path).map(Some)
+                let project = import_project_bundle_from_path(&st, &zip_path)?;
+                Ok(Some(ImportExchangeBundleResult {
+                    project,
+                    imported_count: 1,
+                    failed_count: 0,
+                    failed_labels: Vec::new(),
+                    lexicon_warning: None,
+                }))
             }
             k if k == LIBRARY_BUNDLE_KIND => {
                 import_library_bundle_from_path(&st, &zip_path).map(Some)

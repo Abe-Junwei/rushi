@@ -23,6 +23,18 @@ use super::utils::{now_ms, open_db};
 pub(super) const LIBRARY_BUNDLE_KIND: &str = "rushi_library_bundle";
 pub(super) const LIBRARY_BUNDLE_VERSION: u32 = 1;
 
+/// Result of importing a project or library exchange zip (FE toast / focus).
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImportExchangeBundleResult {
+    pub project: ProjectDetail,
+    pub imported_count: usize,
+    pub failed_count: usize,
+    pub failed_labels: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lexicon_warning: Option<String>,
+}
+
 #[cfg(test)]
 const MAX_LIBRARY_UNCOMPRESSED_BYTES: u64 = 512 * 1024;
 #[cfg(not(test))]
@@ -125,11 +137,15 @@ pub(super) fn export_library_bundle_to_path(
                     entry: format!("projects/{project_id}.zip"),
                 });
             }
+            // Empty / no-audio projects are skippable; anything else aborts the whole library zip.
             Err(CommandError::BundleNoExportableAudio) => {
-                skipped.push(project_id.clone());
+                skipped.push(format!("{name}（{project_id}）"));
             }
-            Err(_) => {
-                skipped.push(project_id.clone());
+            Err(e) => {
+                let _ = fs::remove_dir_all(&staging);
+                return Err(CommandError::ExportProjectBundle {
+                    detail: format!("导出项目「{name}」失败，已中止整库导出：{e}"),
+                });
             }
         }
     }
@@ -195,11 +211,10 @@ pub(super) fn export_library_bundle_to_path(
 }
 
 /// Import library zip: nested project bundles + top-level lexicon once.
-/// Returns the last successfully imported project detail (for FE focus).
 pub(super) fn import_library_bundle_from_path(
     st: &DbState,
     zip_path: &Path,
-) -> CommandResult<ProjectDetail> {
+) -> CommandResult<ImportExchangeBundleResult> {
     let file = File::open(zip_path).map_err(CommandError::BundleOpen)?;
     let mut archive = ZipArchive::new(file).map_err(CommandError::BundleRead)?;
     validate_library_archive(&mut archive)?;
@@ -222,35 +237,49 @@ pub(super) fn import_library_bundle_from_path(
     fs::create_dir_all(&staging).map_err(CommandError::BundleCreateProjectDir)?;
 
     let mut last: Option<ProjectDetail> = None;
-    let mut failures = Vec::new();
+    let mut imported_count = 0usize;
+    let mut failed_labels = Vec::new();
 
     for entry in &manifest.projects {
+        let label = if entry.name.trim().is_empty() {
+            entry.original_id.clone()
+        } else {
+            entry.name.clone()
+        };
         if entry.entry.contains("..") || !entry.entry.starts_with("projects/") {
-            failures.push(entry.original_id.clone());
+            failed_labels.push(format!("{label}（路径不安全）"));
             continue;
         }
         let bytes = match read_zip_bytes(&mut archive, &entry.entry) {
             Ok(b) => b,
-            Err(_) => {
-                failures.push(entry.original_id.clone());
+            Err(e) => {
+                failed_labels.push(format!("{label}（{e}）"));
                 continue;
             }
         };
-        // Nested zip must be a project bundle (not another library).
         let nested_path = staging.join(format!("{}.zip", entry.original_id));
-        if fs::write(&nested_path, &bytes).is_err() {
-            failures.push(entry.original_id.clone());
+        if let Err(e) = fs::write(&nested_path, &bytes) {
+            failed_labels.push(format!("{label}（写入临时文件失败：{e}）"));
             continue;
         }
         match import_project_bundle_from_path(st, &nested_path) {
-            Ok(detail) => last = Some(detail),
-            Err(_) => failures.push(entry.original_id.clone()),
+            Ok(detail) => {
+                imported_count += 1;
+                last = Some(detail);
+            }
+            Err(e) => failed_labels.push(format!("{label}（{e}）")),
         }
     }
 
-    if let Ok(lex_bytes) = read_zip_bytes(&mut archive, PROJECT_BUNDLE_LEXICON_ENTRY) {
-        let _ = apply_embedded_lexicon(st, &lex_bytes);
-    }
+    let lexicon_warning = match read_zip_bytes(&mut archive, PROJECT_BUNDLE_LEXICON_ENTRY) {
+        Ok(lex_bytes) => match apply_embedded_lexicon(st, &lex_bytes) {
+            Ok(()) => None,
+            Err(e) => Some(format!("词表未能完全导入：{e}")),
+        },
+        Err(CommandError::BundleMissingEntry { .. }) if !manifest.includes_lexicon => None,
+        Err(e) if manifest.includes_lexicon => Some(format!("词表未能读取：{e}")),
+        Err(_) => None,
+    };
 
     let _ = fs::remove_dir_all(&staging);
 
@@ -258,11 +287,19 @@ pub(super) fn import_library_bundle_from_path(
         return Err(CommandError::ImportProjectBundle {
             detail: format!(
                 "整库包未能导入任何项目（失败 {} 个）。",
-                failures.len()
+                failed_labels.len()
             ),
         });
     };
-    Ok(detail)
+
+    // Partial success is Ok but FE must surface failed_labels / lexicon_warning.
+    Ok(ImportExchangeBundleResult {
+        project: detail,
+        imported_count,
+        failed_count: failed_labels.len(),
+        failed_labels,
+        lexicon_warning,
+    })
 }
 
 #[cfg(test)]
@@ -345,8 +382,11 @@ mod tests {
         assert!(nested_zip.by_name(PROJECT_BUNDLE_LEXICON_ENTRY).is_err());
 
         let import_st = test_state("lib_import");
-        let last = import_library_bundle_from_path(&import_st, &zip).unwrap();
-        assert!(!last.id.is_empty());
+        let result = import_library_bundle_from_path(&import_st, &zip).unwrap();
+        assert!(!result.project.id.is_empty());
+        assert_eq!(result.imported_count, 2);
+        assert_eq!(result.failed_count, 0);
+        assert!(result.lexicon_warning.is_none());
         let conn = open_db(&import_st).unwrap();
         let n: i64 = conn
             .query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))
@@ -363,5 +403,64 @@ mod tests {
 
         let _ = fs::remove_dir_all(&export_st.root);
         let _ = fs::remove_dir_all(&import_st.root);
+    }
+
+    #[test]
+    fn library_export_skips_empty_but_aborts_on_segment_limit() {
+        use crate::project::project_bundle_cmd::MAX_BUNDLE_SEGMENT_COUNT;
+
+        let st = test_state("lib_hard_fail");
+        seed_project(&st, "ok", "正常", "a.wav", b"aa");
+        // Empty project → soft skip.
+        {
+            let conn = open_db(&st).unwrap();
+            conn.execute(
+                "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES ('empty', '空项', 1, 1)",
+                [],
+            )
+            .unwrap();
+        }
+        let zip_ok = st.root.join("lib-soft.zip");
+        export_library_bundle_to_path(&st, &zip_ok, None, None, vec![]).unwrap();
+        {
+            let mut archive = ZipArchive::new(File::open(&zip_ok).unwrap()).unwrap();
+            let manifest: LibraryBundleManifest =
+                read_zip_json(&mut archive, "manifest.json").unwrap();
+            assert_eq!(manifest.projects.len(), 1);
+            assert!(manifest
+                .skipped_project_ids
+                .iter()
+                .any(|s| s.contains("空项")));
+        }
+
+        // Too many segments → hard abort (not silent skip).
+        seed_project(&st, "huge", "超限", "h.wav", b"hh");
+        let conn = open_db(&st).unwrap();
+        let file_id: String = conn
+            .query_row(
+                "SELECT id FROM files WHERE project_id = 'huge'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        for i in 0..=MAX_BUNDLE_SEGMENT_COUNT {
+            conn.execute(
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
+                 VALUES (?1, ?2, ?3, 0.0, 1.0, 'x', NULL, 0, '', NULL, 'auto_transcribe', NULL, '', 0)",
+                params![file_id, format!("u{i}"), i as i32],
+            )
+            .unwrap();
+        }
+        drop(conn);
+        let zip_fail = st.root.join("lib-hard.zip");
+        let err = export_library_bundle_to_path(&st, &zip_fail, None, None, vec![])
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("中止整库导出") || err.contains("语段数量超过上限"),
+            "unexpected err: {err}"
+        );
+        assert!(!zip_fail.exists());
+        let _ = fs::remove_dir_all(&st.root);
     }
 }

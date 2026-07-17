@@ -113,8 +113,47 @@ export async function exportLibraryBundle(
   });
 }
 
-export async function importProjectBundle(): Promise<ProjectDetail | null> {
-  return invokeStructured<ProjectDetail | null>("import_project_bundle");
+export type ImportExchangeBundleResult = {
+  project: ProjectDetail;
+  importedCount: number;
+  failedCount: number;
+  failedLabels: string[];
+  lexiconWarning?: string | null;
+};
+
+export async function importProjectBundle(): Promise<ImportExchangeBundleResult | null> {
+  const raw = await invokeStructured<Record<string, unknown> | null>("import_project_bundle");
+  if (!raw) return null;
+  const project = (raw.project ?? raw) as ProjectDetail;
+  const importedCount =
+    typeof raw.importedCount === "number"
+      ? raw.importedCount
+      : typeof raw.imported_count === "number"
+        ? raw.imported_count
+        : 1;
+  const failedCount =
+    typeof raw.failedCount === "number"
+      ? raw.failedCount
+      : typeof raw.failed_count === "number"
+        ? raw.failed_count
+        : 0;
+  const failedLabelsRaw = raw.failedLabels ?? raw.failed_labels;
+  const failedLabels = Array.isArray(failedLabelsRaw)
+    ? failedLabelsRaw.filter((x): x is string => typeof x === "string")
+    : [];
+  const lexiconWarning =
+    typeof raw.lexiconWarning === "string"
+      ? raw.lexiconWarning
+      : typeof raw.lexicon_warning === "string"
+        ? raw.lexicon_warning
+        : null;
+  return {
+    project,
+    importedCount,
+    failedCount,
+    failedLabels,
+    lexiconWarning,
+  };
 }
 
 /** 系统另存为；用户取消时返回 `null`。 */

@@ -342,6 +342,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         ...s,
         idx: i,
       }));
+      beginBusy("export");
       try {
         const out = await p1.exportProjectBundle(
           current.id,
@@ -353,6 +354,8 @@ export function useExportController(deps: ExportDeps): ExportApi {
         if (out) syncOnboardingExport();
       } catch (e) {
         reportExportFailure("项目包", e);
+      } finally {
+        endBusy();
       }
       return;
     }
@@ -362,6 +365,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       current && currentFileId
         ? getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }))
         : [];
+    beginBusy("export");
     try {
       const out = await p1.exportLibraryBundle(
         "rushi-library-bundle.zip",
@@ -376,6 +380,8 @@ export function useExportController(deps: ExportDeps): ExportApi {
       }
     } catch (e) {
       reportExportFailure("整库包", e);
+    } finally {
+      endBusy();
     }
   }, [
     exportBundleScope,
@@ -386,20 +392,39 @@ export function useExportController(deps: ExportDeps): ExportApi {
     reportExportFailure,
     flushSegmentTextDrafts,
     setError,
+    beginBusy,
+    endBusy,
   ]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");
+    beginBusy("import");
     try {
-      const detail = await p1.importProjectBundle();
-      if (!detail) return;
-      applyDetail(detail);
+      const result = await p1.importProjectBundle();
+      if (!result) return;
+      applyDetail(result.project);
       await refreshProjects();
-      toast.success("已导入内容包");
+      if (result.failedCount > 0) {
+        const sample = result.failedLabels.slice(0, 3).join("；");
+        toast.info(
+          `已导入 ${result.importedCount} 个项目，${result.failedCount} 个失败${sample ? `：${sample}` : ""}`,
+        );
+      } else {
+        toast.success(
+          result.importedCount > 1
+            ? `已导入整库包（${result.importedCount} 个项目）`
+            : "已导入内容包",
+        );
+      }
+      if (result.lexiconWarning) {
+        toast.info(result.lexiconWarning);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      endBusy();
     }
-  }, [applyDetail, refreshProjects, setError]);
+  }, [applyDetail, refreshProjects, setError, beginBusy, endBusy]);
 
   return {
     exportTxt,

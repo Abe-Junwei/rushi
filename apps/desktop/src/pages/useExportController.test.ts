@@ -109,6 +109,8 @@ describe("useExportController", () => {
       await result.current.confirmExportBundleScope();
     });
 
+    expect(deps.beginBusy).toHaveBeenCalledWith("export");
+    expect(deps.endBusy).toHaveBeenCalled();
     expect(exportProjectBundle).toHaveBeenCalledWith(
       "proj-1",
       "file-1",
@@ -130,6 +132,8 @@ describe("useExportController", () => {
       await result.current.confirmExportBundleScope();
     });
 
+    expect(deps.beginBusy).toHaveBeenCalledWith("export");
+    expect(deps.endBusy).toHaveBeenCalled();
     expect(exportLibraryBundle).toHaveBeenCalledWith(
       "rushi-library-bundle.zip",
       "proj-1",
