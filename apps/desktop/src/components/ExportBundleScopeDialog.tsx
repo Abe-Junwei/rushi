@@ -72,8 +72,8 @@ export function ExportBundleScopeDialog({
               <span className="font-medium">当前项目</span>
               <span className={`mt-0.5 block ${PANEL_TYPOGRAPHY.meta}`}>
                 {canExportProject
-                  ? "仅打包当前打开的项目（全部音轨与语段）。"
-                  : "请先打开项目中的一个文件。"}
+                  ? "打包整个当前项目：全部音轨、语段、peaks 与词表。"
+                  : "请先打开项目里的一个文件，以便带上正在编辑的语段。"}
               </span>
             </span>
           </label>

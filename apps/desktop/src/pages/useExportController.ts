@@ -334,7 +334,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     setError("");
     if (exportBundleScope === "project") {
       if (!current || !currentFileId) {
-        setError("请先打开一个文件后再导出当前项目包");
+        setError("请先打开项目里的一个文件后再导出当前项目");
         return;
       }
       flushSegmentTextDrafts();
@@ -351,9 +351,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
           normalized,
         );
         setExportBundleScopeOpen(false);
-        if (out) syncOnboardingExport();
+        if (out) {
+          toast.success(`已导出当前项目：${out}`);
+          syncOnboardingExport();
+        }
       } catch (e) {
-        reportExportFailure("项目包", e);
+        reportExportFailure("当前项目", e);
       } finally {
         endBusy();
       }
