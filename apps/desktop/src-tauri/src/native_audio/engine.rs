@@ -46,6 +46,21 @@ impl NativeAudioState {
         }
     }
 
+    /// Stop playback without blocking on engine join (Windows CPAL teardown can stall).
+    /// Engine join runs in a background thread; caller may sleep briefly for file release.
+    pub fn stop_detached_for_relocate(&self) {
+        let handle = match self.inner.lock() {
+            Ok(mut g) => g.take(),
+            Err(_) => return,
+        };
+        let Some(handle) = handle else {
+            return;
+        };
+        handle.stop_detached();
+        #[cfg(windows)]
+        std::thread::sleep(Duration::from_millis(300));
+    }
+
     pub(crate) fn replace(&self, handle: PlayerHandle) -> Result<(), String> {
         let mut g = self
             .inner
@@ -174,6 +189,23 @@ impl PlayerHandle {
                 let _ = h.join();
             }
         }
+    }
+
+    /// Send Stop and join the engine on a background thread (never blocks the caller).
+    pub(crate) fn stop_detached(self) {
+        let PlayerHandle {
+            cmd_tx,
+            engine_join,
+            ..
+        } = self;
+        let _ = cmd_tx.send(EngineCmd::Stop);
+        std::thread::spawn(move || {
+            if let Ok(mut g) = engine_join.lock() {
+                if let Some(h) = g.take() {
+                    let _ = h.join();
+                }
+            }
+        });
     }
 }
 

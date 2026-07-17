@@ -1,4 +1,5 @@
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
 import { usesBundledAsrModelStack } from "../services/asr/bundledModelJobPresentation";
 import { CompactConfirmDialog } from "./CompactConfirmDialog";
 
@@ -40,6 +41,7 @@ export function ClearAsrCacheConfirmDialog({ open, busy, totalBytes, onCancel, o
       bounds={{ minWidth: 280, minHeight: 200, maxWidthCap: 420 }}
       persistState
       panelZIndex={120}
+      overlayClassName={`${OVERLAY_SCRIM_LAYER} z-[115]`}
     >
       <p className={PANEL_TYPOGRAPHY.dialogBody}>
         将删除应用数据目录中的 FunASR / ModelScope 模型缓存，不会删除数据库或项目文件。

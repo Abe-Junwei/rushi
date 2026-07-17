@@ -32,6 +32,8 @@ export type CompactFloatingDialogProps = {
   persistPhaseKey?: string;
   layoutRev?: number;
   panelZIndex?: number;
+  /** 与 panelZIndex 配套：从高层浮层内弹出时须抬遮罩，否则遮罩仍在父面板之下。 */
+  overlayClassName?: string;
   onOverlayClose?: () => void;
   rootRole?: string;
   rootClassName?: string;
@@ -70,6 +72,7 @@ export function CompactFloatingDialog({
   persistPhaseKey = "default",
   layoutRev = FLOATING_PANEL_LAYOUT_REV,
   panelZIndex,
+  overlayClassName,
   onOverlayClose,
   rootRole = "dialog",
   rootClassName,
@@ -112,6 +115,7 @@ export function CompactFloatingDialog({
       persistPhaseKey={persistPhaseKey}
       layoutRev={layoutRev}
       panelZIndex={resolvedPanelZIndex}
+      overlayClassName={overlayClassName}
       persistState={persistState}
       preferredDefaultPosition={preferredDefaultPosition}
       defaultPosition={defaultPosition}

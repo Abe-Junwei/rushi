@@ -12,19 +12,30 @@ use crate::DbState;
 use rusqlite::params;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 
 fn prepare_for_relocate(app: &AppHandle) -> Result<(), String> {
     if crate::asr_sidecar::warm::transcribe_in_flight() {
         return Err("正在转写，请结束后再搬迁媒体库。".into());
     }
-    // Native decode keeps the media file open even when paused; Windows rename/move
-    // then fails with sharing violation — which looks like "can't change library again"
-    // after the first successful pref switch once a project has been loaded.
+    // Native decode keeps the media file open even when paused. A full `stop()` joins
+    // the engine thread and can hang forever on Windows (CPAL stream teardown) — the
+    // relocate IPC then never returns, so the confirm dialog stays open with no folder
+    // change. Detach join; brief settle lets decode close the file before rename.
     if let Some(audio) = app.try_state::<NativeAudioState>() {
-        audio.stop();
+        audio.stop_detached_for_relocate();
     }
     Ok(())
+}
+
+fn is_sharing_violation(err: &std::io::Error) -> bool {
+    err.raw_os_error() == Some(32)
+        || err.raw_os_error() == Some(33)
+        || err
+            .to_string()
+            .to_ascii_lowercase()
+            .contains("being used by another process")
 }
 
 #[derive(serde::Serialize)]
@@ -44,11 +55,7 @@ pub struct MediaBasePickPreview {
 
 fn map_move_io_error(context: &str, err: std::io::Error) -> String {
     let raw = err.to_string();
-    // Win32 ERROR_SHARING_VIOLATION (32) / ERROR_LOCK_VIOLATION (33)
-    let busy = err.raw_os_error() == Some(32)
-        || err.raw_os_error() == Some(33)
-        || raw.to_ascii_lowercase().contains("being used by another process");
-    if busy {
+    if is_sharing_violation(&err) {
         format!("{context}：文件被占用。请关闭当前打开的项目音频后重试（{raw}）")
     } else {
         format!("{context}: {raw}")
@@ -56,52 +63,73 @@ fn map_move_io_error(context: &str, err: std::io::Error) -> String {
 }
 
 fn move_path(from: &Path, to: &Path) -> Result<(), String> {
+    // Windows: AV / WebView / decoder may hold handles briefly after stop.
+    const ATTEMPTS: u32 = 4;
+    let mut last_err: Option<std::io::Error> = None;
+    for attempt in 0..ATTEMPTS {
+        match move_path_once(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) if is_sharing_violation(&e) && attempt + 1 < ATTEMPTS => {
+                last_err = Some(e);
+                std::thread::sleep(Duration::from_millis(120 * u64::from(attempt + 1)));
+            }
+            Err(e) => return Err(map_move_io_error("搬迁失败", e)),
+        }
+    }
+    Err(map_move_io_error(
+        "搬迁失败",
+        last_err.unwrap_or_else(|| std::io::Error::other("unknown sharing violation")),
+    ))
+}
+
+fn move_path_once(from: &Path, to: &Path) -> Result<(), std::io::Error> {
     if !from.exists() {
         return Ok(());
     }
     if let Some(parent) = to.parent() {
-        fs::create_dir_all(parent).map_err(|e| format!("创建目录失败: {e}"))?;
+        fs::create_dir_all(parent)?;
     }
     if to.exists() {
         if to.is_file() {
-            fs::remove_file(to).map_err(|e| map_move_io_error("覆盖目标失败", e))?;
+            fs::remove_file(to)?;
         } else if to.is_dir() {
             // Merge: move children when dest dir already exists.
             if from.is_dir() {
-                for entry in fs::read_dir(from).map_err(|e| e.to_string())? {
-                    let entry = entry.map_err(|e| e.to_string())?;
+                for entry in fs::read_dir(from)? {
+                    let entry = entry?;
                     let name = entry.file_name();
-                    move_path(&entry.path(), &to.join(name))?;
+                    move_path_once(&entry.path(), &to.join(name))?;
                 }
                 let _ = fs::remove_dir(from);
                 return Ok(());
             }
-            fs::remove_dir_all(to).map_err(|e| map_move_io_error("覆盖目标目录失败", e))?;
+            fs::remove_dir_all(to)?;
         }
     }
-    fs::rename(from, to).or_else(|rename_err| {
-        if from.is_file() {
-            fs::copy(from, to)
-                .and_then(|_| fs::remove_file(from))
-                .map_err(|e| map_move_io_error("跨卷复制失败", e))
-        } else if rename_err.raw_os_error() == Some(32) || rename_err.raw_os_error() == Some(33) {
-            Err(map_move_io_error("搬迁目录失败", rename_err))
-        } else {
-            copy_dir_recursive(from, to)?;
-            fs::remove_dir_all(from).map_err(|e| map_move_io_error("删除源目录失败", e))
+    match fs::rename(from, to) {
+        Ok(()) => Ok(()),
+        Err(rename_err) => {
+            if from.is_file() {
+                fs::copy(from, to).and_then(|_| fs::remove_file(from))
+            } else if is_sharing_violation(&rename_err) {
+                Err(rename_err)
+            } else {
+                copy_dir_recursive_io(from, to)?;
+                fs::remove_dir_all(from)
+            }
         }
-    })
+    }
 }
 
-fn copy_dir_recursive(from: &Path, to: &Path) -> Result<(), String> {
-    fs::create_dir_all(to).map_err(|e| e.to_string())?;
-    for entry in fs::read_dir(from).map_err(|e| e.to_string())? {
-        let entry = entry.map_err(|e| e.to_string())?;
+fn copy_dir_recursive_io(from: &Path, to: &Path) -> Result<(), std::io::Error> {
+    fs::create_dir_all(to)?;
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
         let dest = to.join(entry.file_name());
-        if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
-            copy_dir_recursive(&entry.path(), &dest)?;
+        if entry.file_type()?.is_dir() {
+            copy_dir_recursive_io(&entry.path(), &dest)?;
         } else {
-            fs::copy(entry.path(), &dest).map_err(|e| e.to_string())?;
+            fs::copy(entry.path(), &dest)?;
         }
     }
     Ok(())
@@ -324,20 +352,18 @@ pub fn pick_media_base_dir_preview(
 
 /// Commit media base change. When `relocate` is true (or summary needs it), moves media then sets pref.
 /// `path = None` restores default (app data root).
-#[tauri::command]
-pub fn commit_media_base_dir_change(
+pub fn commit_media_base_dir_change_inner(
     path: Option<String>,
     relocate: bool,
-    app: AppHandle,
-    state: State<'_, DbState>,
+    app: &AppHandle,
+    st: &DbState,
 ) -> Result<MediaBaseDirInfo, String> {
-    let st = state.inner();
     let summary = managed_media_summary(st)?;
     if summary.needs_relocate && !relocate {
         return Err("库中已有媒体文件，必须搬迁到新位置，不能仅改路径。".into());
     }
     if summary.needs_relocate {
-        prepare_for_relocate(&app)?;
+        prepare_for_relocate(app)?;
     }
 
     // Always canonicalize (including restore-default → app_data) so persist/strip_prefix match.
@@ -400,8 +426,24 @@ pub fn commit_media_base_dir_change(
         is_custom: !read_media_base_pref_raw(st).is_empty(),
         app_data_root: path_to_user_string(&st.root),
     };
-    crate::project::asset_scope::allow_media_base_directory(&app, Path::new(&info.media_base_dir));
+    crate::project::asset_scope::allow_media_base_directory(app, Path::new(&info.media_base_dir));
     Ok(info)
+}
+
+/// Async wrapper: keep WebView responsive (busy label / cancel) while files move on Windows.
+#[tauri::command]
+pub async fn commit_media_base_dir_change(
+    path: Option<String>,
+    relocate: bool,
+    app: AppHandle,
+    state: State<'_, DbState>,
+) -> Result<MediaBaseDirInfo, String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        commit_media_base_dir_change_inner(path, relocate, &app, &st)
+    })
+    .await
+    .map_err(|e| format!("搬迁任务失败: {e}"))?
 }
 
 #[cfg(test)]

@@ -307,7 +307,7 @@ pub fn set_media_base_dir_pref(
     app: AppHandle,
     state: State<'_, DbState>,
 ) -> Result<MediaBaseDirInfo, String> {
-    crate::media_base_relocate::commit_media_base_dir_change(path, false, app, state)
+    crate::media_base_relocate::commit_media_base_dir_change_inner(path, false, &app, state.inner())
 }
 
 /// Legacy command: pick + empty-library pref switch only (no silent relocate bypass).
@@ -323,11 +323,11 @@ pub fn pick_media_base_dir(
         return Ok(None);
     };
     let path = path_to_user_string(&dir);
-    Ok(Some(crate::media_base_relocate::commit_media_base_dir_change(
+    Ok(Some(crate::media_base_relocate::commit_media_base_dir_change_inner(
         Some(path),
         false,
-        app,
-        state,
+        &app,
+        state.inner(),
     )?))
 }
 

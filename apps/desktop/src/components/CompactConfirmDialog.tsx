@@ -35,6 +35,8 @@ export type CompactConfirmDialogProps = {
   rootRole?: string;
   /** 从更高层浮层（如设置面板 z-110）内部弹出时须抬层，否则会被父面板压住而“看不见”。 */
   panelZIndex?: number;
+  /** 与 panelZIndex 配套抬遮罩（compactDialog 默认遮罩仅 z-40）。 */
+  overlayClassName?: string;
   children: ReactNode;
 };
 
@@ -57,6 +59,7 @@ export function CompactConfirmDialog({
   layoutRev = COMPACT_CONFIRM_LAYOUT_REV_BASE,
   rootRole = "alertdialog",
   panelZIndex,
+  overlayClassName,
   children,
 }: CompactConfirmDialogProps) {
   const confirmClass = confirmVariant === "danger" ? CONTROL_BTN_DANGER : CONTROL_BTN_PRIMARY;
@@ -79,6 +82,7 @@ export function CompactConfirmDialog({
       layoutRev={layoutRev}
       rootRole={rootRole}
       panelZIndex={panelZIndex}
+      overlayClassName={overlayClassName}
       footer={
         <>
           <button
