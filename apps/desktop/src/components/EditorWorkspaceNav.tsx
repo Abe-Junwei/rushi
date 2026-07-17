@@ -1,23 +1,19 @@
 import {
   IconArrowLeft as ArrowLeft,
-  IconLayoutSidebarLeftExpand as PanelLeftOpen,
+  IconChevronRight as ChevronRight,
 } from "@tabler/icons-react";
 import {
   CONTROL_BTN_BREADCRUMB,
   CONTROL_BTN_ICON_GHOST,
-  CONTROL_BTN_TOOLBAR_GHOST,
 } from "../config/controlStyles";
 import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-/** 工作区顶栏：侧栏展开（纯图标） */
+/** 工作区顶栏：侧栏展开 / 返回（纯图标） */
 const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outline-offset-1`;
 
 /** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
 const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
-
-/** 返回：左箭头 + 文案（与面包屑用 gap 分开） */
-const NAV_BACK_BTN = `${CONTROL_BTN_TOOLBAR_GHOST} shadow-none focus-visible:outline-offset-1`;
 
 export type EditorWorkspaceNavProps = {
   projectName: string;
@@ -35,6 +31,7 @@ export type EditorWorkspaceNavProps = {
 
 /**
  * Notion / Linear 式页头导航：← 返回 + 可点项目名 + 当前文件；窄屏仅显示当前页。
+ * 侧栏展开与壳层折叠钮成对：折叠用 ←，展开用 →。
  */
 export function EditorWorkspaceNav({
   projectName,
@@ -62,19 +59,18 @@ export function EditorWorkspaceNav({
           aria-label="展开侧栏"
           title="展开项目侧栏"
         >
-          <PanelLeftOpen className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <ChevronRight className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
       ) : null}
       <button
         type="button"
-        className={NAV_BACK_BTN}
+        className={NAV_ICON_BTN}
         disabled={disabled}
         onClick={onBack}
         aria-label={resolvedBackLabel}
         title={resolvedBackLabel}
       >
         <ArrowLeft className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        <span>返回</span>
       </button>
       <nav
         className="flex min-w-0 flex-1 items-center overflow-hidden pl-1"
