@@ -13,6 +13,7 @@ mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
 mod media_base_dir;
+mod media_base_relink;
 mod media_base_relocate;
 mod native_audio;
 mod online_stt_bridge;

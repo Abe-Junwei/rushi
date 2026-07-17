@@ -128,6 +128,9 @@ export type MediaBaseDirInfo = {
   mediaBaseDir: string;
   isCustom: boolean;
   appDataRoot: string;
+  /** Custom base configured but the directory itself can't be found (deleted / moved /
+   * drive unmounted outside the app). UI must still offer 恢复默认 / 选择… to reconnect. */
+  unavailable: boolean;
 };
 
 export type MediaBaseManagedSummary = {

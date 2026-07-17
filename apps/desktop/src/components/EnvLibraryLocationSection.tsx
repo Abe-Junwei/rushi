@@ -121,6 +121,11 @@ export function EnvLibraryLocationSection() {
                 <span className="ml-2 text-notion-text-muted">默认</span>
               ) : null}
             </p>
+            {info?.unavailable ? (
+              <p className="m-0 text-body text-zen-cinnabar" role="alert">
+                目录不可达（可能已被删除、移动或所在磁盘未挂载）。可点击「恢复默认」或「选择…」重新连接。
+              </p>
+            ) : null}
             <div className="mt-2 flex flex-wrap gap-2">
               <button
                 type="button"
@@ -151,7 +156,7 @@ export function EnvLibraryLocationSection() {
 
       <CompactConfirmDialog
         id="media-base-relocate"
-        title="搬迁媒体库"
+        title={info?.unavailable ? "重新连接媒体库" : "搬迁媒体库"}
         open={pending != null}
         busy={busy}
         onCancel={() => {
@@ -161,8 +166,8 @@ export function EnvLibraryLocationSection() {
           if (!pending || busy) return;
           void runCommit(pending.path, true);
         }}
-        confirmLabel="搬迁"
-        busyConfirmLabel="正在搬迁…"
+        confirmLabel={info?.unavailable ? "重新连接" : "搬迁"}
+        busyConfirmLabel={info?.unavailable ? "正在连接…" : "正在搬迁…"}
         cancelLabel="取消"
         fallbackHeight={220}
         defaultWidth={420}
@@ -170,13 +175,17 @@ export function EnvLibraryLocationSection() {
         overlayClassName={SETTINGS_CHILD_OVERLAY_CLASS}
       >
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-          将把 {pending?.summary.fileCount ?? 0} 个音频文件（及波形缓存）搬到：
+          {info?.unavailable
+            ? `旧目录不可达，无法搬迁 ${pending?.summary.fileCount ?? 0} 个音频文件。将尝试在新位置按原有结构重新连接已存在的文件：`
+            : `将把 ${pending?.summary.fileCount ?? 0} 个音频文件（及波形缓存）搬到：`}
         </p>
         <p className={`m-0 mt-2 break-all font-mono text-label ${PANEL_TYPOGRAPHY.meta}`}>
           {pendingLabel}
         </p>
         <p className={`m-0 mt-3 ${PANEL_TYPOGRAPHY.meta}`}>
-          搬迁时会停止当前音频播放。若目标在网盘，请设为「始终保留在此设备」。目录将含波形缓存。项目与数据库仍在本机。
+          {info?.unavailable
+            ? "未在新位置找到的文件仍会显示为缺失，可稍后手动补齐或重新导入。项目与数据库仍在本机。"
+            : "搬迁时会停止当前音频播放。若目标在网盘，请设为「始终保留在此设备」。目录将含波形缓存。项目与数据库仍在本机。"}
         </p>
         {error ? (
           <p className="m-0 mt-3 text-body text-zen-cinnabar" role="alert">

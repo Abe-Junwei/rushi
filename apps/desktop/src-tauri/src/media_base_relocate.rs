@@ -135,7 +135,7 @@ fn copy_dir_recursive_io(from: &Path, to: &Path) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn list_audio_rows(st: &DbState) -> Result<Vec<(String, String, String)>, String> {
+pub(crate) fn list_audio_rows(st: &DbState) -> Result<Vec<(String, String, String)>, String> {
     let conn = open_db(st)?;
     let mut stmt = conn
         .prepare(
@@ -197,7 +197,7 @@ fn move_peaks_for_file_best_effort(src_peaks: &Path, dest_peaks: &Path, file_id:
     }
 }
 
-fn paths_same_file(a: &Path, b: &Path) -> bool {
+pub(crate) fn paths_same_file(a: &Path, b: &Path) -> bool {
     if a == b {
         return true;
     }
@@ -209,13 +209,15 @@ fn paths_same_file(a: &Path, b: &Path) -> bool {
 
 /// Absolute path for DB while relocate is in progress (pref still points at source).
 /// Relative paths would join the old media base and break mid-move / on failure.
-fn store_absolute_under_dest(dest_audio: &Path) -> Result<String, String> {
+pub(crate) fn store_absolute_under_dest(dest_audio: &Path) -> Result<String, String> {
     let can = fs::canonicalize(dest_audio)
         .map_err(|e| format!("无法规范化搬迁后音频路径: {e}"))?;
     Ok(path_to_user_string(&can))
 }
 
-fn resolve_for_relocate(
+/// Resolve a managed file for relocate/relink purposes; also used by `media_base_relink`
+/// when the source base itself is unreachable (falls through to the dest-side check below).
+pub(crate) fn resolve_for_relocate(
     st: &DbState,
     file_id: &str,
     audio_path: &str,
@@ -365,7 +367,20 @@ pub fn commit_media_base_dir_change_inner(
     if summary.needs_relocate {
         prepare_for_relocate(app)?;
     }
+    let info = apply_media_base_dir_change(path, summary.needs_relocate, st)?;
+    crate::project::asset_scope::allow_media_base_directory(app, Path::new(&info.media_base_dir));
+    Ok(info)
+}
 
+/// Core relocate/relink + pref switch. Independent of `AppHandle` (the caller already handled
+/// the app-level steps: ASR-in-flight guard, audio stop, asset-scope allow) so it's directly
+/// unit-testable without a mock Tauri app. `pub(crate)` so `media_base_relink` tests can drive
+/// the full commit flow (relocate vs relink branch) without an `AppHandle`.
+pub(crate) fn apply_media_base_dir_change(
+    path: Option<String>,
+    needs_relocate: bool,
+    st: &DbState,
+) -> Result<MediaBaseDirInfo, String> {
     // Always canonicalize (including restore-default → app_data) so persist/strip_prefix match.
     let dest_raw: PathBuf = match path
         .as_deref()
@@ -383,12 +398,26 @@ pub fn commit_media_base_dir_change_inner(
     };
     let dest = fs::canonicalize(&dest_raw).map_err(|e| format!("无法解析媒体基准目录：{e}"))?;
 
-    if summary.needs_relocate {
-        relocate_all_to(st, &dest).map_err(|e| {
-            append_desktop_log_line(st, &format!("WARN media_base_relocate failed: {e}"));
-            // Keep allow root so partially moved absolute/relative files under dest still resolve.
-            format!("搬迁未完成（媒体基准未切换）：{e}")
-        })?;
+    if needs_relocate {
+        match resolve_media_base(st) {
+            Ok(_) => {
+                relocate_all_to(st, &dest).map_err(|e| {
+                    append_desktop_log_line(st, &format!("WARN media_base_relocate failed: {e}"));
+                    // Keep allow root so partially moved absolute/relative files under dest still resolve.
+                    format!("搬迁未完成（媒体基准未切换）：{e}")
+                })?;
+            }
+            Err(e) => {
+                // Old base itself is gone — there's nothing to move. Best-effort relink
+                // files already at dest, then still switch the pref below so "恢复默认" /
+                // "选择…" never dead-end just because the previous directory disappeared.
+                append_desktop_log_line(
+                    st,
+                    &format!("WARN media_base source unavailable, relinking best-effort: {e}"),
+                );
+                crate::media_base_relink::relink_from_missing_source(st, &dest);
+            }
+        }
     }
 
     let restore_default = path
@@ -421,13 +450,12 @@ pub fn commit_media_base_dir_change_inner(
         }
     }
 
-    let info = MediaBaseDirInfo {
+    Ok(MediaBaseDirInfo {
         media_base_dir: path_to_user_string(&resolve_media_base(st)?),
         is_custom: !read_media_base_pref_raw(st).is_empty(),
         app_data_root: path_to_user_string(&st.root),
-    };
-    crate::project::asset_scope::allow_media_base_directory(app, Path::new(&info.media_base_dir));
-    Ok(info)
+        unavailable: false,
+    })
 }
 
 /// Async wrapper: keep WebView responsive (busy label / cancel) while files move on Windows.

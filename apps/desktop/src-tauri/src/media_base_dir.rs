@@ -210,7 +210,7 @@ fn map_access_io_error(err: &std::io::Error, candidate: &Path) -> String {
 
 fn resolve_candidate_under_roots(
     st: &DbState,
-    media_base: &Path,
+    media_base: Option<&Path>,
     candidate: &Path,
 ) -> Result<PathBuf, String> {
     let sm =
@@ -222,7 +222,7 @@ fn resolve_candidate_under_roots(
 
     let file_can =
         std::fs::canonicalize(candidate).map_err(|e| map_access_io_error(&e, candidate))?;
-    let under_media = under_canonical_root(media_base, &file_can);
+    let under_media = media_base.is_some_and(|base| under_canonical_root(base, &file_can));
     let under_legacy = under_canonical_root(&st.root, &file_can);
     let under_relocate =
         read_relocate_allow_root(st).is_some_and(|extra| under_canonical_root(&extra, &file_can));
@@ -241,16 +241,25 @@ fn resolve_candidate_under_roots(
 /// Dual-read resolve: relative → join media base (and relocate-allow root while a move is in progress);
 /// absolute → must sit under media base, app_data, or relocate-allow.
 /// Symlinks are allowed only when the canonical target stays under an allowed root.
+///
+/// The configured media base itself may be unreachable (deleted/moved outside the app).
+/// Absolute paths that don't depend on it (legacy under app_data root, or already under a
+/// relocate-allow root) must still resolve — only relative-to-base paths need it.
 pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, String> {
     let trimmed = strip_windows_verbatim_prefix(raw_path);
     if trimmed.is_empty() {
         return Err("音频路径为空".into());
     }
-    let media_base = resolve_media_base(st)?;
+    let media_base = resolve_media_base(st).ok();
     if path_is_absolute_storage(&trimmed) {
-        return resolve_candidate_under_roots(st, &media_base, Path::new(&trimmed));
+        return resolve_candidate_under_roots(st, media_base.as_deref(), Path::new(&trimmed));
     }
 
+    let Some(media_base) = media_base else {
+        return Err(format!(
+            "已配置的媒体基准目录不可用，无法解析相对路径：{trimmed}。请在「偏好设置 → 内容库位置」重新连接或恢复默认。"
+        ));
+    };
     let rel = trimmed.trim_start_matches(['/', '\\']);
     // Prefer current media base (source during relocate). Fall back to relocate-allow
     // so mid-move relative paths under the destination still resolve.
@@ -264,7 +273,7 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
 
     let mut last_err = String::from("无法解析音频文件路径");
     for candidate in candidates {
-        match resolve_candidate_under_roots(st, &media_base, &candidate) {
+        match resolve_candidate_under_roots(st, Some(&media_base), &candidate) {
             Ok(p) => return Ok(p),
             Err(e) => last_err = e,
         }
@@ -275,24 +284,43 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MediaBaseDirInfo {
-    /// Resolved absolute media base (default = app data root).
+    /// Resolved absolute media base (default = app data root); the configured raw path
+    /// when unavailable (so the UI can still show/offer to reconnect it).
     pub media_base_dir: String,
     /// True when pref is non-empty (user override).
     pub is_custom: bool,
     /// Local DB / models root (never put on cloud sync).
     pub app_data_root: String,
+    /// True when a custom base is configured but the directory itself can't be found
+    /// (deleted / moved / drive unmounted outside the app). UI must still let the user
+    /// restore default or pick a new location to reconnect — never dead-end here.
+    pub unavailable: bool,
+}
+
+/// Never fails: a custom pref that can't be resolved is reported as `unavailable` rather
+/// than propagated as an error, so the settings UI always has something to render and act on.
+pub fn media_base_dir_info(st: &DbState) -> MediaBaseDirInfo {
+    let raw = read_media_base_pref_raw(st);
+    match resolve_media_base(st) {
+        Ok(media_base) => MediaBaseDirInfo {
+            media_base_dir: path_to_user_string(&media_base),
+            is_custom: !raw.is_empty(),
+            app_data_root: path_to_user_string(&st.root),
+            unavailable: false,
+        },
+        // Only a non-empty (custom) pref can fail to resolve.
+        Err(_) => MediaBaseDirInfo {
+            media_base_dir: raw,
+            is_custom: true,
+            app_data_root: path_to_user_string(&st.root),
+            unavailable: true,
+        },
+    }
 }
 
 #[tauri::command]
 pub fn get_media_base_dir_info(state: State<'_, DbState>) -> Result<MediaBaseDirInfo, String> {
-    let st = state.inner();
-    let raw = read_media_base_pref_raw(st);
-    let media_base = resolve_media_base(st)?;
-    Ok(MediaBaseDirInfo {
-        media_base_dir: path_to_user_string(&media_base),
-        is_custom: !raw.is_empty(),
-        app_data_root: path_to_user_string(&st.root),
-    })
+    Ok(media_base_dir_info(state.inner()))
 }
 
 #[tauri::command]
@@ -382,6 +410,53 @@ mod tests {
         let abs = fs::canonicalize(&audio).unwrap();
         let resolved = resolve_audio_path(&st, abs.to_str().unwrap()).unwrap();
         assert_eq!(resolved, abs);
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn info_reports_unavailable_instead_of_failing_when_custom_dir_missing() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media-gone");
+        fs::create_dir_all(&media).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        fs::remove_dir_all(&media).unwrap();
+
+        let info = media_base_dir_info(&st);
+        assert!(info.unavailable);
+        assert!(info.is_custom);
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn legacy_absolute_resolves_even_when_custom_base_missing() {
+        let (tmp, st) = temp_state();
+        let audio = st.root.join("projects").join("legacy").join("a.wav");
+        fs::create_dir_all(audio.parent().unwrap()).unwrap();
+        fs::write(&audio, b"wav").unwrap();
+        let abs = fs::canonicalize(&audio).unwrap();
+
+        let media = tmp.join("media-gone");
+        fs::create_dir_all(&media).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        fs::remove_dir_all(&media).unwrap();
+
+        // Media base pref is unresolvable, but this path never depended on it.
+        assert!(resolve_media_base(&st).is_err());
+        let resolved = resolve_audio_path(&st, abs.to_str().unwrap()).unwrap();
+        assert_eq!(resolved, abs);
+        let _ = fs::remove_dir_all(tmp);
+    }
+
+    #[test]
+    fn relative_path_fails_clearly_when_custom_base_missing() {
+        let (tmp, st) = temp_state();
+        let media = tmp.join("media-gone");
+        fs::create_dir_all(&media).unwrap();
+        write_media_base_pref(&st, media.to_str().unwrap()).unwrap();
+        fs::remove_dir_all(&media).unwrap();
+
+        let err = resolve_audio_path(&st, "projects/p1/f.wav").unwrap_err();
+        assert!(err.contains("不可用") || err.contains("恢复默认"));
         let _ = fs::remove_dir_all(tmp);
     }
 
