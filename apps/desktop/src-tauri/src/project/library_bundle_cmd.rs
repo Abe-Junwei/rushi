@@ -38,7 +38,7 @@ pub struct ImportExchangeBundleResult {
 #[cfg(test)]
 const MAX_LIBRARY_UNCOMPRESSED_BYTES: u64 = 512 * 1024;
 #[cfg(not(test))]
-const MAX_LIBRARY_UNCOMPRESSED_BYTES: u64 = 8 * 1024 * 1024 * 1024;
+const MAX_LIBRARY_UNCOMPRESSED_BYTES: u64 = 10 * 1024 * 1024 * 1024;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct LibraryBundleManifest {

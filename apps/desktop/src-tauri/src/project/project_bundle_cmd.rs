@@ -34,7 +34,7 @@ pub(super) const PROJECT_BUNDLE_VERSION_V1: u32 = 1;
 #[cfg(test)]
 pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 16 * 1024;
 #[cfg(not(test))]
-pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 500 * 1024 * 1024;
+pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 10 * 1024 * 1024 * 1024;
 #[cfg(test)]
 pub(super) const MAX_BUNDLE_SEGMENT_COUNT: usize = 10;
 #[cfg(not(test))]
