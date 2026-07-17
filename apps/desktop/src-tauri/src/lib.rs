@@ -13,6 +13,7 @@ mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
 mod media_base_dir;
+mod media_base_relocate;
 mod native_audio;
 mod online_stt_bridge;
 mod packaged_hints;
@@ -248,6 +249,9 @@ pub fn run() {
             media_base_dir::get_app_data_root_path,
             media_base_dir::set_media_base_dir_pref,
             media_base_dir::pick_media_base_dir,
+            media_base_relocate::get_media_base_managed_summary,
+            media_base_relocate::pick_media_base_dir_preview,
+            media_base_relocate::commit_media_base_dir_change,
             project::export_cmd::open_app_data_folder,
             project::export_cmd::export_text_file,
             project::glossary_cmd::glossary_list,

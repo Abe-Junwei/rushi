@@ -57,7 +57,10 @@ pub fn clear_waveform_peaks_for_file(
         return Err("文件不存在或不属于当前项目".to_string());
     }
 
-    let peaks_root = peaks_dir(&project_storage_dir(&st.root, &project_id));
+    let peaks_root = peaks_dir(
+        &crate::media_base_dir::media_project_dir(st, &project_id)
+            .unwrap_or_else(|_| project_storage_dir(&st.root, &project_id)),
+    );
     let freed_bytes = peaks_disk_bytes_for_file(&peaks_root, &file_id);
     cleanup_peaks_for_file(st, &project_id, &file_id);
     Ok(ClearWaveformPeaksForFileResult { freed_bytes })

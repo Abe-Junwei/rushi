@@ -43,7 +43,10 @@ pub fn waveform_release_probe(
         .filter(|p| !p.trim().is_empty())
         .ok_or("文件无音频路径")?;
     let audio = Path::new(&audio_path);
-    let peaks_root = peaks_dir(&st.root.join("projects").join(&project_id));
+    let peaks_root = peaks_dir(
+        &crate::media_base_dir::media_project_dir(st, &project_id)
+            .unwrap_or_else(|_| st.root.join("projects").join(&project_id)),
+    );
     let peaks_complete = all_peak_levels_exist(&peaks_root, &file_id);
     let peaks_duration_sec = load_peaks_meta(&peaks_root, &file_id).map(|r| r.duration_sec);
     let ffmpeg = resolve_ffmpeg_command();

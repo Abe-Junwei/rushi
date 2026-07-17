@@ -21,7 +21,8 @@ use std::path::{Path, PathBuf};
 use tauri::State;
 
 fn project_dir(st: &DbState, project_id: &str) -> PathBuf {
-    st.root.join("projects").join(project_id)
+    crate::media_base_dir::media_project_dir(st, project_id)
+        .unwrap_or_else(|_| st.root.join("projects").join(project_id))
 }
 
 fn status_from_disk(

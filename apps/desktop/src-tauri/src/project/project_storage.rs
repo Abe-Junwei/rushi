@@ -36,10 +36,17 @@ pub fn relocate_file_storage_between_projects(
 ) -> Result<Option<String>, String> {
     use super::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 
+    let media_base_early = crate::media_base_dir::resolve_media_base(st)?;
     let src_project_dir = project_storage_dir(&st.root, source_project_id);
     let dest_project_dir = project_storage_dir(&st.root, dest_project_id);
-    let src_peaks = peaks_dir(&src_project_dir);
-    let dest_peaks = peaks_dir(&dest_project_dir);
+    let src_peaks = peaks_dir(&crate::media_base_dir::audio_project_dir(
+        &media_base_early,
+        source_project_id,
+    ));
+    let dest_peaks = peaks_dir(&crate::media_base_dir::audio_project_dir(
+        &media_base_early,
+        dest_project_id,
+    ));
     if src_peaks.is_dir() {
         fs::create_dir_all(&dest_peaks).map_err(|e| format!("创建目标 peaks 目录失败: {e}"))?;
         for (level, _) in PEAK_LEVELS {
@@ -75,7 +82,7 @@ pub fn relocate_file_storage_between_projects(
         Ok(p) => p,
         Err(_) => return Ok(None),
     };
-    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let media_base = media_base_early;
     let dest_audio_dir = crate::media_base_dir::audio_project_dir(&media_base, dest_project_id);
     // Managed if under media base project dir or legacy app_data project dir.
     let under_src_media = fs::canonicalize(crate::media_base_dir::audio_project_dir(
@@ -119,10 +126,17 @@ pub fn copy_file_storage_between_projects(
 ) -> Result<Option<String>, String> {
     use super::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 
+    let media_base_early = crate::media_base_dir::resolve_media_base(st)?;
     let src_project_dir = project_storage_dir(&st.root, source_project_id);
     let dest_project_dir = project_storage_dir(&st.root, dest_project_id);
-    let src_peaks = peaks_dir(&src_project_dir);
-    let dest_peaks = peaks_dir(&dest_project_dir);
+    let src_peaks = peaks_dir(&crate::media_base_dir::audio_project_dir(
+        &media_base_early,
+        source_project_id,
+    ));
+    let dest_peaks = peaks_dir(&crate::media_base_dir::audio_project_dir(
+        &media_base_early,
+        dest_project_id,
+    ));
     if src_peaks.is_dir() {
         fs::create_dir_all(&dest_peaks).map_err(|e| format!("创建目标 peaks 目录失败: {e}"))?;
         for (level, _) in PEAK_LEVELS {
@@ -146,7 +160,7 @@ pub fn copy_file_storage_between_projects(
         Ok(p) => p,
         Err(_) => return Ok(None),
     };
-    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let media_base = media_base_early;
     let dest_audio_dir = crate::media_base_dir::audio_project_dir(&media_base, dest_project_id);
     let under_src_media = fs::canonicalize(crate::media_base_dir::audio_project_dir(
         &media_base,

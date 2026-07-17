@@ -240,7 +240,6 @@ pub(super) fn import_project_bundle_from_path(
         .map_err(|detail| CommandError::ImportProjectBundle { detail })?;
     let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, &id);
     fs::create_dir_all(&dest_dir).map_err(CommandError::BundleCreateProjectDir)?;
-    let _ = fs::create_dir_all(st.root.join("projects").join(&id));
     let ext = Path::new(audio_file_name)
         .extension()
         .and_then(|e| e.to_str())

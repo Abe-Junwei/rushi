@@ -130,6 +130,17 @@ export type MediaBaseDirInfo = {
   appDataRoot: string;
 };
 
+export type MediaBaseManagedSummary = {
+  fileCount: number;
+  projectCount: number;
+  needsRelocate: boolean;
+};
+
+export type MediaBasePickPreview = {
+  path: string;
+  summary: MediaBaseManagedSummary;
+};
+
 export async function getMediaBaseDirInfo(): Promise<MediaBaseDirInfo> {
   return invoke<MediaBaseDirInfo>("get_media_base_dir_info");
 }
@@ -138,13 +149,29 @@ export async function getAppDataRootPath(): Promise<string> {
   return invoke<string>("get_app_data_root_path");
 }
 
-/** Pass `null` / omit to restore default (app data root). */
+/** Pass `null` / omit to restore default (app data root). Empty library only; prefer commit when relocating. */
 export async function setMediaBaseDirPref(path: string | null): Promise<MediaBaseDirInfo> {
   return invoke<MediaBaseDirInfo>("set_media_base_dir_pref", { path });
 }
 
 export async function pickMediaBaseDir(): Promise<MediaBaseDirInfo | null> {
   return invoke<MediaBaseDirInfo | null>("pick_media_base_dir");
+}
+
+export async function getMediaBaseManagedSummary(): Promise<MediaBaseManagedSummary> {
+  return invoke<MediaBaseManagedSummary>("get_media_base_managed_summary");
+}
+
+export async function pickMediaBaseDirPreview(): Promise<MediaBasePickPreview | null> {
+  return invoke<MediaBasePickPreview | null>("pick_media_base_dir_preview");
+}
+
+/** `path = null` restores default. When library has media, `relocate` must be true. */
+export async function commitMediaBaseDirChange(
+  path: string | null,
+  relocate: boolean,
+): Promise<MediaBaseDirInfo> {
+  return invoke<MediaBaseDirInfo>("commit_media_base_dir_change", { path, relocate });
 }
 
 /** Canonical desktop models directory (matches bundled sidecar `RUSHI_MODELS_ROOT`). */

@@ -71,7 +71,7 @@
 | 换机 DB | 项目包导出/导入（现有 `project_bundle_cmd`）或未来 ADR-0002 服务端协作轨；**不靠网盘同步 live DB**。 |
 | 不做什么 | 见 §5。 |
 | 与 ADR 关系 | 遵循 ADR-0001（本地 SQLite 真源不变）、ADR-0002（不以共享目录充当协作真源）、ADR-0008（仍走 scoped resolve）；本方案不修改这些 ADR，仅在媒体路径层做相对化 + 基准目录扩展。 |
-| 风险与 spike 项 | (1) 网盘占位/离线文件（Files On-Demand）导致 `canonicalize`/`is_file` 失败 → 需 UX 提示「等待同步/始终保留本地」；(2) 相对路径一次性迁移的回滚与幂等；(3) peaks 缓存放本地 vs 随媒体（建议派生缓存留本地）；(4) Windows 盘符/UNC 与 macOS 卷路径差异下的相对化。 |
+| 风险与 spike 项 | (1) 网盘占位/离线文件（Files On-Demand）→ UX 提示「始终保留本地」（薄片 3 深化）；(2) 相对路径迁移幂等；(3) **peaks：薄片 2 改为随媒体基准**（见 §4.1）；(4) Windows 盘符/UNC 与 macOS 卷路径。 |
 
 ```mermaid
 flowchart LR
@@ -95,6 +95,22 @@ flowchart LR
     DB2 -->|"audio_path relative to base"| RelMedia
   end
 ```
+
+### 4.1 薄片 2 决策 delta（2026-07-17 用户签收）
+
+覆盖初版「peaks 建议留本地」：
+
+| 问题 | 薄片 2 结论 |
+|------|-------------|
+| 改媒体基准 UX | 有相对路径/受管媒体时 **禁用「仅改路径」**；弹窗仅 **搬迁 / 取消**。空库可直接改 pref。 |
+| peaks 落点 | **随媒体基准**：`{media_base}/projects/{id}/peaks/`；搬迁时与音频一并移动；可重建，单文件缺失不阻断。 |
+| 失败策略 | 停在失败点；**pref 不切换直至全部成功**；搬迁中额外 allow 目标根以便已搬文件仍可 resolve。 |
+| 忙时 | 播放/转写中硬拒绝开搬。 |
+| 恢复默认 | 与改自定义目录同一套规则。 |
+| 存量路径 | 搬迁成功后能相对化的写成相对段；app_data legacy 绝对路径保留 dual-read。 |
+| 网盘 | 弹窗一行提示（含波形缓存体积）；Files On-Demand 完整策略留薄片 3。 |
+
+业内对照补充：Relocate 向导派（非 Zotero 静默改指针）；peaks 随迁为自包含项目夹选择，非网盘同步刚需。
 
 ---
 
@@ -133,3 +149,4 @@ flowchart LR
 |------|------|
 | 2026-07-17 | 初版；选定 A（Zotero 式二分），业内对照 + 反面证据 + 落位预告 |
 | 2026-07-17 | 用户签收：可进入 intent/acceptance；编码仍须等三件套 |
+| 2026-07-17 | §4.1 薄片 2 delta：Relocate 弹窗（禁仅改路径）+ peaks 随媒体；签收「接受默认」 |

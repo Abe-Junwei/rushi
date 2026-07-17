@@ -8,9 +8,10 @@ use std::path::{Path, PathBuf};
 use tauri::{AppHandle, State};
 
 const PREF_REL: &str = "prefs/media_base_dir.txt";
+const RELOCATE_ALLOW_REL: &str = "prefs/media_base_relocate_allow.txt";
 
 /// User-facing absolute path: strip Windows `\\?\` / `\\?\UNC\` from `canonicalize`.
-fn path_to_user_string(path: &Path) -> String {
+pub(crate) fn path_to_user_string(path: &Path) -> String {
     let s = path.to_string_lossy();
     #[cfg(windows)]
     {
@@ -76,6 +77,46 @@ pub fn audio_project_dir(media_base: &Path, project_id: &str) -> PathBuf {
     media_base.join("projects").join(project_id)
 }
 
+/// Project directory for audio + peaks under the resolved media base.
+pub fn media_project_dir(st: &DbState, project_id: &str) -> Result<PathBuf, String> {
+    let base = resolve_media_base(st)?;
+    Ok(audio_project_dir(&base, project_id))
+}
+
+pub fn relocate_allow_pref_path(st: &DbState) -> PathBuf {
+    st.root.join(RELOCATE_ALLOW_REL)
+}
+
+pub fn read_relocate_allow_root(st: &DbState) -> Option<PathBuf> {
+    let raw = std::fs::read_to_string(relocate_allow_pref_path(st))
+        .ok()?
+        .trim()
+        .to_string();
+    if raw.is_empty() {
+        return None;
+    }
+    let pb = PathBuf::from(raw);
+    pb.is_dir().then_some(pb)
+}
+
+pub fn write_relocate_allow_root(st: &DbState, dir: Option<&Path>) -> Result<(), String> {
+    let path = relocate_allow_pref_path(st);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("无法创建 prefs 目录：{e}"))?;
+    }
+    match dir {
+        None => {
+            let _ = std::fs::remove_file(&path);
+            Ok(())
+        }
+        Some(d) => {
+            let can = std::fs::canonicalize(d).map_err(|e| format!("无法解析搬迁目标：{e}"))?;
+            std::fs::write(&path, format!("{}\n", path_to_user_string(&can)))
+                .map_err(|e| format!("无法写入搬迁临时偏好：{e}"))
+        }
+    }
+}
+
 /// Persist path for `files.audio_path`: relative to media base when under it (portable `/` sep).
 pub fn persist_audio_storage_path(media_base: &Path, file: &Path) -> Result<String, String> {
     let file_can = std::fs::canonicalize(file)
@@ -136,7 +177,9 @@ pub fn resolve_audio_path(st: &DbState, raw_path: &str) -> Result<PathBuf, Strin
         std::fs::canonicalize(&candidate).map_err(|e| format!("无法解析音频文件路径: {e}"))?;
     let under_media = under_canonical_root(&media_base, &file_can);
     let under_legacy = under_canonical_root(&st.root, &file_can);
-    if !under_media && !under_legacy {
+    let under_relocate =
+        read_relocate_allow_root(st).is_some_and(|extra| under_canonical_root(&extra, &file_can));
+    if !under_media && !under_legacy && !under_relocate {
         return Err("拒绝读取：音频文件不在媒体基准目录或应用数据根之下。".into());
     }
     if !file_can.is_file() {

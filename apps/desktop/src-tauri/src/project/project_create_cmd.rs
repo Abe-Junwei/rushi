@@ -73,8 +73,6 @@ pub(crate) fn project_create_from_audio_inner(
     let media_base = crate::media_base_dir::resolve_media_base(st)?;
     let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, &project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
-    // Peaks stay under app_data; ensure empty project dir exists there too.
-    let _ = fs::create_dir_all(st.root.join("projects").join(&project_id));
     let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
@@ -295,7 +293,6 @@ pub(crate) fn import_audio_to_project_inner(
     let media_base = crate::media_base_dir::resolve_media_base(st)?;
     let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
-    let _ = fs::create_dir_all(st.root.join("projects").join(project_id));
     let copied_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &copied_audio)?;
     let dest_audio = match normalize_project_audio_in_place(&copied_audio, Some(st)) {

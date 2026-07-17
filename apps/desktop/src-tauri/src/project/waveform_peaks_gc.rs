@@ -160,7 +160,8 @@ pub fn inspect_waveform_peaks_cache(st: &DbState) -> Result<WaveformPeaksCacheIn
 
     for project_id in &active_projects {
         let active_ids = active_file_ids(st, project_id)?;
-        let project_dir = project_storage_dir(&st.root, project_id);
+        let project_dir = crate::media_base_dir::media_project_dir(st, project_id)
+            .unwrap_or_else(|_| project_storage_dir(&st.root, project_id));
         let (project_total, project_orphan, orphan_ids) =
             peaks_usage_for_project(&project_dir, &active_ids)?;
         total_bytes = total_bytes.saturating_add(project_total);
@@ -189,7 +190,8 @@ pub fn gc_orphan_peaks_for_project(
     project_id: &str,
 ) -> Result<WaveformPeaksGcReport, String> {
     let active_ids = active_file_ids(st, project_id)?;
-    let project_dir = project_storage_dir(&st.root, project_id);
+    let project_dir = crate::media_base_dir::media_project_dir(st, project_id)
+        .unwrap_or_else(|_| project_storage_dir(&st.root, project_id));
     let peaks_root = peaks_dir(&project_dir);
     let (_, _, orphan_ids) = peaks_usage_for_project(&project_dir, &active_ids)?;
     let mut report = WaveformPeaksGcReport::default();

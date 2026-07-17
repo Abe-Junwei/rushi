@@ -48,6 +48,6 @@
 - [`collaboration-review-domain-api.md`](./collaboration-review-domain-api.md) — 批注、审阅、建议修改、活动流与 Word 导出的领域模型和 API 草案。
 - [`self-hosted-collab-deployment.md`](./self-hosted-collab-deployment.md) — 用户自购协作服务器时的单节点部署建议、职责边界、备份与安全基线。
 - [`../../deploy/self-hosted-collab/README.md`](../../deploy/self-hosted-collab/README.md) — 单节点协作部署包目录、启动步骤与备份说明。
-- [`../execution/specs/user-library-location-sync-research.md`](../execution/specs/user-library-location-sync-research.md) — **已采纳**：用户库位置与跨设备同步（Zotero 式二分）；[`intent`](../execution/specs/user-library-location-intent.md) · [`acceptance`](../execution/specs/user-library-location-acceptance.md)。
+- [`../execution/specs/user-library-location-sync-research.md`](../execution/specs/user-library-location-sync-research.md) — **已采纳**：用户库位置与跨设备同步（Zotero 式二分）；薄片 1 [`intent`](../execution/specs/user-library-location-intent.md) · [`acceptance`](../execution/specs/user-library-location-acceptance.md)；薄片 2 搬迁+peaks [`intent`](../execution/specs/user-library-location-slice2-intent.md) · [`acceptance`](../execution/specs/user-library-location-slice2-acceptance.md)。
 
 当 Rushi 出现更多独立于 Jieyu 的架构说明文件时，于本目录追加并在此索引。

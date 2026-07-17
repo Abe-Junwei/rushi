@@ -63,14 +63,17 @@ export {
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
   getAsrRuntimePaths,
+  commitMediaBaseDirChange,
   getAppDataRootPath,
   getLocalAsrHubModelPref,
   getLocalAsrRecognitionLanguagePref,
   getMediaBaseDirInfo,
+  getMediaBaseManagedSummary,
   installFunasrDepsInteractive,
   killLoopbackAsrListeners,
   openAppDataFolder,
   pickMediaBaseDir,
+  pickMediaBaseDirPreview,
   retryBundledAsrSidecar,
   seedBundledAsrModelsIfNeeded,
   setLocalAsrHubModelPref,
@@ -78,4 +81,8 @@ export {
   setMediaBaseDirPref,
   waveformPeaksCacheInfo,
 } from "./projectAsrMaintenanceApi";
-export type { MediaBaseDirInfo } from "./projectAsrMaintenanceApi";
+export type {
+  MediaBaseDirInfo,
+  MediaBaseManagedSummary,
+  MediaBasePickPreview,
+} from "./projectAsrMaintenanceApi";
