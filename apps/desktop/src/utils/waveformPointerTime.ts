@@ -1,7 +1,6 @@
-import { readTierViewportMetricsDuringScrollFrame } from "./tierScrollFrameCoordinator";
 import { timelinePxToTime } from "./waveformProjection";
 import {
-  resolveTierViewportMetrics,
+  resolveTierViewportMetricsDuringScrollFrame,
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "./waveformViewport";
@@ -25,23 +24,22 @@ export function resolveWaveformPointerTimeSecFromClientX(input: WaveformPointerT
   const { clientX, tierScrollEl, timelineWidthPx, durationSec } = input;
   if (timelineWidthPx <= 0 || durationSec <= 0 || !tierScrollEl) return 0;
 
-  const snapshot = readTierViewportMetricsDuringScrollFrame();
-  const metrics =
-    snapshot ??
-    resolveTierViewportMetrics({
-      tierScrollEl,
-      tierScrollLive: input.tierScrollLive,
-      tierScrollLayout: input.tierScrollLayout ?? {
-        scrollLeftPx: tierScrollEl.scrollLeft,
-        clientWidthPx: tierScrollEl.clientWidth,
-      },
-    });
+  // Same S+fraction path as playhead (`effectiveScrollLeftPx`) — integer scrollLeft
+  // alone misses page-drive translate and seeks to the wrong time.
+  const metrics = resolveTierViewportMetricsDuringScrollFrame({
+    tierScrollEl,
+    tierScrollLive: input.tierScrollLive,
+    tierScrollLayout: input.tierScrollLayout ?? {
+      scrollLeftPx: tierScrollEl.scrollLeft,
+      clientWidthPx: tierScrollEl.clientWidth,
+    },
+  });
 
   const rect = tierScrollEl.getBoundingClientRect();
   return clientXToTimeSecInTierScroll({
     clientX,
     tierViewportLeftPx: rect.left,
-    tierScrollLeftPx: metrics.scrollLeftPx,
+    tierScrollLeftPx: metrics.effectiveScrollLeftPx,
     timelineWidthPx,
     durationSec,
   });

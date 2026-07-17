@@ -48,7 +48,9 @@ npm run desktop:dev
 
 | 命令 | 作用 |
 |------|------|
-| `npm run desktop:dev` / `desktop:build` | Tauri 开发 / 打包 |
+| `npm run desktop:dev` | Tauri 开发（Rust **debug**；日常改 UI） |
+| `npm run desktop:dev:release` | 同上但 Rust **release**（播放 / 性能对齐安装包；签收仍建议 `release:win`） |
+| `npm run desktop:build` / `release:win` | 打包 / Windows 便携+NSIS |
 | `npm run typecheck` · `test` · `lint` | 桌面端检查 |
 | `npm run asr:test` | ASR pytest（需已 bootstrap venv） |
 | `node scripts/check-architecture-guard.mjs` | 架构守卫（hook 复杂度等） |

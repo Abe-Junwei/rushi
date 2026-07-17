@@ -143,12 +143,7 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
             Some(language.as_str()),
         );
     }
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+    crate::utils::no_console_window(&mut cmd);
     append_sidecar_log_line(
         handle,
         &format!("INFO bundled_sidecar_spawn {}", exe.display()),

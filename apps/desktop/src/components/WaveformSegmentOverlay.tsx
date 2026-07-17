@@ -121,7 +121,10 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
   return (
     <div
       className="waveform-segment-overlay"
-      title="拖动空白：选中相交语段；空白处无命中则新建。Shift+拖扩展已有选区；Shift 允许重叠新建；⌘/Ctrl+点击切换选中"
+      // No native `title`: WebView2 shows a system tooltip popup that flashes on
+      // click/drag (macOS rarely surfaces it). Gesture help stays in product docs/UI.
+      draggable={false}
+      onDragStart={(ev) => ev.preventDefault()}
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}

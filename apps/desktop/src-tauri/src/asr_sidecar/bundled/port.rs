@@ -50,14 +50,16 @@ foreach ($procId in $remainingPids) {{
 }}
 "#,
     );
-    let output = Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-Command",
-            &script,
-        ])
+    let mut cmd = Command::new("powershell");
+    cmd.args([
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        &script,
+    ]);
+    crate::utils::no_console_window(&mut cmd);
+    let output = cmd
         .output()
         .map_err(|e| format!("无法执行 PowerShell 清理 {port} 端口：{e}"))?;
     if !output.status.success() {

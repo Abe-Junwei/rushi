@@ -136,8 +136,10 @@ fn restrict_secret_file_permissions(path: &Path) -> Result<(), String> {
             .or_else(|_| std::env::var("USER"))
             .map_err(|e| format!("无法确定当前用户：{e}"))?;
         let grant = format!("{username}:(R,W)");
-        let output = Command::new("icacls")
-            .args([&*path_str, "/inheritance:r", "/grant:r", &grant])
+        let mut cmd = Command::new("icacls");
+        cmd.args([&*path_str, "/inheritance:r", "/grant:r", &grant]);
+        crate::utils::no_console_window(&mut cmd);
+        let output = cmd
             .output()
             .map_err(|e| format!("设置密钥文件权限失败：{e}"))?;
         if !output.status.success() {

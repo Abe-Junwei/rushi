@@ -34,6 +34,7 @@ pub fn verify_installed_runtime(
     let mut command = Command::new(exe);
     command.current_dir(workdir);
     apply_runtime_env(&mut command, models_root);
+    crate::utils::no_console_window(&mut command);
     let mut child = command
         .env("ASR_HOST", "127.0.0.1")
         .env("ASR_PORT", port.to_string())

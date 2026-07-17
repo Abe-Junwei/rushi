@@ -11,6 +11,7 @@ import {
 } from "../services/waveform/transport";
 import { resolveWaveformPlayheadChromeMode } from "../utils/waveformPlayheadChrome";
 import { noteMediaPaused, runGatedMediaPlay } from "../utils/mediaPlayGate";
+import { logDesktopUi } from "../services/desktopUiLog";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 import type { useWaveformPlayback } from "./useWaveformPlayback";
 import type { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlaybackControls";
@@ -59,8 +60,11 @@ export function useProjectWaveformTransport(args: {
 
   const suppressPlaybackFollow = useCallback(() => {
     const untilRef = optsRef.current.playbackFollowSuppressUntilRef;
-    // Viewport snap owns scroll/pin. Do not arm a suppress window — freezing
-    // follow while the clock advances causes zoom-amplified catch-up thrash.
+    // Viewport snap owns scroll/pin. Do not arm a suppress window here — the
+    // beginVisualSeek call immediately below (same sync stack, no await between)
+    // already re-arms POSITIVE_INFINITY; arming here too is redundant and, if that
+    // invariant ever changes, would reintroduce zoom-amplified catch-up thrash
+    // (see d8b181cc).
     if (untilRef) untilRef.current = 0;
   }, [optsRef]);
 
@@ -116,8 +120,11 @@ export function useProjectWaveformTransport(args: {
           }
           const d = resolveLayoutDurationSec({ layoutDurationSecRef: layoutDurationSecRef.current });
           const followMode = optsRef.current.playbackScrollFollowModeRef?.current ?? "edge";
+          // Live media flag — React `isPlaying` in this closure can be stale (deps omit
+          // it), which wrongly enabled edge seek-land snap while audio was playing.
+          const livePlaying = Boolean(resolveHost()?.isPlaying());
           const skipViewportSnap = Boolean(
-            seekOpts?.suppressFollow && isPlaying && followMode === "edge",
+            seekOpts?.suppressFollow && livePlaying && followMode === "edge",
           );
           await applyPeaksOrderedSeek({
             timeSec,
@@ -163,44 +170,54 @@ export function useProjectWaveformTransport(args: {
     ],
   );
 
+  const runSeekTransport = useCallback(
+    (intent: Extract<TransportIntent, { kind: "seek" }>) => {
+      void dispatchTransport(intent).catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logDesktopUi("ERROR", `[s4] seek transport failed (${intent.source}): ${msg}`);
+      });
+    },
+    [dispatchTransport],
+  );
+
   const seek = useCallback(
     (timeSec: number) => {
       // Waveform click / overlay seek during global play: suppress follow so
       // center/edge scroll does not chase a mix of old fractional offset + new time.
-      void dispatchTransport({
+      runSeekTransport({
         kind: "seek",
         timeSec,
         source: "segmentSelect",
         suppressFollow: true,
       });
     },
-    [dispatchTransport],
+    [runSeekTransport],
   );
 
   const seekBlankToTime = useCallback(
     (timeSec: number) => {
       segmentPlayback.beginGlobalPlayback();
       segmentPlayback.armBlankGlobalSpace();
-      void dispatchTransport({
+      runSeekTransport({
         kind: "seek",
         timeSec,
         source: "blankTap",
         suppressFollow: true,
       });
     },
-    [dispatchTransport, segmentPlayback],
+    [runSeekTransport, segmentPlayback],
   );
 
   const seekByDelta = useCallback(
     (deltaSec: number) => {
       const base = playback.getPlayheadTime();
-      void dispatchTransport({
+      runSeekTransport({
         kind: "seek",
         timeSec: base + deltaSec,
         source: "keyboardFrame",
       });
     },
-    [dispatchTransport, playback],
+    [playback, runSeekTransport],
   );
 
   const playSegmentAtIndex = useCallback(

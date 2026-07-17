@@ -129,12 +129,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         ))
         .stderr(Stdio::from(log_file));
     apply_asr_model_env(&mut cmd, &models, hub.as_deref(), Some(language.as_str()));
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        cmd.creation_flags(CREATE_NO_WINDOW);
-    }
+    crate::utils::no_console_window(&mut cmd);
 
     append_source_log(app, &format!("INFO source_asr_spawn {}", python.display()));
     cmd.spawn().map_err(|e| format!("无法启动源码侧车：{e}"))?;

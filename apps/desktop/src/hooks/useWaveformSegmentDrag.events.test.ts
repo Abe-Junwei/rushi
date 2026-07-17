@@ -49,6 +49,38 @@ describe("useWaveformSegmentDrag event boundaries", () => {
     resetWaveformSegmentInteractionSessionIdsForTests();
   });
 
+  it("preventDefault on blank shell and segment pointerdown (WebView2 drag flash)", () => {
+    const seekBlankToTime = vi.fn();
+    const seekToTime = vi.fn();
+    const args = makeArgs({
+      seekBlankToTime,
+      seekToTime,
+      enableCreateRange: false,
+      segments: [],
+      laneByIndex: [],
+      laneCount: 1,
+      clientXToTimeSec: () => 5,
+    });
+    const { result } = renderHook(() =>
+      useWaveformSegmentDrag({ current: args }, vi.fn(), vi.fn(), vi.fn()),
+    );
+    const blankEv = makePointerEvent({ clientY: 40 });
+    Object.defineProperty(blankEv.currentTarget, "getBoundingClientRect", {
+      value: () => ({ top: 0, left: 0, width: 1000, height: 96, right: 1000, bottom: 96 }),
+    });
+    result.current.onShellPointerDown(blankEv);
+    expect(blankEv.preventDefault).toHaveBeenCalled();
+    expect(seekBlankToTime).toHaveBeenCalledWith(5);
+
+    const segArgs = makeArgs({ seekToTime });
+    const { result: segResult } = renderHook(() =>
+      useWaveformSegmentDrag({ current: segArgs }, vi.fn(), vi.fn(), vi.fn()),
+    );
+    const segEv = makePointerEvent();
+    segResult.current.onSegmentPointerDown(0, segEv);
+    expect(segEv.preventDefault).toHaveBeenCalled();
+  });
+
   it("cancels an active segment tap without committing selection or seek", () => {
     const onSelectSegmentAt = vi.fn();
     const seekToTime = vi.fn();
@@ -74,6 +106,58 @@ describe("useWaveformSegmentDrag event boundaries", () => {
     expect(onSegmentPointerTap).not.toHaveBeenCalled();
     expect(onSelectSegmentAt).not.toHaveBeenCalled();
     expect(seekToTime).not.toHaveBeenCalled();
+  });
+
+  it("window blur cancels a stuck drag (Windows WebView2 focus-toggle can swallow pointerup)", () => {
+    const applySegmentDraft = vi.fn();
+    const updateCreatePreview = vi.fn();
+    const args = makeArgs();
+    const { result } = renderHook(() =>
+      useWaveformSegmentDrag({ current: args }, applySegmentDraft, updateCreatePreview, vi.fn()),
+    );
+
+    result.current.onSegmentPointerDown(0, makePointerEvent());
+    expect(result.current.dragRef.current).not.toBeNull();
+    applySegmentDraft.mockClear();
+    updateCreatePreview.mockClear();
+
+    window.dispatchEvent(new Event("blur"));
+
+    expect(result.current.dragRef.current).toBeNull();
+    expect(applySegmentDraft).toHaveBeenLastCalledWith(null);
+    expect(updateCreatePreview).toHaveBeenLastCalledWith(null);
+  });
+
+  it("window pointerup with matching pointerId cancels a drag the captured element never saw", () => {
+    const applySegmentDraft = vi.fn();
+    const args = makeArgs();
+    const { result } = renderHook(() =>
+      useWaveformSegmentDrag({ current: args }, applySegmentDraft, vi.fn(), vi.fn()),
+    );
+
+    result.current.onSegmentPointerDown(0, makePointerEvent({ pointerId: 9 }));
+    applySegmentDraft.mockClear();
+
+    window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 9 }));
+
+    expect(result.current.dragRef.current).toBeNull();
+    expect(applySegmentDraft).toHaveBeenLastCalledWith(null);
+  });
+
+  it("window pointerup with an unrelated pointerId leaves an active drag untouched", () => {
+    const applySegmentDraft = vi.fn();
+    const args = makeArgs();
+    const { result } = renderHook(() =>
+      useWaveformSegmentDrag({ current: args }, applySegmentDraft, vi.fn(), vi.fn()),
+    );
+
+    result.current.onSegmentPointerDown(0, makePointerEvent({ pointerId: 9 }));
+    applySegmentDraft.mockClear();
+
+    window.dispatchEvent(new PointerEvent("pointerup", { pointerId: 42 }));
+
+    expect(result.current.dragRef.current).not.toBeNull();
+    expect(applySegmentDraft).not.toHaveBeenCalled();
   });
 
   it("consumes pointerdown tap gesture only once for click fallback", () => {

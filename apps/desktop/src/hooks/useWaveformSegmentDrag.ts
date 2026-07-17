@@ -1,4 +1,4 @@
-import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { hitSegmentEdgeFromTimelinePointer, resolvePackableSegmentPaintedNeighbors, resolveSegmentIndexAtWaveformPointer } from "../utils/waveformSegmentBounds";
 import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/projectionWaveformBridge";
 import { isSegmentSnapEnabled, readSegmentOverlayModifiers } from "../utils/segmentOverlayModifiers";
@@ -151,6 +151,9 @@ export function useWaveformSegmentDrag(
       const seg = a.segments[idx];
       if (!seg) return;
       ev.stopPropagation();
+      // Always preventDefault: WebView2 otherwise starts native drag/selection chrome
+      // (window flash) on segment move; resize already needed it for capture.
+      ev.preventDefault();
       const neighbors = resolvePackableSegmentPaintedNeighbors(
         a.segments,
         idx,
@@ -165,9 +168,6 @@ export function useWaveformSegmentDrag(
         prevPaintedEndSec: neighbors.prevPaintedEndSec,
         nextPaintedStartSec: neighbors.nextPaintedStartSec,
       });
-      if (mode !== "move") {
-        ev.preventDefault();
-      }
       if (mode === "resize-start" || mode === "resize-end" || mode === "move") {
         a.onBeginBoundsEdit?.();
       }
@@ -204,6 +204,8 @@ export function useWaveformSegmentDrag(
     (ev: ReactPointerEvent<HTMLElement>) => {
       const a = argsRef.current;
       if (a.disabled || ev.button !== 0) return;
+      // Blank seek / lasso: block WebView2 native drag ghost (flash) and text select.
+      ev.preventDefault();
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
       const effectivePrimary = effectiveTranscriptPrimaryIdx(a.selectedIdx);
@@ -294,19 +296,51 @@ export function useWaveformSegmentDrag(
     [finishDrag],
   );
 
-  const onPointerCancel = useCallback(
-    (ev: ReactPointerEvent<HTMLElement>) => {
+  /** Shared with the window-level fallback below — discards in-progress edit/lasso state. */
+  const cancelActiveDrag = useCallback(
+    (pointerId?: number) => {
       const drag = dragRef.current;
-      if (!drag || drag.pointerId !== ev.pointerId) return;
+      if (!drag || (pointerId != null && drag.pointerId !== pointerId)) return;
       dragRef.current = null;
       interactionStateRef.current = cancelWaveformSegmentInteraction(interactionStateRef.current);
       suppressClickAfterPointer();
-      releasePointerCaptureIfHeld(ev.currentTarget, ev.pointerId);
       updateCreatePreview(null);
       applySegmentDraft(null);
     },
     [applySegmentDraft, updateCreatePreview, suppressClickAfterPointer],
   );
+
+  const onPointerCancel = useCallback(
+    (ev: ReactPointerEvent<HTMLElement>) => {
+      if (!dragRef.current || dragRef.current.pointerId !== ev.pointerId) return;
+      releasePointerCaptureIfHeld(ev.currentTarget, ev.pointerId);
+      cancelActiveDrag(ev.pointerId);
+    },
+    [cancelActiveDrag],
+  );
+
+  /**
+   * Windows/WebView2 safety net: a window activation toggle or focus steal during
+   * drag (documented WebView2 quirk, rare on WKWebView) can swallow the captured
+   * element's pointerup/pointercancel entirely, leaving dragRef stuck and a ghost
+   * draft/preview box on screen until the next unrelated pointerdown. `blur` fires
+   * reliably regardless of whether the pointer event was delivered; `pointerup`/
+   * `pointercancel` at window level are a second-layer net for the same target-miss
+   * case. All three are idempotent no-ops once the normal element-level handler has
+   * already cleared dragRef (bubbling means both may fire for a normal release).
+   */
+  useEffect(() => {
+    const onWindowPointerEnd = (ev: PointerEvent) => cancelActiveDrag(ev.pointerId);
+    const onWindowBlur = () => cancelActiveDrag();
+    window.addEventListener("pointerup", onWindowPointerEnd);
+    window.addEventListener("pointercancel", onWindowPointerEnd);
+    window.addEventListener("blur", onWindowBlur);
+    return () => {
+      window.removeEventListener("pointerup", onWindowPointerEnd);
+      window.removeEventListener("pointercancel", onWindowPointerEnd);
+      window.removeEventListener("blur", onWindowBlur);
+    };
+  }, [cancelActiveDrag]);
 
   return {
     dragRef,

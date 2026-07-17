@@ -76,11 +76,13 @@ pub fn remux_audio_to_pcm_wav_with_options(
     }
     args.extend_from_slice(&["-c:a", "pcm_s16le", dest_s]);
 
-    let mut child = Command::new(&ffmpeg)
-        .args(&args)
+    let mut cmd = Command::new(&ffmpeg);
+    cmd.args(&args)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    crate::utils::no_console_window(&mut cmd);
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
 

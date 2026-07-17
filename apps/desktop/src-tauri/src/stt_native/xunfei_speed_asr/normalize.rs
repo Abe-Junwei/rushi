@@ -17,22 +17,24 @@ pub fn normalize_to_wav_16k_mono(source: &Path, dest: &Path) -> Result<(), Strin
     let source_s = source.to_str().ok_or_else(|| "音频路径无效".to_string())?;
     let dest_s = dest.to_str().ok_or_else(|| "输出路径无效".to_string())?;
 
-    let output = Command::new(&ffmpeg)
-        .args([
-            "-y",
-            "-nostdin",
-            "-loglevel",
-            "error",
-            "-i",
-            source_s,
-            "-ac",
-            "1",
-            "-ar",
-            "16000",
-            "-sample_fmt",
-            "s16",
-            dest_s,
-        ])
+    let mut cmd = Command::new(&ffmpeg);
+    cmd.args([
+        "-y",
+        "-nostdin",
+        "-loglevel",
+        "error",
+        "-i",
+        source_s,
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-sample_fmt",
+        "s16",
+        dest_s,
+    ]);
+    crate::utils::no_console_window(&mut cmd);
+    let output = cmd
         .output()
         .map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
 

@@ -7,12 +7,16 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "${ROOT}/scripts/resolve-asr-models-root.sh"
 
 ASR_DIR="${ROOT}/services/asr"
-VENV_PY="${ASR_DIR}/.venv/bin/python"
 ASR_BASE="${RUSHI_ASR_BASE:-http://127.0.0.1:8741}"
 
-if [[ ! -x "${VENV_PY}" ]]; then
+resolve_venv_py() {
+  bash "${ROOT}/scripts/resolve-asr-venv-python.sh"
+}
+
+if ! VENV_PY="$(resolve_venv_py 2>/dev/null)"; then
   echo "==> Creating services/asr/.venv…"
   bash "${ROOT}/scripts/bootstrap-asr-venv.sh"
+  VENV_PY="$(resolve_venv_py)"
 fi
 
 if ! "${VENV_PY}" -c "import funasr" 2>/dev/null; then

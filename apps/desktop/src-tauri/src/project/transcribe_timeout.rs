@@ -44,17 +44,18 @@ pub fn probe_audio_duration_sec(path: &Path) -> Option<f64> {
     let path_arg = path.to_str()?.to_string();
     let (tx, rx) = std::sync::mpsc::sync_channel(1);
     thread::spawn(move || {
-        let result = Command::new(&ffprobe_owned)
-            .args([
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                &path_arg,
-            ])
-            .output();
+        let mut cmd = Command::new(&ffprobe_owned);
+        cmd.args([
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            &path_arg,
+        ]);
+        crate::utils::no_console_window(&mut cmd);
+        let result = cmd.output();
         let _ = tx.send(result);
     });
     let deadline = std::time::Instant::now() + Duration::from_secs(30);

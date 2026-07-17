@@ -48,7 +48,10 @@ export async function nativeAudioSetRate(rate: number): Promise<void> {
   return invoke<void>("native_audio_set_rate", { rate });
 }
 
-/** Debug-only; UI clock should prefer Channel events. */
+/**
+ * Engine authority snapshot. Prefer Channel events for the live clock; used to
+ * reconcile play/pause/seek ACK when Channel delivery is late (Windows + `tauri dev`).
+ */
 export async function nativeAudioSnapshot(): Promise<NativeAudioSnapshot> {
   return invoke<NativeAudioSnapshot>("native_audio_snapshot");
 }

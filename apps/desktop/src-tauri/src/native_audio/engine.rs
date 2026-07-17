@@ -523,10 +523,10 @@ fn engine_main(
                 {
                     clock.playing.store(true, Ordering::SeqCst);
                     state = EngineState::Playing;
-                    if !last_emitted_playing {
-                        events.emit(NativeAudioEvent::Playing);
-                        last_emitted_playing = true;
-                    }
+                    // Always emit Playing so frontend ACK can re-sync after a missed
+                    // Channel delivery (common under Windows + debug/`tauri dev`).
+                    events.emit(NativeAudioEvent::Playing);
+                    last_emitted_playing = true;
                 }
             }
             Ok(EngineCmd::Pause) => {

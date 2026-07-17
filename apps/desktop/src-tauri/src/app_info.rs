@@ -121,10 +121,10 @@ fn open_path_with_system_default(path: &Path) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        Command::new("cmd")
-            .args(["/C", "start", "", &path.to_string_lossy()])
-            .spawn()
-            .map_err(|e| e.to_string())?;
+        let mut cmd = Command::new("cmd");
+        cmd.args(["/C", "start", "", &path.to_string_lossy()]);
+        crate::utils::no_console_window(&mut cmd);
+        cmd.spawn().map_err(|e| e.to_string())?;
     }
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {

@@ -61,7 +61,10 @@ export function useTranscriptionLayerSelection(opts: {
   }, [ctxRef, laneBoundsSig, timeline.timelineMetrics.mediaDurationSec]);
 
   const focusWaveformShell = useCallback(() => {
-    waveformShellRef.current?.focus();
+    const el = waveformShellRef.current;
+    if (!el || document.activeElement === el) return;
+    // preventScroll: WebView2 often flashes/activates chrome on programmatic focus.
+    el.focus({ preventScroll: true });
   }, [waveformShellRef]);
 
   const paintSelectionChrome = useCallback(

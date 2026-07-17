@@ -121,8 +121,10 @@ fn copy_report_if_exists(from: &Path, to: &Path) -> Result<(), String> {
 
 fn asr_health_ready(asr_base: &str) -> Result<(), String> {
     let url = format!("{}/health", asr_base.trim_end_matches('/'));
-    let output = Command::new("curl")
-        .args(["-sf", "--max-time", "3", &url])
+    let mut cmd = Command::new("curl");
+    cmd.args(["-sf", "--max-time", "3", &url]);
+    crate::utils::no_console_window(&mut cmd);
+    let output = cmd
         .output()
         .map_err(|e| format!("无法探测 ASR 健康状态: {e}"))?;
     if !output.status.success() {
@@ -194,6 +196,7 @@ pub fn run_eval_batch(
     if let Some(fid) = filter_id.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.arg("--filter-id").arg(fid);
     }
+    crate::utils::no_console_window(&mut cmd);
 
     let output = cmd.output().map_err(|e| format!("启动评测脚本失败: {e}"))?;
     if !last.is_file() {

@@ -75,6 +75,7 @@ import {
   nativeAudioPause,
   nativeAudioSeek,
   nativeAudioSetRate,
+  nativeAudioSnapshot,
   nativeAudioStop,
 } from "../../../tauri/nativeAudioApi";
 
@@ -113,6 +114,13 @@ describe("nativeAudioPlaybackTransport", () => {
       return Promise.resolve();
     });
     vi.mocked(nativeAudioSetRate).mockImplementation(() => Promise.resolve());
+    vi.mocked(nativeAudioSnapshot).mockResolvedValue({
+      playing: false,
+      currentTimeSec: 0,
+      durationSec: 10,
+      rate: 1,
+      path: "/tmp/a.wav",
+    });
     vi.mocked(nativeAudioStop).mockImplementation(() => Promise.resolve());
   });
 
@@ -195,6 +203,63 @@ describe("nativeAudioPlaybackTransport", () => {
     await playPromise;
     expect(t.isPlaying()).toBe(true);
     await t.dispose();
+  });
+
+  it("reconciles play via snapshot when Playing Channel is missed", async () => {
+    vi.useFakeTimers();
+    vi.mocked(nativeAudioPlay).mockImplementationOnce(() => Promise.resolve());
+    vi.mocked(nativeAudioSnapshot).mockResolvedValue({
+      playing: true,
+      currentTimeSec: 1.25,
+      durationSec: 10,
+      rate: 1,
+      path: "/tmp/a.wav",
+    });
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    const plays: number[] = [];
+    t.subscribe({ onPlay: () => plays.push(1) });
+    const playPromise = t.play();
+    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(250);
+    await playPromise;
+    expect(t.isPlaying()).toBe(true);
+    expect(plays).toEqual([1]);
+    expect(nativeAudioSnapshot).toHaveBeenCalled();
+    await t.dispose();
+    vi.useRealTimers();
+  });
+
+  it("accepts duration-clamped Seeked and soft-recovers seek ACK timeout", async () => {
+    vi.useFakeTimers();
+    const t = createNativeAudioPlaybackTransport();
+    await t.load({ mediaDiskPath: "/tmp/a.wav", durationSec: 10 });
+    const errors: string[] = [];
+    t.subscribe({ onError: (m) => errors.push(m) });
+
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => {
+      emitEngine({ event: "seeked", data: { sec: 9.7 } });
+      return Promise.resolve();
+    });
+    await t.seek(10);
+    expect(t.getCurrentTime()).toBeCloseTo(9.7, 3);
+
+    vi.mocked(nativeAudioSeek).mockImplementationOnce(() => Promise.resolve());
+    vi.mocked(nativeAudioSnapshot).mockResolvedValue({
+      playing: false,
+      currentTimeSec: 4.5,
+      durationSec: 10,
+      rate: 1,
+      path: "/tmp/a.wav",
+    });
+    const seekPromise = t.seek(4.5);
+    await vi.advanceTimersByTimeAsync(2_000);
+    await vi.advanceTimersByTimeAsync(250);
+    await seekPromise;
+    expect(t.getCurrentTime()).toBeCloseTo(4.5, 3);
+    expect(errors).toEqual([]);
+    await t.dispose();
+    vi.useRealTimers();
   });
 
   it("interpolates display time while playing and latches on pause", async () => {

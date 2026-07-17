@@ -5,6 +5,7 @@ import {
   nativeAudioPlay,
   nativeAudioSeek,
   nativeAudioSetRate,
+  nativeAudioSnapshot,
   nativeAudioStop,
   type NativeAudioEvent,
 } from "../../../tauri/nativeAudioApi";
@@ -16,6 +17,11 @@ import type {
 
 /** Must cover Rust PREBUFFER_MS (120) plus IPC slack. */
 const STATE_ACK_TIMEOUT_MS = 2_000;
+/** Extra polls when Channel ACK is late (Windows debug / StrictMode remount). */
+const SNAPSHOT_RECONCILE_ATTEMPTS = 4;
+const SNAPSHOT_RECONCILE_GAP_MS = 250;
+/** Seeked sec may be duration-clamped; accept any post-command Seeked. */
+const SEEK_ACK_MATCH_SEC = 0.5;
 
 /** Display smoothing time constant (s); FPS-decoupled convergence window. */
 const DISPLAY_SMOOTH_TAU_SEC = 0.1;
@@ -27,14 +33,16 @@ const DISPLAY_SMOOTH_MAX_DRIFT_SEC = 0.05;
  * the new position; the smooth display then forward-jumps (maxDrift) and the
  * playhead thrashs for a few frames after click-seek while playing.
  */
-const SEEK_STALE_GUARD_MS = 250;
+/** Cover visual grounding (400ms) — shorter windows let Windows Channel lag re-anchor. */
+const SEEK_STALE_GUARD_MS = 500;
 const SEEK_STALE_GUARD_TOLERANCE_SEC = 0.35;
 /**
  * After seek, keep maxDrift jumps off longer than the stale-TU guard. Decode
  * underrun/resume catch-ups inside this window would otherwise forward-jump
  * display by ≥50ms — at high px/s that is a violent multi-frame thrash.
  */
-const SEEK_SETTLE_NO_JUMP_MS = 400;
+/** Must stay ≥ SEEK_STALE_GUARD_MS so late anchors cannot maxDrift-jump display. */
+const SEEK_SETTLE_NO_JUMP_MS = 600;
 
 /**
  * First-order low-pass tracking of the authority-projected time, with an
@@ -175,9 +183,15 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
     return next;
   };
 
+  const sleepMs = (ms: number) =>
+    new Promise<void>((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+
   const createEventWaiter = (
     subscribe: (resolve: () => void, reject: (message: string) => void) => PlaybackTransportEvents,
     label: string,
+    opts?: { emitErrorOnTimeout?: boolean },
   ): EventWaiter => {
     if (disposed) {
       return {
@@ -185,6 +199,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         promise: Promise.reject(new Error("native audio transport disposed")),
       };
     }
+    const emitErrorOnTimeout = opts?.emitErrorOnTimeout ?? true;
     let settled = false;
     let handler: PlaybackTransportEvents | null = null;
     let timer: number | null = null;
@@ -210,7 +225,10 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       };
       timer = window.setTimeout(() => {
         const msg = `native audio ${label} timed out`;
-        emit((h) => h.onError?.(msg));
+        // Recoverable ACK misses reconcile via snapshot — do not poison loadError.
+        if (emitErrorOnTimeout) {
+          emit((h) => h.onError?.(msg));
+        }
         rejectWith(msg);
       }, STATE_ACK_TIMEOUT_MS);
 
@@ -221,6 +239,36 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       listeners.add(handler);
     });
     return { cancel, promise };
+  };
+
+  /**
+   * When Channel ACK is late/missing, adopt engine snapshot so UI clock can start.
+   * `softFail`: return without throwing (seek already has an optimistic latch).
+   */
+  const awaitAckOrSnapshot = async (
+    ack: EventWaiter,
+    reconcile: () => Promise<boolean>,
+    label: string,
+    opts?: { softFail?: boolean },
+  ): Promise<boolean> => {
+    try {
+      await ack.promise;
+      return true;
+    } catch {
+      /* try snapshot reconcile below */
+    }
+    if (disposed) return true;
+    for (let i = 0; i < SNAPSHOT_RECONCILE_ATTEMPTS; i += 1) {
+      if (await reconcile()) return true;
+      if (i + 1 < SNAPSHOT_RECONCILE_ATTEMPTS) {
+        await sleepMs(SNAPSHOT_RECONCILE_GAP_MS);
+      }
+      if (disposed) return true;
+    }
+    if (opts?.softFail) return false;
+    const msg = `native audio ${label} timed out`;
+    emit((h) => h.onError?.(msg));
+    throw new Error(msg);
   };
 
   const applyEvent = (ev: NativeAudioEvent) => {
@@ -332,14 +380,33 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         throw new Error("native audio transport disposed");
       }
       if (playing) return;
-      const ack = createEventWaiter((resolve) => ({ onPlay: resolve }), "play");
+      const ack = createEventWaiter((resolve) => ({ onPlay: resolve }), "play", {
+        emitErrorOnTimeout: false,
+      });
       try {
         await nativeAudioPlay();
       } catch (err) {
         ack.cancel();
         throw err;
       }
-      await ack.promise;
+      await awaitAckOrSnapshot(
+        ack,
+        async () => {
+          if (playing) return true;
+          try {
+            const snap = await nativeAudioSnapshot();
+            if (disposed) return true;
+            if (snap.playing) {
+              applyEvent({ event: "playing" });
+              return true;
+            }
+          } catch {
+            /* keep polling */
+          }
+          return false;
+        },
+        "play",
+      );
     },
     async pause() {
       if (disposed) return;
@@ -347,6 +414,7 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       const ack = createEventWaiter(
         (resolve) => ({ onPause: resolve, onFinish: resolve }),
         "pause",
+        { emitErrorOnTimeout: false },
       );
       try {
         await nativeAudioPause();
@@ -354,7 +422,24 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         ack.cancel();
         throw err;
       }
-      await ack.promise;
+      await awaitAckOrSnapshot(
+        ack,
+        async () => {
+          if (!playing) return true;
+          try {
+            const snap = await nativeAudioSnapshot();
+            if (disposed) return true;
+            if (!snap.playing) {
+              applyEvent({ event: "paused" });
+              return true;
+            }
+          } catch {
+            /* keep polling */
+          }
+          return false;
+        },
+        "pause",
+      );
     },
     async seek(timeSec: number) {
       if (disposed) return;
@@ -367,10 +452,12 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
       const ack = createEventWaiter(
         (resolve) => ({
           onSeeked: (sec) => {
-            if (Math.abs(sec - target) < 0.05) resolve();
+            // Duration clamp / decode snap can land slightly off the request.
+            if (Math.abs(sec - target) <= SEEK_ACK_MATCH_SEC) resolve();
           },
         }),
         "seek",
+        { emitErrorOnTimeout: false },
       );
       try {
         await nativeAudioSeek(timeSec);
@@ -378,7 +465,31 @@ export function createNativeAudioPlaybackTransport(): PlaybackTransport {
         ack.cancel();
         throw err;
       }
-      await ack.promise;
+      const ok = await awaitAckOrSnapshot(
+        ack,
+        async () => {
+          try {
+            const snap = await nativeAudioSnapshot();
+            if (disposed) return true;
+            const sec = snap.currentTimeSec;
+            armSeekStaleGuard(sec);
+            anchorTime(sec);
+            resetDisplayClock(sec);
+            emit((h) => h.onSeeked?.(sec));
+            emit((h) => h.onTimeUpdate?.(sec));
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        "seek",
+        { softFail: true },
+      );
+      if (!ok) {
+        // Optimistic latch already applied — keep UI seekable under Channel stalls.
+        emit((h) => h.onSeeked?.(target));
+        emit((h) => h.onTimeUpdate?.(target));
+      }
     },
     async setRate(nextRate: number) {
       if (disposed) return;

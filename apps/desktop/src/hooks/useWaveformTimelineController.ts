@@ -48,10 +48,11 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const getDisplayPlayheadTimeSecRef = useRef<(() => number) | null>(null);
   const onWsAudioprocessRef = useRef<((timeSec: number) => void) | null>(null);
   const suppressPlaybackFollowForSelectionSeek = () => {
-    // Seek path snaps viewport + re-arms pin; do not freeze follow — a suppress
-    // window lets time/tint advance while scroll stays put, then catch-up thrash
-    // (worse at high px/s).
-    playbackFollowSuppressUntilRef.current = 0;
+    // Arm follow freeze *before* async transport seek starts. Clearing here left a
+    // Windows-visible race: edge follow kept scrolling on the old playhead while
+    // setTime was still in flight — looked like “page scroll without seek land”.
+    // beginVisualSeek / endVisualSeek still own the window through ACK + grounding.
+    playbackFollowSuppressUntilRef.current = Number.POSITIVE_INFINITY;
   };
   const applyPendingViewportFitRef = useRef<(pxPerSec: number, options?: { finalize?: boolean }) => boolean>(
     () => false,
@@ -184,8 +185,9 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   endVisualSeekRef.current = (timeSec: number) => {
     visualPlayheadClock.endVisualSeek(timeSec);
     // Grounding: keep follow frozen after seeked so scroll/frac=0 + content transform
-    // repaint before mid-band sink / pageDrive resume (edge thrash at high zoom).
-    playbackFollowSuppressUntilRef.current = performance.now() + 120;
+    // repaint before mid-band sink / pageDrive resume. Match visual-clock grounding
+    // (400ms) — 120ms was too short on Windows Channel lag (scroll without seek land).
+    playbackFollowSuppressUntilRef.current = performance.now() + 400;
   };
   getDisplayPlayheadTimeSecRef.current = visualPlayheadClock.getDisplayPlayheadTimeSec;
   onWsAudioprocessRef.current = visualPlayheadClock.onWsAudioprocess;
