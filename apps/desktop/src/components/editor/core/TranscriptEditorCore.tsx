@@ -24,6 +24,7 @@ import {
   dispatchTranscriptPanelHighlight,
   registerTranscriptEditorView,
 } from "./transcriptEditorViewHandle";
+import { shouldSkipTranscriptExternalStructureSync } from "./transcriptStructureBridgeGate";
 import type { TranscriptPanelHighlight } from "./panelHighlightField";
 import { setTranscriptFilterVisibleEffect, setTranscriptFilterCriteriaEffect, isTranscriptSegmentVisible } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
@@ -207,6 +208,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   useEffect(() => {
     const view = viewRef.current;
     if (!view || applyingFromBridgeRef.current) return;
+    // CM merge/split already mutated the doc + revealed; React publish must not
+    // setState (wipes scrollTop) in the same turn.
+    if (shouldSkipTranscriptExternalStructureSync()) return;
 
     const current = serializeTranscriptEditorState(view.state);
     const lengthDrift = current.length !== segments.length;

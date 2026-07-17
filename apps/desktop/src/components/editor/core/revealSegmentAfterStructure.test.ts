@@ -127,4 +127,54 @@ describe("revealSegmentAfterStructure", () => {
     expect(getRevealScheduleGenerationForTests(view)).toBeGreaterThan(before);
     void revealSegmentAfterStructureChange;
   });
+
+  it("deferLayout settle skips re-scroll when line geometry is unchanged", () => {
+    const raf: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      raf.push(cb);
+      return raf.length;
+    });
+    const { view, scrollDOM } = makeView({ scrollTop: 0 });
+    scheduleRevealSegment(view, 1, {
+      y: "start",
+      deferLayout: true,
+      validateTarget: false,
+    });
+    expect(scrollDOM.scrollTop).toBe(400);
+    scrollDOM.scrollTop = 123;
+    // Geometry unchanged → settle must not overwrite user's interim scroll.
+    for (const cb of raf) cb(0);
+    expect(scrollDOM.scrollTop).toBe(123);
+  });
+
+  it("preserveAnchor defer does not re-scroll when line start stays in viewport", () => {
+    const raf: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      raf.push(cb);
+      return raf.length;
+    });
+    const { view, scrollDOM } = makeView({
+      scrollTop: 350,
+      clientHeight: 200,
+      blocks: [
+        { top: 0, bottom: 50, height: 50 },
+        { top: 400, bottom: 480, height: 80 },
+        { top: 500, bottom: 550, height: 50 },
+        { top: 600, bottom: 650, height: 50 },
+      ],
+    });
+    scheduleRevealSegment(view, 1, {
+      preserveAnchor: true,
+      priorAnchorOffsetPx: 50,
+      deferLayout: true,
+      validateTarget: false,
+    });
+    // Sync: keep offset 50 → scrollTop 350.
+    expect(scrollDOM.scrollTop).toBe(350);
+    scrollDOM.scrollTop = 360;
+    for (const cb of raf) cb(0);
+    // Line start 400 still inside [360, 560] → no nudge.
+    expect(scrollDOM.scrollTop).toBe(360);
+  });
 });
+

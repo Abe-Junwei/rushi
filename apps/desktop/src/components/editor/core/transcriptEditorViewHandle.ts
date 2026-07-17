@@ -45,6 +45,11 @@ export function getTranscriptEditorView(): EditorView | null {
   return activeView;
 }
 
+export {
+  runWithTranscriptStructureBridgeGate,
+  shouldSkipTranscriptExternalStructureSync,
+} from "./transcriptStructureBridgeGate";
+
 /**
  * Dispatch selection into CM6 when the core flag is on and a view is mounted.
  * No-op when already at idx (avoids feedback loops from the SC1 bridge).

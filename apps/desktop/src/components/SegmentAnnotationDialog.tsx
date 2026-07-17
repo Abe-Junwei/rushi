@@ -8,7 +8,6 @@ import {
 import { COMPACT_DIALOG_LAYOUT, PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { SegmentAnnotationDialogState } from "../pages/useSegmentAnnotationController";
 import type { SegmentDto } from "../tauri/projectApi";
-import { formatSegmentAnnotationPreview } from "../utils/segmentAnnotation";
 import { DialogOverlay } from "./DialogOverlay";
 
 type Props = {
@@ -96,11 +95,6 @@ export function SegmentAnnotationDialog({
               onChange={(e) => setLocalDraft(e.target.value)}
             />
           </label>
-          {state.hadAnnotation && localDraft.trim() ? (
-            <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
-              预览：{formatSegmentAnnotationPreview(localDraft)}
-            </p>
-          ) : null}
 
           <div className={COMPACT_DIALOG_LAYOUT.actionRowSplit}>
             <div>

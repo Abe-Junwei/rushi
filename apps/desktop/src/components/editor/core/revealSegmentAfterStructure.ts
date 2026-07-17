@@ -65,8 +65,9 @@ export function revealSegmentPreservingViewportOffset(
 }
 
 /**
- * Reveal now + after wrap/layout settles (CM lineWrapping).
+ * Reveal now + at most one settle pass after wrap/layout (CM lineWrapping).
  * Uses the shared cancellable scheduler — later reveals cancel earlier ones.
+ * Settle only re-scrolls when line block geometry actually changed (merge wrap).
  */
 export function revealSegmentAfterStructureChange(
   view: EditorView,

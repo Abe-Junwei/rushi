@@ -147,13 +147,27 @@ export type ScheduleRevealSegmentOpts = {
   preserveAnchor?: boolean;
   /** Re-check primary + visibility before each run. */
   validateTarget?: boolean;
-  /** After layout rAF passes (default true for structure). */
+  /**
+   * After layout settles, optionally re-reveal once.
+   * Uses CM `requestMeasure` + a single rAF fallback (not a blind sync+2×rAF
+   * triple scroll — that fights lineWrapping height settle after merge).
+   */
   deferLayout?: boolean;
 };
 
+function readRevealLineGeom(
+  view: EditorView,
+  segmentIdx: number,
+): { top: number; height: number } | null {
+  if (segmentIdx < 0 || segmentIdx >= view.state.doc.lines) return null;
+  const line = view.state.doc.line(segmentIdx + 1);
+  const block = view.lineBlockAt(line.from);
+  return { top: block.top, height: block.height };
+}
+
 /**
  * Single cancellable reveal chain. Later calls bump generation and cancel prior
- * sync+rAF+rAF work. Trusted wheel/pointer on scrollDOM aborts remaining runs.
+ * sync + deferred settle work. Trusted wheel/pointer on scrollDOM aborts remaining runs.
  */
 export function scheduleRevealSegment(
   view: EditorView,
@@ -183,7 +197,9 @@ export function scheduleRevealSegment(
   };
   state.cleanup = cleanup;
 
-  const run = (): boolean => {
+  let lastGeom: { top: number; height: number } | null = null;
+
+  const run = (mode: "force" | "ifChanged"): boolean => {
     if (getRevealSchedule(view).generation !== generation) return false;
     if (userInterrupted) {
       cleanup();
@@ -199,30 +215,93 @@ export function scheduleRevealSegment(
         return false;
       }
     }
+    const geom = readRevealLineGeom(view, segmentIdx);
+    if (
+      mode === "ifChanged" &&
+      lastGeom &&
+      geom &&
+      Math.abs(geom.top - lastGeom.top) < 1 &&
+      Math.abs(geom.height - lastGeom.height) < 1
+    ) {
+      return true;
+    }
     if (opts.preserveAnchor) {
       revealSegmentPreservingViewportOffsetInline(view, segmentIdx, opts.priorAnchorOffsetPx);
     } else {
       revealSegmentInScrollDOM(view, segmentIdx, { y: opts.y ?? "nearest" });
     }
+    lastGeom = readRevealLineGeom(view, segmentIdx) ?? geom;
     return true;
   };
 
-  run();
+  run("force");
   if (!opts.deferLayout) {
     cleanup();
     return generation;
   }
-  if (typeof requestAnimationFrame !== "function") {
-    cleanup();
-    return generation;
-  }
-  requestAnimationFrame(() => {
-    if (!run()) return;
+
+  /**
+   * Structure merges use preserveAnchor. Re-applying that after wrap measure
+   * with a pre-merge offset stably jumps the list upward — only nudge if the
+   * line start left the viewport.
+   */
+  if (opts.preserveAnchor) {
+    if (typeof requestAnimationFrame !== "function") {
+      cleanup();
+      return generation;
+    }
     requestAnimationFrame(() => {
-      run();
+      if (getRevealSchedule(view).generation !== generation) return;
+      if (userInterrupted) {
+        cleanup();
+        return;
+      }
+      if (opts.validateTarget) {
+        if (primarySegmentIdx(view.state) !== segmentIdx) {
+          cleanup();
+          return;
+        }
+        if (!isTranscriptSegmentVisible(view.state, segmentIdx)) {
+          cleanup();
+          return;
+        }
+      }
+      const geom = readRevealLineGeom(view, segmentIdx);
+      const top = scroller.scrollTop;
+      const viewportH = Math.max(1, scroller.clientHeight);
+      if (geom && (geom.top < top - 1 || geom.top > top + viewportH - 1)) {
+        revealSegmentInScrollDOM(view, segmentIdx, { y: "nearest" });
+      }
       cleanup();
     });
-  });
+    return generation;
+  }
+
+  /** Non-anchor defer: re-scroll only when wrap/filter geometry moved. */
+  const polish = () => {
+    if (getRevealSchedule(view).generation !== generation) return;
+    run("ifChanged");
+  };
+
+  if (typeof view.requestMeasure === "function") {
+    view.requestMeasure({
+      key: "rushi-structure-reveal",
+      read: () => null,
+      write: () => {
+        polish();
+      },
+    });
+  }
+
+  if (typeof requestAnimationFrame === "function") {
+    requestAnimationFrame(() => {
+      polish();
+      cleanup();
+    });
+  } else {
+    polish();
+    cleanup();
+  }
   return generation;
 }
 

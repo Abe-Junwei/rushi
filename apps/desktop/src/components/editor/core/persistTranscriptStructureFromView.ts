@@ -1,6 +1,7 @@
 import { serializeTranscriptEditorState } from "./serializeTranscriptEditorState";
 import { primarySegmentIdx } from "./selectionField";
 import { getTranscriptEditorView } from "./transcriptEditorViewHandle";
+import { runWithTranscriptStructureBridgeGate } from "./transcriptStructureBridgeGate";
 import { readTranscriptEditorCoreEnabled } from "./transcriptEditorCoreFlag";
 import {
   applyProjectedStructureMutation,
@@ -20,9 +21,11 @@ export function persistTranscriptStructureFromView(
   const view = getTranscriptEditorView();
   if (!view) return false;
   const projected = serializeTranscriptEditorState(view.state);
-  applyProjectedStructureMutation(projected, primarySegmentIdx(view.state), {
-    getBaseline: () => baseline,
-    ...handlers,
+  runWithTranscriptStructureBridgeGate(() => {
+    applyProjectedStructureMutation(projected, primarySegmentIdx(view.state), {
+      getBaseline: () => baseline,
+      ...handlers,
+    });
   });
   return true;
 }
