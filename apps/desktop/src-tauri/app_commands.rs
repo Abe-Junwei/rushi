@@ -63,6 +63,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "native_audio_snapshot",
     "native_audio_stop",
     "export_project_bundle",
+    "export_library_bundle",
     "import_project_bundle",
     "get_asr_runtime_paths",
     "asr_model_cache_info",
