@@ -11,7 +11,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use super::segment_uid::segment_uid_or_new;
 use super::types::{ProjectDetail, SegmentDto};
-use super::utils::{canonicalize_audio_storage_path, now_ms, open_db, project_detail_from_conn};
+use super::utils::{now_ms, open_db, project_detail_from_conn};
 
 pub(super) const PROJECT_BUNDLE_KIND: &str = "rushi_project_bundle";
 pub(super) const PROJECT_BUNDLE_VERSION: u32 = 1;
@@ -236,8 +236,11 @@ pub(super) fn import_project_bundle_from_path(
     let audio_bytes = read_zip_bytes(&mut archive, &format!("audio/{audio_file_name}"))?;
 
     let id = Uuid::new_v4().to_string();
-    let dest_dir = st.root.join("projects").join(&id);
+    let media_base = crate::media_base_dir::resolve_media_base(st)
+        .map_err(|detail| CommandError::ImportProjectBundle { detail })?;
+    let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, &id);
     fs::create_dir_all(&dest_dir).map_err(CommandError::BundleCreateProjectDir)?;
+    let _ = fs::create_dir_all(st.root.join("projects").join(&id));
     let ext = Path::new(audio_file_name)
         .extension()
         .and_then(|e| e.to_str())
@@ -248,7 +251,7 @@ pub(super) fn import_project_bundle_from_path(
         let _ = fs::remove_dir_all(&dest_dir);
         return Err(CommandError::BundleWriteAudio(e));
     }
-    let audio_path = canonicalize_audio_storage_path(&dest_audio)
+    let audio_path = crate::media_base_dir::persist_audio_storage_path(&media_base, &dest_audio)
         .inspect_err(|_| {
             let _ = fs::remove_dir_all(&dest_dir);
         })

@@ -44,6 +44,7 @@ import {
   writeStoredTranscriptPlaybackFollow,
 } from "../utils/waveformPrefs";
 import { EnvAppearanceSections } from "./EnvAppearanceSections";
+import { EnvLibraryLocationSection } from "./EnvLibraryLocationSection";
 import { EnvPanelSelect } from "./EnvPanelSelect";
 import { EnvPrefGroupShell } from "./EnvPrefGroupShell";
 import { EnvPrefSwitchRow } from "./EnvPrefSwitchRow";
@@ -152,6 +153,8 @@ export function EnvPreferencesPanel() {
 
   return (
     <div className={ENV_PANEL_PAGE_CLASS} data-purpose="env-preferences-page">
+      <EnvLibraryLocationSection />
+
       <EnvPrefGroupShell title="外观" description="界面主题、强调色与界面缩放；变更后立即生效。">
         <EnvAppearanceSections />
       </EnvPrefGroupShell>

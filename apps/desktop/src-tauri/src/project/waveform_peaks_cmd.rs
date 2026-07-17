@@ -1,6 +1,6 @@
 use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
-use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
+use super::utils::{append_desktop_log_line, open_db};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
     peaks_generation_in_progress, reclaim_stale_peaks_lock, remove_peaks_data_for_file,
@@ -251,7 +251,7 @@ fn ensure_waveform_peaks_sync_with_depth(
     };
 
     let peaks_root = peaks_dir(&project_dir(st, project_id));
-    let audio = resolve_audio_path_under_root(&st.root, &audio_path)?;
+    let audio = crate::media_base_dir::resolve_audio_path(st, &audio_path)?;
     let effective_duration = resolve_reference_duration_sec(&audio, media_duration_sec);
 
     // Crash / kill can leave `.generating.lock` forever (create_new existence lock,

@@ -21,7 +21,7 @@ pub fn cleanup_deleted_file_storage(
 ) {
     cleanup_peaks_for_file(st, project_id, file_id);
     if let Some(path) = audio_path.filter(|value| !value.is_empty()) {
-        let _ = remove_audio_file(&st.root, path);
+        let _ = remove_audio_file(st, path);
     }
 }
 
@@ -71,27 +71,31 @@ pub fn relocate_file_storage_between_projects(
     let Some(path) = audio_path.filter(|v| !v.is_empty()) else {
         return Ok(None);
     };
-    let audio = PathBuf::from(path);
-    if !audio.is_file() {
-        return Ok(None);
-    }
-    let src_can = match fs::canonicalize(&src_project_dir) {
+    let audio_can = match crate::media_base_dir::resolve_audio_path(st, path) {
         Ok(p) => p,
         Err(_) => return Ok(None),
     };
-    let audio_can = match fs::canonicalize(&audio) {
-        Ok(p) => p,
-        Err(_) => return Ok(None),
-    };
-    if audio_can.strip_prefix(&src_can).is_err() {
-        // External / non-managed path — keep as-is.
+    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let dest_audio_dir = crate::media_base_dir::audio_project_dir(&media_base, dest_project_id);
+    // Managed if under media base project dir or legacy app_data project dir.
+    let under_src_media = fs::canonicalize(crate::media_base_dir::audio_project_dir(
+        &media_base,
+        source_project_id,
+    ))
+    .ok()
+    .is_some_and(|src| audio_can.strip_prefix(&src).is_ok());
+    let under_src_legacy = fs::canonicalize(&src_project_dir)
+        .ok()
+        .is_some_and(|src| audio_can.strip_prefix(&src).is_ok());
+    if !under_src_media && !under_src_legacy {
         return Ok(None);
     }
-    fs::create_dir_all(&dest_project_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    fs::create_dir_all(&dest_audio_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    let _ = fs::create_dir_all(&dest_project_dir);
     let file_name = audio_can
         .file_name()
         .ok_or_else(|| "音频路径无效".to_string())?;
-    let dest_audio = dest_project_dir.join(file_name);
+    let dest_audio = dest_audio_dir.join(file_name);
     fs::rename(&audio_can, &dest_audio)
         .or_else(|_| {
             fs::copy(&audio_can, &dest_audio)
@@ -99,7 +103,7 @@ pub fn relocate_file_storage_between_projects(
                 .and_then(|_| fs::remove_file(&audio_can))
         })
         .map_err(|e| format!("搬迁音频失败: {e}"))?;
-    let new_path = super::utils::canonicalize_audio_storage_path(&dest_audio)?;
+    let new_path = crate::media_base_dir::persist_audio_storage_path(&media_base, &dest_audio)?;
     Ok(Some(new_path))
 }
 
@@ -138,30 +142,33 @@ pub fn copy_file_storage_between_projects(
     let Some(path) = audio_path.filter(|v| !v.is_empty()) else {
         return Ok(None);
     };
-    let audio = PathBuf::from(path);
-    if !audio.is_file() {
-        return Ok(None);
-    }
-    let src_can = match fs::canonicalize(&src_project_dir) {
+    let audio_can = match crate::media_base_dir::resolve_audio_path(st, path) {
         Ok(p) => p,
         Err(_) => return Ok(None),
     };
-    let audio_can = match fs::canonicalize(&audio) {
-        Ok(p) => p,
-        Err(_) => return Ok(None),
-    };
-    if audio_can.strip_prefix(&src_can).is_err() {
-        // External path — caller keeps the same audio_path on the new row.
+    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let dest_audio_dir = crate::media_base_dir::audio_project_dir(&media_base, dest_project_id);
+    let under_src_media = fs::canonicalize(crate::media_base_dir::audio_project_dir(
+        &media_base,
+        source_project_id,
+    ))
+    .ok()
+    .is_some_and(|src| audio_can.strip_prefix(&src).is_ok());
+    let under_src_legacy = fs::canonicalize(&src_project_dir)
+        .ok()
+        .is_some_and(|src| audio_can.strip_prefix(&src).is_ok());
+    if !under_src_media && !under_src_legacy {
         return Ok(None);
     }
-    fs::create_dir_all(&dest_project_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    fs::create_dir_all(&dest_audio_dir).map_err(|e| format!("创建目标项目目录失败: {e}"))?;
+    let _ = fs::create_dir_all(&dest_project_dir);
     let ext = audio_can
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("dat");
-    let dest_audio = dest_project_dir.join(format!("{dest_file_id}.{ext}"));
+    let dest_audio = dest_audio_dir.join(format!("{dest_file_id}.{ext}"));
     fs::copy(&audio_can, &dest_audio).map_err(|e| format!("复制音频失败: {e}"))?;
-    let new_path = super::utils::canonicalize_audio_storage_path(&dest_audio)?;
+    let new_path = crate::media_base_dir::persist_audio_storage_path(&media_base, &dest_audio)?;
     Ok(Some(new_path))
 }
 

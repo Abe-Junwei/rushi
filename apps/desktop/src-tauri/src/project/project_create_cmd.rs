@@ -9,7 +9,7 @@ use super::import_duplicate::{
 use super::import_parse::{parse_srt, parse_txt};
 use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
-use super::utils::{canonicalize_audio_storage_path, now_ms, open_db, project_detail_from_conn};
+use super::utils::{now_ms, open_db, project_detail_from_conn};
 use crate::DbState;
 use rusqlite::params;
 use std::fs;
@@ -70,8 +70,11 @@ pub(crate) fn project_create_from_audio_inner(
         .to_ascii_lowercase();
     let project_id = Uuid::new_v4().to_string();
     let file_id = Uuid::new_v4().to_string();
-    let dest_dir = st.root.join("projects").join(&project_id);
+    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, &project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+    // Peaks stay under app_data; ensure empty project dir exists there too.
+    let _ = fs::create_dir_all(st.root.join("projects").join(&project_id));
     let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
@@ -83,9 +86,10 @@ pub(crate) fn project_create_from_audio_inner(
             return Err(e);
         }
     };
-    let dest_str = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
-        let _ = fs::remove_dir_all(&dest_dir);
-    })?;
+    let dest_str = crate::media_base_dir::persist_audio_storage_path(&media_base, &dest_audio)
+        .inspect_err(|_| {
+            let _ = fs::remove_dir_all(&dest_dir);
+        })?;
     let provenance = import_provenance_for_src(src_path)?;
     let desired_name = import_file_display_name(src_path, ImportFileKind::Audio);
     let t = now_ms();
@@ -288,8 +292,10 @@ pub(crate) fn import_audio_to_project_inner(
         .unwrap_or("dat")
         .to_ascii_lowercase();
     let file_id = Uuid::new_v4().to_string();
-    let dest_dir = st.root.join("projects").join(project_id);
+    let media_base = crate::media_base_dir::resolve_media_base(st)?;
+    let dest_dir = crate::media_base_dir::audio_project_dir(&media_base, project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
+    let _ = fs::create_dir_all(st.root.join("projects").join(project_id));
     let copied_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &copied_audio)?;
     let dest_audio = match normalize_project_audio_in_place(&copied_audio, Some(st)) {
@@ -299,7 +305,8 @@ pub(crate) fn import_audio_to_project_inner(
             return Err(e);
         }
     };
-    let dest_str = match canonicalize_audio_storage_path(&dest_audio) {
+    let dest_str = match crate::media_base_dir::persist_audio_storage_path(&media_base, &dest_audio)
+    {
         Ok(s) => s,
         Err(e) => {
             cleanup_normalize_artifacts(&copied_audio, Some(&dest_audio));

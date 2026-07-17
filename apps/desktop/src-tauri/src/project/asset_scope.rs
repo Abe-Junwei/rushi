@@ -4,7 +4,7 @@ use std::path::Path;
 
 use tauri::{AppHandle, Manager};
 
-use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
+use super::utils::{append_desktop_log_line, open_db};
 use crate::DbState;
 
 /// Register asset:// access for project audio/peaks under App Data (release WebView).
@@ -19,6 +19,13 @@ pub fn register_project_media_asset_scope(app: &AppHandle, st: &DbState) -> Resu
     if app_data != st.root {
         let _ = app.asset_protocol_scope().allow_directory(&app_data, true);
     }
+    if let Ok(media_base) = crate::media_base_dir::resolve_media_base(st) {
+        if media_base != st.root {
+            let _ = app
+                .asset_protocol_scope()
+                .allow_directory(&media_base, true);
+        }
+    }
 
     let mut media_files = 0usize;
     if let Ok(conn) = open_db(st) {
@@ -31,7 +38,7 @@ pub fn register_project_media_asset_scope(app: &AppHandle, st: &DbState) -> Resu
             .query_map([], |r| r.get::<_, String>(0))
             .map_err(|e| e.to_string())?;
         for path in rows.flatten() {
-            if let Ok(pb) = resolve_audio_path_under_root(&st.root, &path) {
+            if let Ok(pb) = crate::media_base_dir::resolve_audio_path(st, &path) {
                 let _ = app.asset_protocol_scope().allow_file(&pb);
                 media_files += 1;
             }
@@ -53,4 +60,10 @@ pub fn allow_project_media_file(app: &AppHandle, path: &Path) {
     if path.is_file() {
         let _ = app.asset_protocol_scope().allow_file(path);
     }
+}
+
+/// Re-grant asset:// access to a newly chosen media base dir without a full app restart
+/// (called after `set_media_base_dir_pref` / `pick_media_base_dir`).
+pub fn allow_media_base_directory(app: &AppHandle, dir: &Path) {
+    let _ = app.asset_protocol_scope().allow_directory(dir, true);
 }

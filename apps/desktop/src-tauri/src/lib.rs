@@ -12,6 +12,7 @@ mod export_docx_polish_track;
 mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
+mod media_base_dir;
 mod native_audio;
 mod online_stt_bridge;
 mod packaged_hints;
@@ -243,6 +244,10 @@ pub fn run() {
             local_asr_model::set_local_asr_hub_model_pref,
             local_asr_language::get_local_asr_recognition_language_pref,
             local_asr_language::set_local_asr_recognition_language_pref,
+            media_base_dir::get_media_base_dir_info,
+            media_base_dir::get_app_data_root_path,
+            media_base_dir::set_media_base_dir_pref,
+            media_base_dir::pick_media_base_dir,
             project::export_cmd::open_app_data_folder,
             project::export_cmd::export_text_file,
             project::glossary_cmd::glossary_list,

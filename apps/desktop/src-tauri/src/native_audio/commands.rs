@@ -2,10 +2,7 @@ use tauri::ipc::Channel;
 use tauri::State;
 
 use crate::project::audio_container_normalize::normalize_project_audio_in_place;
-use crate::project::utils::{
-    append_desktop_log_line, canonicalize_audio_storage_path, open_db,
-    resolve_audio_path_under_root,
-};
+use crate::project::utils::{append_desktop_log_line, canonicalize_audio_storage_path, open_db};
 use crate::DbState;
 use rusqlite::params;
 use std::path::PathBuf;
@@ -21,12 +18,11 @@ pub async fn native_audio_load(
     duration_sec: f64,
     on_event: Channel<NativeAudioEvent>,
 ) -> Result<NativeAudioSnapshot, String> {
-    let root = db.root.clone();
     let st = db.inner().clone();
     let path_for_resolve = path.clone();
 
     let (resolved, report) = tauri::async_runtime::spawn_blocking(move || {
-        let resolved = resolve_audio_path_under_root(&root, &path_for_resolve)?;
+        let resolved = crate::media_base_dir::resolve_audio_path(&st, &path_for_resolve)?;
         let report = normalize_project_audio_in_place(&resolved, Some(&st))?;
         Ok::<(PathBuf, _), String>((resolved, report))
     })

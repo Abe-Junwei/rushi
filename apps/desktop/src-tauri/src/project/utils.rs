@@ -205,19 +205,17 @@ pub fn is_sqlite_unique_violation(err: &rusqlite::Error) -> bool {
 }
 
 /// 仅删除单个音频文件；若文件所在目录变为空，则一并删除该目录。
-pub fn remove_audio_file(root: &Path, audio_storage_path: &str) -> Result<(), String> {
-    let pb = PathBuf::from(audio_storage_path);
-    if !pb.exists() {
+/// `audio_storage_path` 可为相对媒体基准或 legacy 绝对路径（见 `media_base_dir::resolve_audio_path`）。
+pub fn remove_audio_file(st: &DbState, audio_storage_path: &str) -> Result<(), String> {
+    let file_can = match crate::media_base_dir::resolve_audio_path(st, audio_storage_path) {
+        Ok(p) => p,
+        Err(_) => {
+            // Already gone / unreadable — treat as success for cleanup.
+            return Ok(());
+        }
+    };
+    if !file_can.exists() {
         return Ok(());
-    }
-    let sm = fs::symlink_metadata(&pb).map_err(|e| format!("无法读取音频文件元数据: {e}"))?;
-    if sm.file_type().is_symlink() {
-        return Err("拒绝删除：音频文件为符号链接，请先移除链接。".into());
-    }
-    let root_can = fs::canonicalize(root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
-    let file_can = fs::canonicalize(&pb).map_err(|e| format!("无法解析音频文件路径: {e}"))?;
-    if file_can.strip_prefix(&root_can).is_err() {
-        return Err("拒绝删除：音频文件不在应用数据根之下。".into());
     }
     fs::remove_file(&file_can).map_err(|e| format!("删除音频文件失败: {e}"))?;
 
@@ -234,13 +232,16 @@ pub fn remove_audio_file(root: &Path, audio_storage_path: &str) -> Result<(), St
     Ok(())
 }
 
-/// Absolute canonical path for persisting in `files.audio_path`.
+/// Absolute canonical path for persisting in `files.audio_path` (legacy helper).
+/// Prefer [`crate::media_base_dir::persist_audio_storage_path`] for new writes.
 pub fn canonicalize_audio_storage_path(path: &Path) -> Result<String, String> {
     let canonical = fs::canonicalize(path)
         .map_err(|e| format!("无法规范化音频路径 ({}): {e}", path.display()))?;
     Ok(canonical.to_string_lossy().to_string())
 }
 
+/// Legacy scoped resolve against a single root (unit tests; production uses `media_base_dir::resolve_audio_path`).
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn resolve_audio_path_under_root(root: &Path, raw_path: &str) -> Result<PathBuf, String> {
     let trimmed = raw_path.trim();
     if trimmed.is_empty() {

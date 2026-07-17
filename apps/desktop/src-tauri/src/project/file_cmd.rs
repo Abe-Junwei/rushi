@@ -4,7 +4,7 @@ use super::project_storage::{
     relocate_file_storage_between_projects,
 };
 use super::types::{FileDetail, FileSummary};
-use super::utils::{file_detail_from_conn, now_ms, open_db, resolve_audio_path_under_root};
+use super::utils::{file_detail_from_conn, now_ms, open_db};
 use crate::DbState;
 use rusqlite::{params, Error};
 use serde::Serialize;
@@ -481,7 +481,7 @@ pub fn reveal_file_in_file_manager(state: State<DbState>, file_id: String) -> Re
         .map_err(|_| "文件不存在。".to_string())?;
 
     if let Some(path) = audio_path.filter(|p| !p.is_empty()) {
-        if let Ok(pb) = resolve_audio_path_under_root(&st.root, &path) {
+        if let Ok(pb) = crate::media_base_dir::resolve_audio_path(st, &path) {
             return super::export_cmd::reveal_file_selected_in_file_manager(&pb);
         }
     }

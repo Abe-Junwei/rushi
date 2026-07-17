@@ -14,9 +14,7 @@ use super::super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
 use super::super::types::RunTranscribeOutcome;
-use super::super::utils::{
-    append_desktop_log_line, file_detail_from_conn, open_db, resolve_audio_path_under_root,
-};
+use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
 use super::helpers::{apply_windowed_warning, record_transcribe_err, TranscribeInFlightGuard};
 use super::save::save_transcribe_segments;
 use crate::DbState;
@@ -51,7 +49,7 @@ pub async fn project_transcribe_async_start(
             return Err("该文件没有关联音频，无法转写".to_string());
         }
     };
-    let audio_path = match resolve_audio_path_under_root(&st.root, audio_path) {
+    let audio_path = match crate::media_base_dir::resolve_audio_path(&st, audio_path) {
         Ok(path) => path,
         Err(err) => {
             tl.fail_stage(STAGE_PREFLIGHT, "audio_scope_rejected", &err);
@@ -174,7 +172,7 @@ pub async fn project_transcribe_async_finalize(
             .audio_path
             .ok_or("该文件没有关联音频，无法转写")?
     };
-    let audio_path = resolve_audio_path_under_root(&st.root, &audio_path)?;
+    let audio_path = crate::media_base_dir::resolve_audio_path(&st, &audio_path)?;
     let audio_duration_sec = probe_audio_duration_sec(&audio_path);
 
     let engine = status

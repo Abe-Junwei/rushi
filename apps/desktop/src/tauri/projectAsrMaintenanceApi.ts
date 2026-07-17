@@ -123,6 +123,30 @@ export async function openAppDataFolder(): Promise<void> {
   return invoke<void>("open_app_data_folder");
 }
 
+/** Zotero-style split: media base may be on cloud sync; DB stays under appDataRoot. */
+export type MediaBaseDirInfo = {
+  mediaBaseDir: string;
+  isCustom: boolean;
+  appDataRoot: string;
+};
+
+export async function getMediaBaseDirInfo(): Promise<MediaBaseDirInfo> {
+  return invoke<MediaBaseDirInfo>("get_media_base_dir_info");
+}
+
+export async function getAppDataRootPath(): Promise<string> {
+  return invoke<string>("get_app_data_root_path");
+}
+
+/** Pass `null` / omit to restore default (app data root). */
+export async function setMediaBaseDirPref(path: string | null): Promise<MediaBaseDirInfo> {
+  return invoke<MediaBaseDirInfo>("set_media_base_dir_pref", { path });
+}
+
+export async function pickMediaBaseDir(): Promise<MediaBaseDirInfo | null> {
+  return invoke<MediaBaseDirInfo | null>("pick_media_base_dir");
+}
+
 /** Canonical desktop models directory (matches bundled sidecar `RUSHI_MODELS_ROOT`). */
 export type AsrRuntimePaths = {
   appDataRoot: string;
