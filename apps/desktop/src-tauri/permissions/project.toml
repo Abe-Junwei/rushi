@@ -53,6 +53,7 @@ permissions = [
   "allow-native-audio-snapshot",
   "allow-native-audio-stop",
   "allow-export-project-bundle",
+  "allow-export-library-bundle",
   "allow-import-project-bundle",
   "allow-export-text-file",
 ]

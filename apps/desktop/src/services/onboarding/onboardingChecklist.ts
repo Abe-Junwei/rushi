@@ -33,13 +33,13 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
   {
     id: "metadata",
     title: "填写场次信息",
-    description: "讲者、录制时间、地点等（可选，便于交付导出）。",
+    description: "讲者、录制时间、地点等（可选，便于导出抬头）。",
     optional: true,
   },
   {
     id: "export",
-    title: "导出 Word / 定稿",
-    description: "终检后导出讲稿或逐字稿，或进入定稿模式。",
+    title: "导出 / 定稿",
+    description: "导出交付 Word、文本或内容包，或进入定稿模式。",
   },
 ];
 

@@ -51,7 +51,7 @@ export function ExportBundleScopeDialog({
             disabled={busy || (scope === "project" && !canExportProject)}
             onClick={onConfirm}
           >
-            选择保存位置…
+            {busy ? "导出中…" : "选择保存位置…"}
           </button>
         </>
       }

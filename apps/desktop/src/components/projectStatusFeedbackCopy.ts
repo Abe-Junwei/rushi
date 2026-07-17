@@ -96,6 +96,11 @@ export function busyOverlayCopy(
       };
     case "export":
       return {
+        title: "正在导出内容包",
+        lead: "打包中，请稍候",
+      };
+    case "export_docx":
+      return {
         title: "正在导出 Word",
         lead: "写入文档",
       };

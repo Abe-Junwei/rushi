@@ -175,7 +175,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       const allSegments = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
       const normalized: SegmentDto[] = segmentsForDeliveryExport(allSegments);
       const wantsPolish = exportWantsLlmPolish(request.mode, Boolean(request.llmPolish));
-      beginBusy(wantsPolish ? "export_polish" : "export");
+      beginBusy(wantsPolish ? "export_polish" : "export_docx");
       try {
         let editLogRows: Awaited<ReturnType<typeof p1.projectListEditLog>> = [];
         if (request.includeRevisionAppendix && currentFileId) {

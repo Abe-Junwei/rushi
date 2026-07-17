@@ -31,8 +31,16 @@ describe("busyOverlayCopy transcribe", () => {
 });
 
 describe("busyOverlayCopy export", () => {
-  it("plain export does not mention optional polish", () => {
+  it("bundle export uses packing copy without Word", () => {
     const copy = busyOverlayCopy("export", null);
+    expect(copy.title).toBe("正在导出内容包");
+    expect(copy.lead).toBe("打包中，请稍候");
+    expect(copy.title).not.toMatch(/Word/);
+    expect(copy.detail).toBeUndefined();
+  });
+
+  it("plain Word export does not mention optional polish", () => {
+    const copy = busyOverlayCopy("export_docx", null);
     expect(copy.title).toBe("正在导出 Word");
     expect(copy.lead).toBe("写入文档");
     expect(copy.detail).toBeUndefined();

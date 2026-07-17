@@ -12,7 +12,10 @@ export type BusyReason =
   | "save"
   | "delete"
   | "install_funasr"
+  /** 项目包 / 整库 zip 等非 Word 导出。 */
   | "export"
+  /** Word 交付导出（无大模型润色）。 */
+  | "export_docx"
   /** Word 交付导出且走大模型润色（干净稿必选 / 讲稿勾选）。 */
   | "export_polish"
   | "stage_b"
