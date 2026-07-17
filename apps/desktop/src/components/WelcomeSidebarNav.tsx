@@ -1,5 +1,4 @@
 import {
-  IconChevronRight as ChevronRight,
   IconList as List,
   IconPencil as Pencil,
 } from "@tabler/icons-react";
@@ -71,23 +70,6 @@ export function WelcomeSidebarNav({
       title: "打开上次编辑的文件",
       hidden: editorMode,
     },
-    ...(inProjectContext && onLeaveProjectForWelcome
-      ? [
-          {
-            icon: (
-              <ChevronRight
-                className={`${LUCIDE_ICON_SIZE_MD} shrink-0 rotate-180`}
-                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                aria-hidden
-              />
-            ),
-            label: "返回欢迎页",
-            active: false,
-            disabled: false,
-            onClick: () => onLeaveProjectForWelcome("home"),
-          },
-        ]
-      : []),
   ];
 
   return (

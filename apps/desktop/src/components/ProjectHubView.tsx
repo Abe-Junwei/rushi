@@ -66,6 +66,7 @@ export function ProjectHubView({
         onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
         onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
         onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
+        onGoHome={() => onLeaveProjectForWelcome("home")}
       />
 
       <WorkspaceHomeMainStage stagePurpose="project-files-hub">

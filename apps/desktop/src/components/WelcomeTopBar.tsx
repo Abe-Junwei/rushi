@@ -1,4 +1,4 @@
-import { CONTROL_TEXT_INPUT } from "../config/controlStyles";
+import { CONTROL_BTN_ICON_GHOST, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { useWelcomeSearchController } from "../hooks/useWelcomeSearchController";
 import { requestCloseActivityInbox } from "../services/ui/activityInboxEvents";
@@ -6,6 +6,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
 import {
+  IconArrowLeft as ArrowLeft,
   IconSearch as Search,
 } from "@tabler/icons-react";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
@@ -21,6 +22,8 @@ export interface WelcomeTopBarProps {
   onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   onCreateProject?: () => void;
+  /** Hub：关闭当前项目并回到欢迎主页（所有项目）。 */
+  onGoHome?: () => void;
 }
 
 export function WelcomeTopBar({
@@ -31,12 +34,30 @@ export function WelcomeTopBar({
   onOpenOnlineSttSettings,
   onOpenLlmSettings,
   onCreateProject,
+  onGoHome,
 }: WelcomeTopBarProps) {
   const search = useWelcomeSearchController(controller);
   const searchDisabled = controller.busy;
 
   return (
-    <header className={`flex h-12 shrink-0 items-center justify-end border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10`}>
+    <header
+      className={`flex h-12 shrink-0 items-center border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10 ${
+        onGoHome ? "justify-between gap-4" : "justify-end"
+      }`}
+    >
+      {onGoHome ? (
+        <button
+          type="button"
+          className={`${CONTROL_BTN_ICON_GHOST} shadow-none`}
+          disabled={searchDisabled}
+          onClick={onGoHome}
+          title="关闭当前项目，返回主页"
+          aria-label="关闭当前项目，返回主页"
+          data-purpose="topbar-go-home"
+        >
+          <ArrowLeft className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        </button>
+      ) : null}
       <div className="flex items-center gap-4">
         <div className="mr-2 flex items-center gap-4">
           <TranscribeTopStatusChips
