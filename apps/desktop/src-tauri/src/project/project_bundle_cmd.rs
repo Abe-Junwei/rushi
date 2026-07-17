@@ -386,13 +386,15 @@ fn resolve_audio_for_export(st: &DbState, audio_storage: &str) -> Result<PathBuf
 
 /// Export full project as self-contained v2 zip.
 /// `primary_file_id` + `primary_segments` override DB segments for the currently open file
-/// (after frontend draft flush).
+/// (after frontend draft flush). Pass empty `primary_file_id` to load all segments from DB.
+/// When `include_lexicon` is false (library outer pack), skip embedding `lexicon.json`.
 pub(super) fn export_project_bundle_to_path(
     st: &DbState,
     project_id: &str,
     primary_file_id: &str,
     zip_path: &Path,
     primary_segments: Vec<SegmentDto>,
+    include_lexicon: bool,
 ) -> CommandResult<String> {
     if zip_path.exists() {
         return Err(CommandError::TargetFileExists);
@@ -458,13 +460,17 @@ pub(super) fn export_project_bundle_to_path(
 
     let edit_log = load_edit_log(st, project_id)?;
 
-    let lexicon_json = {
+    let lexicon_json = if include_lexicon {
         let conn = open_db(st).map_err(CommandError::db_pool)?;
         // stable_only: same default as standalone lexicon export (skip noisy hit=1 drafts).
         let doc = build_lexicon_bundle_export(&conn, true, Some("project-bundle".into()))
             .map_err(|detail| CommandError::ExportProjectBundle { detail })?;
-        serialize_lexicon_bundle(&doc)
-            .map_err(|detail| CommandError::ExportProjectBundle { detail })?
+        Some(
+            serialize_lexicon_bundle(&doc)
+                .map_err(|detail| CommandError::ExportProjectBundle { detail })?,
+        )
+    } else {
+        None
     };
 
     let tmp_path = zip_path.with_extension("zip.part");
@@ -506,7 +512,7 @@ pub(super) fn export_project_bundle_to_path(
                 write_peaks_into_zip(&mut zip, &legacy_peaks, file_id, &peaks_zip_prefix)?;
         }
 
-        let segments = if file_id == primary_file_id {
+        let segments = if !primary_file_id.is_empty() && file_id == primary_file_id {
             primary_segments.clone()
         } else {
             load_segments_from_db(st, file_id)?
@@ -556,7 +562,7 @@ pub(super) fn export_project_bundle_to_path(
         },
         audio_file: None,
         files: manifest_files,
-        includes_lexicon: true,
+        includes_lexicon: include_lexicon,
     };
     let doc = ProjectBundleDocument {
         name: name.clone(),
@@ -579,10 +585,12 @@ pub(super) fn export_project_bundle_to_path(
     zip.write_all(&serde_json::to_vec_pretty(&doc).map_err(CommandError::BundleSerializeProject)?)
         .map_err(|e| CommandError::io("写入 project.json", e))?;
 
-    zip.start_file(PROJECT_BUNDLE_LEXICON_ENTRY, zip_opts())
-        .map_err(CommandError::BundleFinish)?;
-    zip.write_all(lexicon_json.as_bytes())
-        .map_err(|e| CommandError::io("写入 lexicon.json", e))?;
+    if let Some(lexicon_json) = lexicon_json {
+        zip.start_file(PROJECT_BUNDLE_LEXICON_ENTRY, zip_opts())
+            .map_err(CommandError::BundleFinish)?;
+        zip.write_all(lexicon_json.as_bytes())
+            .map_err(|e| CommandError::io("写入 lexicon.json", e))?;
+    }
 
     if let Err(e) = zip.finish().map_err(CommandError::BundleFinish) {
         let _ = fs::remove_file(&tmp_path);
@@ -593,6 +601,22 @@ pub(super) fn export_project_bundle_to_path(
         return Err(e);
     }
     Ok(zip_path.to_string_lossy().to_string())
+}
+
+/// Peek top-level `manifest.kind` for exchange-zip dispatch (project vs library).
+pub(super) fn peek_exchange_bundle_kind(zip_path: &Path) -> CommandResult<String> {
+    let file = File::open(zip_path).map_err(CommandError::BundleOpen)?;
+    let mut archive = ZipArchive::new(file).map_err(CommandError::BundleRead)?;
+    let manifest: serde_json::Value = read_zip_json(&mut archive, "manifest.json")?;
+    let kind = manifest
+        .get("kind")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if kind.is_empty() {
+        return Err(CommandError::BundleUnsupportedKind);
+    }
+    Ok(kind)
 }
 
 pub(super) fn import_project_bundle_from_path(
@@ -877,7 +901,7 @@ fn import_project_from_parts(
         .map_err(|detail| CommandError::ImportProjectBundle { detail })
 }
 
-fn apply_embedded_lexicon(st: &DbState, raw: &[u8]) -> CommandResult<()> {
+pub(super) fn apply_embedded_lexicon(st: &DbState, raw: &[u8]) -> CommandResult<()> {
     let text = std::str::from_utf8(raw).map_err(|e| CommandError::ImportProjectBundle {
         detail: format!("lexicon.json 不是合法 UTF-8：{e}"),
     })?;

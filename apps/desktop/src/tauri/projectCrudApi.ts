@@ -99,6 +99,20 @@ export async function exportProjectBundle(
   });
 }
 
+export async function exportLibraryBundle(
+  defaultFilename: string,
+  overrideProjectId: string | null,
+  overrideFileId: string | null,
+  overrideSegments: SegmentDto[],
+): Promise<string | null> {
+  return invokeStructured<string | null>("export_library_bundle", {
+    defaultFilename,
+    overrideProjectId,
+    overrideFileId,
+    overrideSegments,
+  });
+}
+
 export async function importProjectBundle(): Promise<ProjectDetail | null> {
   return invokeStructured<ProjectDetail | null>("import_project_bundle");
 }

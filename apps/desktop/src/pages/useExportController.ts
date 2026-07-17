@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
+import type { ExportBundleScope } from "../components/ExportBundleScopeDialog";
 import { formatSrt, formatTxt, type ExportSegment } from "../services/exportFormatters";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
@@ -46,7 +47,14 @@ export interface ExportApi {
   exportSrt: () => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
-  exportProjectBundle: () => Promise<void>;
+  /** Opens scope chooser (current project vs whole library). */
+  exportProjectBundle: () => void;
+  exportBundleScopeOpen: boolean;
+  exportBundleScope: ExportBundleScope;
+  setExportBundleScope: (scope: ExportBundleScope) => void;
+  closeExportBundleScope: () => void;
+  confirmExportBundleScope: () => Promise<void>;
+  canExportCurrentProjectBundle: boolean;
   importProjectBundle: () => Promise<void>;
 }
 
@@ -308,28 +316,77 @@ export function useExportController(deps: ExportDeps): ExportApi {
     }
   }, [setError]);
 
-  const exportProjectBundle = useCallback(async () => {
-    if (!current || !currentFileId) {
-      if (current && !currentFileId) {
-        setError("请先打开一个文件后再导出项目包");
+  const [exportBundleScopeOpen, setExportBundleScopeOpen] = useState(false);
+  const [exportBundleScope, setExportBundleScope] = useState<ExportBundleScope>("project");
+  const canExportCurrentProjectBundle = Boolean(current && currentFileId);
+
+  const exportProjectBundle = useCallback(() => {
+    setError("");
+    setExportBundleScope(canExportCurrentProjectBundle ? "project" : "library");
+    setExportBundleScopeOpen(true);
+  }, [canExportCurrentProjectBundle, setError]);
+
+  const closeExportBundleScope = useCallback(() => {
+    setExportBundleScopeOpen(false);
+  }, []);
+
+  const confirmExportBundleScope = useCallback(async () => {
+    setError("");
+    if (exportBundleScope === "project") {
+      if (!current || !currentFileId) {
+        setError("请先打开一个文件后再导出当前项目包");
+        return;
+      }
+      flushSegmentTextDrafts();
+      const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({
+        ...s,
+        idx: i,
+      }));
+      try {
+        const out = await p1.exportProjectBundle(
+          current.id,
+          currentFileId,
+          exportDefaultBasename("zip"),
+          normalized,
+        );
+        setExportBundleScopeOpen(false);
+        if (out) syncOnboardingExport();
+      } catch (e) {
+        reportExportFailure("项目包", e);
       }
       return;
     }
-    setError("");
+
     flushSegmentTextDrafts();
-    const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
+    const overrideSegments =
+      current && currentFileId
+        ? getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }))
+        : [];
     try {
-      await p1.exportProjectBundle(
-        current.id,
+      const out = await p1.exportLibraryBundle(
+        "rushi-library-bundle.zip",
+        current?.id ?? null,
         currentFileId,
-        exportDefaultBasename("zip"),
-        normalized,
+        overrideSegments,
       );
-      syncOnboardingExport();
+      setExportBundleScopeOpen(false);
+      if (out) {
+        toast.success(`已导出整库包：${out}`);
+        syncOnboardingExport();
+      }
     } catch (e) {
-      reportExportFailure("项目包", e);
+      reportExportFailure("整库包", e);
     }
-  }, [current, currentFileId, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [
+    exportBundleScope,
+    current,
+    currentFileId,
+    exportDefaultBasename,
+    getCurrentSegmentsSnapshot,
+    reportExportFailure,
+    flushSegmentTextDrafts,
+    setError,
+  ]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");
@@ -338,6 +395,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       if (!detail) return;
       applyDetail(detail);
       await refreshProjects();
+      toast.success("已导入内容包");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
@@ -349,6 +407,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
     exportDeliveryDocx,
     exportDiagnosticBundle,
     exportProjectBundle,
+    exportBundleScopeOpen,
+    exportBundleScope,
+    setExportBundleScope,
+    closeExportBundleScope,
+    confirmExportBundleScope,
+    canExportCurrentProjectBundle,
     importProjectBundle,
   };
 }

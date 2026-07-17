@@ -21,6 +21,7 @@ export type {
   ProjectMetadataInput,
 } from "./projectCrudApi";
 export {
+  exportLibraryBundle,
   exportProjectBundle,
   exportTextFile,
   fileRestoreSegmentsFromEditLog,

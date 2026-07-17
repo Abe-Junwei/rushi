@@ -127,6 +127,7 @@ fn export_and_import_project_bundle_round_trip() {
         &seeded.file_id,
         &export_zip,
         exported_segments.clone(),
+        true,
     )
     .unwrap();
     assert_eq!(written, export_zip.to_string_lossy().to_string());
@@ -247,6 +248,7 @@ fn project_bundle_embeds_and_imports_global_lexicon() {
             annotation: None,
             frozen: false,
         }],
+        true,
     )
     .unwrap();
 
@@ -362,6 +364,7 @@ fn export_project_bundle_packs_all_files_primary_segments_override() {
             annotation: None,
             frozen: false,
         }],
+        true,
     )
     .unwrap();
 
@@ -447,6 +450,7 @@ fn export_and_import_includes_peaks_when_present() {
             annotation: None,
             frozen: false,
         }],
+        true,
     )
     .unwrap();
 
@@ -544,6 +548,7 @@ fn export_skips_missing_keeps_orphan_absolute_and_siblings() {
             annotation: None,
             frozen: false,
         }],
+        true,
     )
     .unwrap();
 

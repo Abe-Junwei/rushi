@@ -6,7 +6,13 @@ use std::path::Path;
 use std::process::Command;
 use tauri::State;
 
-use super::project_bundle_cmd::{export_project_bundle_to_path, import_project_bundle_from_path};
+use super::library_bundle_cmd::{
+    export_library_bundle_to_path, import_library_bundle_from_path, LIBRARY_BUNDLE_KIND,
+};
+use super::project_bundle_cmd::{
+    export_project_bundle_to_path, import_project_bundle_from_path, peek_exchange_bundle_kind,
+    PROJECT_BUNDLE_KIND,
+};
 use super::types::{ProjectDetail, SegmentDto};
 
 /// 弹出系统「另存为」并写入 UTF-8 文本（Tauri WebView 内程序化 `<a download>` 常无效果）。
@@ -79,7 +85,57 @@ pub async fn export_project_bundle(
         return Ok(None);
     };
     tauri::async_runtime::spawn_blocking(move || {
-        export_project_bundle_to_path(&st, &project_id, &file_id, &zip_path, segments).map(Some)
+        export_project_bundle_to_path(&st, &project_id, &file_id, &zip_path, segments, true)
+            .map(Some)
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_dto()
+    })?
+    .map_command_err_dto()
+}
+
+#[tauri::command]
+pub async fn export_library_bundle(
+    state: State<'_, DbState>,
+    default_filename: String,
+    // When set, flush override applies to this project only.
+    override_project_id: Option<String>,
+    override_file_id: Option<String>,
+    override_segments: Vec<SegmentDto>,
+) -> Result<Option<String>, CommandErrorDto> {
+    let st = state.inner().clone();
+    let picked = tauri::async_runtime::spawn_blocking({
+        let default_filename = default_filename.clone();
+        move || {
+            rfd::FileDialog::new()
+                .add_filter("ZIP", &["zip"])
+                .set_file_name(&default_filename)
+                .save_file()
+        }
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_dto()
+    })?;
+    let Some(zip_path) = picked else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        export_library_bundle_to_path(
+            &st,
+            &zip_path,
+            override_project_id.as_deref(),
+            override_file_id.as_deref(),
+            override_segments,
+        )
+        .map(Some)
     })
     .await
     .map_err(|e| {
@@ -112,7 +168,16 @@ pub async fn import_project_bundle(
         return Ok(None);
     };
     tauri::async_runtime::spawn_blocking(move || {
-        import_project_bundle_from_path(&st, &zip_path).map(Some)
+        let kind = peek_exchange_bundle_kind(&zip_path)?;
+        match kind.as_str() {
+            k if k == PROJECT_BUNDLE_KIND => {
+                import_project_bundle_from_path(&st, &zip_path).map(Some)
+            }
+            k if k == LIBRARY_BUNDLE_KIND => {
+                import_library_bundle_from_path(&st, &zip_path).map(Some)
+            }
+            _ => Err(CommandError::BundleUnsupportedKind),
+        }
     })
     .await
     .map_err(|e| {

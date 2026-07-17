@@ -60,6 +60,12 @@ export type ExportLifecycleFacade = Pick<
   | "exportDeliveryDocx"
   | "exportDiagnosticBundle"
   | "exportProjectBundle"
+  | "exportBundleScopeOpen"
+  | "exportBundleScope"
+  | "setExportBundleScope"
+  | "closeExportBundleScope"
+  | "confirmExportBundleScope"
+  | "canExportCurrentProjectBundle"
   | "importProjectBundle"
 >;
 
@@ -70,6 +76,12 @@ export function pickExportLifecycleFacade(exports: ExportApi): ExportLifecycleFa
     exportDeliveryDocx: exports.exportDeliveryDocx,
     exportDiagnosticBundle: exports.exportDiagnosticBundle,
     exportProjectBundle: exports.exportProjectBundle,
+    exportBundleScopeOpen: exports.exportBundleScopeOpen,
+    exportBundleScope: exports.exportBundleScope,
+    setExportBundleScope: exports.setExportBundleScope,
+    closeExportBundleScope: exports.closeExportBundleScope,
+    confirmExportBundleScope: exports.confirmExportBundleScope,
+    canExportCurrentProjectBundle: exports.canExportCurrentProjectBundle,
     importProjectBundle: exports.importProjectBundle,
   };
 }

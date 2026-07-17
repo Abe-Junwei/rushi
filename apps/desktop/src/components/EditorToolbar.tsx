@@ -15,6 +15,7 @@ import { isTranscribeBusy } from "../pages/closeGateDecision";
 import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
+import { ExportBundleScopeDialog } from "./ExportBundleScopeDialog";
 const ghostBtn = CONTROL_BTN_TOOLBAR_GHOST;
 const saveBtn = ghostBtn;
 const menuItem =
@@ -226,7 +227,7 @@ export const EditorToolbar = memo(function EditorToolbar({
                     void importProjectBundleToWorkspace();
                   }}
                 >
-                  导入项目包（zip）
+                  导入内容包（zip）
                 </button>
               </div>
             </details>
@@ -266,10 +267,30 @@ export const EditorToolbar = memo(function EditorToolbar({
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_delivery")}>
                   交付导出 Word…
                 </button>
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportProjectBundle()}>导出项目包（zip）</button>
+                <button
+                  type="button"
+                  className={menuItem}
+                  disabled={exportBlocked}
+                  onClick={() => {
+                    exportMenuRef.current?.removeAttribute("open");
+                    c.exportProjectBundle();
+                  }}
+                >
+                  导出内容包（zip）…
+                </button>
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportDiagnosticBundle()}>导出诊断包（zip）</button>
               </div>
             </details>
+
+            <ExportBundleScopeDialog
+              open={c.exportBundleScopeOpen}
+              busy={c.busy}
+              canExportProject={c.canExportCurrentProjectBundle}
+              scope={c.exportBundleScope}
+              onScopeChange={c.setExportBundleScope}
+              onCancel={c.closeExportBundleScope}
+              onConfirm={() => void c.confirmExportBundleScope()}
+            />
 
             <button type="button" className={saveBtn} disabled={c.busy} onClick={() => void c.saveSegments()}>
               保存

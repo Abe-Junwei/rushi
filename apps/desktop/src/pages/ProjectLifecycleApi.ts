@@ -95,7 +95,15 @@ export interface ProjectLifecycleApi {
   exportSrt: () => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
-  exportProjectBundle: () => Promise<void>;
+  exportProjectBundle: () => void;
+  exportBundleScopeOpen: boolean;
+  exportBundleScope: import("../components/ExportBundleScopeDialog").ExportBundleScope;
+  setExportBundleScope: (
+    scope: import("../components/ExportBundleScopeDialog").ExportBundleScope,
+  ) => void;
+  closeExportBundleScope: () => void;
+  confirmExportBundleScope: () => Promise<void>;
+  canExportCurrentProjectBundle: boolean;
   importProjectBundle: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;

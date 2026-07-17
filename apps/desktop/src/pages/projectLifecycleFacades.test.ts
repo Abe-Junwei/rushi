@@ -54,7 +54,13 @@ describe("projectLifecycleFacades contract", () => {
       exportSrt: async () => {},
       exportDeliveryDocx,
       exportDiagnosticBundle: async () => {},
-      exportProjectBundle: async () => {},
+      exportProjectBundle: () => {},
+      exportBundleScopeOpen: false,
+      exportBundleScope: "project" as const,
+      setExportBundleScope: () => {},
+      closeExportBundleScope: () => {},
+      confirmExportBundleScope: async () => {},
+      canExportCurrentProjectBundle: true,
       importProjectBundle: async () => {},
     } satisfies ExportApi;
 

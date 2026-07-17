@@ -229,6 +229,7 @@ pub fn run() {
             native_audio::commands::native_audio_snapshot,
             native_audio::commands::native_audio_stop,
             project::export_cmd::export_project_bundle,
+            project::export_cmd::export_library_bundle,
             project::export_cmd::import_project_bundle,
             project::asr_runtime_paths_cmd::get_asr_runtime_paths,
             project::asr_cache_cmd::asr_model_cache_info,

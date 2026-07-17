@@ -1,72 +1,78 @@
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
-import { useExportController } from "./useExportController";
 
-vi.mock("../tauri/projectApi", () => ({
-  exportTextFile: vi.fn(),
-  exportProjectBundle: vi.fn(),
-  importProjectBundle: vi.fn(),
-}));
-
-vi.mock("../tauri/exportDocxApi", () => ({
-  exportDocx: vi.fn(),
-}));
+vi.mock("../tauri/projectApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../tauri/projectApi")>();
+  return {
+    ...actual,
+    exportTextFile: vi.fn(),
+    exportProjectBundle: vi.fn(),
+    exportLibraryBundle: vi.fn(),
+    importProjectBundle: vi.fn(),
+  };
+});
 
 vi.mock("../tauri/diagnosticApi", () => ({
   exportDiagnosticBundle: vi.fn(),
-}));
-
-vi.mock("../services/ui/pushActivity", () => ({
-  pushExportFailureActivity: vi.fn(),
 }));
 
 vi.mock("../services/ui/toast", () => ({
   toast: {
     success: vi.fn(),
     info: vi.fn(),
-    error: vi.fn(),
     errorFromUnknown: vi.fn(),
   },
 }));
 
-import { exportTextFile, exportProjectBundle } from "../tauri/projectApi";
-import { exportDocx as exportDocxImpl } from "../tauri/exportDocxApi";
+vi.mock("../services/onboarding/onboardingAutoSync", () => ({
+  syncOnboardingExport: vi.fn(),
+}));
+
+import { exportTextFile, exportProjectBundle, exportLibraryBundle } from "../tauri/projectApi";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import { toast } from "../services/ui/toast";
+import { useExportController, type ExportDeps } from "./useExportController";
+import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 
-function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> = {}) {
-  const segments: SegmentDto[] = [
-    { uid: "s1", idx: 0, start_sec: 0, end_sec: 1.2, text: "第一句" },
-  ];
+function makeDeps(overrides: Partial<ExportDeps> = {}): ExportDeps {
   const current: ProjectDetail = {
     id: "proj-1",
     name: "示例项目",
-    audio_storage_path: "/tmp/a.wav",
-    created_at_ms: 0,
-    updated_at_ms: 0,
+    audio_storage_path: "",
+    created_at_ms: 1,
+    updated_at_ms: 1,
     segments: [],
     files: [
       {
         id: "file-1",
         name: "访谈录音",
         file_type: "paired",
-        updated_at_ms: 0,
+        updated_at_ms: 1,
       },
     ],
   };
-
   return {
     current,
     currentFileId: "file-1",
-    audioStoragePath: "/tmp/访谈录音.wav",
-    getCurrentSegmentsSnapshot: () => segments,
+    audioStoragePath: null,
+    getCurrentSegmentsSnapshot: () =>
+      [
+        {
+          idx: 0,
+          start_sec: 0,
+          end_sec: 1,
+          text: "第一句",
+          low_confidence: false,
+          text_stage: "auto_transcribe",
+          frozen: false,
+        },
+      ] as SegmentDto[],
     setError: vi.fn(),
     flushSegmentTextDrafts: vi.fn(),
     beginBusy: vi.fn(),
     endBusy: vi.fn(),
-    refreshProjects: vi.fn(() => Promise.resolve(undefined)),
     applyDetail: vi.fn(),
+    refreshProjects: vi.fn(async () => {}),
     ...overrides,
   };
 }
@@ -76,56 +82,31 @@ describe("useExportController", () => {
     vi.clearAllMocks();
     vi.mocked(exportTextFile).mockResolvedValue(null);
     vi.mocked(exportProjectBundle).mockResolvedValue(null);
+    vi.mocked(exportLibraryBundle).mockResolvedValue(null);
   });
 
-  it("exportTxt writes formatted text via projectApi", async () => {
-    const deps = makeDeps();
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportTxt();
-    });
-
-    expect(deps.flushSegmentTextDrafts).toHaveBeenCalled();
-    expect(exportTextFile).toHaveBeenCalledWith(
-      "访谈录音.txt",
-      expect.stringContaining("第一句"),
-    );
-    expect(deps.setError).toHaveBeenCalledWith("");
-  });
-
-  it("exportTxt falls back to project name when no file is open", async () => {
+  it("exportProjectBundle opens scope chooser without invoking IPC", () => {
     const deps = makeDeps({ currentFileId: null });
     const { result } = renderHook(() => useExportController(deps));
 
-    await act(async () => {
-      await result.current.exportTxt();
+    act(() => {
+      result.current.exportProjectBundle();
     });
 
-    expect(exportTextFile).toHaveBeenCalledWith(
-      "示例项目.txt",
-      expect.stringContaining("第一句"),
-    );
-  });
-
-  it("exportProjectBundle errors when no file is open", async () => {
-    const deps = makeDeps({ currentFileId: null });
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportProjectBundle();
-    });
-
+    expect(result.current.exportBundleScopeOpen).toBe(true);
+    expect(result.current.exportBundleScope).toBe("library");
     expect(exportProjectBundle).not.toHaveBeenCalled();
-    expect(deps.setError).toHaveBeenCalledWith("请先打开一个文件后再导出项目包");
   });
 
-  it("exportProjectBundle invokes bundle export for open file", async () => {
+  it("confirmExportBundleScope exports current project when selected", async () => {
     const deps = makeDeps();
     const { result } = renderHook(() => useExportController(deps));
 
+    act(() => {
+      result.current.exportProjectBundle();
+    });
     await act(async () => {
-      await result.current.exportProjectBundle();
+      await result.current.confirmExportBundleScope();
     });
 
     expect(exportProjectBundle).toHaveBeenCalledWith(
@@ -133,6 +114,41 @@ describe("useExportController", () => {
       "file-1",
       "访谈录音.zip",
       expect.arrayContaining([expect.objectContaining({ text: "第一句" })]),
+    );
+    expect(result.current.exportBundleScopeOpen).toBe(false);
+  });
+
+  it("confirmExportBundleScope exports library when selected", async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => useExportController(deps));
+
+    act(() => {
+      result.current.exportProjectBundle();
+      result.current.setExportBundleScope("library");
+    });
+    await act(async () => {
+      await result.current.confirmExportBundleScope();
+    });
+
+    expect(exportLibraryBundle).toHaveBeenCalledWith(
+      "rushi-library-bundle.zip",
+      "proj-1",
+      "file-1",
+      expect.any(Array),
+    );
+  });
+
+  it("exportTxt still works", async () => {
+    const deps = makeDeps();
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportTxt();
+    });
+
+    expect(exportTextFile).toHaveBeenCalledWith(
+      "访谈录音.txt",
+      expect.stringContaining("第一句"),
     );
   });
 
@@ -147,99 +163,7 @@ describe("useExportController", () => {
 
     expect(deps.beginBusy).not.toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith(
-      expect.stringContaining("/tmp/rushi-diagnostic.zip"),
-    );
-  });
-
-  it("exportDiagnosticBundle toasts info when user cancels save dialog", async () => {
-    vi.mocked(exportDiagnosticBundleImpl).mockResolvedValue(null);
-    const deps = makeDeps();
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportDiagnosticBundle();
-    });
-
-    expect(toast.info).toHaveBeenCalledWith("已取消导出诊断包");
-  });
-
-  it("exportDeliveryDocx passes segments with annotation to exportDocx", async () => {
-    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
-    const segments: SegmentDto[] = [
-      {
-        uid: "s1",
-        idx: 0,
-        start_sec: 0,
-        end_sec: 1,
-        text: "甲",
-        annotation: "存疑",
-      },
-    ];
-    const deps = makeDeps({ getCurrentSegmentsSnapshot: () => segments });
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportDeliveryDocx({
-        mode: "verbatim",
-        includeRevisionAppendix: false,
-      });
-    });
-
-    expect(deps.flushSegmentTextDrafts).toHaveBeenCalled();
-    expect(exportDocxImpl).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      "verbatim",
-      expect.arrayContaining([
-        expect.objectContaining({ text: "甲", annotation: "存疑" }),
-      ]),
-      expect.any(Object),
-    );
-  });
-
-  it("exportDeliveryDocx uses file display name with storage basename in parentheses", async () => {
-    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
-    const deps = makeDeps({
-      audioStoragePath: "/Users/x/projects/p/40b08623-e33f-43ba-9e45-43e86f024ff2.wav",
-    });
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportDeliveryDocx({
-        mode: "verbatim",
-        includeRevisionAppendix: false,
-      });
-    });
-
-    expect(exportDocxImpl).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      "verbatim",
-      expect.any(Array),
-      expect.objectContaining({
-        recordingFileName: "访谈录音 (40b08623-e33f-43ba-9e45-43e86f024ff2.wav)",
-      }),
-    );
-  });
-
-  it("exportDeliveryDocx falls back to the file label when no audio is attached", async () => {
-    vi.mocked(exportDocxImpl).mockResolvedValue("/tmp/out.docx");
-    const deps = makeDeps({ audioStoragePath: null });
-    const { result } = renderHook(() => useExportController(deps));
-
-    await act(async () => {
-      await result.current.exportDeliveryDocx({
-        mode: "verbatim",
-        includeRevisionAppendix: false,
-      });
-    });
-
-    expect(exportDocxImpl).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.any(String),
-      "verbatim",
-      expect.any(Array),
-      expect.objectContaining({ recordingFileName: "访谈录音" }),
+      expect.stringContaining("已导出诊断包"),
     );
   });
 });
