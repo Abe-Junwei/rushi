@@ -30,19 +30,13 @@ fn cuda_install_busy_requires_cancel_handle_and_running_phase() {
 
 #[test]
 fn refuse_lrc_start_when_cuda_busy() {
-    assert_eq!(
-        refuse_lrc_start_reason(true),
-        Some("cuda_download_running")
-    );
+    assert_eq!(refuse_lrc_start_reason(true), Some("cuda_download_running"));
     assert_eq!(refuse_lrc_start_reason(false), None);
 }
 
 #[test]
 fn refuse_cuda_start_when_lrc_busy() {
-    assert_eq!(
-        refuse_cuda_start_reason(true),
-        Some("lrc_download_running")
-    );
+    assert_eq!(refuse_cuda_start_reason(true), Some("lrc_download_running"));
     assert_eq!(refuse_cuda_start_reason(false), None);
 }
 

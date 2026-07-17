@@ -376,12 +376,14 @@ pub fn pick_media_base_dir(
         return Ok(None);
     };
     let path = path_to_user_string(&dir);
-    Ok(Some(crate::media_base_relocate::commit_media_base_dir_change_inner(
-        Some(path),
-        false,
-        &app,
-        state.inner(),
-    )?))
+    Ok(Some(
+        crate::media_base_relocate::commit_media_base_dir_change_inner(
+            Some(path),
+            false,
+            &app,
+            state.inner(),
+        )?,
+    ))
 }
 
 #[cfg(test)]

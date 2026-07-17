@@ -82,9 +82,7 @@ pub fn remux_audio_to_pcm_wav_with_options(
         .stdout(Stdio::null())
         .stderr(Stdio::piped());
     crate::utils::no_console_window(&mut cmd);
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
+    let mut child = cmd.spawn().map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
 
     let deadline = Instant::now() + timeout;
     let status = loop {

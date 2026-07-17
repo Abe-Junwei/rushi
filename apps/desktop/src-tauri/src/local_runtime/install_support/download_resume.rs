@@ -102,11 +102,7 @@ pub fn ensure_resume_compatible(
     Ok(())
 }
 
-pub fn gc_stale_download_parts_in(
-    dir: &Path,
-    keep_part: &Path,
-    keep_meta: &Path,
-) {
+pub fn gc_stale_download_parts_in(dir: &Path, keep_part: &Path, keep_meta: &Path) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
     };

@@ -11,11 +11,11 @@ use crate::export_docx_polish_track::{
 use crate::project::SegmentDto;
 
 use super::export_docx_body::{
-    add_meta_paragraph, annotations_grouped_by_polish_paragraphs, append_clean_segments_with_blocks,
-    append_export_footer_meta, append_lecture_segments, append_polished_paragraph_list,
-    append_revision_appendix, append_verbatim_segments, collect_export_footer_meta_lines,
-    normalize_export_mode, sanitize_docx_text, sanitize_polish_track_author, sanitize_title,
-    DocxAnnotationComments, DocxDeliveryTimeBlock,
+    add_meta_paragraph, annotations_grouped_by_polish_paragraphs,
+    append_clean_segments_with_blocks, append_export_footer_meta, append_lecture_segments,
+    append_polished_paragraph_list, append_revision_appendix, append_verbatim_segments,
+    collect_export_footer_meta_lines, normalize_export_mode, sanitize_docx_text,
+    sanitize_polish_track_author, sanitize_title, DocxAnnotationComments, DocxDeliveryTimeBlock,
 };
 
 use crate::export_docx_polish_track::POLISH_TRACK_AUTHOR;
@@ -120,7 +120,8 @@ pub(crate) fn build_docx_to_path(
         ) {
             let bytes = std::fs::read(&tmp_path).map_err(|e| format!("读取 DOCX 失败: {e}"))?;
             let patched = inject_track_revisions_flag(&bytes)?;
-            std::fs::write(&tmp_path, &patched).map_err(|e| format!("写入修订轨 DOCX 失败: {e}"))?;
+            std::fs::write(&tmp_path, &patched)
+                .map_err(|e| format!("写入修订轨 DOCX 失败: {e}"))?;
         }
         std::fs::rename(&tmp_path, path).map_err(|e| format!("重命名 DOCX 文件失败: {e}"))
     })();
@@ -226,17 +227,16 @@ fn build_docx_into_writer<W: Write + Seek>(
     doc = doc.add_paragraph(Paragraph::new());
 
     let mut annotation_comments = DocxAnnotationComments::default();
-    let polish_paragraph_annotations =
-        if let (Some(lines), Some(paras)) = (
-            polish_corrected_lines.filter(|l| !l.is_empty()),
-            polished_paragraphs.filter(|p| !p.is_empty()),
-        ) {
-            Some(annotations_grouped_by_polish_paragraphs(
-                lines, paras, segments,
-            ))
-        } else {
-            None
-        };
+    let polish_paragraph_annotations = if let (Some(lines), Some(paras)) = (
+        polish_corrected_lines.filter(|l| !l.is_empty()),
+        polished_paragraphs.filter(|p| !p.is_empty()),
+    ) {
+        Some(annotations_grouped_by_polish_paragraphs(
+            lines, paras, segments,
+        ))
+    } else {
+        None
+    };
 
     let time_blocks = layout_time_blocks(layout);
     doc = match mode {

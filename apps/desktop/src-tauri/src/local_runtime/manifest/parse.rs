@@ -74,7 +74,8 @@ pub fn select_asr_sidecar_cuda_component<'a>(
     manifest: &'a RuntimeManifest,
     platform: &str,
 ) -> Option<&'a RuntimeComponent> {
-    manifest.components.iter().find(|component| {
-        component.id == "asr-sidecar-cuda" && component.platform == platform
-    })
+    manifest
+        .components
+        .iter()
+        .find(|component| component.id == "asr-sidecar-cuda" && component.platform == platform)
 }

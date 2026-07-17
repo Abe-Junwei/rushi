@@ -34,9 +34,7 @@ pub fn normalize_to_wav_16k_mono(source: &Path, dest: &Path) -> Result<(), Strin
         dest_s,
     ]);
     crate::utils::no_console_window(&mut cmd);
-    let output = cmd
-        .output()
-        .map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
+    let output = cmd.output().map_err(|e| format!("启动 ffmpeg 失败: {e}"))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

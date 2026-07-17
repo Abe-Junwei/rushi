@@ -1,13 +1,11 @@
 use super::paths::{cuda_sidecar_install_dir, read_cuda_installed_version};
 use super::progress::{
-    append_cuda_log_line, cuda_install_phase_running, cuda_install_progress, reset_cuda_cancel_handle,
-    update_cuda_progress,
+    append_cuda_log_line, cuda_install_phase_running, cuda_install_progress,
+    reset_cuda_cancel_handle, update_cuda_progress,
 };
 use super::run::run_cuda_install;
 use super::types::{AsrCudaDownloadResult, AsrCudaInstallerState, AsrCudaSidecarStatus};
-use crate::asr_sidecar::candidates::{
-    app_data_cuda_sidecar_present, windows_nvidia_probe_ok,
-};
+use crate::asr_sidecar::candidates::{app_data_cuda_sidecar_present, windows_nvidia_probe_ok};
 use crate::local_runtime::catalog::{configured_manifest_source, load_configured_manifest};
 use crate::local_runtime::manifest::{
     current_platform_key, is_shell_version_compatible, select_asr_sidecar_cuda_component,
@@ -42,8 +40,10 @@ fn probe_cuda_manifest() -> (bool, Option<String>) {
             match select_asr_sidecar_cuda_component(&loaded.manifest, &platform) {
                 Some(component) => {
                     if let Some(min_shell_version) = component.min_shell_version.as_deref() {
-                        if !is_shell_version_compatible(env!("CARGO_PKG_VERSION"), min_shell_version)
-                        {
+                        if !is_shell_version_compatible(
+                            env!("CARGO_PKG_VERSION"),
+                            min_shell_version,
+                        ) {
                             return (
                                 true,
                                 Some(format!(

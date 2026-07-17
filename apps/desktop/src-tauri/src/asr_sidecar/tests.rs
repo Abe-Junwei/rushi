@@ -130,10 +130,8 @@ fn bundled_candidates_from_roots_deduplicate_same_executable() {
 
 #[test]
 fn bundled_candidates_cpu_only_when_no_cuda_onedir() {
-    let root = std::env::temp_dir().join(format!(
-        "rushi-asr-sidecar-cpu-only-{}",
-        std::process::id()
-    ));
+    let root =
+        std::env::temp_dir().join(format!("rushi-asr-sidecar-cpu-only-{}", std::process::id()));
     #[cfg(target_os = "windows")]
     let exe = root
         .join("bundled-asr")

@@ -182,8 +182,7 @@ fn trimmed_segment_annotation(annotation: Option<&str>) -> Option<&str> {
 
 /// 正文或备注至少一项非空时导出该语段（与 TXT `（备注）` 对齐）。
 pub(crate) fn segment_has_exportable_content(s: &SegmentDto) -> bool {
-    !s.text.trim().is_empty()
-        || trimmed_segment_annotation(s.annotation.as_deref()).is_some()
+    !s.text.trim().is_empty() || trimmed_segment_annotation(s.annotation.as_deref()).is_some()
 }
 
 /// 与 TS `segmentLinesFromSegments` 一致：仅非空正文语段的下标。
@@ -204,7 +203,9 @@ pub(crate) fn segments_have_annotations(segments: &[SegmentDto]) -> bool {
 }
 
 fn annotation_comment_date() -> String {
-    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string()
+    chrono::Local::now()
+        .format("%Y-%m-%dT%H:%M:%S%:z")
+        .to_string()
 }
 
 fn flatten_for_annotation_map(s: &str) -> String {
@@ -281,7 +282,11 @@ pub(crate) fn annotations_grouped_by_polish_paragraphs(
         .collect()
 }
 
-fn build_body_paragraph_with_comments(text: &str, notes: &[String], comments: &mut DocxAnnotationComments) -> Paragraph {
+fn build_body_paragraph_with_comments(
+    text: &str,
+    notes: &[String],
+    comments: &mut DocxAnnotationComments,
+) -> Paragraph {
     let mut para = Paragraph::new();
     let mut ids = Vec::with_capacity(notes.len());
     let date = annotation_comment_date();
@@ -292,11 +297,7 @@ fn build_body_paragraph_with_comments(text: &str, notes: &[String], comments: &m
             .author(ANNOTATION_COMMENT_AUTHOR)
             .date(&date)
             .add_paragraph(
-                Paragraph::new().add_run(
-                    Run::new()
-                        .size(20)
-                        .add_text(sanitize_docx_text(note)),
-                ),
+                Paragraph::new().add_run(Run::new().size(20).add_text(sanitize_docx_text(note))),
             );
         para = para.add_comment_start(comment);
     }

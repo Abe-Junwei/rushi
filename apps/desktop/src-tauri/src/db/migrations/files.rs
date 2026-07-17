@@ -58,7 +58,11 @@ pub(crate) fn migrate_files_name_unique(conn: &Connection) -> rusqlite::Result<(
     )?;
     let duplicates: Vec<(String, String, String)> = dup_stmt
         .query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?, row.get::<_, String>(2)?))
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
         })?
         .collect::<Result<Vec<_>, _>>()?;
     drop(dup_stmt);
@@ -69,8 +73,9 @@ pub(crate) fn migrate_files_name_unique(conn: &Connection) -> rusqlite::Result<(
             // Earliest-created row in this duplicate group keeps its name.
             continue;
         }
-        let renamed = unique_file_name(conn, &name, Some(file_id.as_str()))
-            .map_err(|e| rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::other(e))))?;
+        let renamed = unique_file_name(conn, &name, Some(file_id.as_str())).map_err(|e| {
+            rusqlite::Error::ToSqlConversionFailure(Box::new(std::io::Error::other(e)))
+        })?;
         conn.execute(
             "UPDATE files SET name = ?1 WHERE id = ?2",
             rusqlite::params![renamed, file_id],

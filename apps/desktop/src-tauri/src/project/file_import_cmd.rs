@@ -468,7 +468,8 @@ mod tests {
         // `files.name` is globally UNIQUE in the real schema; this ambiguous-stem
         // fixture needs two rows sharing a name, which the app itself never
         // creates (see `unique_file_name`). Dropping the index is test-only setup.
-        conn.execute("DROP INDEX idx_files_name_unique", []).unwrap();
+        conn.execute("DROP INDEX idx_files_name_unique", [])
+            .unwrap();
         for (idx, path) in ["/tmp/a.wav", "/tmp/b.wav"].iter().enumerate() {
             conn.execute(
                 "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \

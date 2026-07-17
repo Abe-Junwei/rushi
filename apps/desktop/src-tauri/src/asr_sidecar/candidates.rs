@@ -157,7 +157,8 @@ fn bundled_sidecar_candidates(handle: &AppHandle) -> Vec<PathBuf> {
     if let Some(st) = handle.try_state::<DbState>() {
         #[cfg(target_os = "windows")]
         {
-            let force_cpu = std::env::var("RUSHI_FORCE_BUNDLED_ASR_CPU").ok().as_deref() == Some("1");
+            let force_cpu =
+                std::env::var("RUSHI_FORCE_BUNDLED_ASR_CPU").ok().as_deref() == Some("1");
             if !force_cpu && windows_cuda_probe_ok() {
                 if let Some(cuda_exe) = validate_bundled_exe(&app_data_cuda_sidecar_exe(&st.root)) {
                     // Prefer App Data CUDA ahead of resource CPU when N-card is present.

@@ -153,8 +153,8 @@ fn peaks_usage_for_project(
 
 fn project_dirs_for_peaks_scan(st: &DbState, project_id: &str) -> Vec<PathBuf> {
     let legacy = project_storage_dir(&st.root, project_id);
-    let media = crate::media_base_dir::media_project_dir(st, project_id)
-        .unwrap_or_else(|_| legacy.clone());
+    let media =
+        crate::media_base_dir::media_project_dir(st, project_id).unwrap_or_else(|_| legacy.clone());
     let mut dirs = vec![media];
     if dirs[0] != legacy {
         dirs.push(legacy);

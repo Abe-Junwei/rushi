@@ -7,9 +7,9 @@ mod export_docx_build;
 
 pub(crate) use export_docx_body::{
     add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
-    append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
-    sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, DocxAnnotationComments,
-    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    append_delivery_block_time_end, append_delivery_block_time_start,
+    append_polished_paragraph_list, sanitize_docx_text, DocxAnnotationComments,
+    DocxDeliveryTimeBlock, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, MAX_LECTURE_BODY_CHARS,
 };
 pub(crate) use export_docx_build::{build_docx_to_path, DocxExportLayout};
 
@@ -110,7 +110,10 @@ pub async fn export_docx(
 
 #[cfg(test)]
 mod tests {
-    use super::export_docx_body::{format_hms, normalize_export_mode, sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, segments_have_annotations};
+    use super::export_docx_body::{
+        format_hms, normalize_export_mode, sanitize_docx_text, segments_have_annotations,
+        ANNOTATION_COMMENT_AUTHOR,
+    };
     use super::export_docx_build::{build_docx_bytes, DocxExportLayout};
     use super::*;
 
@@ -319,10 +322,7 @@ mod tests {
         let segments = vec![s0, seg("", false), s2];
         let grouped = annotations_grouped_by_polish_paragraphs(&lines, &paragraphs, &segments);
         assert_eq!(grouped.len(), 1);
-        assert_eq!(
-            grouped[0],
-            vec!["note-a".to_string(), "note-b".to_string()]
-        );
+        assert_eq!(grouped[0], vec!["note-a".to_string(), "note-b".to_string()]);
     }
 
     #[test]
@@ -931,7 +931,10 @@ mod tests {
         assert_eq!(&bytes[0..2], b"PK");
 
         let tmp_path = path.with_extension("docx.tmp");
-        assert!(!tmp_path.exists(), "tmp file must be renamed away on success");
+        assert!(
+            !tmp_path.exists(),
+            "tmp file must be renamed away on success"
+        );
 
         let _ = std::fs::remove_file(&path);
     }

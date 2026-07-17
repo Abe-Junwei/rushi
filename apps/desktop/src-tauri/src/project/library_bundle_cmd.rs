@@ -10,9 +10,7 @@ use std::path::Path;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-use super::lexicon_bundle::{
-    build_lexicon_bundle_export, serialize_lexicon_bundle,
-};
+use super::lexicon_bundle::{build_lexicon_bundle_export, serialize_lexicon_bundle};
 use super::project_bundle_cmd::{
     apply_embedded_lexicon, export_project_bundle_to_path, import_project_bundle_from_path,
     read_zip_bytes, read_zip_json, zip_opts, PROJECT_BUNDLE_LEXICON_ENTRY,
@@ -365,8 +363,7 @@ mod tests {
         export_library_bundle_to_path(&export_st, &zip, None, None, vec![]).unwrap();
 
         let mut archive = ZipArchive::new(File::open(&zip).unwrap()).unwrap();
-        let manifest: LibraryBundleManifest =
-            read_zip_json(&mut archive, "manifest.json").unwrap();
+        let manifest: LibraryBundleManifest = read_zip_json(&mut archive, "manifest.json").unwrap();
         assert_eq!(manifest.kind, LIBRARY_BUNDLE_KIND);
         assert_eq!(manifest.projects.len(), 2);
         assert!(manifest.includes_lexicon);
@@ -437,11 +434,9 @@ mod tests {
         seed_project(&st, "huge", "超限", "h.wav", b"hh");
         let conn = open_db(&st).unwrap();
         let file_id: String = conn
-            .query_row(
-                "SELECT id FROM files WHERE project_id = 'huge'",
-                [],
-                |r| r.get(0),
-            )
+            .query_row("SELECT id FROM files WHERE project_id = 'huge'", [], |r| {
+                r.get(0)
+            })
             .unwrap();
         for i in 0..=MAX_BUNDLE_SEGMENT_COUNT {
             conn.execute(

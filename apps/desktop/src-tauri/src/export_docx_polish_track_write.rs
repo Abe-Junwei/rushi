@@ -12,9 +12,9 @@ use zip::ZipWriter;
 
 use crate::export_docx::{
     add_body_paragraph, add_body_paragraph_with_comments, append_delivery_block_separator,
-    append_delivery_block_time_end, append_delivery_block_time_start, append_polished_paragraph_list,
-    sanitize_docx_text, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, DocxAnnotationComments,
-    DocxDeliveryTimeBlock, MAX_LECTURE_BODY_CHARS,
+    append_delivery_block_time_end, append_delivery_block_time_start,
+    append_polished_paragraph_list, sanitize_docx_text, DocxAnnotationComments,
+    DocxDeliveryTimeBlock, ANNOTATION_COMMENT_AUTHOR, ANNOTATION_HIGHLIGHT, MAX_LECTURE_BODY_CHARS,
 };
 
 use super::diff::{
@@ -25,7 +25,9 @@ use super::diff::{
 pub const POLISH_TRACK_AUTHOR: &str = "如是我闻";
 
 fn polish_revision_date() -> String {
-    chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%:z").to_string()
+    chrono::Local::now()
+        .format("%Y-%m-%dT%H:%M:%S%:z")
+        .to_string()
 }
 
 fn track_body_run() -> Run {
@@ -119,11 +121,8 @@ fn paragraph_from_diff_pieces_with_comments(
                     .author(ANNOTATION_COMMENT_AUTHOR)
                     .date(&comment_date)
                     .add_paragraph(
-                        Paragraph::new().add_run(
-                            Run::new()
-                                .size(20)
-                                .add_text(sanitize_docx_text(note)),
-                        ),
+                        Paragraph::new()
+                            .add_run(Run::new().size(20).add_text(sanitize_docx_text(note))),
                     );
                 para = para.add_comment_start(comment);
             }
@@ -496,7 +495,8 @@ mod tests {
 
     #[test]
     fn patch_settings_flips_existing_false_flag() {
-        let xml = br#"<w:settings xmlns:w="ns"><w:trackRevisions w:val="false"/></w:settings>"#.to_vec();
+        let xml =
+            br#"<w:settings xmlns:w="ns"><w:trackRevisions w:val="false"/></w:settings>"#.to_vec();
         let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
         let s = String::from_utf8(out).unwrap();
         assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
@@ -506,7 +506,8 @@ mod tests {
 
     #[test]
     fn patch_settings_does_not_duplicate_existing_revision_view() {
-        let xml = br#"<w:settings xmlns:w="ns"><w:revisionView w:markup="false"/></w:settings>"#.to_vec();
+        let xml =
+            br#"<w:settings xmlns:w="ns"><w:revisionView w:markup="false"/></w:settings>"#.to_vec();
         let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
         let s = String::from_utf8(out).unwrap();
         assert_eq!(s.matches("w:revisionView").count(), 1);

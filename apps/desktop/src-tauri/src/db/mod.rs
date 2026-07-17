@@ -280,7 +280,10 @@ mod tests {
              VALUES ('f2', 'p', 'unique-name', 'text', 1, 1)",
             [],
         );
-        assert!(result.is_err(), "duplicate name insert should be rejected by unique index");
+        assert!(
+            result.is_err(),
+            "duplicate name insert should be rejected by unique index"
+        );
     }
 
     #[test]
@@ -342,8 +345,14 @@ mod tests {
         let f2_name: String = conn
             .query_row("SELECT name FROM files WHERE id = 'f2'", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(f1_name, "dup", "earliest-created row keeps its original name");
-        assert_eq!(f2_name, "dup (2)", "later row is renamed to a Finder-style suffix");
+        assert_eq!(
+            f1_name, "dup",
+            "earliest-created row keeps its original name"
+        );
+        assert_eq!(
+            f2_name, "dup (2)",
+            "later row is renamed to a Finder-style suffix"
+        );
 
         let log_count: i64 = conn
             .query_row(

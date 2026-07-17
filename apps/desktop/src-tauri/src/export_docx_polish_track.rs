@@ -6,4 +6,6 @@ mod diff;
 mod write;
 
 pub use diff::before_lines_from_joined;
-pub use write::{append_polished_with_track_changes, inject_track_revisions_flag, POLISH_TRACK_AUTHOR};
+pub use write::{
+    append_polished_with_track_changes, inject_track_revisions_flag, POLISH_TRACK_AUTHOR,
+};

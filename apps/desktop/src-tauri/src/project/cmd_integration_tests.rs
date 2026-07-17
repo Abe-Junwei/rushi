@@ -278,7 +278,8 @@ fn move_file_to_project_auto_renames_on_conflict() {
     // duplicate can only be constructed here by bypassing the index — the app
     // layer itself never creates duplicates (see `unique_file_name`). Dropping
     // it is test-only setup; the move logic under test still runs unmodified.
-    conn.execute("DROP INDEX idx_files_name_unique", []).unwrap();
+    conn.execute("DROP INDEX idx_files_name_unique", [])
+        .unwrap();
     conn.execute(
         "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -410,7 +411,8 @@ fn move_file_to_project_auto_renames_when_other_project_holds_name() {
     }
     // See comment in `move_file_to_project_auto_renames_on_conflict` re: why
     // the unique index must be dropped to construct this test-only duplicate.
-    conn.execute("DROP INDEX idx_files_name_unique", []).unwrap();
+    conn.execute("DROP INDEX idx_files_name_unique", [])
+        .unwrap();
     conn.execute(
         "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
@@ -510,8 +512,7 @@ fn copy_file_to_project_duplicates_segments_and_keeps_source() {
         !crate::media_base_dir::path_is_absolute_storage(&dest_audio),
         "expected media-base-relative audio_path, got {dest_audio}"
     );
-    let dest_audio_resolved =
-        crate::media_base_dir::resolve_audio_path(&st, &dest_audio).unwrap();
+    let dest_audio_resolved = crate::media_base_dir::resolve_audio_path(&st, &dest_audio).unwrap();
     assert!(dest_audio_resolved.is_file());
     assert_ne!(dest_audio, audio_path);
     let dest_segs: i64 = conn

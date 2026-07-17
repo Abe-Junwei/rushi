@@ -210,8 +210,7 @@ pub(crate) fn paths_same_file(a: &Path, b: &Path) -> bool {
 /// Absolute path for DB while relocate is in progress (pref still points at source).
 /// Relative paths would join the old media base and break mid-move / on failure.
 pub(crate) fn store_absolute_under_dest(dest_audio: &Path) -> Result<String, String> {
-    let can = fs::canonicalize(dest_audio)
-        .map_err(|e| format!("无法规范化搬迁后音频路径: {e}"))?;
+    let can = fs::canonicalize(dest_audio).map_err(|e| format!("无法规范化搬迁后音频路径: {e}"))?;
     Ok(path_to_user_string(&can))
 }
 
@@ -254,15 +253,15 @@ pub(crate) fn resolve_for_relocate(
             let leaf = dest_audio_leaf(file_id, Path::new(&normalized));
             let dest_audio = dest_proj.join(&leaf);
             if dest_audio.is_file() {
-                return fs::canonicalize(&dest_audio).map_err(|err| {
-                    format!("无法规范化已在目标的音频（{file_id}）：{err}")
-                });
+                return fs::canonicalize(&dest_audio)
+                    .map_err(|err| format!("无法规范化已在目标的音频（{file_id}）：{err}"));
             }
             // Legacy mid-move: absolute path already under dest_proj with a non-id leaf.
             if crate::media_base_dir::path_is_absolute_storage(&normalized) {
                 let candidate = Path::new(&normalized);
                 if candidate.is_file() {
-                    if let (Ok(c), Ok(d)) = (fs::canonicalize(candidate), fs::canonicalize(dest_proj))
+                    if let (Ok(c), Ok(d)) =
+                        (fs::canonicalize(candidate), fs::canonicalize(dest_proj))
                     {
                         if c.starts_with(&d) {
                             return Ok(c);
@@ -330,10 +329,7 @@ fn relocate_all_to(st: &DbState, dest_base: &Path) -> Result<(), String> {
             .map_err(|e| format!("回写 audio_path 失败: {e}"))?;
             Ok(())
         })() {
-            append_desktop_log_line(
-                st,
-                &format!("WARN media_base_relocate file={file_id}: {e}"),
-            );
+            append_desktop_log_line(st, &format!("WARN media_base_relocate file={file_id}: {e}"));
             failures.push(e);
         }
     }
@@ -725,8 +721,7 @@ mod tests {
         let (tmp, st) = temp_state();
         let media_a = tmp.join("a");
         let media_b = tmp.join("b");
-        let orphan_root =
-            std::env::temp_dir().join(format!("rushi-orphan-dup-{}", Uuid::new_v4()));
+        let orphan_root = std::env::temp_dir().join(format!("rushi-orphan-dup-{}", Uuid::new_v4()));
         fs::create_dir_all(&media_a).unwrap();
         fs::create_dir_all(&media_b).unwrap();
         let orphan_a_dir = orphan_root.join("a");
@@ -810,7 +805,11 @@ mod tests {
             media_a.display()
         );
         fs::create_dir_all(st.root.join("prefs")).unwrap();
-        fs::write(st.root.join("prefs/media_base_dir.txt"), format!("{pref_raw}\n")).unwrap();
+        fs::write(
+            st.root.join("prefs/media_base_dir.txt"),
+            format!("{pref_raw}\n"),
+        )
+        .unwrap();
 
         let project_id = Uuid::new_v4().to_string();
         let file_rel = Uuid::new_v4().to_string();
