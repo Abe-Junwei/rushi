@@ -66,3 +66,8 @@ services/asr/third_party/ffmpeg/linux-x64/
 
 # 本机安装笔记（勿提交）
 /mac版安装方式.rtf
+
+# Local machine move helper / leftover pack checksums (do not commit)
+finish-move-from-c.bat
+*.sha256
+
