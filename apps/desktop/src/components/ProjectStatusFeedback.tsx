@@ -26,6 +26,7 @@ export function ProjectBusyOverlay({
 }) {
   const busyCopy = busyOverlayCopy(reason, transcribeProgress, {
     exportPolishProgress: exportPolishProgress ?? undefined,
+    elapsedSec,
   });
 
   if (typeof document === "undefined") return null;
@@ -38,6 +39,7 @@ export function ProjectBusyOverlay({
         lead={busyCopy.lead}
         detail={busyCopy.detail}
         elapsedSec={elapsedSec}
+        progressValue={busyCopy.progressValue}
       />
     </div>,
     document.body,
@@ -60,7 +62,10 @@ function TranscribePreviewBanner({
   cancelling?: boolean;
   onCancel?: () => void;
 }) {
-  const busyCopy = busyOverlayCopy("transcribe", transcribeProgress, { transcribeSource });
+  const busyCopy = busyOverlayCopy("transcribe", transcribeProgress, {
+    transcribeSource,
+    elapsedSec,
+  });
 
   if (typeof document === "undefined") return null;
 
@@ -77,6 +82,7 @@ function TranscribePreviewBanner({
         onCancel={onCancel}
         cancelling={cancelling}
         cancellingLabel={transcribeCancelStoppingLabel(transcribeSource)}
+        progressValue={busyCopy.progressValue}
       />
     </div>,
     document.body,
@@ -177,7 +183,7 @@ export function TranscribeWorkspaceBanners({
           />
         </div>
       ) : null}
-      {busy && busyReason === "transcribe" ? (
+      {busy && (busyReason === "transcribe" || busyReason === "batch_transcribe") ? (
         <TranscribePreviewBanner
           elapsedSec={busyElapsedSec}
           transcribeProgress={transcribeProgress}

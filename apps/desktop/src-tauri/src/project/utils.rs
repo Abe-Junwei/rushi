@@ -59,6 +59,20 @@ pub fn project_detail_from_conn(
     conn: &Connection,
     project_id: &str,
 ) -> Result<ProjectDetail, String> {
+    project_detail_inner(conn, project_id, None)
+}
+
+/// Like [`project_detail_from_conn`] but resolves media existence for Hub rows.
+pub fn project_detail_with_media(st: &DbState, project_id: &str) -> Result<ProjectDetail, String> {
+    let conn = open_db(st)?;
+    project_detail_inner(&conn, project_id, Some(st))
+}
+
+fn project_detail_inner(
+    conn: &Connection,
+    project_id: &str,
+    st: Option<&DbState>,
+) -> Result<ProjectDetail, String> {
     let (name, c_ms, u_ms, narrator, recorded_at, location, subject, transcriber): ProjectMetaRow = conn
         .query_row(
             "SELECT name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber \
@@ -79,25 +93,7 @@ pub fn project_detail_from_conn(
         )
         .map_err(|e| e.to_string())?;
 
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, name, file_type, updated_at_ms FROM files WHERE project_id = ?1 ORDER BY created_at_ms ASC",
-        )
-        .map_err(|e| e.to_string())?;
-    let file_rows = stmt
-        .query_map(params![project_id], |r| {
-            Ok(FileSummary {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                file_type: r.get(2)?,
-                updated_at_ms: r.get(3)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-    let mut files = Vec::new();
-    for f in file_rows {
-        files.push(f.map_err(|e| e.to_string())?);
-    }
+    let files = list_file_summaries(conn, project_id, st)?;
 
     Ok(ProjectDetail {
         id: project_id.to_string(),
@@ -113,19 +109,174 @@ pub fn project_detail_from_conn(
     })
 }
 
+/// Project file list for Hub — segment aggregates + optional media existence check.
+pub fn list_file_summaries(
+    conn: &Connection,
+    project_id: &str,
+    st: Option<&DbState>,
+) -> Result<Vec<FileSummary>, String> {
+    let mut stmt = conn
+        .prepare(
+            // Effective content segment = not placeholder / whole-track fallback, and has
+            // non-empty text (aligns with frontend segmentsHaveNonEmptyText for Hub truth).
+            "SELECT f.id, f.name, f.file_type, f.updated_at_ms, f.duration_sec, f.audio_path, \
+                    f.import_source_size, \
+                    COALESCE(SUM(CASE WHEN COALESCE(s.kind, '') != 'placeholder' \
+                      AND COALESCE(s.detail, '') != 'funasr_whole_track_fallback' \
+                      AND LENGTH(TRIM(COALESCE(s.text, ''))) > 0 THEN 1 ELSE 0 END), 0), \
+                    COALESCE(SUM(CASE WHEN COALESCE(s.kind, '') != 'placeholder' \
+                      AND COALESCE(s.detail, '') != 'funasr_whole_track_fallback' \
+                      AND LENGTH(TRIM(COALESCE(s.text, ''))) > 0 \
+                      AND COALESCE(NULLIF(TRIM(s.text_stage), ''), 'auto_transcribe') = 'first_proof' \
+                      THEN 1 ELSE 0 END), 0), \
+                    COALESCE(SUM(CASE WHEN COALESCE(s.kind, '') != 'placeholder' \
+                      AND COALESCE(s.detail, '') != 'funasr_whole_track_fallback' \
+                      AND LENGTH(TRIM(COALESCE(s.text, ''))) > 0 \
+                      AND s.text_stage = 'finalized' THEN 1 ELSE 0 END), 0) \
+             FROM files f \
+             LEFT JOIN segments s ON s.file_id = f.id \
+             WHERE f.project_id = ?1 \
+             GROUP BY f.id \
+             ORDER BY f.created_at_ms ASC",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map(params![project_id], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+                r.get::<_, i64>(3)?,
+                r.get::<_, Option<f64>>(4)?,
+                r.get::<_, Option<String>>(5)?,
+                r.get::<_, Option<i64>>(6)?,
+                r.get::<_, i64>(7)?,
+                r.get::<_, i64>(8)?,
+                r.get::<_, i64>(9)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (
+            id,
+            name,
+            file_type,
+            updated_at_ms,
+            duration_sec,
+            audio_path,
+            import_source_size,
+            segment_count,
+            first_proof_count,
+            finalized_count,
+        ) = row.map_err(|e| e.to_string())?;
+        let draft_count = (segment_count - first_proof_count - finalized_count).max(0);
+        let media_missing = compute_media_missing(st, &file_type, audio_path.as_deref());
+        let display_size =
+            resolve_display_media_bytes(st, &id, import_source_size, audio_path.as_deref());
+        out.push(FileSummary {
+            id,
+            name,
+            file_type,
+            updated_at_ms,
+            duration_sec: duration_sec.filter(|d| d.is_finite() && *d > 0.0),
+            segment_count,
+            draft_count,
+            first_proof_count,
+            finalized_count,
+            import_source_size: display_size,
+            media_missing,
+        });
+    }
+    Ok(out)
+}
+
+fn compute_media_missing(st: Option<&DbState>, file_type: &str, audio_path: Option<&str>) -> bool {
+    if file_type == "text" {
+        return false;
+    }
+    let Some(raw) = audio_path.map(str::trim).filter(|s| !s.is_empty()) else {
+        return true;
+    };
+    let Some(st) = st else {
+        // Without DbState (unit paths), only flag empty path; don't false-positive.
+        return false;
+    };
+    crate::media_base_dir::resolve_audio_path(st, raw).is_err()
+}
+
+/// Hub size: prefer stored import provenance; else on-disk media length.
+/// Best-effort backfill of `import_source_size` when provenance was never written.
+fn resolve_display_media_bytes(
+    st: Option<&DbState>,
+    file_id: &str,
+    import_source_size: Option<i64>,
+    audio_path: Option<&str>,
+) -> Option<i64> {
+    if let Some(n) = import_source_size.filter(|n| *n > 0) {
+        return Some(n);
+    }
+    let st = st?;
+    let raw = audio_path.map(str::trim).filter(|s| !s.is_empty())?;
+    let path = crate::media_base_dir::resolve_audio_path(st, raw).ok()?;
+    let len = fs::metadata(&path).ok()?.len() as i64;
+    if len <= 0 {
+        return None;
+    }
+    // Persist so Hub stays consistent even when resolve is skipped later.
+    if let Ok(conn) = open_db(st) {
+        let _ = conn.execute(
+            "UPDATE files SET import_source_size = ?1 \
+             WHERE id = ?2 AND (import_source_size IS NULL OR import_source_size <= 0)",
+            params![len, file_id],
+        );
+    }
+    Some(len)
+}
+
+/// Persist probed duration for Hub list (idempotent upsert of positive finite secs).
+pub fn update_file_duration_sec(
+    conn: &Connection,
+    file_id: &str,
+    duration_sec: f64,
+) -> Result<(), String> {
+    if !duration_sec.is_finite() || duration_sec <= 0.0 {
+        return Ok(());
+    }
+    conn.execute(
+        "UPDATE files SET duration_sec = ?1 WHERE id = ?2",
+        params![duration_sec, file_id],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// Probe audio and cache duration on `files` (best-effort; never fails the caller).
+pub fn persist_probed_file_duration(st: &DbState, file_id: &str, audio_path: &Path) {
+    let Some(dur) = super::transcribe_timeout::probe_audio_duration_sec(audio_path) else {
+        return;
+    };
+    let Ok(conn) = open_db(st) else {
+        return;
+    };
+    let _ = update_file_duration_sec(&conn, file_id, dur);
+}
+
 pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDetail, String> {
-    let (project_id, name, file_type, audio_path, c_ms, u_ms): (
+    let (project_id, name, file_type, audio_path, duration_sec, c_ms, u_ms): (
         String,
         String,
         String,
         Option<String>,
+        Option<f64>,
         i64,
         i64,
     ) = conn
         .query_row(
-            "SELECT project_id, name, file_type, audio_path, created_at_ms, updated_at_ms FROM files WHERE id = ?1",
+            "SELECT project_id, name, file_type, audio_path, duration_sec, created_at_ms, updated_at_ms \
+             FROM files WHERE id = ?1",
             params![file_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
         )
         .map_err(|e| e.to_string())?;
 
@@ -189,6 +340,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
         name,
         file_type,
         audio_path,
+        duration_sec: duration_sec.filter(|d| d.is_finite() && *d > 0.0),
         segments,
         created_at_ms: c_ms,
         updated_at_ms: u_ms,

@@ -122,6 +122,9 @@ pub(crate) fn project_create_from_audio_inner(
         return Err(e.to_string());
     }
     tx.commit().map_err(|e| e.to_string())?;
+    drop(conn);
+    crate::project::utils::persist_probed_file_duration(st, &file_id, &dest_audio);
+    let conn = open_db(st)?;
     let detail = project_detail_from_conn(&conn, &project_id)?;
     Ok((detail, dest_audio))
 }
@@ -346,6 +349,9 @@ pub(crate) fn import_audio_to_project_inner(
         cleanup_normalize_artifacts(&copied_audio, Some(&dest_audio));
         return Err(e);
     }
+    drop(conn);
+    crate::project::utils::persist_probed_file_duration(st, &file_id, &dest_audio);
+    let conn = open_db(st)?;
     let detail = project_detail_from_conn(&conn, project_id)?;
     Ok((detail, dest_audio))
 }

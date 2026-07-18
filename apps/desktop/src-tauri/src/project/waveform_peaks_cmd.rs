@@ -1,6 +1,6 @@
 use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
-use super::utils::{append_desktop_log_line, open_db};
+use super::utils::{append_desktop_log_line, open_db, update_file_duration_sec};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
     peaks_generation_in_progress, reclaim_stale_peaks_lock, remove_peaks_data_for_file,
@@ -76,11 +76,18 @@ fn spawn_peaks_generation(
 ) {
     std::thread::spawn(move || {
         let _lock = lock;
-        if let Err(err) = generate_peaks_with_optional_ffmpeg_remux(&audio, &peaks_root, &file_id) {
-            append_desktop_log_line(
-                &st,
-                &format!("ERROR waveform_peaks generation failed {file_id}: {err}"),
-            );
+        match generate_peaks_with_optional_ffmpeg_remux(&audio, &peaks_root, &file_id) {
+            Ok(report) => {
+                if let Ok(conn) = open_db(&st) {
+                    let _ = update_file_duration_sec(&conn, &file_id, report.duration_sec);
+                }
+            }
+            Err(err) => {
+                append_desktop_log_line(
+                    &st,
+                    &format!("ERROR waveform_peaks generation failed {file_id}: {err}"),
+                );
+            }
         }
     });
 }
@@ -254,6 +261,11 @@ fn ensure_waveform_peaks_sync_with_depth(
     let peaks_root = peaks_dir(&project_dir(st, project_id));
     let audio = crate::media_base_dir::resolve_audio_path(st, &audio_path)?;
     let effective_duration = resolve_reference_duration_sec(&audio, media_duration_sec);
+    if let Some(dur) = effective_duration {
+        if let Ok(conn) = open_db(st) {
+            let _ = update_file_duration_sec(&conn, file_id, dur);
+        }
+    }
 
     // Crash / kill can leave `.generating.lock` forever (create_new existence lock,
     // not OS flock). Reclaim before acquire so 3h+ media is not stuck on a dead wait.

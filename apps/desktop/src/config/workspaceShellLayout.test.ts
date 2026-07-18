@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  WELCOME_LEDGER_INSET_X,
+  WELCOME_LEDGER_TAB_GAP,
   WORKSPACE_SIDEBAR_NAV_STACK,
   workspaceSidebarNavItemClass,
   workspaceSidebarSubNavItemClass,
-  WORKSPACE_SIDEBAR_FOOTER_GRID,
+  WORKSPACE_SIDEBAR_FOOTER_STACK,
   workspaceSidebarFooterItemClass,
   WORKSPACE_HOME_STAGE_CLASS,
 } from "./workspaceShellLayout";
@@ -28,8 +30,9 @@ describe("workspaceShellLayout shell grid", () => {
 });
 
 describe("workspaceShellLayout sidebar nav", () => {
-  it("uses inset rounded blocks for primary nav", () => {
-    expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("px-3");
+  it("uses inset rounded blocks for primary nav with airy stack", () => {
+    expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("px-5");
+    expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("gap-6");
     expect(workspaceSidebarNavItemClass({ active: false })).toContain("rounded-md");
     expect(workspaceSidebarNavItemClass({ active: false })).toContain("min-h-10");
     expect(workspaceSidebarNavItemClass({ active: true })).toContain("bg-notion-sidebar-active");
@@ -40,9 +43,11 @@ describe("workspaceShellLayout sidebar nav", () => {
     expect(workspaceSidebarSubNavItemClass(true)).toContain("text-accent-action");
   });
 
-  it("styles footer as horizontal peer cells", () => {
-    expect(WORKSPACE_SIDEBAR_FOOTER_GRID).toContain("grid");
-    expect(workspaceSidebarFooterItemClass({ active: false })).toContain("flex-col");
+  it("styles footer as vertical icon+label stack", () => {
+    expect(WORKSPACE_SIDEBAR_FOOTER_STACK).toContain("flex-col");
+    expect(WORKSPACE_SIDEBAR_FOOTER_STACK).toContain("gap-4");
+    expect(workspaceSidebarFooterItemClass({ active: false })).toContain("gap-3");
+    expect(workspaceSidebarFooterItemClass({ active: false })).not.toContain("flex-col");
     expect(workspaceSidebarFooterItemClass({ active: true })).toContain("bg-notion-sidebar-active");
   });
 
@@ -50,5 +55,10 @@ describe("workspaceShellLayout sidebar nav", () => {
     const { WORKSPACE_SIDEBAR_EMPTY_HINT_BTN } = await import("./workspaceShellLayout");
     expect(WORKSPACE_SIDEBAR_EMPTY_HINT_BTN).toContain("hover:bg-notion-sidebar-hover");
     expect(WORKSPACE_SIDEBAR_EMPTY_HINT_BTN).toContain("px-5");
+  });
+
+  it("keeps welcome ledger tab/row horizontal inset aligned", () => {
+    expect(WELCOME_LEDGER_INSET_X).toBe("px-6");
+    expect(WELCOME_LEDGER_TAB_GAP).toBe("gap-8");
   });
 });

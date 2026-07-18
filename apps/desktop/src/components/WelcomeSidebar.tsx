@@ -9,7 +9,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
 import {
-  WORKSPACE_SIDEBAR_FOOTER_GRID,
+  WORKSPACE_SIDEBAR_FOOTER_STACK,
   WORKSPACE_SIDEBAR_PANEL_ATTR,
   workspaceSidebarFooterItemClass,
 } from "../config/workspaceShellLayout";
@@ -19,7 +19,6 @@ import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
 import { WelcomeSidebarNav } from "./WelcomeSidebarNav";
-import { CspLayout } from "./CspLayout";
 
 export interface WelcomeSidebarProps {
   controller: ProjectControllerApi;
@@ -155,17 +154,17 @@ export function WelcomeSidebar({
           />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-8 text-center">
+        <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-10 text-center">
           <p className="text-title leading-relaxed text-notion-text-muted">
             全局设置：术语表→转写热词；纠错记忆→编辑规则。
           </p>
         </div>
       )}
-      <div className={`mt-auto shrink-0 border-t ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`} aria-label="侧栏工具">
-        <CspLayout
-          className={WORKSPACE_SIDEBAR_FOOTER_GRID}
-          layout={{ gridTemplateColumns: `repeat(${footerItems.length}, minmax(0, 1fr))` }}
-        >
+      <div
+        className={`mt-auto shrink-0 border-t ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`}
+        aria-label="侧栏工具"
+      >
+        <div className={WORKSPACE_SIDEBAR_FOOTER_STACK}>
           {footerItems.map((item) => (
             <button
               key={item.key}
@@ -177,10 +176,10 @@ export function WelcomeSidebar({
               onClick={item.onClick}
             >
               {item.icon}
-              <span className="max-w-full truncate px-0.5">{item.label}</span>
+              <span className="min-w-0 truncate">{item.label}</span>
             </button>
           ))}
-        </CspLayout>
+        </div>
       </div>
     </aside>
   );

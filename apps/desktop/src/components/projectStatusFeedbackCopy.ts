@@ -4,6 +4,11 @@ import type { BusyReason } from "../pages/useProjectController";
 import { onlineTranscribeProviderShortLabel } from "../services/stt/onlineTranscribeProviderShortLabel";
 import { readExternalSttOnlineRuntimeConfigFromStorage } from "../services/stt/sttOnlineProviderContract/runtimeConfig";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
+import {
+  estimateTranscribeRemainingSecs,
+  formatApproxRemainingMinutes,
+  transcribeDeterminateFraction,
+} from "../utils/estimateTranscribeRemainingSecs";
 
 export type BusyOverlayCopy = {
   title: string;
@@ -11,6 +16,8 @@ export type BusyOverlayCopy = {
   lead: string;
   /** 次要补充；可为空 */
   detail?: string;
+  /** 0–1 determinate bar; null/undefined → indeterminate */
+  progressValue?: number | null;
 };
 
 function onlineTranscribeProviderLabel(): string {
@@ -21,6 +28,7 @@ function onlineTranscribeProviderLabel(): string {
 function transcribeBusyCopy(
   source: TranscribeSource,
   progress: TranscribeProgress | null,
+  elapsedSec = 0,
 ): BusyOverlayCopy {
   if (source === "online") {
     const vendor = onlineTranscribeProviderLabel();
@@ -39,10 +47,24 @@ function transcribeBusyCopy(
   }
 
   if (progress && progress.windowCount > 1) {
+    const progressValue = transcribeDeterminateFraction(
+      progress.windowIndex,
+      progress.windowCount,
+    );
+    const remainingLabel = formatApproxRemainingMinutes(
+      estimateTranscribeRemainingSecs({
+        windowIndex: progress.windowIndex,
+        windowCount: progress.windowCount,
+        elapsedSec,
+      }),
+    );
+    const detailParts = [`已出 ${progress.segmentsTotal} 条语段`];
+    if (remainingLabel) detailParts.push(remainingLabel);
     return {
       title: "本机转写中",
       lead: `第 ${progress.windowIndex}/${progress.windowCount} 段`,
-      detail: `已出 ${progress.segmentsTotal} 条语段`,
+      detail: detailParts.join(" · "),
+      progressValue,
     };
   }
   if (progress && progress.segmentsTotal > 0) {
@@ -73,11 +95,16 @@ export function busyOverlayCopy(
   options?: {
     transcribeSource?: TranscribeSource;
     exportPolishProgress?: { batch: number; total: number };
+    elapsedSec?: number;
   },
 ): BusyOverlayCopy {
   switch (reason) {
     case "transcribe":
-      return transcribeBusyCopy(options?.transcribeSource ?? "local", transcribeProgress);
+      return transcribeBusyCopy(
+        options?.transcribeSource ?? "local",
+        transcribeProgress,
+        options?.elapsedSec ?? 0,
+      );
     case "save":
       return { title: "正在保存", lead: "写入 SQLite", detail: "请勿关闭应用" };
     case "create":

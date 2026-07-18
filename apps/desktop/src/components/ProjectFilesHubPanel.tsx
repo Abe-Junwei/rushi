@@ -3,6 +3,7 @@ import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import { consumeWelcomeSearchHubFileTarget } from "../services/welcome/welcomeSearch";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { FileSummary } from "../tauri/projectTypes";
+import * as fileApi from "../tauri/fileApi";
 import { ProjectFilesHubFileList } from "./ProjectFilesHubFileList";
 import { ProjectFilesHubHeader } from "./ProjectFilesHubHeader";
 import { ProjectFilesHubImportSection } from "./ProjectFilesHubImportSection";
@@ -32,9 +33,39 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
     if (!highlightFileId) return;
     const el = document.querySelector(`[data-hub-file-id="${highlightFileId}"]`);
     el?.scrollIntoView({ block: "nearest" });
-    const timer = window.setTimeout(() => setHighlightFileId(null), 2500);
+    const timer = window.setTimeout(function clearHubFileHighlight() {
+      setHighlightFileId(null);
+    }, 2500);
     return () => window.clearTimeout(timer);
   }, [highlightFileId, files]);
+
+  // Pull latest FileSummary (duration_sec after open/peaks) when Hub is shown.
+  // Retry once: peaks may finish shortly after the user leaves the editor.
+  useEffect(() => {
+    if (!projectId) return;
+    let cancelled = false;
+    const pull = async () => {
+      try {
+        const files = await fileApi.listFiles(projectId);
+        if (cancelled) return;
+        const cur = c.current;
+        if (cur?.id === projectId) {
+          c.applyDetail({ ...cur, files });
+        }
+      } catch {
+        /* best-effort */
+      }
+    };
+    void pull();
+    const timer = window.setTimeout(function retryHubFileListPull() {
+      void pull();
+    }, 1500);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refresh on Hub enter / project switch
+  }, [projectId]);
 
   return (
     <section

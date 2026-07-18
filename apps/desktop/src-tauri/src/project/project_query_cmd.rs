@@ -1,5 +1,5 @@
 use super::types::{EditLogEntryDto, ProjectDetail, ProjectSummary};
-use super::utils::{open_db, project_detail_from_conn};
+use super::utils::{open_db, project_detail_with_media};
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
@@ -35,8 +35,7 @@ pub fn project_list(state: State<DbState>) -> Result<Vec<ProjectSummary>, String
 
 #[tauri::command]
 pub fn project_load(state: State<DbState>, project_id: String) -> Result<ProjectDetail, String> {
-    let conn = open_db(state.deref())?;
-    project_detail_from_conn(&conn, &project_id)
+    project_detail_with_media(state.deref(), &project_id)
 }
 
 #[tauri::command]

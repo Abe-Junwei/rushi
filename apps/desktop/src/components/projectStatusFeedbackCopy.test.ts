@@ -10,15 +10,27 @@ describe("busyOverlayCopy transcribe", () => {
     expect(copy.lead).not.toMatch(/侧车|预览|分段处理/);
   });
 
-  it("local incremental preview copy mentions segments", () => {
+  it("local incremental preview copy mentions segments and determinate progress", () => {
     const copy = busyOverlayCopy(
       "transcribe",
       { windowIndex: 2, windowCount: 5, segmentsTotal: 12 },
-      { transcribeSource: "local" },
+      { transcribeSource: "local", elapsedSec: 120 },
     );
     expect(copy.title).toBe("本机转写中");
     expect(copy.lead).toMatch(/第 2\/5 段/);
     expect(copy.detail).toMatch(/12 条语段/);
+    expect(copy.progressValue).toBeCloseTo(0.4);
+    expect(copy.detail).toMatch(/约剩余/);
+  });
+
+  it("local single-window path stays indeterminate without fake ETA", () => {
+    const copy = busyOverlayCopy(
+      "transcribe",
+      { windowIndex: 1, windowCount: 1, segmentsTotal: 3 },
+      { transcribeSource: "local", elapsedSec: 90 },
+    );
+    expect(copy.progressValue).toBeUndefined();
+    expect(copy.detail).not.toMatch(/约剩余|预计/);
   });
 
   it("local default copy mentions incremental segments", () => {

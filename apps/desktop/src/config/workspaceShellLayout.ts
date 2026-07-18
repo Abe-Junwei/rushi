@@ -51,8 +51,19 @@ export const WORKSPACE_PAGE_PANEL_CLASS = "relative flex w-full max-w-[672px] fl
 export const WORKSPACE_FILE_ROW_CLASS =
   "group flex w-full items-center bg-transparent text-left transition-colors hover:bg-notion-sidebar-hover";
 
-/** 侧栏主功能区导航栈（Notion：左右内缩 + 项间 gap） */
-export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-0.5 px-3 pb-3";
+/**
+ * 欢迎页 ledger 水平内边距（tab 栏与行共用，对齐设计稿 px-6）。
+ */
+export const WELCOME_LEDGER_INSET_X = "px-6";
+
+/** 欢迎页 ledger 三 tab 间距（设计稿 gap-8） */
+export const WELCOME_LEDGER_TAB_GAP = "gap-8";
+
+/** 欢迎页 ledger 行垂直留白（设计稿 py-10 → Zen 略收为 py-8） */
+export const WELCOME_LEDGER_ROW_Y = "py-8";
+
+/** 侧栏主功能区导航栈（设计稿 space-y-6 + 更宽内边距） */
+export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-6 px-5 pb-6";
 
 const WORKSPACE_SIDEBAR_NAV_ITEM_BASE =
   "flex w-full min-h-10 items-center gap-3 rounded-md border-0 px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors";
@@ -77,13 +88,13 @@ export function workspaceSidebarSubNavItemClass(active: boolean): string {
     : `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text`;
 }
 
-/** 侧栏底栏：上手清单 / 设置 等宽横排 */
-export const WORKSPACE_SIDEBAR_FOOTER_GRID = "grid gap-0.5 px-3 py-2";
+/** 侧栏底栏：上手清单 / 设置 — 纵向栈（对齐设计稿 gap-4 + pt-8） */
+export const WORKSPACE_SIDEBAR_FOOTER_STACK = "flex flex-col gap-4 px-5 pb-8 pt-6";
 
 const WORKSPACE_SIDEBAR_FOOTER_ITEM_BASE =
-  "flex min-h-[3.25rem] flex-col items-center justify-center gap-1 rounded-md border-0 px-1 py-2 text-center text-label font-medium leading-tight transition-colors";
+  "flex w-full items-center gap-3 rounded-md border-0 px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors";
 
-/** 底栏横排项：图标 + 短标签，等宽平级 */
+/** 底栏纵向项：图标 + 标签横排 */
 export function workspaceSidebarFooterItemClass(opts: { active?: boolean }): string {
   return opts.active
     ? `${WORKSPACE_SIDEBAR_FOOTER_ITEM_BASE} bg-notion-sidebar-active text-notion-text`

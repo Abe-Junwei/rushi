@@ -36,6 +36,8 @@
   /** @type {Array<{ id: string; name: string; created_at_ms: number; updated_at_ms: number; file_count?: number }>} */
   let projectSummaries = [];
   let currentSegments = [e2eSegment];
+  /** Kept in sync with create_empty_project so Hub list_files refresh matches UI title. */
+  let currentProjectName = "未命名项目";
   /** @type {Array<{ cmd: string; args: unknown }>} */
   const invocations = [];
 
@@ -43,11 +45,11 @@
     project_list: async () => projectSummaries,
     project_load: async () => ({
       id: e2eProjectId,
-      name: "未命名项目",
+      name: currentProjectName,
       files: [
         {
           id: e2eFileId,
-          name: "未命名项目",
+          name: currentProjectName,
           file_type: "text",
           updated_at_ms: now,
         },
@@ -56,13 +58,14 @@
       updated_at_ms: now,
     }),
     create_empty_project: async (args) => {
+      currentProjectName = args?.name ?? "未命名项目";
       const detail = {
         id: e2eProjectId,
-        name: args?.name ?? "E2E 空项目",
+        name: currentProjectName,
         files: [
           {
             id: e2eFileId,
-            name: args?.name ?? "E2E 空项目",
+            name: currentProjectName,
             file_type: "text",
             updated_at_ms: now,
           },
@@ -87,7 +90,7 @@
       return [
         {
           id: e2eFileId,
-          name: "E2E 空项目",
+          name: currentProjectName,
           file_type: "text",
           updated_at_ms: now,
         },
@@ -96,7 +99,7 @@
     load_file: async (args) => ({
       id: args?.fileId ?? e2eFileId,
       project_id: e2eProjectId,
-      name: "E2E 空项目",
+      name: currentProjectName,
       file_type: "text",
       audio_path: null,
       segments: currentSegments,

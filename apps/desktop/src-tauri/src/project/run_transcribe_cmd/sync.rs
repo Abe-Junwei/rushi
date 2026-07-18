@@ -139,6 +139,11 @@ async fn project_run_transcribe_inner(
         return Err("项目音频文件缺失".to_string());
     }
     let audio_duration_sec = probe_audio_duration_sec(&audio_path);
+    if let Some(dur) = audio_duration_sec {
+        if let Ok(conn) = open_db(&st) {
+            let _ = crate::project::utils::update_file_duration_sec(&conn, &file_id, dur);
+        }
+    }
     append_desktop_log_line(&st, "INFO transcribe_stage=preflight");
 
     let (mut v, vocabulary_pre_warnings) = if let Some(ref o) = online {

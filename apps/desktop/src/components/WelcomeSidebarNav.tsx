@@ -75,12 +75,14 @@ export function WelcomeSidebarNav({
   return (
     <div className="border-b border-notion-divider">
       {!editorMode ? (
-        <div className="px-5 pb-4 pt-6">
+        <div className="px-5 pb-8 pt-8">
           <BrandLockup size="sidebar" />
         </div>
       ) : null}
       <nav aria-label="主工作区">
-        <div className={[WORKSPACE_SIDEBAR_NAV_STACK, editorMode ? "pt-3" : ""].filter(Boolean).join(" ")}>
+        <div
+          className={[WORKSPACE_SIDEBAR_NAV_STACK, editorMode ? "pt-6" : ""].filter(Boolean).join(" ")}
+        >
           {navItems
             .filter((item) => !("hidden" in item && item.hidden))
             .map((item) => (
@@ -101,7 +103,7 @@ export function WelcomeSidebarNav({
               </button>
             ))}
 
-          <div>
+          <div className="flex flex-col gap-1">
             <button
               type="button"
               disabled={c.busy}
@@ -113,7 +115,7 @@ export function WelcomeSidebarNav({
               <span>热词与记忆</span>
             </button>
             {page === "glossary" ? (
-              <ul className="m-0 list-none flex flex-col gap-0.5 p-0 pt-0.5" aria-label="热词与记忆子工作区">
+              <ul className="m-0 flex list-none flex-col gap-0.5 p-0 pt-1" aria-label="热词与记忆子工作区">
                 {GLOSSARY_WORKSPACE_NAV_ITEMS.map((item) => {
                   const selected = glossaryWorkspaceId === item.id;
                   return (

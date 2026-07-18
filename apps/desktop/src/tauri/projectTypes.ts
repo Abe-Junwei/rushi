@@ -18,6 +18,7 @@ export type SegmentTextStage =
   | "auto_transcribe"
   | "ai_revised"
   | "manual_transcribe"
+  | "first_proof"
   | "finalized";
 
 export type SegmentFinalizeVia = "confirm_edit" | "mark_only";
@@ -52,6 +53,20 @@ export interface FileSummary {
   name: string;
   file_type: string;
   updated_at_ms: number;
+  /** Cached media duration (seconds); null until probed / transcribed. */
+  duration_sec?: number | null;
+  /** Non-placeholder segment count. */
+  segment_count?: number;
+  /** 生稿：尚未一校/定稿。 */
+  draft_count?: number;
+  /** 一校：text_stage = first_proof。 */
+  first_proof_count?: number;
+  /** 定稿：text_stage = finalized。 */
+  finalized_count?: number;
+  /** Import fingerprint size (bytes), when known. */
+  import_source_size?: number | null;
+  /** True when file expects media but path is missing / unresolvable. */
+  media_missing?: boolean;
 }
 
 export interface FileDetail {
@@ -60,6 +75,8 @@ export interface FileDetail {
   name: string;
   file_type: string;
   audio_path: string | null;
+  /** Cached media duration (seconds); filled after probe / peaks / transcribe. */
+  duration_sec?: number | null;
   segments: SegmentDto[];
   created_at_ms: number;
   updated_at_ms: number;

@@ -1,9 +1,8 @@
 //! DB integration tests for split project command modules.
 
-use super::types::FileSummary;
 use super::utils::{
     canonicalize_audio_storage_path, file_detail_from_conn, now_ms, open_db,
-    project_detail_from_conn,
+    project_detail_from_conn, update_file_duration_sec,
 };
 use crate::DbState;
 use rusqlite::params;
@@ -62,26 +61,68 @@ fn create_project_with_file_then_list_and_load() {
     )
     .unwrap();
 
-    let mut stmt = conn
-        .prepare("SELECT id, name, file_type, updated_at_ms FROM files WHERE project_id = ?1")
-        .unwrap();
-    let rows: Vec<FileSummary> = stmt
-        .query_map(params![&project_id], |r| {
-            Ok(FileSummary {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                file_type: r.get(2)?,
-                updated_at_ms: r.get(3)?,
-            })
-        })
-        .unwrap()
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
+    let rows = super::utils::list_file_summaries(&conn, &project_id, None).unwrap();
     assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].segment_count, 0);
+    assert!(!rows[0].media_missing); // no DbState → existence not flagged
 
     let detail = file_detail_from_conn(&conn, &file_id).unwrap();
     assert_eq!(detail.id, file_id);
     assert!(file_detail_from_conn(&conn, &project_id).is_err());
+}
+
+#[test]
+fn list_file_summaries_aggregates_segments_and_duration() {
+    let st = test_state("file_summary_agg");
+    let project_id = Uuid::new_v4().to_string();
+    let file_id = Uuid::new_v4().to_string();
+    let t = now_ms();
+    let conn = open_db(&st).unwrap();
+    conn.execute(
+        "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+        params![&project_id, "Project", t, t],
+    )
+    .unwrap();
+    conn.execute(
+        "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        params![&file_id, &project_id, "audio.wav", "paired", "/tmp/audio.wav", t, t],
+    )
+    .unwrap();
+    update_file_duration_sec(&conn, &file_id, 125.5).unwrap();
+    // content: draft / first_proof / finalized
+    for (uid, idx, kind, stage, text, detail) in [
+        ("a", 0, None, "auto_transcribe", "生稿句", ""),
+        ("b", 1, None, "first_proof", "一校句", ""),
+        ("c", 2, None, "finalized", "定稿句", ""),
+        // ignored: placeholder, empty text, whole-track fallback
+        ("d", 3, Some("placeholder"), "auto_transcribe", "占位", ""),
+        ("e", 4, None, "auto_transcribe", "   ", ""),
+        (
+            "f",
+            5,
+            None,
+            "auto_transcribe",
+            "fallback",
+            "funasr_whole_track_fallback",
+        ),
+    ] {
+        conn.execute(
+            "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, \
+             low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
+             VALUES (?1, ?2, ?3, 0.0, 1.0, ?4, NULL, 0, ?5, ?6, ?7, NULL, '', 0)",
+            params![&file_id, uid, idx, text, detail, kind, stage],
+        )
+        .unwrap();
+    }
+
+    let rows = super::utils::list_file_summaries(&conn, &project_id, None).unwrap();
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0].segment_count, 3);
+    assert_eq!(rows[0].draft_count, 1);
+    assert_eq!(rows[0].first_proof_count, 1);
+    assert_eq!(rows[0].finalized_count, 1);
+    assert!((rows[0].duration_sec.unwrap() - 125.5).abs() < f64::EPSILON);
 }
 
 #[test]

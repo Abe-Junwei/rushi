@@ -9,7 +9,12 @@ import { WORKSPACE_FILE_ROW_CLASS } from "../config/workspaceShellLayout";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import { SegmentContextMenu } from "./SegmentContextMenu";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
+import {
+  formatHubFileAudioMetaLine,
+  type HubFileRowLiveState,
+} from "../utils/projectFileDisplay";
+import { transcribeDeterminateFraction } from "../utils/estimateTranscribeRemainingSecs";
+import { HubFileStageMeter } from "./HubFileStageMeter";
 import {
   buildProjectFileContextMenuItems,
   isProjectFileContextMenuKey,
@@ -19,6 +24,43 @@ import {
 import { formatRecentProjectName } from "./welcomeSidebarFormatters";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { FileSummary } from "../tauri/projectTypes";
+
+function hubFileLiveState(c: ProjectControllerApi, fileId: string): HubFileRowLiveState {
+  const transcribing =
+    c.busy && (c.busyReason === "transcribe" || c.busyReason === "batch_transcribe");
+  if (!transcribing) return { kind: "idle" };
+
+  if (c.batchTranscribeRunning && c.batchQueueItems.length > 0) {
+    const item = c.batchQueueItems.find((q) => q.fileId === fileId);
+    if (!item) return { kind: "idle" };
+    if (item.status === "running") {
+      const progress = c.transcribeProgress;
+      const fraction =
+        progress && progress.windowCount > 1
+          ? transcribeDeterminateFraction(progress.windowIndex, progress.windowCount)
+          : null;
+      return {
+        kind: "transcribing",
+        percent: fraction != null ? Math.round(fraction * 100) : null,
+      };
+    }
+    if (item.status === "pending") return { kind: "queued" };
+    return { kind: "idle" };
+  }
+
+  if (c.currentFileId === fileId) {
+    const progress = c.transcribeProgress;
+    const fraction =
+      progress && progress.windowCount > 1
+        ? transcribeDeterminateFraction(progress.windowIndex, progress.windowCount)
+        : null;
+    return {
+      kind: "transcribing",
+      percent: fraction != null ? Math.round(fraction * 100) : null,
+    };
+  }
+  return { kind: "idle" };
+}
 
 const HUB_FILE_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} text-notion-text-light opacity-0 transition-[color,background-color,opacity] group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40`;
 
@@ -53,6 +95,7 @@ export function ProjectFilesHubFileList({ controller: c, files, highlightFileId,
       <ul className="list-none space-y-1">
         {files.map((f) => {
           const isRenaming = c.renamingProjectFileId === f.id;
+          const live = hubFileLiveState(c, f.id);
 
           return (
             <li key={f.id} data-hub-file-id={f.id}>
@@ -94,7 +137,9 @@ export function ProjectFilesHubFileList({ controller: c, files, highlightFileId,
               ) : (
                 <WorkspaceFileRow
                   name={f.name}
-                  meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
+                  meta={formatHubFileAudioMetaLine(f)}
+                  metaSecondary={<HubFileStageMeter file={f} live={live} />}
+                  metaTone={f.media_missing ? "warning" : "default"}
                   busy={busy}
                   selected={highlightFileId === f.id}
                   onOpen={() => void c.openFile(f.id)}

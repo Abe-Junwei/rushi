@@ -77,7 +77,13 @@ export function ProjectPanel() {
       transcribeSource={c.transcribeSource}
       transcribeVocabularyPreflightLines={c.transcribeVocabularyPreflightLines}
       transcribeCancelling={c.transcribeCancelling}
-      onCancelTranscribe={cancelTranscribe}
+      onCancelTranscribe={
+        c.busyReason === "batch_transcribe"
+          ? () => {
+              void c.cancelBatchTranscribe();
+            }
+          : cancelTranscribe
+      }
       onDismissDiag={dismissTranscribeDiag}
       onOpenEnvironment={openEnvironment}
     />

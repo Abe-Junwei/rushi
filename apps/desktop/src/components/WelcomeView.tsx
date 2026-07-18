@@ -7,7 +7,6 @@ import {
   CONTROL_BTN_PRIMARY_PROMINENT,
   CONTROL_BTN_SECONDARY_PROMINENT,
 } from "../config/controlStyles";
-import { PANEL_TYPOGRAPHY } from "../config/typography";
 import {
   WORKSPACE_HOME_SHELL_PURPOSE,
   WORKSPACE_PAGE_PANEL_CLASS,
@@ -16,9 +15,9 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import { AsrErrorBanner, OnlineSttEnvBanner } from "./ProjectStatusFeedback";
 import { useOnlineSttTopBarPresentation } from "../hooks/useOnlineSttTopBarPresentation";
 import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
-import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { GlossaryPage } from "./GlossaryPage";
+import { WelcomeFileLedger } from "./WelcomeFileLedger";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 import { WorkspaceHomeMainStage } from "./WorkspaceHomeMainStage";
@@ -33,7 +32,6 @@ import {
   type RecentWorkspaceFile,
 } from "../services/lastWorkspace";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
 import { useOnboardingChecklistController } from "../hooks/useOnboardingChecklistController";
 import { WelcomeOnboardingChecklist } from "./WelcomeOnboardingChecklist";
 
@@ -105,14 +103,6 @@ export function WelcomeView({
     () => recentProjectIds.length > 0 && hasScannableWorkspaceFiles(c.projects),
     [recentProjectIds, c.projects],
   );
-
-  const projectNameMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of c.projects) {
-      map.set(p.id, p.name);
-    }
-    return map;
-  }, [c.projects]);
 
   useEffect(() => {
     let cancelled = false;
@@ -240,41 +230,12 @@ export function WelcomeView({
                 />
               ) : null}
 
-              <section className="flex flex-col gap-2" aria-label="最近文件">
-                <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-title font-medium text-notion-text-muted">最近文件</h2>
-                  <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
-                    {loadingRecentFiles ? "…" : `${recentFiles.length} 个文件`}
-                  </span>
-                </div>
-
-                <ul className="space-y-1">
-                  {loadingRecentFiles ? (
-                    <li>
-                      <p className="rounded-md bg-notion-sidebar/55 px-2.5 py-4 text-sm text-notion-text-muted">
-                        正在加载最近文件…
-                      </p>
-                    </li>
-                  ) : recentFiles.length > 0 ? (
-                    recentFiles.map((f) => (
-                      <li key={f.fileId}>
-                        <WorkspaceFileRow
-                          name={f.name}
-                          meta={`${formatProjectFileType(f.fileType)} · ${projectNameMap.get(f.projectId) ?? "未知项目"} · ${formatWorkspaceFileTime(f.updatedAtMs)}`}
-                          busy={c.busy}
-                          onOpen={() => void handleOpenRecentFile(f)}
-                        />
-                      </li>
-                    ))
-                  ) : (
-                    <li>
-                      <p className="rounded-md bg-notion-sidebar/55 px-2.5 py-4 text-sm text-notion-text-muted">
-                        暂无最近文件，请先新建项目或导入内容包。
-                      </p>
-                    </li>
-                  )}
-                </ul>
-              </section>
+              <WelcomeFileLedger
+                files={recentFiles}
+                loading={loadingRecentFiles}
+                busy={c.busy}
+                onOpenFile={(f) => void handleOpenRecentFile(f)}
+              />
             </section>
           </WorkspaceHomeMainStage>
         )}

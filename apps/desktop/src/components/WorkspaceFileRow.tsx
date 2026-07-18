@@ -6,14 +6,19 @@ import { WELCOME_SIDEBAR_FILE_INDENT } from "./welcomeSidebarFormatters";
 
 interface WorkspaceFileRowProps {
   name: string;
-  meta: string;
+  /** Single meta line, or multiple secondary lines under the name. */
+  meta: string | string[];
   busy?: boolean;
   selected?: boolean;
   onOpen: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
   actionSlot?: ReactNode;
+  /** Extra block under meta lines (e.g. Hub stage meter). */
+  metaSecondary?: ReactNode;
   /** sidebar：嵌套于项目下，小字 + 缩进；panel：主舞台列表（默认） */
   variant?: "panel" | "sidebar";
+  /** Optional warning tone for a meta line containing media health alerts. */
+  metaTone?: "default" | "warning";
 }
 
 /**
@@ -30,10 +35,14 @@ export function WorkspaceFileRow({
   onOpen,
   onContextMenu,
   actionSlot,
+  metaSecondary,
   variant = "panel",
+  metaTone = "default",
 }: WorkspaceFileRowProps) {
   const isSidebar = variant === "sidebar";
   const [rowHovered, setRowHovered] = useState(false);
+  const metaLines = Array.isArray(meta) ? meta : [meta];
+  const metaColor = isSidebar ? "text-notion-text-light" : "text-notion-text-muted";
 
   return (
     <div
@@ -69,16 +78,19 @@ export function WorkspaceFileRow({
                 : "text-sm font-medium text-notion-text",
             ].join(" ")}
           />
-          <span
-            className={[
-              "block truncate",
-              isSidebar
-                ? "text-label leading-4 text-notion-text-light"
-                : `${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`,
-            ].join(" ")}
-          >
-            {meta}
-          </span>
+          {metaLines.map((line, i) => (
+            <span
+              key={`${i}-${line}`}
+              className={[
+                "block truncate",
+                isSidebar ? "text-label leading-4" : PANEL_TYPOGRAPHY.meta,
+                metaTone === "warning" && i === 0 ? "text-zen-cinnabar" : metaColor,
+              ].join(" ")}
+            >
+              {line}
+            </span>
+          ))}
+          {metaSecondary}
         </span>
       </button>
       {actionSlot ? <div className="flex shrink-0 items-center pr-5">{actionSlot}</div> : null}

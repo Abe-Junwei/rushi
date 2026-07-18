@@ -4,7 +4,7 @@ use super::project_storage::{
     relocate_file_storage_between_projects,
 };
 use super::types::{FileDetail, FileSummary};
-use super::utils::{file_detail_from_conn, now_ms, open_db};
+use super::utils::{file_detail_from_conn, list_file_summaries, now_ms, open_db};
 use crate::DbState;
 use rusqlite::{params, Error};
 use serde::Serialize;
@@ -34,32 +34,24 @@ pub struct FilePlacementResult {
 
 #[tauri::command]
 pub fn list_files(state: State<DbState>, project_id: String) -> Result<Vec<FileSummary>, String> {
-    let conn = open_db(state.deref())?;
-    let mut stmt = conn
-        .prepare(
-            "SELECT id, name, file_type, updated_at_ms FROM files WHERE project_id = ?1 ORDER BY created_at_ms ASC",
-        )
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map(params![project_id], |r| {
-            Ok(FileSummary {
-                id: r.get(0)?,
-                name: r.get(1)?,
-                file_type: r.get(2)?,
-                updated_at_ms: r.get(3)?,
-            })
-        })
-        .map_err(|e| e.to_string())?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push(row.map_err(|e| e.to_string())?);
-    }
-    Ok(out)
+    let st = state.deref();
+    let conn = open_db(st)?;
+    list_file_summaries(&conn, &project_id, Some(st))
 }
 
 #[tauri::command]
 pub fn load_file(state: State<DbState>, file_id: String) -> Result<FileDetail, String> {
-    let conn = open_db(state.deref())?;
+    let st = state.deref();
+    let conn = open_db(st)?;
+    let detail = file_detail_from_conn(&conn, &file_id)?;
+    drop(conn);
+    if let Some(ref raw) = detail.audio_path {
+        if let Ok(path) = crate::media_base_dir::resolve_audio_path(st, raw) {
+            crate::project::utils::persist_probed_file_duration(st, &file_id, &path);
+        }
+    }
+    // Re-read so Hub callers / openFile see freshly probed duration_sec.
+    let conn = open_db(st)?;
     file_detail_from_conn(&conn, &file_id)
 }
 

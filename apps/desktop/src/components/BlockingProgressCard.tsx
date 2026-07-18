@@ -6,7 +6,9 @@ import { FLAT_SHELL_ELEVATION_CLASS, OVERLAY_SCRIM_LAYER } from "../config/overl
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import { TRANSCRIBE_PREFLIGHT_TYPO as T } from "./transcribePreflightTypography";
+import { CspProgressFill } from "./CspProgressFill";
 import {
+  PANEL_PROGRESS_FILL_CLASS,
   PANEL_PROGRESS_INDETERMINATE_CLASS,
   PANEL_PROGRESS_TRACK_CLASS,
 } from "./panelProgressStyles";
@@ -22,6 +24,8 @@ type Props = {
   onCancel?: () => void;
   cancelling?: boolean;
   cancellingLabel?: string;
+  /** 0–1 when determinate; omit / null for indeterminate bar. */
+  progressValue?: number | null;
 };
 
 function ProgressCardBody({
@@ -34,10 +38,15 @@ function ProgressCardBody({
   onCancel,
   cancelling,
   cancellingLabel,
+  progressValue = null,
   cardClassName,
 }: Omit<Props, "variant"> & { cardClassName?: string }) {
   const compact = density === "compact";
   const stopLabel = cancelling ? (cancellingLabel ?? "正在停止…") : "停止转写";
+  const determinate =
+    progressValue != null && Number.isFinite(progressValue)
+      ? Math.min(1, Math.max(0, progressValue))
+      : null;
 
   return (
     <div
@@ -74,7 +83,21 @@ function ProgressCardBody({
 
       <div className={T.progressFooter}>
         <div className={`relative w-full ${PANEL_PROGRESS_TRACK_CLASS}`}>
-          <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
+          {determinate != null ? (
+            <div
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(determinate * 100)}
+            >
+              <CspProgressFill
+                percent={Math.round(determinate * 100)}
+                className={PANEL_PROGRESS_FILL_CLASS}
+              />
+            </div>
+          ) : (
+            <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
+          )}
         </div>
         <p className={T.progressElapsed}>已等待 {elapsedSec}s</p>
         {onCancel ? (
@@ -105,6 +128,7 @@ export function BlockingProgressCard({
   onCancel,
   cancelling,
   cancellingLabel,
+  progressValue = null,
 }: Props) {
   const cardClassName =
     variant === "banner"
@@ -122,6 +146,7 @@ export function BlockingProgressCard({
       onCancel={onCancel}
       cancelling={cancelling}
       cancellingLabel={cancellingLabel}
+      progressValue={progressValue}
       cardClassName={cardClassName}
     />
   );

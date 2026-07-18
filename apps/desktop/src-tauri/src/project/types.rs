@@ -70,6 +70,20 @@ pub struct FileSummary {
     pub name: String,
     pub file_type: String,
     pub updated_at_ms: i64,
+    /// Cached media duration (seconds); null until probed / transcribed.
+    pub duration_sec: Option<f64>,
+    /// Non-placeholder segment count.
+    pub segment_count: i64,
+    /// 生稿：非 placeholder，且尚未一校/定稿（含机转 / AI改 / 手改）。
+    pub draft_count: i64,
+    /// 一校：text_stage = first_proof。
+    pub first_proof_count: i64,
+    /// 定稿：text_stage = finalized。
+    pub finalized_count: i64,
+    /// Display media size (bytes): import provenance, else on-disk media length.
+    pub import_source_size: Option<i64>,
+    /// True when file expects media but path is missing / unresolvable.
+    pub media_missing: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -79,6 +93,8 @@ pub struct FileDetail {
     pub name: String,
     pub file_type: String,
     pub audio_path: Option<String>,
+    /// Cached media duration (seconds); filled after probe / peaks / transcribe.
+    pub duration_sec: Option<f64>,
     pub segments: Vec<SegmentDto>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,

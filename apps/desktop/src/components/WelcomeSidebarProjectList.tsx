@@ -30,6 +30,7 @@ import {
   WELCOME_PROJECT_ROW_ICON,
   WELCOME_SIDEBAR_PROJECT_META,
   WELCOME_SIDEBAR_PROJECT_NAME,
+  WELCOME_SIDEBAR_SECTION_INSET_X,
 } from "./welcomeSidebarFormatters";
 
 type CtxMenu =
@@ -96,8 +97,8 @@ export function WelcomeSidebarProjectList({
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-4">
-      <div className="mb-2 flex items-baseline justify-between gap-2 px-5">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-6">
+      <div className={`mb-3 flex items-baseline justify-between gap-2 ${WELCOME_SIDEBAR_SECTION_INSET_X}`}>
         <h2 className={`m-0 ${PANEL_TYPOGRAPHY.badge} text-notion-text-muted`}>项目列表</h2>
         {projects.length > 0 ? (
           <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-light`}>

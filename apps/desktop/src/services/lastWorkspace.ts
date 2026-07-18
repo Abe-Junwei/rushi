@@ -1,5 +1,5 @@
 import * as fileApi from "../tauri/fileApi";
-import type { ProjectSummary } from "../tauri/projectApi";
+import type { FileSummary, ProjectSummary } from "../tauri/projectApi";
 
 export const LAST_WORKSPACE_STORAGE_KEY = "rushi:last-workspace:v1";
 
@@ -12,6 +12,8 @@ export type RecentWorkspaceFile = WorkspaceFileTarget & {
   name: string;
   fileType: string;
   updatedAtMs: number;
+  /** Hub-aligned FileSummary for meta + stage meter (from list_files). */
+  summary: FileSummary;
 };
 
 const RECENT_PROJECT_SCAN_LIMIT = 20;
@@ -65,13 +67,16 @@ export async function listRecentWorkspaceFiles(
   const groups = await Promise.all(
     projectIds.map(async (projectId) => {
       const files = await fileApi.listFiles(projectId);
-      return files.map((f) => ({
-        projectId,
-        fileId: f.id,
-        name: f.name,
-        fileType: f.file_type,
-        updatedAtMs: f.updated_at_ms,
-      }));
+      return files.map(
+        (f): RecentWorkspaceFile => ({
+          projectId,
+          fileId: f.id,
+          name: f.name,
+          fileType: f.file_type,
+          updatedAtMs: f.updated_at_ms,
+          summary: f,
+        }),
+      );
     }),
   );
   return groups

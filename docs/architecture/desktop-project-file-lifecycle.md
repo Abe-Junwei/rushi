@@ -68,6 +68,20 @@ FileHub / Editor → closeProject → Welcome
 - 重命名：inline 编辑 → `rename_file`（事务）
 - 删除：`DeleteProjectFileConfirmDialog` → `delete_file`（事务 + 清理音频副本）
 - 控制器：`useProjectFileMutationController`
+- **列表行次要信息**（`FileSummary` / `ProjectFilesHubFileList`）：
+  - 音频行：类型（媒体一律「音频」、文本「文本」；语段进度见状态条）· 时长 · 体积（`import_source_size`，缺则回退磁盘媒体大小并回填）· 缺媒体 · 更新时间
+  - 进度状态条（`HubFileStageMeter`）：色块比例 + 下方完整 `生稿/一校/定稿` 图例（有效语段 = 非 placeholder、非 whole-track fallback、正文非空）；空态「未转录/无语段」
+  - 时长写入：import / `load_file` / transcribe probe 回写（禁止第二套探测）
+- **欢迎页最近文件**（`WelcomeFileLedger`）：ledger 行布局（左标题+meta · 右图例+细轨，`variant="ledger"`）；tab/行同 `px-6`、tab `gap-8`、行 `py-8`；Hero / CTA 与视觉 token 不变；「所有文件 / 星标」tab 仅占位不可用；侧栏导航/底栏纵向间距对齐同一节奏
+- **转写忙碌 UI**：多窗 → `BlockingProgressCard` 确定条（`window_index/window_count`）+ 可选「约剩余」；单窗/在线无窗 → 不定条；**禁止**超时公式当 ETA
+
+### 能力—UI（Hub 转写忙态）
+
+| 信号 | 有确定条 | 无假 ETA | 约剩余 |
+|------|----------|----------|--------|
+| 本地多窗 `window_count>1` | ✅ `i/n` | ✅ | 暖机后可选 |
+| 本地单窗 / 排队加载 | ❌ 不定条 | ✅ | ❌ |
+| 在线无窗进度 | ❌ 不定条 | ✅ | ❌ |
 
 ## 项目 Hub CRUD 与元信息（Phase 10）
 

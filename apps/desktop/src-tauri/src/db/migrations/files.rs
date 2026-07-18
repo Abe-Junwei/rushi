@@ -33,6 +33,18 @@ pub(super) fn migrate_files_import_provenance(conn: &Connection) -> rusqlite::Re
     Ok(())
 }
 
+/// Hub list duration cache — written on import / open / transcribe probe.
+pub(super) fn migrate_files_duration_sec(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "files")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "duration_sec") {
+        conn.execute("ALTER TABLE files ADD COLUMN duration_sec REAL", [])?;
+    }
+    Ok(())
+}
+
 /// R3 决策：`files.name` 加全局 UNIQUE 索引防并发写入产生重名（历史仅靠应用层
 /// `unique_file_name` advisory 检查，存在竞态窗口）。若历史数据已有重名，迁移时
 /// 保留每组中最早创建的一条，其余按 Finder 风格追加 ` (2)` 等后缀去重，并写入

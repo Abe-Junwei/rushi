@@ -13,7 +13,9 @@ use super::import_parse::{parse_srt, parse_txt};
 use super::project_create_cmd::import_text_to_project_inner;
 use super::segment_uid::segment_uid_or_new;
 use super::types::{FileSummary, ProjectDetail, SegmentDto};
-use super::utils::{file_detail_from_conn, now_ms, open_db, project_detail_from_conn};
+#[cfg(test)]
+use super::utils::file_detail_from_conn;
+use super::utils::{now_ms, open_db, project_detail_from_conn};
 use crate::DbState;
 
 #[derive(Debug, serde::Serialize)]
@@ -70,6 +72,13 @@ fn list_stem_attach_candidates(
                 name: r.get(1)?,
                 file_type: r.get(2)?,
                 updated_at_ms: r.get(3)?,
+                duration_sec: None,
+                segment_count: 0,
+                draft_count: 0,
+                first_proof_count: 0,
+                finalized_count: 0,
+                import_source_size: None,
+                media_missing: false,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -174,13 +183,11 @@ pub(crate) fn import_transcript_to_file_inner(
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    let detail = file_detail_from_conn(&conn, file_id)?;
-    Ok(FileSummary {
-        id: detail.id,
-        name: detail.name,
-        file_type: detail.file_type,
-        updated_at_ms: detail.updated_at_ms,
-    })
+    let summaries = super::utils::list_file_summaries(&conn, &file_project_id, Some(st))?;
+    summaries
+        .into_iter()
+        .find(|f| f.id == file_id)
+        .ok_or_else(|| format!("文件不存在: {file_id}"))
 }
 
 pub(crate) fn import_transcript_to_project_inner(

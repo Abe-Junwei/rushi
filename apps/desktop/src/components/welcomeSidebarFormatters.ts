@@ -8,8 +8,10 @@ export const WELCOME_SIDEBAR_PROJECT_NAME =
   "block truncate text-sm font-semibold leading-5 text-notion-text";
 export const WELCOME_SIDEBAR_PROJECT_META =
   "mt-0.5 block truncate text-label leading-4 text-notion-text-muted";
-/** 侧栏嵌套文件行左内边距：px-5 + icon(28px) + gap-2(8px) */
+/** 侧栏嵌套文件行左内边距：与项目行 px-5 + icon(28px) + gap-2(8px) 对齐 */
 export const WELCOME_SIDEBAR_FILE_INDENT = "pl-14 pr-5";
+/** 侧栏项目区水平内边距（与导航 px-5 对齐） */
+export const WELCOME_SIDEBAR_SECTION_INSET_X = "px-5";
 export const WELCOME_PROJECT_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} hover:bg-notion-sidebar-active`;
 
 export function sortWelcomeProjects(list: ProjectSummary[]): ProjectSummary[] {

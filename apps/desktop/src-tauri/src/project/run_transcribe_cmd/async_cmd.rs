@@ -14,7 +14,9 @@ use super::super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
 use super::super::types::RunTranscribeOutcome;
-use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
+use super::super::utils::{
+    append_desktop_log_line, file_detail_from_conn, open_db, update_file_duration_sec,
+};
 use super::helpers::{apply_windowed_warning, record_transcribe_err, TranscribeInFlightGuard};
 use super::save::save_transcribe_segments;
 use crate::DbState;
@@ -63,6 +65,11 @@ pub async fn project_transcribe_async_start(
         return Err("项目音频文件缺失".to_string());
     }
     let audio_duration_sec = probe_audio_duration_sec(&audio_path);
+    if let Some(dur) = audio_duration_sec {
+        if let Ok(conn) = open_db(&st) {
+            let _ = update_file_duration_sec(&conn, &file_id, dur);
+        }
+    }
     let base = asr_base_url
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
@@ -174,6 +181,11 @@ pub async fn project_transcribe_async_finalize(
     };
     let audio_path = crate::media_base_dir::resolve_audio_path(&st, &audio_path)?;
     let audio_duration_sec = probe_audio_duration_sec(&audio_path);
+    if let Some(dur) = audio_duration_sec {
+        if let Ok(conn) = open_db(&st) {
+            let _ = update_file_duration_sec(&conn, &file_id, dur);
+        }
+    }
 
     let engine = status
         .get("engine")
