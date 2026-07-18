@@ -54,7 +54,7 @@ function mockSearch(): WelcomeSearchController {
     openFileFromSearch: vi.fn(),
     navigateToContentHit: vi.fn(),
     activateNavItem: vi.fn(),
-  } as WelcomeSearchController;
+  };
 }
 
 describe("WelcomeFileLedger", () => {

@@ -59,9 +59,11 @@ async function openEditorWorkspace(page: import("@playwright/test").Page): Promi
     .getByRole("button", { name: "稍后填写" })
     .dispatchEvent("click");
 
-  await expect(page.locator('[data-purpose="project-files-hub-page"]')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('[data-purpose="workspace-project-library"]')).toBeVisible({
+    timeout: 20_000,
+  });
   await page
-    .locator('[data-purpose="project-files-hub-page"] button[title="未命名项目"]')
+    .locator('[data-purpose="workspace-project-library"] button[title="未命名项目"]')
     .dispatchEvent("click");
 
   await expect(page.locator('[data-purpose="editor-workspace"]')).toBeVisible({ timeout: 20_000 });

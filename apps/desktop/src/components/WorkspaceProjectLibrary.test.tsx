@@ -110,7 +110,7 @@ describe("WorkspaceProjectLibrary", () => {
     const deleteButtons = screen.getAllByRole("button", { name: "删除项目" });
     expect(infoButtons).toHaveLength(2);
     expect(deleteButtons).toHaveLength(2);
-    fireEvent.click(deleteButtons[0]!);
+    fireEvent.click(deleteButtons[0]);
     expect(requestDelete).toHaveBeenCalledWith("p1", "项目甲");
   });
 

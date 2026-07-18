@@ -45,11 +45,11 @@ test.describe("desktop core journey smoke (mocked Tauri)", () => {
       timeout: 10_000,
     });
 
-    await expect(page.locator('[data-purpose="project-files-hub-page"]')).toBeVisible({
+    await expect(page.locator('[data-purpose="workspace-project-library"]')).toBeVisible({
       timeout: 20_000,
     });
     const fileOpenButton = page.locator(
-      '[data-purpose="project-files-hub-page"] button[title="未命名项目"]',
+      '[data-purpose="workspace-project-library"] button[title="未命名项目"]',
     );
     await expect(fileOpenButton).toBeVisible();
     await fileOpenButton.dispatchEvent("click");

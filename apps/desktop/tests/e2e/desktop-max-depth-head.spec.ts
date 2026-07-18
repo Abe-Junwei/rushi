@@ -20,9 +20,11 @@ async function openEditorWorkspace(page: import("@playwright/test").Page): Promi
     .locator('[data-panel-id="project-metadata-dialog-v1"]')
     .getByRole("button", { name: "稍后填写" })
     .dispatchEvent("click");
-  await expect(page.locator('[data-purpose="project-files-hub-page"]')).toBeVisible({ timeout: 20_000 });
+  await expect(page.locator('[data-purpose="workspace-project-library"]')).toBeVisible({
+    timeout: 20_000,
+  });
   await page
-    .locator('[data-purpose="project-files-hub-page"] button[title="未命名项目"]')
+    .locator('[data-purpose="workspace-project-library"] button[title="未命名项目"]')
     .dispatchEvent("click");
   await expect(page.locator('[data-purpose="editor-workspace"]')).toBeVisible({ timeout: 20_000 });
 }
@@ -58,7 +60,7 @@ test.describe("editor maximum update depth guard", () => {
     expect(maxDepth).toEqual([]);
   });
 
-  test("does not loop on files hub", async ({ page }) => {
+  test("does not loop on project library", async ({ page }) => {
     const maxDepth: string[] = [];
     page.on("console", (msg) => {
       if (msg.text().includes("Maximum update depth exceeded")) maxDepth.push(msg.text());
@@ -68,7 +70,9 @@ test.describe("editor maximum update depth guard", () => {
     await page.locator('[data-purpose="welcome-actions"]').click();
     await page.locator('[data-panel-id="create-project-modal-v2"]').getByRole("button", { name: "创建空项目" }).dispatchEvent("click");
     await page.locator('[data-panel-id="project-metadata-dialog-v1"]').getByRole("button", { name: "稍后填写" }).dispatchEvent("click");
-    await expect(page.locator('[data-purpose="project-files-hub-page"]')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('[data-purpose="workspace-project-library"]')).toBeVisible({
+      timeout: 20_000,
+    });
     await page.waitForTimeout(300);
     expect(maxDepth).toEqual([]);
   });
