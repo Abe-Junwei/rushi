@@ -201,7 +201,32 @@ pub fn attach_macos_app_menu(app: &tauri::App) -> Result<(), Box<dyn std::error:
             &PredefinedMenuItem::quit(app, Some("退出如是我闻"))?,
         ],
     )?;
-    let menu = Menu::with_items(app, &[&app_submenu])?;
+    // WKWebView routes ⌘C/V/X/A (and undo/redo) through the native Edit menu.
+    // Without these PredefinedMenuItems, system clipboard shortcuts break in inputs.
+    let edit_undo = PredefinedMenuItem::undo(app, Some("撤销"))?;
+    let edit_redo = PredefinedMenuItem::redo(app, Some("重做"))?;
+    let edit_sep_1 = PredefinedMenuItem::separator(app)?;
+    let edit_cut = PredefinedMenuItem::cut(app, Some("剪切"))?;
+    let edit_copy = PredefinedMenuItem::copy(app, Some("复制"))?;
+    let edit_paste = PredefinedMenuItem::paste(app, Some("粘贴"))?;
+    let edit_sep_2 = PredefinedMenuItem::separator(app)?;
+    let edit_select_all = PredefinedMenuItem::select_all(app, Some("全选"))?;
+    let edit_submenu = Submenu::with_items(
+        app,
+        "编辑",
+        true,
+        &[
+            &edit_undo,
+            &edit_redo,
+            &edit_sep_1,
+            &edit_cut,
+            &edit_copy,
+            &edit_paste,
+            &edit_sep_2,
+            &edit_select_all,
+        ],
+    )?;
+    let menu = Menu::with_items(app, &[&app_submenu, &edit_submenu])?;
     app.set_menu(menu)?;
     Ok(())
 }
