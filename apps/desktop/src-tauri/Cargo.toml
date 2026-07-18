@@ -1,6 +1,6 @@
 [package]
 name = "rushi-desktop"
-version = "1.0.0"
+version = "1.0.1"
 description = "如是我闻桌面壳（Tauri）"
 authors = ["沂南灵创技术服务中心"]
 edition = "2021"
