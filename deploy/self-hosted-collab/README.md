@@ -9,6 +9,11 @@
 - 编辑部
 - 工作室
 
+**画像说明**：此包默认对齐 **`cloud_vps`**。局域网 **`lan`** 与「本机 ASR、协作节点不跑转写」见仓库文档  
+[`docs/architecture/collab-deployment-profiles.md`](../../docs/architecture/collab-deployment-profiles.md) ·  
+[`docs/execution/specs/collab-dual-deploy-local-asr-plan.md`](../../docs/execution/specs/collab-dual-deploy-local-asr-plan.md)。  
+实施期将在本目录增加 `.env.lan` / Compose 覆盖，而非另起第二套业务服务。
+
 当前状态：
 - 这是部署骨架，不代表仓库里已经包含可运行的协作服务镜像。
 - `RUSHI_COLLAB_IMAGE` 仍是占位值，待协作服务实现后替换成真实镜像，或改为本地构建。
@@ -88,9 +93,39 @@ bash scripts/backup.sh
 
 可通过 `.env` 中的 `RUSHI_BACKUP_DIR` 覆盖。
 
+## 局域网 Local-CA（COL-DEPLOY-B）
+
+公网画像用 Caddy ACME 即可。局域网**不要**指望 Let's Encrypt：
+
+1. Caddyfile 对内网 IP / 内网名使用 **`tls internal`**（Caddy 内置 Local CA）。  
+2. 将 Caddy data 卷持久化；启动后导出根证书，例如：
+
+```bash
+docker cp rushi-caddy:/data/caddy/pki/authorities/local/root.crt ./rushi_lan_ca.crt
+```
+
+3. 成员机器**一次性信任**该根证书：  
+   - Windows：安装到「受信任的根证书颁发机构」  
+   - macOS：钥匙串 → 始终信任  
+4. 桌面端连接 **`https://<LAN_IP>`**（WSS 同源），避免明文 `ws://` 被 WebView 拦截。  
+5. 可选降级：仅 LAN 预设允许自签/HTTP 调试开关（见 Phase 2 吸收记录）；**默认不推荐**。
+
+示例 Caddy 片段：
+
+```caddy
+{$RUSHI_LAN_IP} {
+  tls internal
+  request_body { max_size 512MB }
+  reverse_proxy rushi-collab:{$RUSHI_COLLAB_APP_PORT}
+}
+```
+
+详情：[`collab-dual-deploy-local-asr-plan.md`](../../docs/execution/specs/collab-dual-deploy-local-asr-plan.md) §4 · [`phase-2-external-review-absorb-2026-07-18.md`](../../docs/execution/specs/phase-2-external-review-absorb-2026-07-18.md)。
+
 ## 下一步
 当协作服务镜像就绪后，可继续补：
 1. 升级说明
 2. 回滚说明
 3. 健康检查与监控
 4. 自动备份定时任务
+5. `Caddyfile.lan.example`（`tls internal`）与证书导出脚本

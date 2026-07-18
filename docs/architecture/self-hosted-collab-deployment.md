@@ -1,5 +1,7 @@
 # 自购协作服务器：单节点部署草案
 
+> **双画像**：本文件侧重 **`cloud_vps`（公有云/自购 VPS）**。局域网画像 **`lan`** 与共用约束见 [`collab-deployment-profiles.md`](./collab-deployment-profiles.md)；完整后续方案见 [`collab-dual-deploy-local-asr-plan.md`](../execution/specs/collab-dual-deploy-local-asr-plan.md)（**ASR 本机、不上云**）。
+
 ## 目标
 为 Rushi 提供一种不依赖官方托管、由协作用户自行购买云服务器并部署的单节点协作方案。
 

@@ -2,7 +2,8 @@
 
 > **状态**：已落地（2026-06）  
 > **真源**：`apps/desktop/src/utils/editorShortcutRegistry.ts`  
-> **关联**：`segment-text-row-model-plan.md` · 波形/语段 mutation 链路
+> **关联**：`segment-text-row-model-plan.md` · 波形/语段 mutation 链路  
+> **翻案注记（2026-07-18）**：§4「不做用户自定义绑定」已由 [`custom-keyboard-shortcuts-research.md`](./custom-keyboard-shortcuts-research.md) 翻案；registry / 分发架构仍以本文为准。
 
 ---
 

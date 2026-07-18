@@ -103,4 +103,5 @@ Rushi 当前已具备稳定的本地桌面工作流：
 ## 后续
 
 - 执行顺序以 [../execution/plans/collaboration-foundation-plan.md](../execution/plans/collaboration-foundation-plan.md) 为准。
-- 若未来改为 SaaS 托管优先、全文 CRDT 优先，或放弃本地真源优先级，必须新增 ADR 取代本记录。
+- 单节点自建的运维拆分（**云 VPS / 局域网**）与「ASR 本机不上云」见 [../execution/specs/collab-dual-deploy-local-asr-plan.md](../execution/specs/collab-dual-deploy-local-asr-plan.md)；阶段排期见 [../execution/plans/rushi-phase-2-roadmap.md](../execution/plans/rushi-phase-2-roadmap.md)；不改变本 ADR 的真源与模式决策。
+- 若未来改为 SaaS 托管优先、全文 CRDT 优先、云端 ASR 默认，或放弃本地真源优先级，必须新增 ADR 取代本记录。

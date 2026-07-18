@@ -3,7 +3,8 @@
 > **状态**：调研 ✅ · 待编码确认  
 > **关联 Plan**：Cursor plan `Import audio normalize`  
 > **样例证据**：项目内 `a8eaa92d-….wav`（3h40m / 16 kHz mono PCM / 423MB）；Symphonia `riff: chunk length exceeds parent`；`afinfo`/`ffprobe`/`afconvert` 可读  
-> **门禁**：本文签收前不得写业务实现（spike 除外）
+> **门禁**：本文签收前不得写业务实现（spike 除外）  
+> **扩展**：响度/降噪/工作台/进项目时序见后续 [`av-preprocess-import-flow-research.md`](./av-preprocess-import-flow-research.md)（AV-PRE；容器修复仍属 L-prep-0）
 
 ---
 

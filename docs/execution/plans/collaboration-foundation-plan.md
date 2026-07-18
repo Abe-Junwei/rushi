@@ -4,6 +4,14 @@
 
 本文件用于协作 **Phase 1–7 的细节**（API、表、部署边界）。
 
+**部署双画像（云自建 + 局域网，本机 ASR）**：详见  
+[`collab-dual-deploy-local-asr-plan.md`](../specs/collab-dual-deploy-local-asr-plan.md) ·  
+[`collab-dual-deploy-local-asr-research.md`](../specs/collab-dual-deploy-local-asr-research.md) ·  
+[`collab-deployment-profiles.md`](../../architecture/collab-deployment-profiles.md)。  
+Phase 1–7 顺序不变；画像签收挂在 **C7 / COL-DEPLOY**。
+
+**第二阶段总图**：与媒体预处理/基础剪辑一并排期见 [`rushi-phase-2-roadmap.md`](./rushi-phase-2-roadmap.md)（Wave C/D）。
+
 **排期真源**：[统一执行路线图](./rushi-execution-roadmap.md)（默认 R6–R8 在单机 R1–R5 之后）。
 
 若与更早的口头讨论冲突，以本文件、路线图和相关 ADR 为准。

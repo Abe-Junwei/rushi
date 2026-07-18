@@ -39,14 +39,22 @@
 - [`../execution/specs/r3g-b-qwen3-asr-sku-spike-research.md`](../execution/specs/r3g-b-qwen3-asr-sku-spike-research.md) — R3g-B Qwen3 SKU spike（Go/No-go）。
 - [`../execution/specs/r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — R3f：本机 ASR 一键环境准备（内置侧车编排）。
 - [`../execution/specs/r3g-local-asr-model-catalog-acceptance.md`](../execution/specs/r3g-local-asr-model-catalog-acceptance.md) — R3g：本机 FunASR 模型目录（v1 三 SKU）。
-- [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§1.7 产品决策、§4.1 R3/R3t、§8.2 待拍板）
+- [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§1.7 产品决策、§4.1 R3/R3t、§8.2 待拍板；§6 指向第二阶段）
+- [`../execution/plans/rushi-phase-2-roadmap.md`](../execution/plans/rushi-phase-2-roadmap.md) — **第二阶段排期真源**（媒体 AV-PRE/EDIT-BASIC · 协作 · 双部署）
+- [`../execution/specs/phase-1-2-tech-stack-paths-research.md`](../execution/specs/phase-1-2-tech-stack-paths-research.md) — 第一/二阶段技术路径、技术栈、业内坑与规避
+- [`media-timeline-interval-mapping.md`](./media-timeline-interval-mapping.md) — Source/Working 区间映射（剪辑后语段时间真源）
+- [`../execution/specs/phase-2-external-review-absorb-2026-07-18.md`](../execution/specs/phase-2-external-review-absorb-2026-07-18.md) — 第二阶段外部评估吸收记录
+- [`../execution/specs/phase-2-roadmap-audit-2026-07-18.md`](../execution/specs/phase-2-roadmap-audit-2026-07-18.md) — 第二阶段路线图排期/切片合理性审核
 - [`../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md`](../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) — ASR 引擎方案 A（FunASR 先行 + Sherpa 门控）
 - [`../execution/specs/rushi-local-runtime-catalog-remediation-plan.md`](../execution/specs/rushi-local-runtime-catalog-remediation-plan.md) — **R3h 实施真源**：LRC 整改方案（v1.1）。
 - [`../execution/specs/rushi-local-runtime-catalog-remediation-plan-review.md`](../execution/specs/rushi-local-runtime-catalog-remediation-plan-review.md) — R3h 方案审查报告（已吸收至 v1.1）。
 - [`asr-pyinstaller-collect-notes.md`](./asr-pyinstaller-collect-notes.md) — PyInstaller `collect-submodules` 取舍与 nightly 构建说明。
 - [`collaboration-storage-schema.md`](./collaboration-storage-schema.md) — 联机协作版服务端真源、PostgreSQL schema、事件流与本地缓存/项目包分层草案。
 - [`collaboration-review-domain-api.md`](./collaboration-review-domain-api.md) — 批注、审阅、建议修改、活动流与 Word 导出的领域模型和 API 草案。
+- [`collab-deployment-profiles.md`](./collab-deployment-profiles.md) — 协作部署双画像（`cloud_vps` / `lan`）与本机 ASR 边界。
 - [`self-hosted-collab-deployment.md`](./self-hosted-collab-deployment.md) — 用户自购协作服务器时的单节点部署建议、职责边界、备份与安全基线。
+- [`../execution/specs/collab-dual-deploy-local-asr-plan.md`](../execution/specs/collab-dual-deploy-local-asr-plan.md) — **后续功能**：双部署完整方案（调研 [`collab-dual-deploy-local-asr-research.md`](../execution/specs/collab-dual-deploy-local-asr-research.md)）。
+- [`../execution/specs/av-preprocess-import-flow-research.md`](../execution/specs/av-preprocess-import-flow-research.md) — **后续功能调研**：音视频预处理 + **基础必要剪辑**（AV-PRE / EDIT-BASIC）。
 - [`../../deploy/self-hosted-collab/README.md`](../../deploy/self-hosted-collab/README.md) — 单节点协作部署包目录、启动步骤与备份说明。
 - [`../execution/specs/user-library-location-sync-research.md`](../execution/specs/user-library-location-sync-research.md) — **已采纳**：用户库位置与跨设备同步（Zotero 式二分）；薄片 1 [`intent`](../execution/specs/user-library-location-intent.md) · [`acceptance`](../execution/specs/user-library-location-acceptance.md)；薄片 2 [`intent`](../execution/specs/user-library-location-slice2-intent.md) · [`acceptance`](../execution/specs/user-library-location-slice2-acceptance.md)；薄片 3 换机/On-Demand [`intent`](../execution/specs/user-library-location-slice3-intent.md) · [`acceptance`](../execution/specs/user-library-location-slice3-acceptance.md)。见 [`desktop-project-file-lifecycle.md`](./desktop-project-file-lifecycle.md)「媒体基准与相对路径」。
 

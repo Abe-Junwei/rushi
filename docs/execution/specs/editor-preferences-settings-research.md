@@ -52,7 +52,7 @@
 | **P1** | `rushi.p1.waveformHeightPx` 等波形/字号 **默认值** | 新装首启体验 | 只能拖出当前值 | 竞品多在 Settings 给默认，拖拽仍覆盖 |
 | **P2** | `WAVEFORM_BACKGROUND_PEAKS_ENABLED` 等 | 后台 peaks / 播放中热切换 | 文档仍写 localStorage | **编译期常量**，非用户 pref；需文档修正或刻意不做 UI |
 | **P2** | 段边界 snap | Shift 吸附 | spec 曾提「设置页开关」 | 当前仅 modifier，无持久开关 |
-| **—** | 快捷键自定义 | 改绑定 | — | [`editor-keyboard-shortcuts-research.md`](./editor-keyboard-shortcuts-research.md) **明确不做** |
+| **—** | 快捷键自定义 | 改绑定 | — | 原「明确不做」；**2026-07-18 翻案** → [`custom-keyboard-shortcuts-research.md`](./custom-keyboard-shortcuts-research.md) |
 
 ### 2.4 Profile 导出缺口
 

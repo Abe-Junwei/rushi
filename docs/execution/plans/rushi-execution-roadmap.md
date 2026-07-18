@@ -8,7 +8,7 @@
 |--------|-----|
 | 基线日期 | 2026-05-25 |
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
-| 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
+| 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；**第二阶段**见 [`rushi-phase-2-roadmap.md`](./rushi-phase-2-roadmap.md)（非 v1，约 10～16w） |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
 | 最近对照 | **2026-06-19**：**P2 T-010 ✅**（`9612aae` · guard **0**）· **§10.4 v1.1+ ✅** · **ACC-STT-IFLYTEK ✅** · Release **v0.1.1**（mac/linux）；下一刀 → **§10.5 P3 Win 资产 / CLN-066** |
 
@@ -868,19 +868,28 @@ React 预览 UI
 
 ---
 
-## 6. 远期阶段（2026 Q4 起，**非个人 v1**）
+## 6. 第二阶段 / 远期（**非个人 v1**）
+
+> **第二阶段排期真源（2026-07-18 · ✅ 已归档基线）**：[`rushi-phase-2-roadmap.md`](./rushi-phase-2-roadmap.md)  
+> 默认主序：**Wave M 媒体（AV-PRE/EDIT-BASIC）→ Wave C 协作（R6–R8/C4–C6）→ Wave D 部署（C7/COL-DEPLOY）**。  
+> 下表为索引；薄片顺序与验收以 Phase 2 文档为准（含 §8.1–§8.2 工程纪律）。
 
 | ID | 主题 | 前置 |
 |----|------|------|
-| **R6–R8** | 协作 C1–C3（骨架 / 只读 / 写入） | 产品书面启动协作；**默认 v1 不做** |
-| **R5** | MCP 只读 | T-002；v1 后可插 |
+| **Phase 2** | 媒体成熟 + 小团队协作 + 双部署 | R9 或产品书面启动；详规 [`rushi-phase-2-roadmap.md`](./rushi-phase-2-roadmap.md) |
+| **AV-PRE / EDIT-BASIC** | 预处理三入口 + Trim/删区/Split（`source`/`working`） | Phase 2 Wave M；[research](../specs/av-preprocess-import-flow-research.md) · [plan](../specs/av-preprocess-edit-basic-plan.md) |
+| **R6–R8** | 协作 C1–C3（骨架 / 只读 / 写入） | Wave C；产品书面可提前 demo |
+| **R5** | MCP 只读 | T-002；可与 Phase 2 并行 |
 | **LLM-LOC** | 本机 LLM 校对（Ollama → LRC 自管） | **R9 + R3t-E** 后：**SPIKE → Gate**；**未过 Gate 不编码** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) §9–10 |
 | C4 | 审阅线程与建议修改 | R8 |
 | C5 | Presence 与活动流 | C4 |
 | C6 | Word 审阅导出（协作） | C4 数据落库；**≠** 单机 **EXP-WORD**（§4.1.1 ⑤‴） |
-| C7 | 离线缓存、部署包正式化 | C3 + 镜像 |
+| C7 | 离线缓存、部署包正式化 | C3 + 镜像；Phase 2 Wave D |
+| **COL-DEPLOY** | `cloud_vps` + `lan`；**ASR 本机不上云** | C7 内或紧接；[plan](../specs/collab-dual-deploy-local-asr-plan.md) · [research](../specs/collab-dual-deploy-local-asr-research.md) · [画像](../../architecture/collab-deployment-profiles.md) |
 
 规格已存在、实施等 C4 启动时再写 acceptance 增量：[`collaboration-review-word-export.md`](../specs/collaboration-review-word-export.md)。
+
+**COL-DEPLOY 子薄片**：A 云 ACME · B LAN Local-CA · B′ 可选 RFC1918 降级 · C 可选 OSS · D 可选 mDNS（见 Phase 2 §5 Wave D）。
 
 ---
 
