@@ -625,13 +625,14 @@ jobs:
             --bucket "${R2_BUCKET:-rushi-updates}"
 
       - name: Free portable ASCII alias after CDN (disk)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        # Mirror Restore portable ASCII alias — tag push and workflow_dispatch.
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
         shell: pwsh
         run: |
           # Chinese zip remains for final artifacts; drop ~1.5GiB ASCII duplicate until re-copy.
           if (Test-Path -LiteralPath "windows-portable-x64.zip") {
             Remove-Item -LiteralPath "windows-portable-x64.zip" -Force
-            Write-Host "Removed windows-portable-x64.zip after CDN upload"
+            Write-Host "Removed windows-portable-x64.zip (ASCII alias; restored before final artifacts)"
           }
           if (Test-Path -LiteralPath "windows-portable-x64.zip.sha256") {
             Remove-Item -LiteralPath "windows-portable-x64.zip.sha256" -Force
@@ -860,8 +861,10 @@ jobs:
 
   verify-cdn-release:
     needs: [tauri-macos, tauri-windows]
-    # Run when either platform succeeded (soft OTA / one-side failure must not block CDN verify).
-    if: >
+    # always() required: without it GHA skips this job when any `needs` job fails,
+    # so the soft OTA / one-side-success path never runs.
+    if: >-
+      always() &&
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
       !cancelled() &&
       (needs.tauri-macos.result == 'success' || needs.tauri-windows.result == 'success')
@@ -870,25 +873,25 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: macos-release-bundles
           path: artifacts/macos
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: windows-release-bundles
           path: artifacts/windows
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: windows-ota-fragment
           path: artifacts/windows
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         continue-on-error: true
         with:
           name: windows-cuda-cdn

@@ -26,7 +26,7 @@
 
 - [ ] **便携版 zip**：CDN `/<tag>/如是我闻_<ver>_Windows_x64_便携版.zip`（**主分发**）；内含 `resources/bundled-asr/rushi-asr-sidecar/` + `resources/bundled-asr-models/`。
 - [ ] **`rushi-asr-sidecar.exe`** + onedir：已执行 `npm run asr:build-sidecar-windows-cpu`（或等价 `ps1`），并进入 portable / NSIS resources。
-- [ ] **Plan B 模型**：CI 在 NSIS **之后** `npm run asr:stage-bundled-models`，再打 portable（`preflight-bundled-asr-models` 通过）。
+- [ ] **Plan B 模型**：CI 在 NSIS **之前** `npm run asr:stage-bundled-models`（与 portable 共用 resources；`preflight-bundled-asr-models` 通过后再打 NSIS）。
 - [ ] **CUDA 侧车 zip**：`如是我闻_<ver>_Windows_x64_CUDA侧车.zip` 上传 CDN；**不要**打进安装介质。
 - [ ] 体积尖刺：`pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels`（NSIS 前已含模型；打完后 `-NsisPath`；NSIS &lt; 2GB）。
 - [ ] 签名 runtime manifest：`scripts/ci-publish-cuda-runtime-manifest.sh` → CDN `runtime/rushi-runtime-manifest.json`。
