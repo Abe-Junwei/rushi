@@ -1,4 +1,6 @@
-# Local Windows release build — NSIS installer (OTA) + portable zip. CI uploads on tag push.
+# Local Windows release build — NSIS installer (OTA) + portable zip.
+# Prefer remote `release.yml` on tag push. Use this script ONLY when CI Windows
+# fails due to model-pack OOM; then: npm run release:win:upload -- --tag vX.Y.Z
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:

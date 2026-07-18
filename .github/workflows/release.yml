@@ -6,8 +6,9 @@
 # Do NOT create GitHub Release assets for installers — distribution host is updates.rushi.app (R2).
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
 # Win artifact names: 如是我闻_<ver>_Windows_x64_{便携版.zip|安装包.exe|CUDA侧车.zip}
-#   (see scripts/rushi-win-release-artifact-names.sh). If tauri-windows CI fails:
-#   local `npm run release:win` then `npm run release:win:upload -- --tag vX.Y.Z`.
+#   (see scripts/rushi-win-release-artifact-names.sh).
+# Release order: remote CI first. Local `npm run release:win` + `release:win:upload`
+#   ONLY if Windows fails due to model-pack OOM (makensis/zip/runner memory).
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
 #   Tauri generates .app.tar.gz + .sig (mac) and Chinese NSIS + .sig (win);
@@ -249,7 +250,7 @@ jobs:
   tauri-windows:
     if: ${{ !cancelled() }}
     runs-on: windows-latest
-    # On failure: pack locally (`npm run release:win`) and upload (`npm run release:win:upload -- --tag vX.Y.Z`).
+    # Prefer this job. Local pack only on model-pack OOM (see windows-release-checklist §5).
     steps:
       - uses: actions/checkout@v7
 

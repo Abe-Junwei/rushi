@@ -14,7 +14,7 @@
 - **portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。
 - NSIS 中文安装包仍产出（OTA 用）：**仅 CPU 侧车**（makensis 限制，不含模型）；**未签名时**下载页应引导「更多信息 → 仍要运行」，不作为小白主路径。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
-- **CI Windows 失败时**：本机 `npm run release:win` → 设好 `R2_*` → `npm run release:win:upload -- --tag vX.Y.Z`。
+- **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis / `Compress-Archive` / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败先修 workflow 重跑，不默认切本地。
 
 ## 1. 物料
 
@@ -49,16 +49,19 @@
 - [ ] NVIDIA 机：环境页出现「下载 GPU 加速组件」推荐 → 下载 → 重启侧车 → CUDA 优先；失败时 CPU 回退仍可转写（或 `RUSHI_FORCE_BUNDLED_ASR_CPU=1`）。
 - [ ] CDN：`/<tag>/如是我闻_*_便携版.zip`、`/<tag>/如是我闻_*_安装包.exe`、`/<tag>/如是我闻_*_CUDA侧车.zip`、`/runtime/rushi-runtime-manifest.json` 可访问。
 
-## 5. CI 失败 → 本地打包上传
+## 5. 远程优先；模型 OOM 时才本地上传
+
+1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（NSIS → stage Plan B → portable）。
+2. **成功**：CDN 验收 §4；不必本地打包。
+3. **失败且日志含模型/打包 OOM**（如 makensis mmap、`tar`/`Compress-Archive` OOM、runner killed）：再走本地：
 
 ```powershell
-# 本机 Windows x64，仓库根
+# 本机 Windows x64，仓库根 — 仅 OOM 回退
 npm run release:win
 $env:R2_ACCESS_KEY_ID="..."
 $env:R2_SECRET_ACCESS_KEY="..."
 $env:R2_ENDPOINT="https://....r2.cloudflarestorage.com"
-# optional: $env:R2_BUCKET="rushi-updates"
 npm run release:win:upload -- --tag v1.0.1
 ```
 
-产物文件名见 §分发策略；上传脚本为 [`scripts/upload-windows-release-cdn.ps1`](../../scripts/upload-windows-release-cdn.ps1)。
+产物文件名见 §分发策略；上传脚本 [`scripts/upload-windows-release-cdn.ps1`](../../scripts/upload-windows-release-cdn.ps1)。
