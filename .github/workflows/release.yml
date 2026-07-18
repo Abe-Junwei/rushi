@@ -509,34 +509,49 @@ jobs:
           if (-not (Test-Path $exe)) {
             Write-Error "Missing $exe — run tauri build before packaging portable zip."
           }
-          $stage = "dist/windows-portable"
-          if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+          # CI checkout paths are long (D:\a\rushi\rushi\...); staging under a short root
+          # avoids tar/MAX_PATH failures when packing Plan B modelscope trees.
+          if ($env:GITHUB_ACTIONS -eq "true") {
+            $stage = "C:\rp"
+            $zipAscii = "C:\rp-build.zip"
+          } else {
+            $stage = "dist/windows-portable"
+            $zipAscii = "dist/windows-portable-build.zip"
+          }
+          if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item $exe (Join-Path $stage "rushi-desktop.exe")
           Copy-Item (Join-Path $root "resources") (Join-Path $stage "resources") -Recurse
-          $zip = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
-          if (Test-Path $zip) { Remove-Item -Force $zip }
+          if (Test-Path -LiteralPath $zipAscii) { Remove-Item -LiteralPath $zipAscii -Force }
           # Compress-Archive OOMs on sidecar+models (~2GB+); tar streams reliably on Win10+.
+          # Use ASCII zip path first — some bsdtar builds mishandle Unicode -f names.
           Push-Location $stage
           try {
-            & tar -a -c -f $zip *
-            if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE" }
+            & tar -a -c -f $zipAscii .
+            if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE (ascii=$zipAscii)" }
           } finally {
             Pop-Location
           }
+          $zipFinal = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
+          if (Test-Path -LiteralPath $zipFinal) { Remove-Item -LiteralPath $zipFinal -Force }
+          Move-Item -LiteralPath $zipAscii -Destination $zipFinal
+          Write-Host "OK: wrote portable zip $zipFinal ($((Get-Item -LiteralPath $zipFinal).Length) bytes)"
 
       - name: Verify Windows portable zip (sidecar + models required)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $zip = $env:WIN_PORTABLE_ZIP
+          $zip = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
           if (-not (Test-Path -LiteralPath $zip)) {
             throw "Missing $zip"
           }
           Get-Item -LiteralPath $zip
-          $probe = "dist/windows-portable-probe"
-          if (Test-Path $probe) { Remove-Item -Recurse -Force $probe }
-          # Expand-Archive can choke on large zips; use tar.
+          if ($env:GITHUB_ACTIONS -eq "true") {
+            $probe = "C:\rp-probe"
+          } else {
+            $probe = "dist/windows-portable-probe"
+          }
+          if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force }
           New-Item -ItemType Directory -Force -Path $probe | Out-Null
           & tar -xf $zip -C $probe
           if ($LASTEXITCODE -ne 0) { throw "tar extract failed ($LASTEXITCODE)" }
@@ -553,7 +568,7 @@ jobs:
             throw "portable zip missing Plan B modelscope/: $modelscope"
           }
           Write-Host "OK: $zip contains CPU sidecar + Plan B models."
-          Remove-Item -Recurse -Force $probe
+          Remove-Item -LiteralPath $probe -Recurse -Force
 
       - name: Checksum portable + NSIS
         shell: pwsh
@@ -734,12 +749,18 @@ jobs:
           man="${{ steps.cuda_manifest.outcome }}"
           cdn="${{ steps.cuda_cdn.outcome }}"
           echo "CUDA outcomes: build=$build zip=$zip manifest=$man cdn=$cdn"
+          # CUDA is best-effort. Do not use ::error:: when skipped due to upstream core failure —
+          # that annotation drowned the real portable-zip failure in the Actions UI.
+          if [ "$build" = "skipped" ] || [ "$zip" = "skipped" ]; then
+            echo "::warning::CUDA opt-in skipped (often because an earlier core step failed, or CUDA build was not reached)."
+            exit 0
+          fi
           if [ "$build" != "success" ] || [ "$zip" != "success" ]; then
-            echo "::error::CUDA sidecar build/package failed or skipped — CDN opt-in zip missing. Core portable/NSIS were still published."
+            echo "::warning::CUDA sidecar build/package failed — CDN opt-in zip missing. Check whether core portable/NSIS still published."
             exit 0
           fi
           if [ "${{ github.event_name }}" = "push" ] && { [ "$man" != "success" ] || [ "$cdn" != "success" ]; }; then
-            echo "::error::CUDA manifest/CDN upload failed — runtime GPU install may be unavailable. Core portable/NSIS were still published."
+            echo "::warning::CUDA manifest/CDN upload failed — runtime GPU install may be unavailable."
             exit 0
           fi
           echo "CUDA opt-in pipeline OK."

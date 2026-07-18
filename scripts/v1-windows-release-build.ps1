@@ -127,6 +127,7 @@ $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
 if (-not (Test-Path -LiteralPath $Exe)) { throw "Missing $Exe" }
 
 $Stage = Join-Path $Root "dist\windows-portable"
+$ZipAscii = Join-Path $Root "dist\windows-portable-build.zip"
 if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
 New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 Copy-Item $Exe (Join-Path $Stage "rushi-desktop.exe")
@@ -134,14 +135,17 @@ Copy-Item (Join-Path $TauriRoot "resources") (Join-Path $Stage "resources") -Rec
 
 $Zip = Join-Path $Root $PortableZipName
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
+if (Test-Path $ZipAscii) { Remove-Item -Force $ZipAscii }
 # Compress-Archive OOMs on sidecar+models; tar streams and is reliable on Win10+.
+# ASCII intermediate zip avoids Unicode -f quirks; then rename to Chinese product name.
 Push-Location $Stage
 try {
-  & tar -a -c -f $Zip *
+  & tar -a -c -f $ZipAscii .
   if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE" }
 } finally {
   Pop-Location
 }
+Move-Item -LiteralPath $ZipAscii -Destination $Zip
 
 $sidecarInZip = Join-Path $Stage "resources\bundled-asr\rushi-asr-sidecar"
 $manifestInZip = Join-Path $Stage "resources\bundled-asr-models\manifest.json"
