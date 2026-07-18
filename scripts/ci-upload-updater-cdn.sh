@@ -92,6 +92,17 @@ fi
 
 S3=(aws --endpoint-url "$R2_ENDPOINT" s3)
 
+# True if path contains non-ASCII (Windows aws.exe often mishandles Unicode local paths).
+path_has_non_ascii() {
+  local p="$1"
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c 'import sys; sys.exit(0 if any(ord(c) > 127 for c in sys.argv[1]) else 1)' "$p"
+    return $?
+  fi
+  # Fallback: byte length != character length under UTF-8 locale is unreliable; skip staging.
+  return 1
+}
+
 upload_file() {
   local src="$1"
   local key="$2"
@@ -100,8 +111,19 @@ upload_file() {
     echo "Missing file: $src" >&2
     exit 1
   fi
+  local upload_src="$src"
+  local staged=""
+  if path_has_non_ascii "$src"; then
+    staged="$(mktemp "${TMPDIR:-/tmp}/rushi-r2-XXXXXX.bin")"
+    cp "$src" "$staged"
+    upload_src="$staged"
+    echo "ci-upload: staged ASCII temp for Unicode local path → key=${key}"
+  fi
   echo "→ s3://${BUCKET}/${key}"
-  "${S3[@]}" cp "$src" "s3://${BUCKET}/${key}" --content-type "$ctype"
+  "${S3[@]}" cp "$upload_src" "s3://${BUCKET}/${key}" --content-type "$ctype"
+  if [ -n "$staged" ]; then
+    rm -f "$staged"
+  fi
 }
 
 case "$MODE" in
@@ -137,19 +159,29 @@ case "$MODE" in
     PORTABLE_NAME="$(rushi_win_portable_zip_name "$APP_VER")"
     NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VER")"
     uploaded=0
-    if [ -f "${ROOT}/${PORTABLE_NAME}" ]; then
+    # Prefer ASCII local alias (CI writes windows-portable-x64.zip); S3 key stays Chinese.
+    if [ -f "${ROOT}/windows-portable-x64.zip" ]; then
+      upload_file "${ROOT}/windows-portable-x64.zip" "${TAG}/${PORTABLE_NAME}" "application/zip"
+      uploaded=1
+      if [ -f "${ROOT}/windows-portable-x64.zip.sha256" ]; then
+        upload_file "${ROOT}/windows-portable-x64.zip.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
+      elif [ -f "${ROOT}/${PORTABLE_NAME}.sha256" ]; then
+        upload_file "${ROOT}/${PORTABLE_NAME}.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
+      fi
+    elif [ -f "${ROOT}/${PORTABLE_NAME}" ]; then
       upload_file "${ROOT}/${PORTABLE_NAME}" "${TAG}/${PORTABLE_NAME}" "application/zip"
       uploaded=1
       if [ -f "${ROOT}/${PORTABLE_NAME}.sha256" ]; then
         upload_file "${ROOT}/${PORTABLE_NAME}.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
       fi
-    elif [ -f "${ROOT}/windows-portable-x64.zip" ]; then
-      echo "::warning::Legacy windows-portable-x64.zip found — rename to ${PORTABLE_NAME} before upload." >&2
-      exit 1
     fi
     shopt -s nullglob
     if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" ]; then
-      upload_file "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
+      # ASCII local staging for aws.exe; CDN key remains Chinese product name.
+      NSIS_ASCII="${BUNDLE_ROOT}/nsis/rushi-win-nsis-upload.exe"
+      cp "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" "$NSIS_ASCII"
+      upload_file "$NSIS_ASCII" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
+      rm -f "$NSIS_ASCII"
       uploaded=1
       if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" ]; then
         upload_file "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" "${TAG}/${NSIS_NAME}.sha256" "text/plain"
@@ -183,7 +215,10 @@ case "$MODE" in
     NSIS_DIR="${BUNDLE_ROOT}/nsis"
     SETUP_EXE="${NSIS_DIR}/${NSIS_NAME}"
     SIG_FILE="${SETUP_EXE}.sig"
-    upload_file "$SETUP_EXE" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
+    NSIS_ASCII="${NSIS_DIR}/rushi-win-nsis-upload.exe"
+    cp "$SETUP_EXE" "$NSIS_ASCII"
+    upload_file "$NSIS_ASCII" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
+    rm -f "$NSIS_ASCII"
     upload_file "$SIG_FILE" "${TAG}/${NSIS_NAME}.sig" "text/plain"
     echo "CDN Windows OTA: ${CDN_BASE}/${TAG}/${NSIS_NAME}"
     ;;

@@ -58,26 +58,10 @@ http_code() {
   curl -fsSIL "$fetch_url" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}'
 }
 
-HTTP_LATEST="$(http_code "$LATEST_URL")"
-if [ "$HTTP_LATEST" != "200" ]; then
-  echo "CDN latest.json not reachable (HTTP ${HTTP_LATEST}): ${LATEST_URL}" >&2
-  exit 1
-fi
-
-JSON="$(curl -fsSL "$LATEST_URL")"
-MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
-
-if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
-  echo "latest.json missing version field." >&2
-  exit 1
-fi
-
-if [ "$MANIFEST_VERSION" != "$APP_VERSION" ]; then
-  echo "CDN latest.json version must match apps/desktop/package.json." >&2
-  echo "  cdn: ${MANIFEST_VERSION}" >&2
-  echo "  package.json: ${APP_VERSION}" >&2
-  exit 1
-fi
+# When merge uploaded no latest.json this run (no OTA fragments), skip hard latest checks.
+REQUIRE_LATEST="${RUSHI_VERIFY_REQUIRE_LATEST:-true}"
+JSON=""
+MANIFEST_VERSION=""
 
 verify_platform() {
   local platform="$1"
@@ -115,9 +99,34 @@ verify_platform() {
   echo "OTA CDN OK [${platform}]: url=${url}"
 }
 
-verify_platform "darwin-aarch64" "app.tar.gz" 1
-# Windows OTA needs Tauri .sig; unsigned-primary releases may omit this platform.
-verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 0
+if [ "$REQUIRE_LATEST" = "false" ]; then
+  echo "::warning::Skipping latest.json version/platform checks (no OTA fragments merged this run)."
+else
+  HTTP_LATEST="$(http_code "$LATEST_URL")"
+  if [ "$HTTP_LATEST" != "200" ]; then
+    echo "CDN latest.json not reachable (HTTP ${HTTP_LATEST}): ${LATEST_URL}" >&2
+    exit 1
+  fi
+
+  JSON="$(curl -fsSL "$LATEST_URL")"
+  MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
+
+  if [ -z "$MANIFEST_VERSION" ] || [ "$MANIFEST_VERSION" = "null" ]; then
+    echo "latest.json missing version field." >&2
+    exit 1
+  fi
+
+  if [ "$MANIFEST_VERSION" != "$APP_VERSION" ]; then
+    echo "CDN latest.json version must match apps/desktop/package.json." >&2
+    echo "  cdn: ${MANIFEST_VERSION}" >&2
+    echo "  package.json: ${APP_VERSION}" >&2
+    exit 1
+  fi
+
+  # Both platforms soft: missing .sig releases may omit either side.
+  verify_platform "darwin-aarch64" "app.tar.gz" 0
+  verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 0
+fi
 
 verify_url() {
   local label="$1"
@@ -146,4 +155,8 @@ WIN_CUDA_NAME="$(rushi_win_cuda_zip_name "$APP_VERSION")"
 verify_url "windows-cuda-zip" "${CDN_BASE}/${TAG}/${WIN_CUDA_NAME}" 0
 verify_url "runtime-manifest" "${CDN_BASE}/runtime/rushi-runtime-manifest.json" 0
 
-echo "OTA CDN OK: version=${MANIFEST_VERSION}"
+if [ -n "$MANIFEST_VERSION" ]; then
+  echo "OTA CDN OK: version=${MANIFEST_VERSION}"
+else
+  echo "Portable/install CDN OK (latest.json not verified this run)."
+fi

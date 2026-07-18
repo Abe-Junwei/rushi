@@ -58,7 +58,7 @@
 ## 5. 远程优先；模型 OOM 时才本地上传
 
 1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
-2. **成功**：CDN 验收 §4；不必本地打包。缺 NSIS `.sig` 时 job **仍应绿**（OTA fragment 软跳过）；`latest.json` 可仅含 darwin，但 **portable zip 仍须 200**。
+2. **成功**：CDN 验收 §4；不必本地打包。缺 mac/win `.sig` 时 OTA fragment **软跳过**（job 仍可绿）；`latest.json` 按已有 fragment 合并（可只含一侧）；**portable zip 仍须 200**。同 tag 重推时 CI **取消旧跑**（避免双写 R2）。
 3. **失败且日志含模型/打包 OOM**（如 makensis mmap、`tar`/`Compress-Archive` OOM、runner killed）：再走本地：
 
 ```powershell
