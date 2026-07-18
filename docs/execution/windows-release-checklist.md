@@ -6,17 +6,22 @@
 
 **分发策略（2026-07-18）**：
 
-- **首推（无 Authenticode 阶段）**：CDN `windows-portable-x64.zip` 绿色免安装（解压即用；避免 SmartScreen 蓝网劝退）。CI 在 CUDA 步骤**之前**即上传 artifact + CDN。
+- **命名**（真源 `scripts/rushi-win-release-artifact-names.*`）：
+  - 便携版：`如是我闻_<版本>_Windows_x64_便携版.zip`
+  - 安装包：`如是我闻_<版本>_Windows_x64_安装包.exe`
+  - CUDA：`如是我闻_<版本>_Windows_x64_CUDA侧车.zip`
+- **首推（无 Authenticode 阶段）**：CDN 中文便携版 zip（解压即用；避免 SmartScreen 蓝网劝退）。CI 在 CUDA 步骤**之前**即上传 artifact + CDN。
 - **portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。
-- NSIS `rushi-desktop-setup.exe` 仍产出（OTA 用）：**仅 CPU 侧车**（makensis 限制，不含模型）；**未签名时**下载页应引导「更多信息 → 仍要运行」，不作为小白主路径。
+- NSIS 中文安装包仍产出（OTA 用）：**仅 CPU 侧车**（makensis 限制，不含模型）；**未签名时**下载页应引导「更多信息 → 仍要运行」，不作为小白主路径。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
+- **CI Windows 失败时**：本机 `npm run release:win` → 设好 `R2_*` → `npm run release:win:upload -- --tag vX.Y.Z`。
 
 ## 1. 物料
 
-- [ ] **`windows-portable-x64.zip`**：CI early artifact / CDN `/<tag>/windows-portable-x64.zip` 可下载（**主分发**）；内含 `resources/bundled-asr/rushi-asr-sidecar/` + `resources/bundled-asr-models/`。
+- [ ] **便携版 zip**：CDN `/<tag>/如是我闻_<ver>_Windows_x64_便携版.zip`（**主分发**）；内含 `resources/bundled-asr/rushi-asr-sidecar/` + `resources/bundled-asr-models/`。
 - [ ] **`rushi-asr-sidecar.exe`** + onedir：已执行 `npm run asr:build-sidecar-windows-cpu`（或等价 `ps1`），并进入 portable / NSIS resources。
 - [ ] **Plan B 模型**：CI 在 NSIS **之后** `npm run asr:stage-bundled-models`，再打 portable（`preflight-bundled-asr-models` 通过）。
-- [ ] **`rushi-asr-sidecar-cuda.exe`** + onedir：已执行 `npm run asr:build-sidecar-windows-cuda`（**在 NSIS/portable 之后**），打成 `rushi-asr-sidecar-cuda-windows-x64.zip` 上传 CDN；**不要**打进安装介质。
+- [ ] **CUDA 侧车 zip**：`如是我闻_<ver>_Windows_x64_CUDA侧车.zip` 上传 CDN；**不要**打进安装介质。
 - [ ] 体积尖刺：`pwsh scripts/ci-measure-windows-bundle-size.ps1`（NSIS 前 CPU-only；portable 前 `-AllowModelsForPortable`；NSIS &lt; 2GB）。
 - [ ] 签名 runtime manifest：`scripts/ci-publish-cuda-runtime-manifest.sh` → CDN `runtime/rushi-runtime-manifest.json`。
 
@@ -42,4 +47,18 @@
 - [ ] 干净 VM：解压 **portable zip** 启动，确认 **8741** 由 CPU 侧车拉起；Plan B seed 后可转写（断网亦可完成默认 SKU）。
 - [ ] （可选）NSIS 未签名路径：确认 SmartScreen 引导文案可用。
 - [ ] NVIDIA 机：环境页出现「下载 GPU 加速组件」推荐 → 下载 → 重启侧车 → CUDA 优先；失败时 CPU 回退仍可转写（或 `RUSHI_FORCE_BUNDLED_ASR_CPU=1`）。
-- [ ] CDN：`/<tag>/windows-portable-x64.zip`、`/<tag>/rushi-desktop-setup.exe`、`/<tag>/rushi-asr-sidecar-cuda-windows-x64.zip`、`/runtime/rushi-runtime-manifest.json` 可访问。
+- [ ] CDN：`/<tag>/如是我闻_*_便携版.zip`、`/<tag>/如是我闻_*_安装包.exe`、`/<tag>/如是我闻_*_CUDA侧车.zip`、`/runtime/rushi-runtime-manifest.json` 可访问。
+
+## 5. CI 失败 → 本地打包上传
+
+```powershell
+# 本机 Windows x64，仓库根
+npm run release:win
+$env:R2_ACCESS_KEY_ID="..."
+$env:R2_SECRET_ACCESS_KEY="..."
+$env:R2_ENDPOINT="https://....r2.cloudflarestorage.com"
+# optional: $env:R2_BUCKET="rushi-updates"
+npm run release:win:upload -- --tag v1.0.1
+```
+
+产物文件名见 §分发策略；上传脚本为 [`scripts/upload-windows-release-cdn.ps1`](../../scripts/upload-windows-release-cdn.ps1)。

@@ -1,13 +1,16 @@
 # Full Tauri bundles — tag push builds macOS + Windows and uploads installers/OTA to CDN only.
 # Linux desktop: NOT published (no .deb / AppImage / tauri-linux job).
 # Windows portable/NSIS: CI on tag push; local smoke — `npm run release:win` on a Windows machine.
-# Unsigned v1: prefer CDN windows-portable-x64.zip (green zip) over unsigned setup.exe (SmartScreen).
+# Unsigned v1: prefer CDN 如是我闻_*_便携版.zip (green zip) over unsigned 安装包.exe (SmartScreen).
 # Order: NSIS → portable zip → CDN core → OTA fragment → CUDA (best-effort, never blocks core).
 # Do NOT create GitHub Release assets for installers — distribution host is updates.rushi.app (R2).
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
+# Win artifact names: 如是我闻_<ver>_Windows_x64_{便携版.zip|安装包.exe|CUDA侧车.zip}
+#   (see scripts/rushi-win-release-artifact-names.sh). If tauri-windows CI fails:
+#   local `npm run release:win` then `npm run release:win:upload -- --tag vX.Y.Z`.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
-#   Tauri generates .app.tar.gz + .sig (mac) and rushi-desktop-setup.exe + .sig (win);
+#   Tauri generates .app.tar.gz + .sig (mac) and Chinese NSIS + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the **macOS** installer.
 # Windows (2026-07+): NSIS ships CPU sidecar only (makensis OOM with CPU+models — second knife).
@@ -246,6 +249,7 @@ jobs:
   tauri-windows:
     if: ${{ !cancelled() }}
     runs-on: windows-latest
+    # On failure: pack locally (`npm run release:win`) and upload (`npm run release:win:upload -- --tag vX.Y.Z`).
     steps:
       - uses: actions/checkout@v7
 
@@ -264,11 +268,36 @@ jobs:
         shell: bash
         run: bash scripts/ci-ensure-windows-npm-native-bindings.sh
 
+      - name: Resolve Chinese Windows artifact names
+        id: win_names
+        shell: bash
+        run: |
+          set -euo pipefail
+          source scripts/rushi-win-release-artifact-names.sh
+          VER="$(rushi_win_app_version)"
+          PORTABLE="$(rushi_win_portable_zip_name "$VER")"
+          NSIS="$(rushi_win_nsis_setup_name "$VER")"
+          CUDA="$(rushi_win_cuda_zip_name "$VER")"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "portable=$PORTABLE" >> "$GITHUB_OUTPUT"
+          echo "nsis=$NSIS" >> "$GITHUB_OUTPUT"
+          echo "cuda=$CUDA" >> "$GITHUB_OUTPUT"
+          {
+            echo "WIN_APP_VERSION=$VER"
+            echo "WIN_PORTABLE_ZIP=$PORTABLE"
+            echo "WIN_NSIS_SETUP=$NSIS"
+            echo "WIN_CUDA_ZIP=$CUDA"
+          } >> "$GITHUB_ENV"
+          echo "Portable: $PORTABLE"
+          echo "NSIS:     $NSIS"
+
       - name: Workflow context
         run: |
           echo "Commit: ${{ github.sha }}"
           echo "Ref: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
+          echo "Portable: ${{ env.WIN_PORTABLE_ZIP }}"
+          echo "NSIS: ${{ env.WIN_NSIS_SETUP }}"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -368,26 +397,29 @@ jobs:
         run: npm run tauri -- build --bundles nsis
         timeout-minutes: 90
 
+      - name: Normalize Windows NSIS installer name (Chinese)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          bash scripts/ci-normalize-windows-nsis-name.sh \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --version "${{ env.WIN_APP_VERSION }}"
+
       - name: Measure NSIS artifact size
         shell: pwsh
         run: |
-          $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe"
+          $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/${{ env.WIN_NSIS_SETUP }}"
           if (-not (Test-Path $nsis)) {
-            $alt = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter *-setup.exe -ErrorAction SilentlyContinue | Select-Object -First 1
+            $alt = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter *.exe -ErrorAction SilentlyContinue |
+              Where-Object { $_.Name -notlike '*.sig' } |
+              Select-Object -First 1
             if ($alt) { $nsis = $alt.FullName }
           }
           pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath $nsis
         continue-on-error: false
 
-      - name: Normalize Windows NSIS installer name
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          bash scripts/ci-normalize-windows-nsis-name.sh \
-            --bundle-root "${{ env.BUNDLE_ROOT }}"
-
       # Authenticode (optional) before portable zip so the green zip can ship a signed exe.
-      # Do NOT sign rushi-desktop-setup.exe here — that would invalidate the Tauri updater .sig.
+      # Do NOT Authenticode-sign the NSIS setup here — that would invalidate the Tauri updater .sig.
       - name: Detect Windows exe signing secret
         id: win_exe_sign
         shell: bash
@@ -475,7 +507,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item $exe (Join-Path $stage "rushi-desktop.exe")
           Copy-Item (Join-Path $root "resources") (Join-Path $stage "resources") -Recurse
-          $zip = Join-Path (Get-Location) "windows-portable-x64.zip"
+          $zip = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
           if (Test-Path $zip) { Remove-Item -Force $zip }
           # Compress-Archive OOMs on sidecar+models (~2GB+); tar streams reliably on Win10+.
           Push-Location $stage
@@ -490,13 +522,17 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          if (-not (Test-Path "windows-portable-x64.zip")) {
-            throw "Missing windows-portable-x64.zip"
+          $zip = $env:WIN_PORTABLE_ZIP
+          if (-not (Test-Path -LiteralPath $zip)) {
+            throw "Missing $zip"
           }
-          Get-Item "windows-portable-x64.zip"
+          Get-Item -LiteralPath $zip
           $probe = "dist/windows-portable-probe"
           if (Test-Path $probe) { Remove-Item -Recurse -Force $probe }
-          Expand-Archive -LiteralPath "windows-portable-x64.zip" -DestinationPath $probe
+          # Expand-Archive can choke on large zips; use tar.
+          New-Item -ItemType Directory -Force -Path $probe | Out-Null
+          & tar -xf $zip -C $probe
+          if ($LASTEXITCODE -ne 0) { throw "tar extract failed ($LASTEXITCODE)" }
           $sidecar = Join-Path $probe "resources\bundled-asr\rushi-asr-sidecar"
           $manifest = Join-Path $probe "resources\bundled-asr-models\manifest.json"
           $modelscope = Join-Path $probe "resources\bundled-asr-models\modelscope"
@@ -509,7 +545,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $modelscope)) {
             throw "portable zip missing Plan B modelscope/: $modelscope"
           }
-          Write-Host "OK: windows-portable-x64.zip contains CPU sidecar + Plan B models."
+          Write-Host "OK: $zip contains CPU sidecar + Plan B models."
           Remove-Item -Recurse -Force $probe
 
       - name: Checksum portable + NSIS
@@ -517,15 +553,15 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
           foreach ($f in @(
-            "windows-portable-x64.zip",
-            "apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe"
+            $env:WIN_PORTABLE_ZIP,
+            "apps/desktop/src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
           )) {
             if (-not (Test-Path -LiteralPath $f)) {
               throw "Missing $f for checksum"
             }
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash.ToLowerInvariant()
             $name = Split-Path -Leaf $f
-            Set-Content -Encoding ascii -Path "$f.sha256" -Value "$hash  $name"
+            Set-Content -Encoding utf8 -Path "$f.sha256" -Value "$hash  $name"
             Write-Host "Wrote $f.sha256"
           }
 
@@ -535,8 +571,8 @@ jobs:
         with:
           name: windows-portable-x64
           path: |
-            windows-portable-x64.zip
-            windows-portable-x64.zip.sha256
+            ${{ env.WIN_PORTABLE_ZIP }}
+            ${{ env.WIN_PORTABLE_ZIP }}.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -569,7 +605,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          SIG="${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig"
+          SIG="${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}.sig"
           if [ ! -f "$SIG" ]; then
             echo "::error::Missing $SIG — set TAURI_SIGNING_PRIVATE_KEY for OTA, or expect no Windows updater fragment."
             exit 1
@@ -627,12 +663,12 @@ jobs:
           $exe = Join-Path $cudaDir "rushi-asr-sidecar-cuda.exe"
           if (-not (Test-Path -LiteralPath $exe)) { throw "Missing $exe" }
           New-Item -ItemType Directory -Force -Path "dist/cuda-cdn" | Out-Null
-          $zip = Join-Path (Get-Location) "dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip"
+          $zip = Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)"
           if (Test-Path -LiteralPath $zip) { Remove-Item -Force $zip }
           # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
           Compress-Archive -Path $cudaDir -DestinationPath $zip
           $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
-          Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$hash  rushi-asr-sidecar-cuda-windows-x64.zip"
+          Set-Content -Encoding utf8 -Path "$zip.sha256" -Value "$hash  $($env:WIN_CUDA_ZIP)"
           Get-Item $zip | Format-List Name, Length, FullName
           "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         continue-on-error: true
@@ -653,7 +689,7 @@ jobs:
           source scripts/ci-pip-venv-install.sh cryptography
           bash scripts/ci-publish-cuda-runtime-manifest.sh \
             --tag "${{ github.ref_name }}" \
-            --zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
+            --zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
 
       - name: Upload Windows CUDA to Cloudflare R2 CDN
@@ -676,7 +712,7 @@ jobs:
           bash scripts/ci-upload-updater-cdn.sh \
             --tag "${{ github.ref_name }}" \
             --mode windows-cuda \
-            --cuda-zip dist/cuda-cdn/rushi-asr-sidecar-cuda-windows-x64.zip \
+            --cuda-zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
             --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
@@ -707,10 +743,10 @@ jobs:
         with:
           name: windows-release-bundles
           path: |
-            windows-portable-x64.zip
-            windows-portable-x64.zip.sha256
-            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe
-            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sha256
+            ${{ env.WIN_PORTABLE_ZIP }}
+            ${{ env.WIN_PORTABLE_ZIP }}.sha256
+            ${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}
+            ${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}.sha256
             dist/windows-bundle-size-spike.json
           if-no-files-found: error
           retention-days: 14
@@ -721,7 +757,7 @@ jobs:
         with:
           name: windows-ota-fragment
           path: |
-            ${{ env.BUNDLE_ROOT }}/nsis/rushi-desktop-setup.exe.sig
+            ${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}.sig
             ${{ env.BUNDLE_ROOT }}/nsis/updater-fragment.json
           if-no-files-found: error
           retention-days: 14

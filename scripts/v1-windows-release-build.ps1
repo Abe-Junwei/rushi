@@ -15,6 +15,12 @@
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
+. (Join-Path $Root "scripts\rushi-win-release-artifact-names.ps1")
+$AppVersion = Get-RushiWinAppVersion
+$PortableZipName = Get-RushiWinPortableZipName $AppVersion
+$NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
+$CudaZipName = Get-RushiWinCudaZipName $AppVersion
+Write-Host "Artifact names: portable=$PortableZipName nsis=$NsisSetupName"
 
 function Invoke-Npm {
   # Do not name the param $Args — that shadows PowerShell's automatic $Args and
@@ -85,10 +91,10 @@ try {
 
 $TauriRoot = Join-Path $Root "apps\desktop\src-tauri"
 $BundleRoot = Join-Path $TauriRoot "target\release\bundle"
-Write-Host "== normalize NSIS installer name =="
-& bash (Join-Path $Root "scripts/ci-normalize-windows-nsis-name.sh") --bundle-root (Join-Path $Root "apps/desktop/src-tauri/target/release/bundle")
+Write-Host "== normalize NSIS installer name (Chinese product+version) =="
+& bash (Join-Path $Root "scripts/ci-normalize-windows-nsis-name.sh") --bundle-root (Join-Path $Root "apps/desktop/src-tauri/target/release/bundle") --version $AppVersion
 
-$NsisSetup = Join-Path $BundleRoot "nsis\rushi-desktop-setup.exe"
+$NsisSetup = Join-Path $BundleRoot "nsis\$NsisSetupName"
 if (Test-Path -LiteralPath $NsisSetup) {
   & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -NsisPath $NsisSetup
 }
@@ -109,7 +115,7 @@ New-Item -ItemType Directory -Force -Path $Stage | Out-Null
 Copy-Item $Exe (Join-Path $Stage "rushi-desktop.exe")
 Copy-Item (Join-Path $TauriRoot "resources") (Join-Path $Stage "resources") -Recurse
 
-$Zip = Join-Path $Root "windows-portable-x64.zip"
+$Zip = Join-Path $Root $PortableZipName
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
 # Compress-Archive OOMs on sidecar+models; tar streams and is reliable on Win10+.
 Push-Location $Stage
@@ -127,12 +133,12 @@ if (-not (Test-Path -LiteralPath $manifestInZip)) { throw "portable stage missin
 
 $HashPath = "$Zip.sha256"
 (Get-FileHash -Algorithm SHA256 -Path $Zip).Hash.ToLower() | Set-Content -Path $HashPath -NoNewline
-Add-Content -Path $HashPath -Value "  windows-portable-x64.zip"
+Add-Content -Path $HashPath -Value "  $PortableZipName"
 
 if (Test-Path -LiteralPath $NsisSetup) {
   $nsisSha = "$NsisSetup.sha256"
   (Get-FileHash -Algorithm SHA256 -Path $NsisSetup).Hash.ToLower() | Set-Content -Path $nsisSha -NoNewline
-  Add-Content -Path $nsisSha -Value "  rushi-desktop-setup.exe"
+  Add-Content -Path $nsisSha -Value "  $NsisSetupName"
 }
 
 if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
@@ -145,12 +151,12 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
   }
   $cudaCdn = Join-Path $Root "dist\cuda-cdn"
   New-Item -ItemType Directory -Force -Path $cudaCdn | Out-Null
-  $cudaZip = Join-Path $cudaCdn "rushi-asr-sidecar-cuda-windows-x64.zip"
+  $cudaZip = Join-Path $cudaCdn $CudaZipName
   if (Test-Path $cudaZip) { Remove-Item -Force $cudaZip }
   Compress-Archive -Path $cudaDir -DestinationPath $cudaZip
   $cudaSha = "$cudaZip.sha256"
   (Get-FileHash -Algorithm SHA256 -Path $cudaZip).Hash.ToLower() | Set-Content -Path $cudaSha -NoNewline
-  Add-Content -Path $cudaSha -Value "  rushi-asr-sidecar-cuda-windows-x64.zip"
+  Add-Content -Path $cudaSha -Value "  $CudaZipName"
   Write-Host "CUDA CDN zip: $cudaZip"
 } else {
   Write-Host "SKIP: RUSHI_SKIP_CUDA_CDN=1"
@@ -158,6 +164,7 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
 
 Write-Host ""
 Write-Host "OK: Windows release build finished (NSIS CPU-only; portable = sidecar + Plan B models)."
+Write-Host "Next (CI failed / manual CDN): npm run release:win:upload -- --tag v$AppVersion"
 Get-Item $Zip
 if (Test-Path -LiteralPath $NsisSetup) { Get-Item $NsisSetup }
 Write-Host "Portable: $Zip"

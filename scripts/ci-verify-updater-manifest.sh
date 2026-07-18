@@ -41,11 +41,21 @@ fi
 CDN_BASE="${CDN_BASE%/}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 APP_VERSION="$(cd "$ROOT" && node -p "require('./apps/desktop/package.json').version")"
+# shellcheck source=scripts/rushi-win-release-artifact-names.sh
+source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
+WIN_NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VERSION")"
+WIN_PORTABLE_NAME="$(rushi_win_portable_zip_name "$APP_VERSION")"
 LATEST_URL="${CDN_BASE}/latest.json"
 
 http_code() {
   local url="$1"
-  curl -fsSIL "$url" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}'
+  # Percent-encode non-ASCII path segments for HTTP (CDN keys remain UTF-8).
+  local fetch_url
+  fetch_url="$(
+    python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=":/?#[]@!$&'"'"'()*+,;="))' "$url" 2>/dev/null \
+      || node -e 'const u=process.argv[1]; console.log(encodeURI(u))' "$url"
+  )"
+  curl -fsSIL "$fetch_url" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}'
 }
 
 HTTP_LATEST="$(http_code "$LATEST_URL")"
@@ -100,7 +110,7 @@ verify_platform() {
 }
 
 verify_platform "darwin-aarch64" "app.tar.gz"
-verify_platform "windows-x86_64" "rushi-desktop-setup.exe"
+verify_platform "windows-x86_64" "$WIN_NSIS_NAME"
 
 verify_url() {
   local label="$1"
@@ -120,12 +130,13 @@ verify_url() {
 }
 
 # Unsigned-primary install path + checksum (hard).
-verify_url "windows-portable" "${CDN_BASE}/${TAG}/windows-portable-x64.zip" 1
-verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/windows-portable-x64.zip.sha256" 1
-verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/rushi-desktop-setup.exe.sha256" 0
+verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 1
+verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 1
+verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}.sha256" 0
 
 # CUDA opt-in (soft — core release must not fail verify if CUDA job was skipped).
-verify_url "windows-cuda-zip" "${CDN_BASE}/${TAG}/rushi-asr-sidecar-cuda-windows-x64.zip" 0
+WIN_CUDA_NAME="$(rushi_win_cuda_zip_name "$APP_VERSION")"
+verify_url "windows-cuda-zip" "${CDN_BASE}/${TAG}/${WIN_CUDA_NAME}" 0
 verify_url "runtime-manifest" "${CDN_BASE}/runtime/rushi-runtime-manifest.json" 0
 
 echo "OTA CDN OK: version=${MANIFEST_VERSION}"

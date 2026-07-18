@@ -151,17 +151,28 @@ jobs:
             --bundle-root "$MAC_BUNDLE" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "$R2_BUCKET"
-          SETUP="$(find artifacts/windows -name rushi-desktop-setup.exe | head -1)"
+          source scripts/rushi-win-release-artifact-names.sh
+          WIN_VER="$(rushi_win_app_version)"
+          NSIS_NAME="$(rushi_win_nsis_setup_name "$WIN_VER")"
+          PORTABLE_NAME="$(rushi_win_portable_zip_name "$WIN_VER")"
+          SETUP="$(find artifacts/windows -name "$NSIS_NAME" | head -1)"
           if [ -z "$SETUP" ]; then
-            echo "::error::rushi-desktop-setup.exe missing in windows artifact"
+            SETUP="$(find artifacts/windows -name '*安装包.exe' | head -1)"
+          fi
+          if [ -z "$SETUP" ]; then
+            echo "::error::Chinese NSIS 安装包 missing in windows artifact (expected $NSIS_NAME)"
+            find artifacts/windows -type f | head -50
             exit 1
           fi
           WIN_BUNDLE="$(cd "$(dirname "$SETUP")/.." && pwd)"
-          PORTABLE="$(find artifacts/portable artifacts/windows -name windows-portable-x64.zip 2>/dev/null | head -1 || true)"
+          PORTABLE="$(find artifacts/portable artifacts/windows -name "$PORTABLE_NAME" 2>/dev/null | head -1 || true)"
+          if [ -z "$PORTABLE" ]; then
+            PORTABLE="$(find artifacts/portable artifacts/windows -name '*便携版.zip' 2>/dev/null | head -1 || true)"
+          fi
           if [ -n "$PORTABLE" ]; then
-            cp "$PORTABLE" ./windows-portable-x64.zip
+            cp "$PORTABLE" "./${PORTABLE_NAME}"
             if [ -f "${PORTABLE}.sha256" ]; then
-              cp "${PORTABLE}.sha256" ./windows-portable-x64.zip.sha256
+              cp "${PORTABLE}.sha256" "./${PORTABLE_NAME}.sha256"
             fi
           fi
           bash scripts/ci-upload-updater-cdn.sh \
@@ -170,7 +181,7 @@ jobs:
             --bundle-root "$WIN_BUNDLE" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "$R2_BUCKET"
-          if [ -f "${SETUP}.sig" ] || [ -f "$(dirname "$SETUP")/rushi-desktop-setup.exe.sig" ]; then
+          if [ -f "${SETUP}.sig" ]; then
             bash scripts/ci-upload-updater-cdn.sh \
               --tag "${{ inputs.tag }}" \
               --mode windows-ota \

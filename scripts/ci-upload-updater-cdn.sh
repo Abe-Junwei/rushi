@@ -14,8 +14,8 @@ Usage:
 Modes:
   macos-ota     app.tar.gz + .sig → CDN /<tag>/ (manifest merged separately)
   macos-dmg     *.dmg + *.sha256 → /<tag>/
-  windows       windows-portable-x64.zip(+sha) and optional NSIS → /<tag>/
-  windows-ota   rushi-desktop-setup.exe + .sig → CDN /<tag>/
+  windows       如是我闻_*_便携版.zip(+sha) and optional NSIS → /<tag>/
+  windows-ota   如是我闻_*_安装包.exe + .sig → CDN /<tag>/
   windows-cuda  CUDA sidecar zip(+sha) → /<tag>/; optional runtime manifest → /runtime/
   manifest      latest.json → CDN root + /<tag>/
 EOF
@@ -131,25 +131,36 @@ case "$MODE" in
     ;;
   windows)
     ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+    # shellcheck source=scripts/rushi-win-release-artifact-names.sh
+    source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
+    APP_VER="$(rushi_win_app_version)"
+    PORTABLE_NAME="$(rushi_win_portable_zip_name "$APP_VER")"
+    NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VER")"
     uploaded=0
-    if [ -f "${ROOT}/windows-portable-x64.zip" ]; then
-      upload_file "${ROOT}/windows-portable-x64.zip" "${TAG}/windows-portable-x64.zip" "application/zip"
+    if [ -f "${ROOT}/${PORTABLE_NAME}" ]; then
+      upload_file "${ROOT}/${PORTABLE_NAME}" "${TAG}/${PORTABLE_NAME}" "application/zip"
       uploaded=1
-      if [ -f "${ROOT}/windows-portable-x64.zip.sha256" ]; then
-        upload_file "${ROOT}/windows-portable-x64.zip.sha256" "${TAG}/windows-portable-x64.zip.sha256" "text/plain"
+      if [ -f "${ROOT}/${PORTABLE_NAME}.sha256" ]; then
+        upload_file "${ROOT}/${PORTABLE_NAME}.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
       fi
+    elif [ -f "${ROOT}/windows-portable-x64.zip" ]; then
+      echo "::warning::Legacy windows-portable-x64.zip found — rename to ${PORTABLE_NAME} before upload." >&2
+      exit 1
     fi
     shopt -s nullglob
-    if [ -f "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe" ]; then
-      upload_file "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe" "${TAG}/rushi-desktop-setup.exe" "application/vnd.microsoft.portable-executable"
+    if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" ]; then
+      upload_file "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
       uploaded=1
-      if [ -f "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe.sha256" ]; then
-        upload_file "${BUNDLE_ROOT}/nsis/rushi-desktop-setup.exe.sha256" "${TAG}/rushi-desktop-setup.exe.sha256" "text/plain"
+      if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" ]; then
+        upload_file "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" "${TAG}/${NSIS_NAME}.sha256" "text/plain"
       fi
     else
-      nsis_files=("${BUNDLE_ROOT}/nsis/"*-setup.exe)
+      nsis_files=("${BUNDLE_ROOT}/nsis/"*.exe)
       for exe in "${nsis_files[@]}"; do
         base="$(basename "$exe")"
+        case "$base" in
+          *.sig) continue ;;
+        esac
         upload_file "$exe" "${TAG}/${base}" "application/vnd.microsoft.portable-executable"
         uploaded=1
         if [ -f "${exe}.sha256" ]; then
@@ -164,12 +175,17 @@ case "$MODE" in
     echo "CDN Windows: ${CDN_BASE}/${TAG}/"
     ;;
   windows-ota)
+    ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+    # shellcheck source=scripts/rushi-win-release-artifact-names.sh
+    source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
+    APP_VER="$(rushi_win_app_version)"
+    NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VER")"
     NSIS_DIR="${BUNDLE_ROOT}/nsis"
-    SETUP_EXE="${NSIS_DIR}/rushi-desktop-setup.exe"
+    SETUP_EXE="${NSIS_DIR}/${NSIS_NAME}"
     SIG_FILE="${SETUP_EXE}.sig"
-    upload_file "$SETUP_EXE" "${TAG}/rushi-desktop-setup.exe" "application/vnd.microsoft.portable-executable"
-    upload_file "$SIG_FILE" "${TAG}/rushi-desktop-setup.exe.sig" "text/plain"
-    echo "CDN Windows OTA: ${CDN_BASE}/${TAG}/rushi-desktop-setup.exe"
+    upload_file "$SETUP_EXE" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
+    upload_file "$SIG_FILE" "${TAG}/${NSIS_NAME}.sig" "text/plain"
+    echo "CDN Windows OTA: ${CDN_BASE}/${TAG}/${NSIS_NAME}"
     ;;
   windows-cuda)
     if [ -z "$CUDA_ZIP" ] || [ ! -f "$CUDA_ZIP" ]; then

@@ -61,6 +61,8 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # Resolve via cwd-relative require so Git Bash paths work on Windows runners
 # (node cannot require('/d/a/.../package.json')).
 VERSION="$(cd "$ROOT" && node -p "require('./apps/desktop/package.json').version")"
+# shellcheck source=scripts/rushi-win-release-artifact-names.sh
+source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
 
 case "$PLATFORM" in
   darwin-aarch64)
@@ -70,8 +72,8 @@ case "$PLATFORM" in
     ;;
   windows-x86_64)
     ARTIFACT_DIR="${BUNDLE_ROOT}/nsis"
-    BUNDLE_FILE="${ARTIFACT_DIR}/rushi-desktop-setup.exe"
-    CDN_BUNDLE_NAME="rushi-desktop-setup.exe"
+    CDN_BUNDLE_NAME="$(rushi_win_nsis_setup_name "$VERSION")"
+    BUNDLE_FILE="${ARTIFACT_DIR}/${CDN_BUNDLE_NAME}"
     ;;
   *)
     echo "Unsupported platform: ${PLATFORM}" >&2
