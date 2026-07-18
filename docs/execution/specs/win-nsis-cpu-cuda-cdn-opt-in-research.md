@@ -84,3 +84,4 @@ CI 将 `dist/windows-bundle-size-spike.json` 写入 workflow artifact；以 runn
 |------|------|
 | 2026-07-16 | 初版：NSIS 失败根因 + CPU-only + CUDA CDN opt-in |
 | 2026-07-16 | 实施：release / LRC / UX / 体积尖刺脚本落地 |
+| 2026-07-18 | **产品硬要求**：主分发 portable **必须**含 CPU 侧车 + Plan B 模型；NSIS 仍第二刀无模型。CI：NSIS → stage models → portable（fail closed） |

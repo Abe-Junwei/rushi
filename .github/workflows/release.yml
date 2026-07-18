@@ -10,8 +10,8 @@
 #   Tauri generates .app.tar.gz + .sig (mac) and rushi-desktop-setup.exe + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the **macOS** installer.
-# Windows (2026-07+): NSIS/portable ship CPU sidecar only; Plan B models are omitted
-#   (makensis still fails with CPU+models after CUDA CDN cut — second knife).
+# Windows (2026-07+): NSIS ships CPU sidecar only (makensis OOM with CPU+models — second knife).
+#   **portable zip (主分发) MUST include CPU sidecar + Plan B models** (stage after NSIS).
 #   CUDA onedir is a CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
@@ -333,33 +333,9 @@ jobs:
         run: pwsh scripts/smoke-asr-sidecar-health.ps1
         timeout-minutes: 10
 
-      - name: Bootstrap ASR venv (bundled models)
-        # macOS keeps Plan B in the DMG; Windows NSIS still OOMs makensis with CPU+models
-        # (CI 2026-07-16: mmap ~1.27GiB after CUDA CDN cut). Models download at first run.
-        if: false
-        shell: bash
-        run: bash scripts/bootstrap-asr-venv.sh
-
-      - name: Cache ModelScope download (Plan B staging)
-        if: false
-        uses: actions/cache@v6
-        with:
-          path: dist/bundled-asr-models/.modelscope-cache
-          key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
-          restore-keys: bundled-asr-models-v1-windows-
-
-      - name: Stage bundled ASR models (Plan B)
-        # Second knife: omit Plan B weights from Windows NSIS (see win-nsis research §4 risk).
-        shell: bash
-        env:
-          RUSHI_SKIP_BUNDLED_MODELS_STAGE: "1"
-        run: |
-          echo "Windows NSIS: skipping Plan B model stage (RUSHI_SKIP_BUNDLED_MODELS_STAGE=1)."
-          echo "First-run UI falls back to ModelScope prepare when installer has no modelscope/."
-          npm run asr:stage-bundled-models
-        timeout-minutes: 5
-
       - name: Guard — Plan B models must not enter Windows NSIS
+        # Second knife: NSIS still OOMs with CPU+models (see win-nsis research).
+        # Plan B weights are staged AFTER NSIS into the portable zip (主分发).
         shell: bash
         run: |
           set -euo pipefail
@@ -373,9 +349,13 @@ jobs:
             echo "::error::CUDA onedir must not be staged before NSIS."
             exit 1
           fi
-          echo "OK: no Plan B modelscope/ and no CUDA onedir before NSIS."
+          if [ ! -d "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar" ]; then
+            echo "::error::CPU sidecar onedir missing before NSIS — Windows release must ship the sidecar."
+            exit 1
+          fi
+          echo "OK: CPU sidecar present; no Plan B modelscope/ and no CUDA onedir before NSIS."
 
-      - name: Measure Windows bundle size spike (CPU only; models omitted)
+      - name: Measure Windows bundle size spike (CPU only before NSIS)
         shell: pwsh
         run: pwsh scripts/ci-measure-windows-bundle-size.ps1
 
@@ -445,6 +425,42 @@ jobs:
           Write-Host "Signed $exe (portable zip only; NSIS .sig left intact)"
 
       # Portable (+ CDN) BEFORE updater fragment so a missing .sig cannot block the green zip.
+      # Stage Plan B models AFTER NSIS so makensis stays under budget; portable must ship them.
+      - name: Bootstrap ASR venv (Plan B models for portable)
+        shell: bash
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Cache ModelScope download (Plan B staging)
+        uses: actions/cache@v6
+        with:
+          path: dist/bundled-asr-models/.modelscope-cache
+          key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
+          restore-keys: bundled-asr-models-v1-windows-
+
+      - name: Stage bundled ASR models into resources (portable)
+        shell: bash
+        env:
+          STAGE_MODEL_MAX_ATTEMPTS: "8"
+        run: npm run asr:stage-bundled-models
+        timeout-minutes: 180
+
+      - name: Guard — portable resources must include sidecar + Plan B models
+        shell: bash
+        run: |
+          set -euo pipefail
+          SIDECAR="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar"
+          MODELS="apps/desktop/src-tauri/resources/bundled-asr-models"
+          if [ ! -d "$SIDECAR" ]; then
+            echo "::error::Missing CPU sidecar onedir ($SIDECAR) — Windows portable must ship the sidecar."
+            exit 1
+          fi
+          bash scripts/preflight-bundled-asr-models.sh "$MODELS"
+          echo "OK: Windows portable staging has CPU sidecar + Plan B models."
+
+      - name: Measure Windows portable staging size (CPU + models)
+        shell: pwsh
+        run: pwsh scripts/ci-measure-windows-bundle-size.ps1 -AllowModelsForPortable
+
       - name: Build Windows portable zip
         shell: pwsh
         run: |
@@ -459,10 +475,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item $exe (Join-Path $stage "rushi-desktop.exe")
           Copy-Item (Join-Path $root "resources") (Join-Path $stage "resources") -Recurse
-          if (Test-Path "windows-portable-x64.zip") { Remove-Item -Force "windows-portable-x64.zip" }
-          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath "windows-portable-x64.zip"
+          $zip = Join-Path (Get-Location) "windows-portable-x64.zip"
+          if (Test-Path $zip) { Remove-Item -Force $zip }
+          # Compress-Archive OOMs on sidecar+models (~2GB+); tar streams reliably on Win10+.
+          Push-Location $stage
+          try {
+            & tar -a -c -f $zip *
+            if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE" }
+          } finally {
+            Pop-Location
+          }
 
-      - name: Verify Windows portable zip
+      - name: Verify Windows portable zip (sidecar + models required)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
@@ -470,6 +494,23 @@ jobs:
             throw "Missing windows-portable-x64.zip"
           }
           Get-Item "windows-portable-x64.zip"
+          $probe = "dist/windows-portable-probe"
+          if (Test-Path $probe) { Remove-Item -Recurse -Force $probe }
+          Expand-Archive -LiteralPath "windows-portable-x64.zip" -DestinationPath $probe
+          $sidecar = Join-Path $probe "resources\bundled-asr\rushi-asr-sidecar"
+          $manifest = Join-Path $probe "resources\bundled-asr-models\manifest.json"
+          $modelscope = Join-Path $probe "resources\bundled-asr-models\modelscope"
+          if (-not (Test-Path -LiteralPath $sidecar)) {
+            throw "portable zip missing CPU sidecar onedir: $sidecar"
+          }
+          if (-not (Test-Path -LiteralPath $manifest)) {
+            throw "portable zip missing Plan B models manifest: $manifest"
+          }
+          if (-not (Test-Path -LiteralPath $modelscope)) {
+            throw "portable zip missing Plan B modelscope/: $modelscope"
+          }
+          Write-Host "OK: windows-portable-x64.zip contains CPU sidecar + Plan B models."
+          Remove-Item -Recurse -Force $probe
 
       - name: Checksum portable + NSIS
         shell: pwsh

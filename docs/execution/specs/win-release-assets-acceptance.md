@@ -12,7 +12,8 @@
 
 - [ ] `release.yml` **tauri-windows** 绿（tag push）；NSIS **&lt; 2GB**（目标 &lt; 1.5GB）
 - [ ] CDN **`/<tag>/windows-portable-x64.zip`** 可下载（**无签名阶段主分发**；CI early upload，不依赖 CUDA 步骤）
-- [ ] NSIS / portable **不含** `rushi-asr-sidecar-cuda`（CPU-only 安装介质）
+- [ ] portable zip **含** `resources/bundled-asr/rushi-asr-sidecar/` + `resources/bundled-asr-models/`（CI fail closed）
+- [ ] NSIS / portable **不含** `rushi-asr-sidecar-cuda`（CUDA 仅 CDN）；NSIS **可不含** Plan B 模型（makensis 第二刀）
 - [ ] CDN `/<tag>/rushi-asr-sidecar-cuda-windows-x64.zip` + `/runtime/rushi-runtime-manifest.json` 可下载
 - [ ] `release.yml` **verify-cdn-release** 合并 `latest.json` 含 `windows-x86_64`
 - [ ] CDN `/<tag>/rushi-desktop-setup.exe` + `.sig` 可下载（OTA；未签名时勿作小白主路径）
@@ -26,7 +27,7 @@
 |----|------|------|------|
 | H-WIN-0 | CDN 下载 `windows-portable-x64.zip`，解压运行 | **无** SmartScreen 蓝网；可启动 · 关于页版本与 tag 一致 | ☐ |
 | H-WIN-1 | （可选）CDN 下载 `rushi-desktop-setup.exe` 并安装 | 未签名时需「更多信息 → 仍要运行」；可启动 | ☐ |
-| H-WIN-2 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见（CPU；首跑或需拉模型） | ☐ |
+| H-WIN-2 | 导入音频 → 波形 → 本机转写 | 侧车 OK · Plan B seed · 语段可见（portable 默认可断网默认 SKU） | ☐ |
 | H-WIN-2b | （N 卡）环境页推荐 → 下载 CUDA → 重启侧车 | GPU 路径可用；取消/失败仍可 CPU 转写 | ☐ |
 | H-WIN-3 | 导出 Word | 成功 | ☐ |
 | H-WIN-4 | portable：**无**应用内更新；**无**内置 CUDA onedir | 符合 | ☐ |

@@ -1,16 +1,18 @@
-# Measure Windows bundle contribution sizes for NSIS budget decisions.
+# Measure Windows bundle contribution sizes for NSIS / portable budget decisions.
 # Run after sidecar (+ optional models) are staged under resources/.
 # Usage (repo root, Windows):
 #   pwsh scripts/ci-measure-windows-bundle-size.ps1
 #   pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe
+#   pwsh scripts/ci-measure-windows-bundle-size.ps1 -AllowModelsForPortable
 #
-# Decision note (Windows 2026-07+ second knife):
-#   - Plan B models are omitted from Windows NSIS/portable (first-run ModelScope).
+# Decision note (Windows 2026-07+):
+#   - NSIS: omit Plan B models (makensis OOM — second knife).
+#   - portable (主分发): MUST include CPU sidecar + Plan B models (stage after NSIS).
 #   - CUDA onedir is CDN opt-in only — must not be present before NSIS.
-#   - Guard: if models reappear and CPU+models >= 2GB, fail the NSIS path.
 
 param(
-  [string]$NsisPath = ""
+  [string]$NsisPath = "",
+  [switch]$AllowModelsForPortable
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,19 +45,30 @@ Write-Host ("CPU onedir:    {0}" -f (Format-GiB $cpuBytes))
 Write-Host ("CUDA onedir:   {0}" -f (Format-GiB $cudaBytes))
 Write-Host ("Plan B models: {0}" -f (Format-GiB $modelsBytes))
 
-if ($null -ne $cpuBytes -and $null -ne $modelsBytes) {
+if ($null -eq $cpuBytes) {
+  Write-Error "DECISION: CPU sidecar onedir missing — Windows release must ship the sidecar."
+}
+
+if ($AllowModelsForPortable) {
+  if ($null -eq $modelsBytes -or $modelsBytes -lt 1MB) {
+    Write-Error "DECISION: portable requires Plan B models (>=1MB staged); got $(Format-GiB $modelsBytes)."
+  }
+  $cpuPlusModels = $cpuBytes + $modelsBytes
+  Write-Host ("CPU + models:  {0}" -f (Format-GiB $cpuPlusModels))
+  Write-Host "DECISION: portable staging OK (CPU sidecar + Plan B models)."
+} elseif ($null -ne $modelsBytes) {
   $cpuPlusModels = $cpuBytes + $modelsBytes
   Write-Host ("CPU + models:  {0}" -f (Format-GiB $cpuPlusModels))
   $limit = [int64](2GB)
-  if ($cpuPlusModels -ge $limit) {
+  if ($modelsBytes -ge 1MB -and $cpuPlusModels -ge $limit) {
     Write-Error "DECISION: CPU+models still >= 2GB — Windows NSIS must omit Plan B models (second knife)."
-  } elseif ($null -ne $modelsBytes -and $modelsBytes -lt 1MB) {
-    Write-Host "DECISION: Plan B models omitted from this staging (Windows second knife); CUDA stays CDN-only."
+  } elseif ($modelsBytes -lt 1MB) {
+    Write-Host "DECISION: Plan B models omitted before NSIS (second knife); stage after NSIS for portable."
   } else {
-    Write-Warning "DECISION: Plan B models are present on Windows staging — expected omit for NSIS; confirm RUSHI_SKIP_BUNDLED_MODELS_STAGE=1."
+    Write-Warning "DECISION: Plan B models present before NSIS — expected omit; confirm staging order."
   }
 } else {
-  Write-Host "DECISION: incomplete staging (missing CPU and/or models) — re-run after build."
+  Write-Host "DECISION: models dir missing (OK before NSIS); portable path must stage Plan B after NSIS."
 }
 
 if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) {
@@ -80,7 +93,9 @@ $payload = [ordered]@{
   modelsBytes = $modelsBytes
   cpuPlusModelsBytes = if ($null -ne $cpuBytes -and $null -ne $modelsBytes) { $cpuBytes + $modelsBytes } else { $null }
   nsisBytes = if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) { (Get-Item $NsisPath).Length } else { $null }
-  keepModelsInInstaller = $false
+  keepModelsInNsis = $false
+  keepModelsInPortable = $true
+  allowModelsForPortable = [bool]$AllowModelsForPortable
 }
 $payload | ConvertTo-Json | Set-Content -Encoding utf8 $report
 Write-Host "Wrote $report"

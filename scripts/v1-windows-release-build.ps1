@@ -2,12 +2,15 @@
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
-#   RUSHI_SKIP_BUNDLED_MODELS_STAGE=0  # opt-in: stage Plan B into NSIS (default skip — makensis limit)
+#   RUSHI_FORCE_MODELS_IN_NSIS=1  # dangerous: stage Plan B into NSIS (makensis may OOM)
 #   RUSHI_SKIP_SIDECAR_SIGN=1
 #   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
 # Signing (optional): SIGNTOOL, SIGN_PFX, SIGN_PASS — see sign-windows-sidecar.ps1
 # Manifest URL (injected into release shell):
 #   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
+#
+# Product rule: portable zip MUST include CPU sidecar + Plan B ASR models.
+# NSIS keeps CPU-only (makensis second knife); models are staged AFTER NSIS for portable.
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -39,6 +42,22 @@ if (Test-Path -LiteralPath $cudaDir) {
   Remove-Item -Recurse -Force $cudaDir
 }
 
+$modelsDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr-models"
+if ($env:RUSHI_FORCE_MODELS_IN_NSIS -eq "1") {
+  Write-Host "== stage Plan B models BEFORE NSIS (RUSHI_FORCE_MODELS_IN_NSIS=1) =="
+  Invoke-Npm @("run", "asr:stage-bundled-models")
+  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+  if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
+} else {
+  foreach ($sub in @("modelscope", "models")) {
+    $p = Join-Path $modelsDir $sub
+    if (Test-Path -LiteralPath $p) {
+      Write-Host "Removing $p before NSIS (models go into portable after NSIS)"
+      Remove-Item -Recurse -Force $p
+    }
+  }
+}
+
 if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
   Write-Host "== sign CPU sidecar (optional) =="
   & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
@@ -50,16 +69,7 @@ Write-Host "== sidecar health smoke =="
 & pwsh (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1")
 if ($LASTEXITCODE -ne 0) { throw "sidecar health smoke failed" }
 
-if ($env:RUSHI_SKIP_BUNDLED_MODELS_STAGE -eq "0") {
-  Write-Host "== stage bundled ASR models - Plan B explicit opt-in =="
-  Invoke-Npm @("run", "asr:stage-bundled-models")
-  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh")
-  if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
-} else {
-  Write-Host "SKIP: Plan B models omitted from Windows NSIS. Set RUSHI_SKIP_BUNDLED_MODELS_STAGE=0 to force stage."
-}
-
-Write-Host "== measure bundle size spike =="
+Write-Host "== measure bundle size spike (pre-NSIS) =="
 & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1")
 
 if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
@@ -83,7 +93,13 @@ if (Test-Path -LiteralPath $NsisSetup) {
   & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -NsisPath $NsisSetup
 }
 
-Write-Host "== portable zip (CPU-only resources) =="
+Write-Host "== stage Plan B models for portable (required) =="
+Invoke-Npm @("run", "asr:stage-bundled-models")
+& bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed (portable requires models)" }
+& pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -AllowModelsForPortable
+
+Write-Host "== portable zip (CPU sidecar + Plan B models) =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
 if (-not (Test-Path -LiteralPath $Exe)) { throw "Missing $Exe" }
 
@@ -95,7 +111,7 @@ Copy-Item (Join-Path $TauriRoot "resources") (Join-Path $Stage "resources") -Rec
 
 $Zip = Join-Path $Root "windows-portable-x64.zip"
 if (Test-Path $Zip) { Remove-Item -Force $Zip }
-# Compress-Archive OOMs on ~1GiB sidecar onedir; tar streams and is reliable on Win10+.
+# Compress-Archive OOMs on sidecar+models; tar streams and is reliable on Win10+.
 Push-Location $Stage
 try {
   & tar -a -c -f $Zip *
@@ -103,6 +119,11 @@ try {
 } finally {
   Pop-Location
 }
+
+$sidecarInZip = Join-Path $Stage "resources\bundled-asr\rushi-asr-sidecar"
+$manifestInZip = Join-Path $Stage "resources\bundled-asr-models\manifest.json"
+if (-not (Test-Path -LiteralPath $sidecarInZip)) { throw "portable stage missing CPU sidecar: $sidecarInZip" }
+if (-not (Test-Path -LiteralPath $manifestInZip)) { throw "portable stage missing Plan B models: $manifestInZip" }
 
 $HashPath = "$Zip.sha256"
 (Get-FileHash -Algorithm SHA256 -Path $Zip).Hash.ToLower() | Set-Content -Path $HashPath -NoNewline
@@ -136,7 +157,7 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
 }
 
 Write-Host ""
-Write-Host "OK: Windows release build finished (CPU-only NSIS)."
+Write-Host "OK: Windows release build finished (NSIS CPU-only; portable = sidecar + Plan B models)."
 Get-Item $Zip
 if (Test-Path -LiteralPath $NsisSetup) { Get-Item $NsisSetup }
 Write-Host "Portable: $Zip"
