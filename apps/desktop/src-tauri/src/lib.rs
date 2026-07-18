@@ -231,6 +231,8 @@ pub fn run() {
             project::export_cmd::export_project_bundle,
             project::export_cmd::export_library_bundle,
             project::export_cmd::import_project_bundle,
+            project::export_cmd::import_exchange_bundle_preview,
+            project::export_cmd::import_exchange_bundle_apply,
             project::asr_runtime_paths_cmd::get_asr_runtime_paths,
             project::asr_cache_cmd::asr_model_cache_info,
             project::asr_cache_cmd::clear_asr_model_cache,

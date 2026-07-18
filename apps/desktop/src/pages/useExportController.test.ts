@@ -9,6 +9,8 @@ vi.mock("../tauri/projectApi", async (importOriginal) => {
     exportProjectBundle: vi.fn(),
     exportLibraryBundle: vi.fn(),
     importProjectBundle: vi.fn(),
+    importExchangeBundlePreview: vi.fn(),
+    importExchangeBundleApply: vi.fn(),
   };
 });
 

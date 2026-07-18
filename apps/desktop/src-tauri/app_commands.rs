@@ -65,6 +65,8 @@ pub const APP_COMMANDS: &[&str] = &[
     "export_project_bundle",
     "export_library_bundle",
     "import_project_bundle",
+    "import_exchange_bundle_preview",
+    "import_exchange_bundle_apply",
     "get_asr_runtime_paths",
     "asr_model_cache_info",
     "clear_asr_model_cache",

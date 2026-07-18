@@ -62,6 +62,13 @@ describe("projectLifecycleFacades contract", () => {
       confirmExportBundleScope: async () => {},
       canExportCurrentProjectBundle: true,
       importProjectBundle: async () => {},
+      bundleImportConflictPending: null,
+      bundleImportConflictDrafts: {},
+      setBundleImportConflictDraft: () => {},
+      applyAllBundleImportOverwrite: () => {},
+      applyAllBundleImportRename: () => {},
+      cancelBundleImportConflict: () => {},
+      confirmBundleImportConflict: async () => {},
     } satisfies ExportApi;
 
     const facade = pickExportLifecycleFacade(source);

@@ -1,20 +1,26 @@
 use crate::command_error::{CommandError, CommandErrorDto, CommandResultExt};
 use crate::DbState;
+use std::collections::HashSet;
 use std::fs;
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use tauri::State;
 
+use super::bundle_import_name_conflict::{
+    lookup_existing_name_public, plan_from_resolutions, preview_exchange_bundle_at,
+    BundleFileNameResolution, ExchangeBundleImportPreview,
+};
+use super::file_cmd::delete_file_inner;
 use super::library_bundle_cmd::{
-    export_library_bundle_to_path, import_library_bundle_from_path, ImportExchangeBundleResult,
-    LIBRARY_BUNDLE_KIND,
+    export_library_bundle_to_path, import_library_bundle_from_path_with_renames,
+    ImportExchangeBundleResult, LIBRARY_BUNDLE_KIND,
 };
 use super::project_bundle_cmd::{
-    export_project_bundle_to_path, import_project_bundle_from_path, peek_exchange_bundle_kind,
-    PROJECT_BUNDLE_KIND,
+    export_project_bundle_to_path, import_project_bundle_from_path_with_renames, PROJECT_BUNDLE_KIND,
 };
 use super::types::SegmentDto;
+use super::utils::open_db;
 
 /// 弹出系统「另存为」并写入 UTF-8 文本（Tauri WebView 内程序化 `<a download>` 常无效果）。
 #[tauri::command]
@@ -148,6 +154,109 @@ pub async fn export_library_bundle(
     .map_command_err_dto()
 }
 
+/// Pick zip + preview file-name conflicts (lexicon-style first stage).
+#[tauri::command]
+pub async fn import_exchange_bundle_preview(
+    state: State<'_, DbState>,
+) -> Result<Option<ExchangeBundleImportPreview>, CommandErrorDto> {
+    let st = state.inner().clone();
+    let picked = tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new()
+            .add_filter("ZIP", &["zip"])
+            .pick_file()
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ImportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_dto()
+    })?;
+    let Some(zip_path) = picked else {
+        return Ok(None);
+    };
+    tauri::async_runtime::spawn_blocking(move || preview_exchange_bundle_at(&st, &zip_path))
+        .await
+        .map_err(|e| {
+            CommandError::ImportProjectBundle {
+                detail: e.to_string(),
+            }
+            .to_dto()
+        })?
+        .map(Some)
+        .map_command_err_dto()
+}
+
+fn apply_exchange_bundle_inner(
+    st: &DbState,
+    zip_path: &Path,
+    resolutions: &[BundleFileNameResolution],
+) -> Result<ImportExchangeBundleResult, CommandError> {
+    let preview = preview_exchange_bundle_at(st, zip_path)?;
+    let (rename_map, overwrite_ids) = plan_from_resolutions(&preview, resolutions)?;
+
+    let overwrite_set: HashSet<&str> = overwrite_ids.iter().map(|s| s.as_str()).collect();
+    let conn = open_db(st).map_err(CommandError::db_pool)?;
+    for ((_sk, _incoming), final_name) in &rename_map {
+        if let Some((fid, _, _)) = lookup_existing_name_public(&conn, final_name)
+            .map_err(|detail| CommandError::ImportProjectBundle { detail })?
+        {
+            if !overwrite_set.contains(fid.as_str()) {
+                return Err(CommandError::ImportProjectBundle {
+                    detail: format!("文件名「{final_name}」仍被占用，请另选名称或覆盖该文件。"),
+                });
+            }
+        }
+    }
+    drop(conn);
+
+    for fid in &overwrite_ids {
+        delete_file_inner(st, fid).map_err(|detail| CommandError::ImportProjectBundle { detail })?;
+    }
+
+    match preview.kind.as_str() {
+        k if k == PROJECT_BUNDLE_KIND => {
+            let project =
+                import_project_bundle_from_path_with_renames(st, zip_path, &rename_map)?;
+            Ok(ImportExchangeBundleResult {
+                project,
+                imported_count: 1,
+                failed_count: 0,
+                failed_labels: Vec::new(),
+                lexicon_warning: None,
+            })
+        }
+        k if k == LIBRARY_BUNDLE_KIND => {
+            import_library_bundle_from_path_with_renames(st, zip_path, &rename_map)
+        }
+        _ => Err(CommandError::BundleUnsupportedKind),
+    }
+}
+
+/// Apply import after conflict resolutions (empty when no conflicts).
+#[tauri::command]
+pub async fn import_exchange_bundle_apply(
+    state: State<'_, DbState>,
+    zip_path: String,
+    resolutions: Vec<BundleFileNameResolution>,
+) -> Result<ImportExchangeBundleResult, CommandErrorDto> {
+    let st = state.inner().clone();
+    let path = PathBuf::from(zip_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        apply_exchange_bundle_inner(&st, &path, &resolutions)
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ImportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_dto()
+    })?
+    .map_command_err_dto()
+}
+
+/// Legacy one-shot: pick → if no conflicts apply immediately; if conflicts, return error asking FE to use preview.
+/// Prefer `import_exchange_bundle_preview` + `import_exchange_bundle_apply`.
 #[tauri::command]
 pub async fn import_project_bundle(
     state: State<'_, DbState>,
@@ -169,23 +278,16 @@ pub async fn import_project_bundle(
         return Ok(None);
     };
     tauri::async_runtime::spawn_blocking(move || {
-        let kind = peek_exchange_bundle_kind(&zip_path)?;
-        match kind.as_str() {
-            k if k == PROJECT_BUNDLE_KIND => {
-                let project = import_project_bundle_from_path(&st, &zip_path)?;
-                Ok(Some(ImportExchangeBundleResult {
-                    project,
-                    imported_count: 1,
-                    failed_count: 0,
-                    failed_labels: Vec::new(),
-                    lexicon_warning: None,
-                }))
-            }
-            k if k == LIBRARY_BUNDLE_KIND => {
-                import_library_bundle_from_path(&st, &zip_path).map(Some)
-            }
-            _ => Err(CommandError::BundleUnsupportedKind),
+        let preview = preview_exchange_bundle_at(&st, &zip_path)?;
+        if !preview.conflicts.is_empty() {
+            return Err(CommandError::ImportProjectBundle {
+                detail: format!(
+                    "检测到 {} 个文件名冲突，请使用冲突确认流程（取消 / 覆盖 / 重命名）。",
+                    preview.conflicts.len()
+                ),
+            });
         }
+        apply_exchange_bundle_inner(&st, &zip_path, &[]).map(Some)
     })
     .await
     .map_err(|e| {

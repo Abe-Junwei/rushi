@@ -1,8 +1,10 @@
 import { useCallback, useState } from "react";
 import type { ExportBundleScope } from "../components/ExportBundleScopeDialog";
+import type { BundleConflictDraft } from "../components/BundleImportNameConflictDialog";
 import { formatSrt, formatTxt, type ExportSegment } from "../services/exportFormatters";
-import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
+import type { ExchangeBundleImportPreview, ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
+import { useBundleImportConflictController } from "./useBundleImportConflictController";
 import { exportDocx as exportDocxImpl, type DocxExportMode } from "../tauri/exportDocxApi";
 import { buildDocxExportMetaLine } from "../services/exportDeliveryAppendix";
 import { buildDocxExportLayoutOptions } from "../services/exportDocxLayoutOptions";
@@ -56,6 +58,13 @@ export interface ExportApi {
   confirmExportBundleScope: () => Promise<void>;
   canExportCurrentProjectBundle: boolean;
   importProjectBundle: () => Promise<void>;
+  bundleImportConflictPending: ExchangeBundleImportPreview | null;
+  bundleImportConflictDrafts: Record<string, BundleConflictDraft>;
+  setBundleImportConflictDraft: (id: string, draft: BundleConflictDraft) => void;
+  applyAllBundleImportOverwrite: () => void;
+  applyAllBundleImportRename: () => void;
+  cancelBundleImportConflict: () => void;
+  confirmBundleImportConflict: () => Promise<void>;
 }
 
 export interface ExportDeps {
@@ -399,35 +408,13 @@ export function useExportController(deps: ExportDeps): ExportApi {
     endBusy,
   ]);
 
-  const importProjectBundle = useCallback(async () => {
-    setError("");
-    beginBusy("import");
-    try {
-      const result = await p1.importProjectBundle();
-      if (!result) return;
-      applyDetail(result.project);
-      await refreshProjects();
-      if (result.failedCount > 0) {
-        const sample = result.failedLabels.slice(0, 3).join("；");
-        toast.info(
-          `已导入 ${result.importedCount} 个项目，${result.failedCount} 个失败${sample ? `：${sample}` : ""}`,
-        );
-      } else {
-        toast.success(
-          result.importedCount > 1
-            ? `已导入整库包（${result.importedCount} 个项目）`
-            : "已导入内容包",
-        );
-      }
-      if (result.lexiconWarning) {
-        toast.info(result.lexiconWarning);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      endBusy();
-    }
-  }, [applyDetail, refreshProjects, setError, beginBusy, endBusy]);
+  const bundleImportConflict = useBundleImportConflictController({
+    setError,
+    beginBusy,
+    endBusy,
+    refreshProjects,
+    applyDetail,
+  });
 
   return {
     exportTxt,
@@ -441,6 +428,6 @@ export function useExportController(deps: ExportDeps): ExportApi {
     closeExportBundleScope,
     confirmExportBundleScope,
     canExportCurrentProjectBundle,
-    importProjectBundle,
+    ...bundleImportConflict,
   };
 }

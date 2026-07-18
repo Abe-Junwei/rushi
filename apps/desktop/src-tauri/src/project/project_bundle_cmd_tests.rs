@@ -1,9 +1,10 @@
 use super::project_bundle_cmd::{
-    export_project_bundle_to_path, import_project_bundle_from_path, read_zip_bytes, read_zip_json,
-    zip_opts, ProjectBundleDocument, ProjectBundleFileDoc, ProjectBundleFileManifest,
-    ProjectBundleManifest, ProjectBundleProjectMeta, MAX_BUNDLE_SEGMENT_COUNT,
-    MAX_BUNDLE_UNCOMPRESSED_BYTES, PROJECT_BUNDLE_KIND, PROJECT_BUNDLE_LEXICON_ENTRY,
-    PROJECT_BUNDLE_VERSION, PROJECT_BUNDLE_VERSION_V1,
+    export_project_bundle_to_path, import_project_bundle_from_path,
+    import_project_bundle_from_path_with_renames, read_zip_bytes, read_zip_json, zip_opts,
+    ProjectBundleDocument, ProjectBundleFileDoc, ProjectBundleFileManifest, ProjectBundleManifest,
+    ProjectBundleProjectMeta, MAX_BUNDLE_SEGMENT_COUNT, MAX_BUNDLE_UNCOMPRESSED_BYTES,
+    PROJECT_BUNDLE_KIND, PROJECT_BUNDLE_LEXICON_ENTRY, PROJECT_BUNDLE_VERSION,
+    PROJECT_BUNDLE_VERSION_V1,
 };
 use super::types::SegmentDto;
 use super::utils::open_db;
@@ -725,6 +726,73 @@ fn import_v1_project_bundle_still_works() {
     let _ = fs::remove_dir_all(&st.root);
 }
 
+/// `doc.name` with surrounding whitespace must resolve to the same trimmed name in both
+/// the conflict preview and the actual write, or the user's chosen rename/overwrite would
+/// silently miss and the untrimmed literal name would be written instead.
+#[test]
+fn import_v1_bundle_trims_name_consistently_with_conflict_preview() {
+    use super::bundle_import_name_conflict::{plan_from_resolutions, preview_exchange_bundle_at};
+
+    let st = test_state("import_v1_trim");
+    let existing = seed_project(&st, "occupant", "占用项目", "clash.wav");
+    let conn = open_db(&st).unwrap();
+    conn.execute(
+        "UPDATE files SET name = ?1 WHERE id = ?2",
+        params!["重名文件", &existing.file_id],
+    )
+    .unwrap();
+    drop(conn);
+
+    let zip_path = st.root.join("v1_trim.zip");
+    let file = File::create(&zip_path).unwrap();
+    let mut zip = ZipWriter::new(file);
+    let manifest = ProjectBundleManifest {
+        kind: PROJECT_BUNDLE_KIND.to_string(),
+        version: PROJECT_BUNDLE_VERSION_V1,
+        exported_at_ms: 1,
+        project: empty_project_meta("source-id-2", "原项目"),
+        audio_file: Some("audio.wav".into()),
+        files: vec![],
+        includes_lexicon: false,
+    };
+    let doc = ProjectBundleDocument {
+        name: "重名文件 ".into(),
+        created_at_ms: 2,
+        updated_at_ms: 3,
+        segments: vec![],
+        files: vec![],
+        edit_log: vec![],
+    };
+    zip.start_file("manifest.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&manifest).unwrap())
+        .unwrap();
+    zip.start_file("project.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&doc).unwrap()).unwrap();
+    zip.start_file("audio/audio.wav", zip_opts()).unwrap();
+    zip.write_all(b"v1-audio").unwrap();
+    zip.finish().unwrap();
+
+    let preview = preview_exchange_bundle_at(&st, &zip_path).unwrap();
+    assert_eq!(preview.conflicts.len(), 1);
+    assert_eq!(preview.conflicts[0].incoming_name, "重名文件");
+    assert_eq!(
+        preview.conflicts[0].existing_file_id.as_deref(),
+        Some(existing.file_id.as_str())
+    );
+
+    let resolutions = vec![super::bundle_import_name_conflict::BundleFileNameResolution {
+        id: preview.conflicts[0].id.clone(),
+        action: "rename".into(),
+        rename_to: Some("重名文件 (2)".into()),
+    }];
+    let (rename_map, _overwrite_ids) = plan_from_resolutions(&preview, &resolutions).unwrap();
+    let imported =
+        import_project_bundle_from_path_with_renames(&st, &zip_path, &rename_map).unwrap();
+    assert_eq!(imported.files[0].name, "重名文件 (2)");
+
+    let _ = fs::remove_dir_all(&st.root);
+}
+
 #[test]
 fn import_project_bundle_rejects_unsafe_audio_path() {
     let st = test_state("unsafe_path");
@@ -870,4 +938,103 @@ fn import_project_bundle_rejects_excessive_segment_count() {
     assert!(err.contains("语段数量超过上限"));
 
     let _ = fs::remove_dir_all(&st.root);
+}
+
+#[test]
+fn import_bundle_name_conflict_preview_and_resolutions() {
+    use super::bundle_import_name_conflict::{
+        plan_from_resolutions, preview_exchange_bundle_at, BundleFileNameResolution,
+    };
+
+    let export_state = test_state("name_conflict_export");
+    let project_id = "proj-conflict-src";
+    let seeded = seed_project(&export_state, project_id, "冲突项目", "clip.wav");
+    let export_zip = export_state.root.join("conflict_bundle.zip");
+    export_project_bundle_to_path(
+        &export_state,
+        project_id,
+        &seeded.file_id,
+        &export_zip,
+        vec![SegmentDto {
+            uid: None,
+            idx: 0,
+            start_sec: 0.0,
+            end_sec: 1.0,
+            text: "hi".into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+            text_stage: "auto_transcribe".to_string(),
+            finalize_via: None,
+            annotation: None,
+            frozen: false,
+        }],
+        false,
+    )
+    .unwrap();
+
+    let import_state = test_state("name_conflict_import");
+    let preview_empty = preview_exchange_bundle_at(&import_state, &export_zip).unwrap();
+    assert!(preview_empty.conflicts.is_empty());
+    let first = import_project_bundle_from_path(&import_state, &export_zip).unwrap();
+    let clash_name = first.files[0].name.clone();
+    let first_file_id = first.files[0].id.clone();
+
+    let preview = preview_exchange_bundle_at(&import_state, &export_zip).unwrap();
+    assert_eq!(preview.conflicts.len(), 1);
+    assert_eq!(preview.conflicts[0].incoming_name, clash_name);
+    assert_eq!(
+        preview.conflicts[0].existing_file_id.as_deref(),
+        Some(first_file_id.as_str())
+    );
+
+    let resolutions = vec![BundleFileNameResolution {
+        id: preview.conflicts[0].id.clone(),
+        action: "rename".into(),
+        rename_to: Some(preview.conflicts[0].suggested_name.clone()),
+    }];
+    let (rename_map, overwrite_ids) = plan_from_resolutions(&preview, &resolutions).unwrap();
+    assert!(overwrite_ids.is_empty());
+    let renamed =
+        import_project_bundle_from_path_with_renames(&import_state, &export_zip, &rename_map)
+            .unwrap();
+    assert_eq!(renamed.files[0].name, preview.conflicts[0].suggested_name);
+
+    let preview2 = preview_exchange_bundle_at(&import_state, &export_zip).unwrap();
+    let overwrite_conflict = preview2
+        .conflicts
+        .iter()
+        .find(|c| c.incoming_name == clash_name && c.existing_file_id.is_some())
+        .expect("expected conflict against original name");
+    let resolutions_ow = preview2
+        .conflicts
+        .iter()
+        .map(|c| {
+            if c.id == overwrite_conflict.id {
+                BundleFileNameResolution {
+                    id: c.id.clone(),
+                    action: "overwrite".into(),
+                    rename_to: None,
+                }
+            } else {
+                BundleFileNameResolution {
+                    id: c.id.clone(),
+                    action: "rename".into(),
+                    rename_to: Some(c.suggested_name.clone()),
+                }
+            }
+        })
+        .collect::<Vec<_>>();
+    let (map_ow, ids) = plan_from_resolutions(&preview2, &resolutions_ow).unwrap();
+    assert!(ids.contains(&first_file_id));
+    for id in &ids {
+        crate::project::file_cmd::delete_file_inner(&import_state, id).unwrap();
+    }
+    let after =
+        import_project_bundle_from_path_with_renames(&import_state, &export_zip, &map_ow).unwrap();
+    assert_eq!(after.files[0].name, clash_name);
+
+    let _ = fs::remove_dir_all(&export_state.root);
+    let _ = fs::remove_dir_all(&import_state.root);
 }

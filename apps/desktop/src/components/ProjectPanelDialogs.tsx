@@ -5,6 +5,7 @@ import { AutoTranscribeStartDialog } from "./AutoTranscribeStartDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
 import { DeliveryModeDialog } from "./DeliveryModeDialog";
+import { BundleImportNameConflictDialog } from "./BundleImportNameConflictDialog";
 import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
 import { AttachImportTargetDialog } from "./AttachImportTargetDialog";
 import { BatchTranscribeQueueDialog } from "./BatchTranscribeQueueDialog";
@@ -219,6 +220,19 @@ export function ProjectPanelDialogs({
         onOpenExisting={c.openExistingDuplicateImport}
         onConfirmCopy={c.confirmDuplicateImportCopy}
       />
+
+      {c.bundleImportConflictPending ? (
+        <BundleImportNameConflictDialog
+          pending={c.bundleImportConflictPending}
+          drafts={c.bundleImportConflictDrafts}
+          disabled={c.busy}
+          onDraftChange={c.setBundleImportConflictDraft}
+          onApplyAllOverwrite={c.applyAllBundleImportOverwrite}
+          onApplyAllRename={c.applyAllBundleImportRename}
+          onCancel={c.cancelBundleImportConflict}
+          onConfirm={() => void c.confirmBundleImportConflict()}
+        />
+      ) : null}
 
       <AttachImportTargetDialog
         open={c.attachImportTargetOpen}

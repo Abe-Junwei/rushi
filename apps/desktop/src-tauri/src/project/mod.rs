@@ -12,6 +12,7 @@ pub mod correction;
 pub mod correction_memory_cmd;
 mod edit_log_detail;
 mod edit_log_snapshot;
+mod bundle_import_name_conflict;
 pub mod export_cmd;
 pub mod file_cmd;
 pub mod file_import_cmd;

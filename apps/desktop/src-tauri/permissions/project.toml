@@ -55,5 +55,7 @@ permissions = [
   "allow-export-project-bundle",
   "allow-export-library-bundle",
   "allow-import-project-bundle",
+  "allow-import-exchange-bundle-preview",
+  "allow-import-exchange-bundle-apply",
   "allow-export-text-file",
 ]

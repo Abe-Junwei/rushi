@@ -6,10 +6,12 @@
 
 use crate::command_error::{CommandError, CommandResult};
 use crate::media_base_dir::{audio_project_dir, persist_audio_storage_path, resolve_audio_path};
+use crate::project::file_name_unique::name_taken;
 use crate::project::waveform_peaks::{peak_file_path, peak_meta_path, peaks_dir, PEAK_LEVELS};
 use crate::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
@@ -618,9 +620,20 @@ pub(super) fn peek_exchange_bundle_kind(zip_path: &Path) -> CommandResult<String
     Ok(kind)
 }
 
+/// No-conflict convenience wrapper; production callers go through `_with_renames` directly.
+#[cfg(test)]
 pub(super) fn import_project_bundle_from_path(
     st: &DbState,
     zip_path: &Path,
+) -> CommandResult<ProjectDetail> {
+    import_project_bundle_from_path_with_renames(st, zip_path, &HashMap::new())
+}
+
+/// `rename_map` keys are `(source_key, incoming_name)` → final display name.
+pub(super) fn import_project_bundle_from_path_with_renames(
+    st: &DbState,
+    zip_path: &Path,
+    rename_map: &HashMap<(String, String), String>,
 ) -> CommandResult<ProjectDetail> {
     let file = File::open(zip_path).map_err(CommandError::BundleOpen)?;
     let mut archive = ZipArchive::new(file).map_err(CommandError::BundleRead)?;
@@ -629,9 +642,14 @@ pub(super) fn import_project_bundle_from_path(
     if manifest.kind != PROJECT_BUNDLE_KIND {
         return Err(CommandError::BundleUnsupportedKind);
     }
+    let source_key = manifest.project.original_id.clone();
     match manifest.version {
-        PROJECT_BUNDLE_VERSION_V1 => import_v1(st, zip_path, &mut archive, manifest),
-        PROJECT_BUNDLE_VERSION => import_v2(st, zip_path, &mut archive, manifest),
+        PROJECT_BUNDLE_VERSION_V1 => {
+            import_v1(st, zip_path, &mut archive, manifest, rename_map, &source_key)
+        }
+        PROJECT_BUNDLE_VERSION => {
+            import_v2(st, zip_path, &mut archive, manifest, rename_map, &source_key)
+        }
         found => Err(CommandError::BundleUnsupportedVersion {
             found,
             supported: PROJECT_BUNDLE_VERSION,
@@ -644,6 +662,8 @@ fn import_v1(
     zip_path: &Path,
     archive: &mut ZipArchive<File>,
     manifest: ProjectBundleManifest,
+    rename_map: &HashMap<(String, String), String>,
+    source_key: &str,
 ) -> CommandResult<ProjectDetail> {
     let audio_file = manifest
         .audio_file
@@ -663,6 +683,17 @@ fn import_v1(
         });
     }
     let audio_bytes = read_zip_bytes(archive, &format!("audio/{audio_file_name}"))?;
+    // Must mirror `list_names_from_project_zip`'s name resolution so preview conflicts
+    // and the actual write-name (and thus `rename_map` lookup) line up for legacy v1 docs.
+    let file_name = if doc.name.trim().is_empty() {
+        if manifest.project.name.trim().is_empty() {
+            manifest.project.original_id.clone()
+        } else {
+            manifest.project.name.clone()
+        }
+    } else {
+        doc.name.trim().to_string()
+    };
     import_project_from_parts(
         st,
         zip_path,
@@ -671,7 +702,7 @@ fn import_v1(
         doc.created_at_ms,
         &[(
             "legacy".to_string(),
-            doc.name.clone(),
+            file_name,
             "paired".to_string(),
             audio_file_name.to_string(),
             audio_bytes,
@@ -680,6 +711,8 @@ fn import_v1(
         )],
         &[],
         archive,
+        rename_map,
+        source_key,
     )
 }
 
@@ -688,6 +721,8 @@ fn import_v2(
     zip_path: &Path,
     archive: &mut ZipArchive<File>,
     manifest: ProjectBundleManifest,
+    rename_map: &HashMap<(String, String), String>,
+    source_key: &str,
 ) -> CommandResult<ProjectDetail> {
     if manifest.files.is_empty() {
         return Err(CommandError::BundleNoExportableAudio);
@@ -739,6 +774,8 @@ fn import_v2(
         &packed,
         &doc.edit_log,
         archive,
+        rename_map,
+        source_key,
     )
 }
 
@@ -760,6 +797,8 @@ fn import_project_from_parts(
     )],
     edit_log: &[ProjectBundleEditLogEntry],
     archive: &mut ZipArchive<File>,
+    rename_map: &HashMap<(String, String), String>,
+    source_key: &str,
 ) -> CommandResult<ProjectDetail> {
     let id = Uuid::new_v4().to_string();
     let media_base = resolve_audio_path_media_base(st)?;
@@ -802,6 +841,19 @@ fn import_project_from_parts(
         for (old_fid, file_name, file_type, audio_leaf, audio_bytes, segments, peaks_prefix) in
             files
         {
+            let write_name = rename_map
+                .get(&(source_key.to_string(), file_name.clone()))
+                .cloned()
+                .unwrap_or_else(|| file_name.clone());
+            if name_taken(&tx, &write_name, None).map_err(|detail| {
+                CommandError::ImportProjectBundle { detail }
+            })? {
+                return Err(CommandError::ImportProjectBundle {
+                    detail: format!(
+                        "文件名「{write_name}」仍冲突，请先解决重名后再导入。"
+                    ),
+                });
+            }
             let new_file_id = Uuid::new_v4().to_string();
             let ext = Path::new(audio_leaf)
                 .extension()
@@ -824,7 +876,7 @@ fn import_project_from_parts(
                 params![
                     &new_file_id,
                     &id,
-                    file_name,
+                    write_name,
                     ft,
                     audio_path,
                     created_at_ms,

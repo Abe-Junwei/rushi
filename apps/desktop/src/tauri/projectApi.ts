@@ -17,7 +17,10 @@ export {
 } from "./commandError";
 
 export type {
+  BundleFileNameConflict,
+  BundleFileNameResolution,
   EditLogEntryDto,
+  ExchangeBundleImportPreview,
   ImportExchangeBundleResult,
   ProjectMetadataInput,
 } from "./projectCrudApi";
@@ -26,6 +29,8 @@ export {
   exportProjectBundle,
   exportTextFile,
   fileRestoreSegmentsFromEditLog,
+  importExchangeBundleApply,
+  importExchangeBundlePreview,
   importProjectBundle,
   pickAudioPath,
   projectCreate,

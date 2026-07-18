@@ -114,7 +114,7 @@ FileHub / Editor → closeProject → Welcome
 - **改基准**：有受管媒体时必须搬迁（薄片 2），不可仅改指针。搬迁进行中 DB 写**绝对路径**（`relocate-allow` 扩 scope）；pref 切换成功后再相对化。失败时保留 allow，避免半态不可读。
 - **搬迁收养**：`resolve_for_relocate` 可临时收养 **scoped 根之外但仍存在于磁盘的绝对路径**（历史 orphan / 半态绝对路径），迁入新基准后仍走 scoped 读；**播放禁止**直接读 orphan。
 - **读路径**：`media_base_dir::resolve_audio_path`（scoped；相对路径优先 join relocate-allow；受控 symlink；网盘占位返回可执行错误文案）。
-- **换机**：导出可选 **当前项目**（`rushi_project_bundle` v2）或 **整库**（`rushi_library_bundle`：嵌套各项目 v2 + 顶层一份词表）。均不含 live SQLite / models / secrets。Mac↔Win 可互通；导入按 `manifest.kind` 分流。
+- **换机**：导出可选 **当前项目**（`rushi_project_bundle` v2）或 **整库**（`rushi_library_bundle`：嵌套各项目 v2 + 顶层一份词表）。均不含 live SQLite / models / secrets。Mac↔Win 可互通；导入按 `manifest.kind` 分流。若包内文件显示名与全库 `files.name` 冲突：预览后由用户选择取消 / 覆盖现有 / 重命名导入项（见 [`project-bundle-import-name-conflict-research.md`](../execution/specs/project-bundle-import-name-conflict-research.md)）。
 
 ## 相关代码
 

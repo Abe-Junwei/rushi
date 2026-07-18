@@ -67,6 +67,13 @@ export type ExportLifecycleFacade = Pick<
   | "confirmExportBundleScope"
   | "canExportCurrentProjectBundle"
   | "importProjectBundle"
+  | "bundleImportConflictPending"
+  | "bundleImportConflictDrafts"
+  | "setBundleImportConflictDraft"
+  | "applyAllBundleImportOverwrite"
+  | "applyAllBundleImportRename"
+  | "cancelBundleImportConflict"
+  | "confirmBundleImportConflict"
 >;
 
 export function pickExportLifecycleFacade(exports: ExportApi): ExportLifecycleFacade {
@@ -83,6 +90,13 @@ export function pickExportLifecycleFacade(exports: ExportApi): ExportLifecycleFa
     confirmExportBundleScope: exports.confirmExportBundleScope,
     canExportCurrentProjectBundle: exports.canExportCurrentProjectBundle,
     importProjectBundle: exports.importProjectBundle,
+    bundleImportConflictPending: exports.bundleImportConflictPending,
+    bundleImportConflictDrafts: exports.bundleImportConflictDrafts,
+    setBundleImportConflictDraft: exports.setBundleImportConflictDraft,
+    applyAllBundleImportOverwrite: exports.applyAllBundleImportOverwrite,
+    applyAllBundleImportRename: exports.applyAllBundleImportRename,
+    cancelBundleImportConflict: exports.cancelBundleImportConflict,
+    confirmBundleImportConflict: exports.confirmBundleImportConflict,
   };
 }
 

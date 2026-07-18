@@ -107,6 +107,19 @@ export interface ProjectLifecycleApi {
   confirmExportBundleScope: () => Promise<void>;
   canExportCurrentProjectBundle: boolean;
   importProjectBundle: () => Promise<void>;
+  bundleImportConflictPending: import("../tauri/projectApi").ExchangeBundleImportPreview | null;
+  bundleImportConflictDrafts: Record<
+    string,
+    import("../components/BundleImportNameConflictDialog").BundleConflictDraft
+  >;
+  setBundleImportConflictDraft: (
+    id: string,
+    draft: import("../components/BundleImportNameConflictDialog").BundleConflictDraft,
+  ) => void;
+  applyAllBundleImportOverwrite: () => void;
+  applyAllBundleImportRename: () => void;
+  cancelBundleImportConflict: () => void;
+  confirmBundleImportConflict: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;
   setError: React.Dispatch<React.SetStateAction<string>>;

@@ -4,6 +4,7 @@
 use crate::command_error::{CommandError, CommandResult};
 use crate::DbState;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path::Path;
@@ -12,8 +13,9 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use super::lexicon_bundle::{build_lexicon_bundle_export, serialize_lexicon_bundle};
 use super::project_bundle_cmd::{
-    apply_embedded_lexicon, export_project_bundle_to_path, import_project_bundle_from_path,
-    read_zip_bytes, read_zip_json, zip_opts, PROJECT_BUNDLE_LEXICON_ENTRY,
+    apply_embedded_lexicon, export_project_bundle_to_path,
+    import_project_bundle_from_path_with_renames, read_zip_bytes, read_zip_json, zip_opts,
+    PROJECT_BUNDLE_LEXICON_ENTRY,
 };
 use super::types::{ProjectDetail, SegmentDto};
 use super::utils::{now_ms, open_db};
@@ -208,10 +210,19 @@ pub(super) fn export_library_bundle_to_path(
     Ok(zip_path.to_string_lossy().to_string())
 }
 
-/// Import library zip: nested project bundles + top-level lexicon once.
+/// No-conflict convenience wrapper; production callers go through `_with_renames` directly.
+#[cfg(test)]
 pub(super) fn import_library_bundle_from_path(
     st: &DbState,
     zip_path: &Path,
+) -> CommandResult<ImportExchangeBundleResult> {
+    import_library_bundle_from_path_with_renames(st, zip_path, &HashMap::new())
+}
+
+pub(super) fn import_library_bundle_from_path_with_renames(
+    st: &DbState,
+    zip_path: &Path,
+    rename_map: &HashMap<(String, String), String>,
 ) -> CommandResult<ImportExchangeBundleResult> {
     let file = File::open(zip_path).map_err(CommandError::BundleOpen)?;
     let mut archive = ZipArchive::new(file).map_err(CommandError::BundleRead)?;
@@ -260,7 +271,7 @@ pub(super) fn import_library_bundle_from_path(
             failed_labels.push(format!("{label}（写入临时文件失败：{e}）"));
             continue;
         }
-        match import_project_bundle_from_path(st, &nested_path) {
+        match import_project_bundle_from_path_with_renames(st, &nested_path, rename_map) {
             Ok(detail) => {
                 imported_count += 1;
                 last = Some(detail);

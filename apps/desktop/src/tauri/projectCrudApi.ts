@@ -121,9 +121,30 @@ export type ImportExchangeBundleResult = {
   lexiconWarning?: string | null;
 };
 
-export async function importProjectBundle(): Promise<ImportExchangeBundleResult | null> {
-  const raw = await invokeStructured<Record<string, unknown> | null>("import_project_bundle");
-  if (!raw) return null;
+export type BundleFileNameConflict = {
+  id: string;
+  incomingName: string;
+  suggestedName: string;
+  existingFileId?: string | null;
+  existingProjectId?: string | null;
+  existingProjectName?: string | null;
+  sourceProjectLabel: string;
+  sourceKey: string;
+};
+
+export type BundleFileNameResolution = {
+  id: string;
+  action: "overwrite" | "rename";
+  renameTo?: string | null;
+};
+
+export type ExchangeBundleImportPreview = {
+  zipPath: string;
+  kind: string;
+  conflicts: BundleFileNameConflict[];
+};
+
+function normalizeImportExchangeResult(raw: Record<string, unknown>): ImportExchangeBundleResult {
   const project = (raw.project ?? raw) as ProjectDetail;
   const importedCount =
     typeof raw.importedCount === "number"
@@ -154,6 +175,78 @@ export async function importProjectBundle(): Promise<ImportExchangeBundleResult 
     failedLabels,
     lexiconWarning,
   };
+}
+
+function stringField(raw: Record<string, unknown>, camelKey: string, snakeKey?: string): string {
+  const primary = raw[camelKey];
+  if (typeof primary === "string") return primary;
+  const fallback = snakeKey ? raw[snakeKey] : undefined;
+  if (typeof fallback === "string") return fallback;
+  return "";
+}
+
+function normalizeConflict(raw: Record<string, unknown>): BundleFileNameConflict {
+  return {
+    id: stringField(raw, "id"),
+    incomingName: stringField(raw, "incomingName", "incoming_name"),
+    suggestedName: stringField(raw, "suggestedName", "suggested_name"),
+    existingFileId:
+      typeof raw.existingFileId === "string"
+        ? raw.existingFileId
+        : typeof raw.existing_file_id === "string"
+          ? raw.existing_file_id
+          : null,
+    existingProjectId:
+      typeof raw.existingProjectId === "string"
+        ? raw.existingProjectId
+        : typeof raw.existing_project_id === "string"
+          ? raw.existing_project_id
+          : null,
+    existingProjectName:
+      typeof raw.existingProjectName === "string"
+        ? raw.existingProjectName
+        : typeof raw.existing_project_name === "string"
+          ? raw.existing_project_name
+          : null,
+    sourceProjectLabel: stringField(raw, "sourceProjectLabel", "source_project_label"),
+    sourceKey: stringField(raw, "sourceKey", "source_key"),
+  };
+}
+
+export async function importExchangeBundlePreview(): Promise<ExchangeBundleImportPreview | null> {
+  const raw = await invokeStructured<Record<string, unknown> | null>(
+    "import_exchange_bundle_preview",
+  );
+  if (!raw) return null;
+  const conflictsRaw = raw.conflicts;
+  const conflicts = Array.isArray(conflictsRaw)
+    ? conflictsRaw
+        .filter((x): x is Record<string, unknown> => !!x && typeof x === "object")
+        .map(normalizeConflict)
+    : [];
+  return {
+    zipPath: stringField(raw, "zipPath", "zip_path"),
+    kind: stringField(raw, "kind"),
+    conflicts,
+  };
+}
+
+export async function importExchangeBundleApply(
+  zipPath: string,
+  resolutions: BundleFileNameResolution[],
+): Promise<ImportExchangeBundleResult> {
+  const raw = await invokeStructured<Record<string, unknown>>("import_exchange_bundle_apply", {
+    zipPath,
+    resolutions,
+  });
+  return normalizeImportExchangeResult(raw);
+}
+
+/** @deprecated Prefer preview + apply; kept for callers that expect one-shot (fails on conflicts). */
+export async function importProjectBundle(): Promise<ImportExchangeBundleResult | null> {
+  const raw = await invokeStructured<Record<string, unknown> | null>("import_project_bundle");
+  if (!raw) return null;
+  return normalizeImportExchangeResult(raw);
 }
 
 /** 系统另存为；用户取消时返回 `null`。 */

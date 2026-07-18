@@ -92,28 +92,27 @@ pub(crate) fn rename_file_inner(st: &DbState, file_id: &str, name: &str) -> Resu
     Ok(())
 }
 
-#[tauri::command]
-pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String> {
-    let st: &DbState = state.deref();
+/// Delete a file by id (DB + media/peaks). Used by UI and content-package overwrite.
+pub(crate) fn delete_file_inner(st: &DbState, file_id: &str) -> Result<(), String> {
     let mut conn = open_db(st)?;
 
     let audio_path: Result<String, rusqlite::Error> = conn.query_row(
         "SELECT audio_path FROM files WHERE id = ?1",
-        params![&file_id],
+        params![file_id],
         |r| r.get(0),
     );
 
     let project_id: String = conn
         .query_row(
             "SELECT project_id FROM files WHERE id = ?1",
-            params![&file_id],
+            params![file_id],
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
 
     let t = now_ms();
     let tx = conn.transaction().map_err(|e| e.to_string())?;
-    tx.execute("DELETE FROM files WHERE id = ?1", params![&file_id])
+    tx.execute("DELETE FROM files WHERE id = ?1", params![file_id])
         .map_err(|e| e.to_string())?;
     tx.execute(
         "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
@@ -123,12 +122,18 @@ pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String>
     tx.commit().map_err(|e| e.to_string())?;
 
     if let Ok(p) = audio_path {
-        cleanup_deleted_file_storage(st, &project_id, &file_id, Some(p.as_str()));
+        cleanup_deleted_file_storage(st, &project_id, file_id, Some(p.as_str()));
     } else {
-        cleanup_deleted_file_storage(st, &project_id, &file_id, None);
+        cleanup_deleted_file_storage(st, &project_id, file_id, None);
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String> {
+    let st: &DbState = state.deref();
+    delete_file_inner(st, &file_id)
 }
 
 #[tauri::command]
