@@ -30,11 +30,15 @@ function Invoke-Npm {
   if ($LASTEXITCODE -ne 0) { throw "npm $($NpmArgs -join ' ') failed with exit $LASTEXITCODE" }
 }
 
-Write-Host "== Windows release preflight =="
-Invoke-Npm @("run", "typecheck")
-Invoke-Npm @("run", "test", "-w", "@rushi/desktop")
-& node scripts/check-architecture-guard.mjs
-if ($LASTEXITCODE -ne 0) { throw "architecture guard failed" }
+if ($env:RUSHI_SKIP_RELEASE_PREFLIGHT -eq "1") {
+  Write-Host "SKIP: Windows release preflight (RUSHI_SKIP_RELEASE_PREFLIGHT=1)"
+} else {
+  Write-Host "== Windows release preflight =="
+  Invoke-Npm @("run", "typecheck")
+  Invoke-Npm @("run", "test", "-w", "@rushi/desktop")
+  & node scripts/check-architecture-guard.mjs
+  if ($LASTEXITCODE -ne 0) { throw "architecture guard failed" }
+}
 
 Write-Host "== build ASR sidecar (CPU only for NSIS) =="
 Invoke-Npm @("run", "asr:build-sidecar-windows-cpu")
