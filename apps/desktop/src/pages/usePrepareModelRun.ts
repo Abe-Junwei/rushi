@@ -127,7 +127,7 @@ export function usePrepareModelRun({
         setPrepareModelBusy(false);
         return;
       }
-      // noBundle: Windows NSIS may omit Plan B — continue with ModelScope prepare below.
+      // noBundle: incomplete install without Plan B — continue with ModelScope prepare below.
       setInstallMessageThrottled("安装包无内置模型，改为从 ModelScope 下载…", true);
     }
 

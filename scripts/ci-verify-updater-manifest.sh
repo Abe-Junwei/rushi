@@ -82,14 +82,20 @@ fi
 verify_platform() {
   local platform="$1"
   local expected_bundle="$2"
+  # required=1 fail closed; required=0 soft (unsigned / missing .sig releases)
+  local required="${3:-1}"
   local url signature http_pkg
 
   url="$(echo "$JSON" | jq -r --arg p "$platform" '.platforms[$p].url // empty')"
   signature="$(echo "$JSON" | jq -r --arg p "$platform" '.platforms[$p].signature // empty')"
 
   if [ -z "$url" ] || [ -z "$signature" ]; then
-    echo "latest.json missing platforms.${platform}.url or .signature" >&2
-    exit 1
+    if [ "$required" = "1" ]; then
+      echo "latest.json missing platforms.${platform}.url or .signature" >&2
+      exit 1
+    fi
+    echo "::warning::latest.json omits platforms.${platform} (OTA skip for this platform; portable CDN may still be required)."
+    return 0
   fi
 
   local expected_url="${CDN_BASE}/${TAG}/${expected_bundle}"
@@ -109,8 +115,9 @@ verify_platform() {
   echo "OTA CDN OK [${platform}]: url=${url}"
 }
 
-verify_platform "darwin-aarch64" "app.tar.gz"
-verify_platform "windows-x86_64" "$WIN_NSIS_NAME"
+verify_platform "darwin-aarch64" "app.tar.gz" 1
+# Windows OTA needs Tauri .sig; unsigned-primary releases may omit this platform.
+verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 0
 
 verify_url() {
   local label="$1"

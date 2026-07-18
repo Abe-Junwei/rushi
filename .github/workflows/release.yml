@@ -14,9 +14,8 @@
 #   Tauri generates .app.tar.gz + .sig (mac) and Chinese NSIS + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
 # Plan B (v0.1.8+): default Paraformer models are bundled into the **macOS** installer.
-# Windows (2026-07+): NSIS ships CPU sidecar only (makensis OOM with CPU+models — second knife).
-#   **portable zip (主分发) MUST include CPU sidecar + Plan B models** (stage after NSIS).
-#   CUDA onedir is a CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
+# Windows (2026-07-19+): NSIS + portable BOTH ship CPU sidecar + Plan B models (stage before NSIS).
+#   CUDA onedir remains CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
 # Windows Git Bash: never pass /d/a/... absolutes into native node/python (cwd-relative only).
@@ -67,9 +66,19 @@ jobs:
 
       - name: Workflow context
         run: |
+          set -euo pipefail
           echo "Commit: ${{ github.sha }}"
           echo "Ref: ${{ github.ref }}"
           echo "Event: ${{ github.event_name }}"
+          VER="$(node -p "require('./apps/desktop/package.json').version")"
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG_VER="${GITHUB_REF_NAME#v}"
+            if [ "$TAG_VER" != "$VER" ]; then
+              echo "::error::git tag v${TAG_VER} != apps/desktop/package.json version ${VER}"
+              exit 1
+            fi
+          fi
+          echo "App version: $VER"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -278,6 +287,14 @@ jobs:
           set -euo pipefail
           source scripts/rushi-win-release-artifact-names.sh
           VER="$(rushi_win_app_version)"
+          # Tag push must match package.json (fragment / CDN / verify all use package version).
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG_VER="${GITHUB_REF_NAME#v}"
+            if [ "$TAG_VER" != "$VER" ]; then
+              echo "::error::git tag v${TAG_VER} != apps/desktop/package.json version ${VER}"
+              exit 1
+            fi
+          fi
           PORTABLE="$(rushi_win_portable_zip_name "$VER")"
           NSIS="$(rushi_win_nsis_setup_name "$VER")"
           CUDA="$(rushi_win_cuda_zip_name "$VER")"
@@ -371,31 +388,45 @@ jobs:
         shell: pwsh
         run: pwsh scripts/prune-windows-sidecar-for-nsis.ps1 -Onedir apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar
 
-      - name: Guard — Plan B models must not enter Windows NSIS
-        # Second knife: NSIS still OOMs with CPU+models (see win-nsis research).
-        # Plan B weights are staged AFTER NSIS into the portable zip (主分发).
+      # Plan B models BEFORE NSIS so installer + portable both ship default Paraformer.
+      - name: Bootstrap ASR venv (Plan B models for NSIS + portable)
+        shell: bash
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Cache ModelScope download (Plan B staging)
+        uses: actions/cache@v6
+        with:
+          path: dist/bundled-asr-models/.modelscope-cache
+          key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
+          restore-keys: bundled-asr-models-v1-windows-
+
+      - name: Stage bundled ASR models into resources (NSIS + portable)
+        shell: bash
+        env:
+          STAGE_MODEL_MAX_ATTEMPTS: "8"
+        run: npm run asr:stage-bundled-models
+        timeout-minutes: 180
+
+      - name: Guard — NSIS/portable resources must include sidecar + Plan B models
         shell: bash
         run: |
           set -euo pipefail
+          SIDECAR="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar"
           MODELS="apps/desktop/src-tauri/resources/bundled-asr-models"
-          if [ -d "$MODELS/modelscope" ] || [ -d "$MODELS/models" ]; then
-            echo "::error::Plan B model weights present under $MODELS — Windows NSIS second knife forbids bundling them (makensis mmap OOM)."
-            find "$MODELS" -maxdepth 3 -type d 2>/dev/null || true
+          if [ ! -d "$SIDECAR" ]; then
+            echo "::error::Missing CPU sidecar onedir ($SIDECAR) — Windows release must ship the sidecar."
             exit 1
           fi
           if [ -e "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" ]; then
             echo "::error::CUDA onedir must not be staged before NSIS."
             exit 1
           fi
-          if [ ! -d "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar" ]; then
-            echo "::error::CPU sidecar onedir missing before NSIS — Windows release must ship the sidecar."
-            exit 1
-          fi
-          echo "OK: CPU sidecar present; no Plan B modelscope/ and no CUDA onedir before NSIS."
+          bash scripts/preflight-bundled-asr-models.sh "$MODELS"
+          echo "OK: Windows staging has CPU sidecar + Plan B models (NSIS + portable)."
 
-      - name: Measure Windows bundle size spike (CPU only before NSIS)
+      - name: Measure Windows bundle size spike (CPU + models before NSIS)
         shell: pwsh
-        run: pwsh scripts/ci-measure-windows-bundle-size.ps1
+        run: pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels
 
       - name: Tauri build (NSIS installer + updater artifacts)
         working-directory: apps/desktop
@@ -404,7 +435,8 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: https://updates.rushi.app/runtime/rushi-runtime-manifest.json
         run: npm run tauri -- build --bundles nsis
-        timeout-minutes: 90
+        # Larger with Plan B models; allow headroom over CPU-only builds.
+        timeout-minutes: 120
 
       - name: Normalize Windows NSIS installer name (Chinese)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
@@ -418,13 +450,13 @@ jobs:
         shell: pwsh
         run: |
           $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/${{ env.WIN_NSIS_SETUP }}"
-          if (-not (Test-Path $nsis)) {
+          if (-not (Test-Path -LiteralPath $nsis)) {
             $alt = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter *.exe -ErrorAction SilentlyContinue |
               Where-Object { $_.Name -notlike '*.sig' } |
               Select-Object -First 1
             if ($alt) { $nsis = $alt.FullName }
           }
-          pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath $nsis
+          pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels -NsisPath $nsis
         continue-on-error: false
 
       # Authenticode (optional) before portable zip so the green zip can ship a signed exe.
@@ -465,53 +497,19 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "signtool failed for $exe (exit $LASTEXITCODE)" }
           Write-Host "Signed $exe (portable zip only; NSIS .sig left intact)"
 
+      # Models already staged before NSIS; portable reuses the same resources tree.
       # Portable (+ CDN) BEFORE updater fragment so a missing .sig cannot block the green zip.
-      # Stage Plan B models AFTER NSIS so makensis stays under budget; portable must ship them.
-      - name: Bootstrap ASR venv (Plan B models for portable)
-        shell: bash
-        run: bash scripts/bootstrap-asr-venv.sh
-
-      - name: Cache ModelScope download (Plan B staging)
-        uses: actions/cache@v6
-        with:
-          path: dist/bundled-asr-models/.modelscope-cache
-          key: bundled-asr-models-v1-windows-${{ hashFiles('resources/bundled-asr-models-manifest.template.json', 'services/asr/rushi_asr/defaults.py') }}
-          restore-keys: bundled-asr-models-v1-windows-
-
-      - name: Stage bundled ASR models into resources (portable)
-        shell: bash
-        env:
-          STAGE_MODEL_MAX_ATTEMPTS: "8"
-        run: npm run asr:stage-bundled-models
-        timeout-minutes: 180
-
-      - name: Guard — portable resources must include sidecar + Plan B models
-        shell: bash
-        run: |
-          set -euo pipefail
-          SIDECAR="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar"
-          MODELS="apps/desktop/src-tauri/resources/bundled-asr-models"
-          if [ ! -d "$SIDECAR" ]; then
-            echo "::error::Missing CPU sidecar onedir ($SIDECAR) — Windows portable must ship the sidecar."
-            exit 1
-          fi
-          bash scripts/preflight-bundled-asr-models.sh "$MODELS"
-          echo "OK: Windows portable staging has CPU sidecar + Plan B models."
-
-      - name: Measure Windows portable staging size (CPU + models)
-        shell: pwsh
-        run: pwsh scripts/ci-measure-windows-bundle-size.ps1 -AllowModelsForPortable
-
       - name: Build + verify Windows portable zip
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           # ASCII tar create/extract → Chinese rename (see scripts/ci-pack-windows-portable-zip.ps1).
           # Do NOT tar -xf the Chinese final name — Windows tar.exe mangles Unicode -f paths.
+          $zipFinal = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
           pwsh scripts/ci-pack-windows-portable-zip.ps1 `
             -ExePath "apps/desktop/src-tauri/target/release/rushi-desktop.exe" `
             -ResourcesDir "apps/desktop/src-tauri/resources" `
-            -FinalZipPath (Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP) `
+            -FinalZipPath $zipFinal `
             -WriteSha256
           $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
           if (-not (Test-Path -LiteralPath $nsis)) {
@@ -521,7 +519,10 @@ jobs:
           $name = Split-Path -Leaf $nsis
           Set-Content -Encoding utf8 -Path "$nsis.sha256" -Value "$hash  $name"
           Write-Host "Wrote $nsis.sha256"
-          Get-Item -LiteralPath (Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP) | Format-List Name, Length, FullName
+          # ASCII alias for upload-artifact (avoids rare Unicode path misses on GHA).
+          Copy-Item -LiteralPath $zipFinal -Destination "windows-portable-x64.zip" -Force
+          Copy-Item -LiteralPath "$zipFinal.sha256" -Destination "windows-portable-x64.zip.sha256" -Force
+          Get-Item -LiteralPath $zipFinal | Format-List Name, Length, FullName
 
       - name: Upload Windows portable zip artifact (early)
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
@@ -529,6 +530,8 @@ jobs:
         with:
           name: windows-portable-x64
           path: |
+            windows-portable-x64.zip
+            windows-portable-x64.zip.sha256
             ${{ env.WIN_PORTABLE_ZIP }}
             ${{ env.WIN_PORTABLE_ZIP }}.sha256
           if-no-files-found: error
@@ -558,24 +561,28 @@ jobs:
 
       - name: Generate updater fragment (Windows release)
         # Tag-only: workflow_dispatch on a branch would embed github.ref_name as a fake tag.
+        # Soft: missing .sig / fragment errors must NOT fail the job after portable/NSIS are on CDN.
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: win_fragment
+        continue-on-error: true
         shell: bash
         run: |
           set -euo pipefail
           SIG="${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}.sig"
           if [ ! -f "$SIG" ]; then
-            echo "::error::Missing $SIG — set TAURI_SIGNING_PRIVATE_KEY for OTA, or expect no Windows updater fragment."
-            exit 1
+            echo "::warning::Missing $SIG — skip Windows OTA fragment (set TAURI_SIGNING_PRIVATE_KEY). Portable/NSIS CDN upload is unaffected."
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            exit 0
           fi
           bash scripts/ci-generate-updater-latest-json.sh \
             --tag "${{ github.ref_name }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --platform windows-x86_64
+          echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Upload Windows OTA (.exe + .sig) to CDN
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outcome == 'success'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outputs.ok == 'true'
         shell: bash
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -700,6 +707,8 @@ jobs:
         with:
           name: windows-release-bundles
           path: |
+            windows-portable-x64.zip
+            windows-portable-x64.zip.sha256
             ${{ env.WIN_PORTABLE_ZIP }}
             ${{ env.WIN_PORTABLE_ZIP }}.sha256
             ${{ env.BUNDLE_ROOT }}/nsis/${{ env.WIN_NSIS_SETUP }}
@@ -709,7 +718,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Windows OTA fragment artifacts
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outcome == 'success'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outputs.ok == 'true'
         uses: actions/upload-artifact@v7
         with:
           name: windows-ota-fragment
@@ -774,21 +783,27 @@ jobs:
           fi
           command -v jq >/dev/null || brew install jq
           source scripts/ci-pip-venv-install.sh awscli
-          MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1)"
-          WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1)"
-          if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then
-            echo "::error::Missing updater fragments in workflow artifacts."
+          MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1 || true)"
+          WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1 || true)"
+          if [ -z "$MAC_FRAGMENT" ]; then
+            echo "::error::Missing macOS updater-fragment.json in workflow artifacts."
             find artifacts -type f
             exit 1
           fi
-          bash scripts/ci-merge-updater-manifest.sh \
-            --tag "${{ github.ref_name }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --fragment "$MAC_FRAGMENT" \
-            --fragment "$WIN_FRAGMENT" \
-            --out dist/updater/latest.json \
-            --upload \
+          MERGE_ARGS=(
+            --tag "${{ github.ref_name }}"
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
+            --fragment "$MAC_FRAGMENT"
+            --out dist/updater/latest.json
+            --upload
             --bucket "${R2_BUCKET:-rushi-updates}"
+          )
+          if [ -n "$WIN_FRAGMENT" ]; then
+            MERGE_ARGS+=(--fragment "$WIN_FRAGMENT")
+          else
+            echo "::warning::No Windows OTA fragment — latest.json will omit windows-x86_64 (portable/NSIS install CDN still verified separately)."
+          fi
+          bash scripts/ci-merge-updater-manifest.sh "${MERGE_ARGS[@]}"
 
       - name: Verify OTA manifest on CDN
         run: |

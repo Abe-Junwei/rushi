@@ -4,7 +4,6 @@
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
-#   RUSHI_FORCE_MODELS_IN_NSIS=1  # dangerous: stage Plan B into NSIS (makensis may OOM)
 #   RUSHI_SKIP_SIDECAR_BUILD=1   # reuse existing CPU onedir (still prune + smoke)
 #   RUSHI_SKIP_SIDECAR_SIGN=1
 #   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
@@ -12,8 +11,8 @@
 # Manifest URL (injected into release shell):
 #   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
 #
-# Product rule: portable zip MUST include CPU sidecar + Plan B ASR models.
-# NSIS keeps CPU-only (makensis second knife); models are staged AFTER NSIS for portable.
+# Product rule (2026-07-19+): NSIS + portable BOTH include CPU sidecar + Plan B models.
+# Stage Plan B before NSIS; CUDA onedir stays CDN-only.
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -60,20 +59,10 @@ if (Test-Path -LiteralPath $cudaDir) {
 }
 
 $modelsDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr-models"
-if ($env:RUSHI_FORCE_MODELS_IN_NSIS -eq "1") {
-  Write-Host "== stage Plan B models BEFORE NSIS (RUSHI_FORCE_MODELS_IN_NSIS=1) =="
-  Invoke-Npm @("run", "asr:stage-bundled-models")
-  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
-  if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
-} else {
-  foreach ($sub in @("modelscope", "models")) {
-    $p = Join-Path $modelsDir $sub
-    if (Test-Path -LiteralPath $p) {
-      Write-Host "Removing $p before NSIS (models go into portable after NSIS)"
-      Remove-Item -Recurse -Force $p
-    }
-  }
-}
+Write-Host "== stage Plan B models BEFORE NSIS (required for installer + portable) =="
+Invoke-Npm @("run", "asr:stage-bundled-models")
+& bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
 
 if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
   Write-Host "== sign CPU sidecar (optional) =="
@@ -92,13 +81,13 @@ Write-Host "== prune sidecar for makensis MAX_PATH =="
 )
 if ($LASTEXITCODE -ne 0) { throw "prune-windows-sidecar-for-nsis failed" }
 
-Write-Host "== measure bundle size spike (pre-NSIS) =="
-& pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1")
+Write-Host "== measure bundle size spike (CPU + models before NSIS) =="
+& pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels
 
 if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
 }
-Write-Host "== Tauri build NSIS - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
+Write-Host "== Tauri build NSIS (CPU sidecar + Plan B models) - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
 Push-Location (Join-Path $Root "apps\desktop")
 try {
   Invoke-Npm @("run", "tauri", "--", "build", "--bundles", "nsis")
@@ -113,14 +102,8 @@ Write-Host "== normalize NSIS installer name (Chinese product+version) =="
 
 $NsisSetup = Join-Path $BundleRoot "nsis\$NsisSetupName"
 if (Test-Path -LiteralPath $NsisSetup) {
-  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -NsisPath $NsisSetup
+  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels -NsisPath $NsisSetup
 }
-
-Write-Host "== stage Plan B models for portable (required) =="
-Invoke-Npm @("run", "asr:stage-bundled-models")
-& bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
-if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed (portable requires models)" }
-& pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -AllowModelsForPortable
 
 Write-Host "== portable zip (CPU sidecar + Plan B models; ASCII tar → Chinese rename) =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
@@ -156,7 +139,7 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
 }
 
 Write-Host ""
-Write-Host "OK: Windows release build finished (NSIS CPU-only; portable = sidecar + Plan B models)."
+Write-Host "OK: Windows release build finished (NSIS + portable = CPU sidecar + Plan B models)."
 Write-Host "Next (CI failed / manual CDN): npm run release:win:upload -- --tag v$AppVersion"
 Get-Item $Zip
 if (Test-Path -LiteralPath $NsisSetup) { Get-Item $NsisSetup }

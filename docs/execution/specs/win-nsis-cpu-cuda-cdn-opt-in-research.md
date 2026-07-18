@@ -53,7 +53,7 @@
 
 | 层 | 文件 | 变更 |
 |----|------|------|
-| Release | `.github/workflows/release.yml`、`scripts/v1-windows-release-build.ps1` | CPU-only NSIS；CUDA zip + manifest 上传 |
+| Release | `.github/workflows/release.yml`、`scripts/v1-windows-release-build.ps1` | NSIS+portable 含 Plan B；CUDA zip + manifest 上传 |
 | Rust | `asr_sidecar/cuda_*`、`candidates.rs`、`manifest/parse.rs` | 下载至 App Data `bundled-asr/rushi-asr-sidecar-cuda` |
 | UI | `EnvLocalAsrPanel`、Tauri API | N 卡推荐横幅 + 下载按钮 |
 | 脚本 | `scripts/ci-publish-cuda-runtime-manifest.sh`、`scripts/ci-measure-windows-bundle-size.ps1` | manifest 签名 + 体积报告 |
@@ -65,7 +65,7 @@
 - [x] 调研 brief 完成
 - [x] policy §10 已修订
 - [x] 体积尖刺脚本：`scripts/ci-measure-windows-bundle-size.ps1`（CI / `release:win` 调用）
-- [x] Release：NSIS CPU-only；CUDA zip + signed manifest CDN
+- [x] Release：NSIS+portable 含 Plan B；CUDA zip + signed manifest CDN
 - [x] UX：N 卡推荐下载（非强制）
 - [ ] tag release 手测（verify-retag）：重跑 `v1.0.0` 或 patch tag；确认 NSIS &lt; 2GB 与 CDN 三件套可访问
 
@@ -73,8 +73,8 @@
 
 | 档 | 内容 | 预期 |
 |----|------|------|
-| A | CPU onedir + Plan B models | CUDA-out 后仍可能撞 makensis → **Windows 不再采用** |
-| B | 仅 CPU onedir | **Windows NSIS 现行**：首跑 ModelScope；macOS DMG 仍可带 Plan B |
+| A | CPU onedir + Plan B models | **Windows NSIS + portable 现行**（2026-07-19）；须 prune MAX_PATH；NSIS &lt; 2GB |
+| B | 仅 CPU onedir | 历史第二刀（已撤回）；仅作 OOM 回退参考 |
 
 CI 将 `dist/windows-bundle-size-spike.json` 写入 workflow artifact；以 runner 实测为准。
 
@@ -85,3 +85,4 @@ CI 将 `dist/windows-bundle-size-spike.json` 写入 workflow artifact；以 runn
 | 2026-07-16 | 初版：NSIS 失败根因 + CPU-only + CUDA CDN opt-in |
 | 2026-07-16 | 实施：release / LRC / UX / 体积尖刺脚本落地 |
 | 2026-07-18 | **产品硬要求**：主分发 portable **必须**含 CPU 侧车 + Plan B 模型；NSIS 仍第二刀无模型。CI：NSIS → stage models → portable（fail closed） |
+| 2026-07-19 | **产品改口**：NSIS **含** Plan B 模型；CI：stage models → NSIS → portable。CUDA 仍 CDN。历史 OOM 风险用 prune + NSIS &lt; 2GB 门禁承接。 |

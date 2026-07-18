@@ -11,8 +11,8 @@
   - 安装包：`如是我闻_<版本>_Windows_x64_安装包.exe`
   - CUDA：`如是我闻_<版本>_Windows_x64_CUDA侧车.zip`
 - **首推（无 Authenticode 阶段）**：CDN 中文便携版 zip（解压即用；避免 SmartScreen 蓝网劝退）。CI 在 CUDA 步骤**之前**即上传 artifact + CDN。
-- **portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。
-- NSIS 中文安装包仍产出（OTA 用）：**仅 CPU 侧车**（makensis 限制，不含模型）；**未签名时**下载页应引导「更多信息 → 仍要运行」，不作为小白主路径。
+- **NSIS + portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。**stage 在 NSIS 之前**。
+- NSIS 中文安装包（OTA）：与 portable **同内容边界**（侧车+模型；无 CUDA）。未签名时下载页应引导「更多信息 → 仍要运行」。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
 - **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis mmap / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑，不默认切本地。
 - **makensis MAX_PATH**：侧车内 `torch-*.dist-info/licenses/third_party/...` 过深会 abort；CI/本地在 NSIS 前跑 `scripts/prune-windows-sidecar-for-nsis.ps1`（删 runtime 不需要的 licenses 树）。
@@ -28,7 +28,7 @@
 - [ ] **`rushi-asr-sidecar.exe`** + onedir：已执行 `npm run asr:build-sidecar-windows-cpu`（或等价 `ps1`），并进入 portable / NSIS resources。
 - [ ] **Plan B 模型**：CI 在 NSIS **之后** `npm run asr:stage-bundled-models`，再打 portable（`preflight-bundled-asr-models` 通过）。
 - [ ] **CUDA 侧车 zip**：`如是我闻_<ver>_Windows_x64_CUDA侧车.zip` 上传 CDN；**不要**打进安装介质。
-- [ ] 体积尖刺：`pwsh scripts/ci-measure-windows-bundle-size.ps1`（NSIS 前 CPU-only；portable 前 `-AllowModelsForPortable`；NSIS &lt; 2GB）。
+- [ ] 体积尖刺：`pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels`（NSIS 前已含模型；打完后 `-NsisPath`；NSIS &lt; 2GB）。
 - [ ] 签名 runtime manifest：`scripts/ci-publish-cuda-runtime-manifest.sh` → CDN `runtime/rushi-runtime-manifest.json`。
 
 ## 2. 签名（Authenticode）
@@ -45,8 +45,8 @@
 ## 3. 合规与说明
 
 - [x] 安装包或「关于」中附 **ffmpeg-static 许可**（GPL/LGPL 等，见 `services/asr/third_party/ffmpeg/README.md`）。**编码真源**：路线图 **§10.4 Step 5c PROD-META** — 环境页 **关于**（第三方组件 + 许可正文）+ 随包 `third-party-notices.txt` / `third-party-license-texts.txt`。
-- [ ] 用户可见说明：**portable** 默认 SKU 首启本地 seed（无需联网下模型）；NSIS 路径仍可能需一键准备；**GPU 加速**为可选下载。
-- [ ] 下载页文案：首推 zip（含侧车+模型）；若提供未签名 setup.exe，须写清 SmartScreen「更多信息 → 仍要运行」。
+- [ ] 用户可见说明：**portable / NSIS** 均含默认 Plan B，首启本地 seed（无需联网下模型）；**GPU 加速**为可选下载。
+- [ ] 下载页文案：zip 与安装包均含侧车+模型；若提供未签名 setup.exe，须写清 SmartScreen「更多信息 → 仍要运行」。
 
 ## 4. 冒烟
 
@@ -57,8 +57,8 @@
 
 ## 5. 远程优先；模型 OOM 时才本地上传
 
-1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（NSIS → stage Plan B → portable）。
-2. **成功**：CDN 验收 §4；不必本地打包。
+1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
+2. **成功**：CDN 验收 §4；不必本地打包。缺 NSIS `.sig` 时 job **仍应绿**（OTA fragment 软跳过）；`latest.json` 可仅含 darwin，但 **portable zip 仍须 200**。
 3. **失败且日志含模型/打包 OOM**（如 makensis mmap、`tar`/`Compress-Archive` OOM、runner killed）：再走本地：
 
 ```powershell

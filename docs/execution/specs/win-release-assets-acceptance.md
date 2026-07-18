@@ -13,7 +13,7 @@
 - [ ] `release.yml` **tauri-windows** 绿（tag push）；NSIS **&lt; 2GB**（目标 &lt; 1.5GB）
 - [ ] CDN **`/<tag>/如是我闻_<ver>_Windows_x64_便携版.zip`** 可下载（**无签名阶段主分发**；CI early upload，不依赖 CUDA 步骤）
 - [ ] portable zip **含** `resources/bundled-asr/rushi-asr-sidecar/` + `resources/bundled-asr-models/`（CI fail closed）
-- [ ] NSIS / portable **不含** `rushi-asr-sidecar-cuda`（CUDA 仅 CDN）；NSIS **可不含** Plan B 模型（makensis 第二刀）
+- [ ] NSIS / portable **不含** `rushi-asr-sidecar-cuda`（CUDA 仅 CDN）；NSIS **与** portable **均须含** Plan B 模型
 - [ ] CDN `/<tag>/如是我闻_<ver>_Windows_x64_CUDA侧车.zip` + `/runtime/rushi-runtime-manifest.json` 可下载
 - [ ] `release.yml` **verify-cdn-release** 合并 `latest.json` 含 `windows-x86_64`
 - [ ] CDN `/<tag>/如是我闻_<ver>_Windows_x64_安装包.exe` + `.sig` 可下载（OTA；未签名时勿作小白主路径）

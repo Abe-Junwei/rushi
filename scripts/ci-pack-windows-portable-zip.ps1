@@ -131,6 +131,12 @@ if (Test-Path -LiteralPath $FinalZipPath) { Remove-Item -LiteralPath $FinalZipPa
 Move-Item -LiteralPath $AsciiZipPath -Destination $FinalZipPath
 Write-Host "OK: wrote portable zip $FinalZipPath ($((Get-Item -LiteralPath $FinalZipPath).Length) bytes)"
 
+# Free staging tree (CPU+models copy) before CDN / CUDA — peak disk matters on GHA.
+if (Test-Path -LiteralPath $StageDir) {
+  Remove-Item -LiteralPath $StageDir -Recurse -Force
+  Write-Host "Cleaned stage dir $StageDir"
+}
+
 if ($WriteSha256) {
   $name = Split-Path -Leaf $FinalZipPath
   $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $FinalZipPath).Hash.ToLowerInvariant()

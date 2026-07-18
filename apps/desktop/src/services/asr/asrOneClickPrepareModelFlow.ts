@@ -138,7 +138,7 @@ export async function runAsrOneClickPrepareModelFlow(
         return false;
       }
       if (!outcome.ok && outcome.noBundle) {
-        // Windows NSIS may omit Plan B weights (NSIS size); fall through to ModelScope.
+        // Legacy / incomplete install: no bundled Plan B — fall through to ModelScope.
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
             status: "running",

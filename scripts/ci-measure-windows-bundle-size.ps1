@@ -1,17 +1,19 @@
 # Measure Windows bundle contribution sizes for NSIS / portable budget decisions.
-# Run after sidecar (+ optional models) are staged under resources/.
+# Run after sidecar (+ Plan B models) are staged under resources/.
 # Usage (repo root, Windows):
-#   pwsh scripts/ci-measure-windows-bundle-size.ps1
-#   pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath apps/desktop/src-tauri/target/release/bundle/nsis/rushi-desktop-setup.exe
-#   pwsh scripts/ci-measure-windows-bundle-size.ps1 -AllowModelsForPortable
+#   pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels
+#   pwsh scripts/ci-measure-windows-bundle-size.ps1 -NsisPath apps/desktop/src-tauri/target/release/bundle/nsis/<中文安装包>.exe
 #
-# Decision note (Windows 2026-07+):
-#   - NSIS: omit Plan B models (makensis OOM — second knife).
-#   - portable (主分发): MUST include CPU sidecar + Plan B models (stage after NSIS).
+# Decision note (Windows 2026-07-19+):
+#   - NSIS + portable: BOTH must include CPU sidecar + Plan B models.
 #   - CUDA onedir is CDN opt-in only — must not be present before NSIS.
+#   - NSIS artifact hard limit remains < 2GB (upload / makensis practical ceiling).
 
 param(
   [string]$NsisPath = "",
+  # Canonical switch (NSIS + portable share the same Plan B requirement).
+  [switch]$RequirePlanBModels,
+  # Backward-compatible alias for older workflow/local call sites.
   [switch]$AllowModelsForPortable
 )
 
@@ -32,6 +34,8 @@ function Format-GiB([Nullable[int64]]$Bytes) {
   return ("{0:N2} GiB ({1:N0} bytes)" -f ($Bytes / 1GB), $Bytes)
 }
 
+$requireModels = $RequirePlanBModels -or $AllowModelsForPortable
+
 $cpuDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar"
 $cudaDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar-cuda"
 $modelsDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr-models"
@@ -49,26 +53,22 @@ if ($null -eq $cpuBytes) {
   Write-Error "DECISION: CPU sidecar onedir missing — Windows release must ship the sidecar."
 }
 
-if ($AllowModelsForPortable) {
+if ($null -ne $cudaBytes -and $cudaBytes -ge 1MB) {
+  Write-Error "DECISION: CUDA onedir present before NSIS — remove rushi-asr-sidecar-cuda (CDN opt-in only)."
+}
+
+if ($requireModels) {
   if ($null -eq $modelsBytes -or $modelsBytes -lt 1MB) {
-    Write-Error "DECISION: portable requires Plan B models (>=1MB staged); got $(Format-GiB $modelsBytes)."
+    Write-Error "DECISION: NSIS/portable require Plan B models (>=1MB staged); got $(Format-GiB $modelsBytes)."
   }
   $cpuPlusModels = $cpuBytes + $modelsBytes
   Write-Host ("CPU + models:  {0}" -f (Format-GiB $cpuPlusModels))
-  Write-Host "DECISION: portable staging OK (CPU sidecar + Plan B models)."
-} elseif ($null -ne $modelsBytes) {
-  $cpuPlusModels = $cpuBytes + $modelsBytes
-  Write-Host ("CPU + models:  {0}" -f (Format-GiB $cpuPlusModels))
-  $limit = [int64](2GB)
-  if ($modelsBytes -ge 1MB -and $cpuPlusModels -ge $limit) {
-    Write-Error "DECISION: CPU+models still >= 2GB — Windows NSIS must omit Plan B models (second knife)."
-  } elseif ($modelsBytes -lt 1MB) {
-    Write-Host "DECISION: Plan B models omitted before NSIS (second knife); stage after NSIS for portable."
-  } else {
-    Write-Warning "DECISION: Plan B models present before NSIS — expected omit; confirm staging order."
+  Write-Host "DECISION: staging OK (CPU sidecar + Plan B models for NSIS and portable)."
+  if ($cpuPlusModels -ge [int64](2GB)) {
+    Write-Warning "DECISION: CPU+models staging >= 2GB — NSIS may hit makensis mmap/OOM; watch CI."
   }
 } else {
-  Write-Host "DECISION: models dir missing (OK before NSIS); portable path must stage Plan B after NSIS."
+  Write-Host "DECISION: -RequirePlanBModels not set; size report only (no Plan B gate)."
 }
 
 if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) {
@@ -92,10 +92,10 @@ $payload = [ordered]@{
   cudaBytes = $cudaBytes
   modelsBytes = $modelsBytes
   cpuPlusModelsBytes = if ($null -ne $cpuBytes -and $null -ne $modelsBytes) { $cpuBytes + $modelsBytes } else { $null }
-  nsisBytes = if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) { (Get-Item $NsisPath).Length } else { $null }
-  keepModelsInNsis = $false
+  nsisBytes = if ($NsisPath -and (Test-Path -LiteralPath $NsisPath)) { (Get-Item -LiteralPath $NsisPath).Length } else { $null }
+  keepModelsInNsis = $true
   keepModelsInPortable = $true
-  allowModelsForPortable = [bool]$AllowModelsForPortable
+  requirePlanBModels = [bool]$requireModels
 }
 $payload | ConvertTo-Json | Set-Content -Encoding utf8 $report
 Write-Host "Wrote $report"
