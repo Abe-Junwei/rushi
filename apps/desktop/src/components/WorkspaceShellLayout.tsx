@@ -2,6 +2,7 @@ import { useCallback, useRef, type ReactNode } from "react";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import {
   IconChevronLeft as ChevronLeft,
+  IconChevronRight as ChevronRight,
 } from "@tabler/icons-react";
 import { usePanelAutoCollapse } from "../hooks/usePanelAutoCollapse";
 import {
@@ -81,17 +82,23 @@ export function WorkspaceShellLayout({
             {...{ [WORKSPACE_SIDEBAR_TOGGLE_ATTR]: "" }}
             className={`workspace-shell-sidebar-toggle ${MAIN_SHELL_SURFACE_CLASS.sidebarBg} bg-notion-sidebar`}
             aria-expanded={!sidebarCollapsed}
-            aria-hidden={sidebarCollapsed}
-            tabIndex={sidebarCollapsed ? -1 : 0}
-            aria-label="折叠侧栏"
-            title="折叠侧栏"
+            aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+            title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
             onClick={onToggleSidebar}
           >
-            <ChevronLeft
-              className={LUCIDE_ICON_SIZE_SM}
-              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-              aria-hidden
-            />
+            {sidebarCollapsed ? (
+              <ChevronRight
+                className={LUCIDE_ICON_SIZE_SM}
+                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                aria-hidden
+              />
+            ) : (
+              <ChevronLeft
+                className={LUCIDE_ICON_SIZE_SM}
+                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                aria-hidden
+              />
+            )}
           </button>
         ) : null}
       </div>

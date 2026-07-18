@@ -1,19 +1,9 @@
-import {
-  IconArrowLeft as ArrowLeft,
-  IconChevronRight as ChevronRight,
-} from "@tabler/icons-react";
-import {
-  CONTROL_BTN_BREADCRUMB,
-  CONTROL_BTN_ICON_GHOST,
-} from "../config/controlStyles";
-import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
+import { IconArrowLeft as ArrowLeft } from "@tabler/icons-react";
+import { CONTROL_BTN_BREADCRUMB, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-/** 工作区顶栏：侧栏展开 / 返回（纯图标） */
+/** 工作区顶栏：返回（纯图标） */
 const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outline-offset-1`;
-
-/** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
-const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
 
 export type EditorWorkspaceNavProps = {
   projectName: string;
@@ -31,7 +21,7 @@ export type EditorWorkspaceNavProps = {
 
 /**
  * Notion / Linear 式页头导航：← 返回 + 可点项目名 + 当前文件；窄屏仅显示当前页。
- * 侧栏展开与壳层折叠钮成对：折叠用 ←，展开用 →。
+ * 侧栏展开/折叠仅用壳层挂耳，不在顶栏重复入口。
  */
 export function EditorWorkspaceNav({
   projectName,
@@ -43,25 +33,12 @@ export function EditorWorkspaceNav({
   disabled = false,
   hasUnsavedEdits = false,
 }: EditorWorkspaceNavProps) {
-  const sidebarCollapse = useOptionalWorkspaceSidebarCollapseContext();
   const resolvedBackLabel =
     backLabel ?? (fileOpen ? "返回项目文件列表" : "返回项目列表");
   const projectAction = fileOpen && onProjectHome ? onProjectHome : undefined;
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-2">
-      {sidebarCollapse?.collapsed ? (
-        <button
-          type="button"
-          className={`${NAV_SIDEBAR_EXPAND_BTN} workspace-nav-sidebar-expand-btn`}
-          disabled={disabled}
-          onClick={sidebarCollapse.expand}
-          aria-label="展开侧栏"
-          title="展开项目侧栏"
-        >
-          <ChevronRight className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-      ) : null}
       <button
         type="button"
         className={NAV_ICON_BTN}
