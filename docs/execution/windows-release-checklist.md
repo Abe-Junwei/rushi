@@ -58,7 +58,12 @@
 ## 5. 远程优先；模型 OOM 时才本地上传
 
 1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
-2. **成功**：CDN 验收 §4；不必本地打包。缺 mac/win `.sig` 时 OTA fragment **软跳过**（job 仍可绿）；`latest.json` 按已有 fragment 合并（可只含一侧）；**portable zip 仍须 200**。同 tag 重推时 CI **取消旧跑**（避免双写 R2）。
+2. **成功**：CDN 验收 §4；不必本地打包。  
+   - **安装 CDN**（便携版/DMG/NSIS）：单侧成功即可上传。  
+   - **OTA `latest.json`**：**硬闸门** — 须同时有 mac+win 合法 fragment（url+signature）才覆盖；否则保留旧 latest（Tauri 整文件校验）。  
+   - 缺 `.sig` → fragment 软跳过，不影响安装 CDN。  
+   - verify：mac 或 win 成功即可跑；portable 硬门禁仅 win 成功时；若本次上传了 latest 则双平台硬验。  
+   - 同 tag 重推取消旧跑；Authenticode 失败不挡 NSIS/portable。
 3. **失败且日志含模型/打包 OOM**（如 makensis mmap、`tar`/`Compress-Archive` OOM、runner killed）：再走本地：
 
 ```powershell

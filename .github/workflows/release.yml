@@ -13,7 +13,9 @@
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
 #   Tauri generates .app.tar.gz + .sig (mac) and Chinese NSIS + .sig (win);
 #   verify-cdn-release merges latest.json and uploads to Cloudflare R2.
-#   Missing .sig: OTA fragment is soft-skipped (mac+win); install CDN + portable still publish.
+#   Missing .sig: OTA fragment soft-skipped; install CDN still publishes.
+#   latest.json upload is HARD-GATED: both darwin-aarch64 + windows-x86_64 complete
+#   (url+signature) required — Tauri validates the whole static JSON (refuse partial).
 # Plan B (v0.1.8+): default Paraformer models are bundled into the **macOS** installer.
 # Windows (2026-07-19+): NSIS + portable BOTH ship CPU sidecar + Plan B models (stage before NSIS).
 #   CUDA onedir remains CDN opt-in zip + signed runtime manifest (asr-sidecar-cuda). Secret:
@@ -219,7 +221,8 @@ jobs:
           echo "ok=true" >> "$GITHUB_OUTPUT"
 
       - name: Generate updater fragment (macOS release)
-        if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch') && steps.mac_ota_normalize.outputs.ok == 'true'
+        # Tag-only (same as Win): workflow_dispatch must not embed branch name as a fake tag.
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.mac_ota_normalize.outputs.ok == 'true'
         id: mac_fragment
         continue-on-error: true
         run: |
@@ -415,6 +418,8 @@ jobs:
 
       - name: Authenticode sign CPU sidecar (release tag)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
+        id: win_sidecar_sign
+        continue-on-error: true
         shell: pwsh
         env:
           SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
@@ -422,6 +427,10 @@ jobs:
           SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
           RELEASE_BUILD: "1"
         run: pwsh scripts/sign-windows-sidecar.ps1
+
+      - name: Warn if CPU sidecar Authenticode failed
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.win_sidecar_sign.outcome != 'success'
+        run: echo "::warning::CPU sidecar Authenticode failed — continuing unsigned (core NSIS/portable still builds)."
 
       - name: Skip Windows sidecar signing (no secrets)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled != 'true'
@@ -526,6 +535,7 @@ jobs:
 
       - name: Sign Windows portable exe (optional Authenticode)
         if: steps.win_exe_sign.outputs.enabled == 'true'
+        continue-on-error: true
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
@@ -537,14 +547,19 @@ jobs:
           $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue |
             Select-Object -First 1
           if (-not $signtool) {
-            throw "signtool.exe not found but WINDOWS_CERTIFICATE secrets are set — fail closed."
+            Write-Host "::warning::signtool.exe not found — portable exe left unsigned."
+            exit 1
           }
           $exe = "apps/desktop/src-tauri/target/release/rushi-desktop.exe"
           if (-not (Test-Path -LiteralPath $exe)) {
-            throw "Missing $exe — cannot Authenticode-sign."
+            Write-Host "::warning::Missing $exe — skip Authenticode."
+            exit 1
           }
           & $signtool.FullName sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
-          if ($LASTEXITCODE -ne 0) { throw "signtool failed for $exe (exit $LASTEXITCODE)" }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "::warning::signtool failed for $exe (exit $LASTEXITCODE) — portable continues unsigned."
+            exit 1
+          }
           Write-Host "Signed $exe (portable zip only; NSIS .sig left intact)"
 
       # Models already staged before NSIS; portable reuses the same resources tree.
@@ -608,6 +623,19 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
+
+      - name: Free portable ASCII alias after CDN (disk)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          # Chinese zip remains for final artifacts; drop ~1.5GiB ASCII duplicate until re-copy.
+          if (Test-Path -LiteralPath "windows-portable-x64.zip") {
+            Remove-Item -LiteralPath "windows-portable-x64.zip" -Force
+            Write-Host "Removed windows-portable-x64.zip after CDN upload"
+          }
+          if (Test-Path -LiteralPath "windows-portable-x64.zip.sha256") {
+            Remove-Item -LiteralPath "windows-portable-x64.zip.sha256" -Force
+          }
 
       - name: Generate updater fragment (Windows release)
         # Tag-only: workflow_dispatch on a branch would embed github.ref_name as a fake tag.
@@ -776,6 +804,22 @@ jobs:
             echo "nsis: MISSING"
           fi
 
+      - name: Restore portable ASCII alias for artifacts
+        if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $zipFinal = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
+          if (-not (Test-Path -LiteralPath $zipFinal)) {
+            throw "Missing portable zip for artifacts: $zipFinal"
+          }
+          if (-not (Test-Path -LiteralPath "windows-portable-x64.zip")) {
+            Copy-Item -LiteralPath $zipFinal -Destination "windows-portable-x64.zip" -Force
+          }
+          if ((Test-Path -LiteralPath "$zipFinal.sha256") -and -not (Test-Path -LiteralPath "windows-portable-x64.zip.sha256")) {
+            Copy-Item -LiteralPath "$zipFinal.sha256" -Destination "windows-portable-x64.zip.sha256" -Force
+          }
+
       - name: Upload Windows workflow artifacts (required core)
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
         uses: actions/upload-artifact@v7
@@ -816,18 +860,24 @@ jobs:
 
   verify-cdn-release:
     needs: [tauri-macos, tauri-windows]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.tauri-macos.result == 'success' && needs.tauri-windows.result == 'success'
+    # Run when either platform succeeded (soft OTA / one-side failure must not block CDN verify).
+    if: >
+      github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
+      !cancelled() &&
+      (needs.tauri-macos.result == 'success' || needs.tauri-windows.result == 'success')
     # macOS only — no Linux release matrix; avoid ubuntu runners for this job.
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v6
+        continue-on-error: true
         with:
           name: macos-release-bundles
           path: artifacts/macos
 
       - uses: actions/download-artifact@v6
+        continue-on-error: true
         with:
           name: windows-release-bundles
           path: artifacts/windows
@@ -862,34 +912,40 @@ jobs:
           source scripts/ci-pip-venv-install.sh awscli
           MAC_FRAGMENT="$(find artifacts/macos -name updater-fragment.json | head -1 || true)"
           WIN_FRAGMENT="$(find artifacts/windows -name updater-fragment.json | head -1 || true)"
-          MERGE_ARGS=(
-            --tag "${{ github.ref_name }}"
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
-            --out dist/updater/latest.json
-            --upload
-            --bucket "${R2_BUCKET:-rushi-updates}"
-          )
-          if [ -n "$MAC_FRAGMENT" ]; then
-            MERGE_ARGS+=(--fragment "$MAC_FRAGMENT")
-          else
-            echo "::warning::No macOS OTA fragment — latest.json may omit darwin-aarch64."
-          fi
-          if [ -n "$WIN_FRAGMENT" ]; then
-            MERGE_ARGS+=(--fragment "$WIN_FRAGMENT")
-          else
-            echo "::warning::No Windows OTA fragment — latest.json may omit windows-x86_64."
-          fi
-          if [ -z "$MAC_FRAGMENT" ] && [ -z "$WIN_FRAGMENT" ]; then
-            echo "::warning::No updater fragments at all — skip latest.json upload; portable/install CDN still verified."
+          if [ -z "$MAC_FRAGMENT" ] || [ -z "$WIN_FRAGMENT" ]; then
+            echo "::warning::OTA gate: need BOTH mac + win updater fragments to publish latest.json (Tauri validates whole file)."
+            echo "::warning::mac_fragment=${MAC_FRAGMENT:-MISSING} win_fragment=${WIN_FRAGMENT:-MISSING}"
+            echo "::warning::Leaving previous CDN latest.json untouched; install/portable CDN may still be OK."
             find artifacts -type f || true
             exit 0
           fi
-          bash scripts/ci-merge-updater-manifest.sh "${MERGE_ARGS[@]}"
+          set +e
+          bash scripts/ci-merge-updater-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --out dist/updater/latest.json \
+            --fragment "$MAC_FRAGMENT" \
+            --fragment "$WIN_FRAGMENT" \
+            --preserve-cdn \
+            --require-platforms "darwin-aarch64,windows-x86_64" \
+            --upload \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+          merge_rc=$?
+          set -e
+          if [ "$merge_rc" -eq 2 ]; then
+            echo "::warning::OTA gate refused partial latest.json — previous CDN latest.json kept."
+            exit 0
+          fi
+          if [ "$merge_rc" -ne 0 ]; then
+            echo "::error::ci-merge-updater-manifest.sh failed (exit ${merge_rc})."
+            exit "$merge_rc"
+          fi
           echo "uploaded=true" >> "$GITHUB_OUTPUT"
 
       - name: Verify OTA manifest + portable CDN
         env:
           RUSHI_VERIFY_REQUIRE_LATEST: ${{ steps.merge_manifest.outputs.uploaded }}
+          RUSHI_VERIFY_REQUIRE_PORTABLE: ${{ needs.tauri-windows.result == 'success' }}
         run: |
           bash scripts/ci-verify-updater-manifest.sh \
             --tag "${{ github.ref_name }}" \

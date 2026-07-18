@@ -123,9 +123,9 @@ else
     exit 1
   fi
 
-  # Both platforms soft: missing .sig releases may omit either side.
-  verify_platform "darwin-aarch64" "app.tar.gz" 0
-  verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 0
+  # After a successful latest.json upload, both platforms must be complete (OTA gate).
+  verify_platform "darwin-aarch64" "app.tar.gz" 1
+  verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 1
 fi
 
 verify_url() {
@@ -145,9 +145,15 @@ verify_url() {
   echo "::warning::CDN asset missing for ${label} (HTTP ${code}): ${url}"
 }
 
-# Unsigned-primary install path + checksum (hard).
-verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 1
-verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 1
+# Portable is hard when Windows job succeeded; soft when verify runs mac-only.
+REQUIRE_PORTABLE="${RUSHI_VERIFY_REQUIRE_PORTABLE:-true}"
+if [ "$REQUIRE_PORTABLE" = "false" ]; then
+  verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 0
+  verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 0
+else
+  verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 1
+  verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 1
+fi
 verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}.sha256" 0
 
 # CUDA opt-in (soft — core release must not fail verify if CUDA job was skipped).

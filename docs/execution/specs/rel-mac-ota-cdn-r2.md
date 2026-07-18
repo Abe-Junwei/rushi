@@ -13,16 +13,16 @@
 ## CDN 布局
 
 ```text
-https://updates.rushi.app/latest.json          # 合并 darwin-aarch64 + windows-x86_64
+https://updates.rushi.app/latest.json          # 仅双平台齐全时覆盖（darwin-aarch64 + windows-x86_64）
 https://updates.rushi.app/<tag>/app.tar.gz
 https://updates.rushi.app/<tag>/app.tar.gz.sig
 https://updates.rushi.app/<tag>/<dmg>
-https://updates.rushi.app/<tag>/rushi-desktop-setup.exe
-https://updates.rushi.app/<tag>/rushi-desktop-setup.exe.sig
-https://updates.rushi.app/<tag>/windows-portable-x64.zip
+https://updates.rushi.app/<tag>/如是我闻_<ver>_Windows_x64_安装包.exe
+https://updates.rushi.app/<tag>/如是我闻_<ver>_Windows_x64_安装包.exe.sig
+https://updates.rushi.app/<tag>/如是我闻_<ver>_Windows_x64_便携版.zip
 ```
 
-`latest.json` 由 `verify-cdn-release` job 在 mac + win 双平台 fragment 合并后上传（见 [`rel-win-ota-spike-research.md`](./rel-win-ota-spike-research.md)）。
+**OTA 闸门（2026-07-19）**：安装物可单侧上 CDN；`latest.json` **必须** mac+win fragment 均含完整 `url`+`signature` 才上传（Tauri 校验整份静态 JSON）。缺一侧则 **保留旧 latest.json**。合并脚本：`ci-merge-updater-manifest.sh --require-platforms darwin-aarch64,windows-x86_64`。
 
 ## Secrets
 
