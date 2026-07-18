@@ -4,7 +4,9 @@ import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import {
   transcriptEditorRowMetrics,
+  TRANSCRIPT_EDITOR_LINE_PADDING_LEFT,
   TRANSCRIPT_EDITOR_META_CONTENT_GAP,
+  TRANSCRIPT_EDITOR_PLAY_SIZE,
 } from "../../../utils/segmentLayout";
 import { transcriptEditorCoreExtensions } from "./transcriptEditorCoreExtensions";
 import {
@@ -51,7 +53,7 @@ export function buildTranscriptAppearanceTheme(args: {
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
       "--cm-stage-gutter-width": "6.75rem",
       // Play control in the meta↔text seam (metaGutter paddingRight + overlay size).
-      "--cm-transcript-play-size": "2.25rem",
+      "--cm-transcript-play-size": TRANSCRIPT_EDITOR_PLAY_SIZE,
       "--cm-transcript-line-pad": `${linePad}px`,
       "--cm-transcript-min-line-px": `${minLine}px`,
       "--cm-transcript-meta-content-gap": TRANSCRIPT_EDITOR_META_CONTENT_GAP,
@@ -88,9 +90,8 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-line": {
       paddingTop: `${linePad}px`,
       paddingBottom: `${linePad}px`,
-      // Meta gutter width is fixed — this paddingLeft is the ONLY thing that
-      // produces the visible gap between the left column and segment text.
-      paddingLeft: `var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP})`,
+      // Play control + symmetric gaps (meta paddingRight · play · gap · text).
+      paddingLeft: TRANSCRIPT_EDITOR_LINE_PADDING_LEFT,
       // Breath before the stage column (keep modest — wide stage minWidth already gaps).
       paddingRight: "0.4rem",
       minHeight: `${minLine}px`,
@@ -109,7 +110,7 @@ export function buildTranscriptAppearanceTheme(args: {
       // Match legacy `hover:bg-notion-sidebar/35` on `.seg-row-shell`.
       backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       boxShadow: [
-        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
         "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
     },
@@ -131,14 +132,14 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-transcript-primary-line": {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
-        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
+        "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 var(--segment-fill-selected-list)",
         "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
       boxShadow: [
-        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
+        "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 var(--segment-fill-in-selection-list)",
         "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-in-selection-list)",
       ].join(", "),
     },
@@ -146,14 +147,14 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-transcript-primary-line.cm-transcript-playback-focus": {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
-        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
+        "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 var(--segment-fill-selected-list)",
         "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-playback-focus": {
       backgroundColor: "var(--transcript-playback-focus-fill)",
       boxShadow: [
-        "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
+        "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 var(--transcript-playback-focus-fill)",
         "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--transcript-playback-focus-fill)",
       ].join(", "),
     },

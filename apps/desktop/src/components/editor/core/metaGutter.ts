@@ -1,7 +1,6 @@
 import { gutter, GutterMarker, EditorView } from "@codemirror/view";
 import type { Extension } from "@codemirror/state";
 import { formatTranscriptTimestamp } from "../../segmentRow/segmentRowFormatting";
-import { TRANSCRIPT_EDITOR_META_CONTENT_GAP } from "../../../utils/segmentLayout";
 import { segmentMetaField, type SegmentMeta } from "./segmentMetaField";
 import {
   primarySegmentIdx,
@@ -215,8 +214,8 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     margin: "0",
   },
   ".cm-transcript-meta-gutter": {
-    width: "var(--cm-meta-gutter-width, 8.25rem)",
-    minWidth: "var(--cm-meta-gutter-width, 8.25rem)",
+    width: "var(--cm-meta-gutter-width, 6rem)",
+    minWidth: "var(--cm-meta-gutter-width, 6rem)",
     paddingRight: "0",
     marginRight: "0",
     boxSizing: "border-box",
@@ -238,7 +237,8 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     position: "relative",
     display: "flex",
     flexDirection: "column",
-    alignItems: "flex-start",
+    // Right-align so paddingRight (= content gap) is the air before the play control.
+    alignItems: "flex-end",
     justifyContent: "flex-start",
     gap: "0.25rem",
     boxSizing: "border-box",
@@ -247,10 +247,11 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     width: "100%",
     height: "100%",
     minHeight: "100%",
-    // Accent bar 4px + 9px before index/time. Column width (not this pad) sets
-    // how much air sits between timestamp and the play/text seam.
-    padding:
-      `var(--cm-transcript-line-pad, 1rem) var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}) var(--cm-transcript-line-pad, 1rem) 9px`,
+    textAlign: "right",
+    // Right padding is 0: the timestamp hugs the gutter edge so the ONLY air before
+    // the play control is the button's own translate (= content gap). Otherwise the
+    // left seam would be paddingRight + translate = 2×gap, wider than the right seam.
+    padding: "var(--cm-transcript-line-pad, 1rem) 0 var(--cm-transcript-line-pad, 1rem) 9px",
     lineHeight: "1.2",
     cursor: "default",
     color: "var(--notion-text-light)",

@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { TRANSCRIPT_FONT_DEFAULT } from "../../../utils/waveformPrefs";
 import {
+  TRANSCRIPT_EDITOR_LINE_PADDING_LEFT,
   TRANSCRIPT_EDITOR_META_CONTENT_GAP,
   TRANSCRIPT_EDITOR_MIN_LINE_PX,
   transcriptEditorRowMetrics,
@@ -71,18 +72,14 @@ describe("transcript editor appearance theme", () => {
       .join("\n");
     expect(injectedCss).toContain(`min-height: ${TRANSCRIPT_EDITOR_MIN_LINE_PX}px`);
     expect(injectedCss).toContain(`padding-top: ${row.linePadPx}px`);
-    // This is the ONLY declaration that produces the visible left-column↔text
-    // gap (meta gutter width is fixed) — must carry the FULL requested value,
-    // not a half-split, or the on-screen change is imperceptible.
-    expect(injectedCss).toContain(
-      `padding-left: var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP})`,
-    );
+    // paddingLeft reserves play control + symmetric gaps before segment text.
+    expect(injectedCss).toContain(`padding-left: ${TRANSCRIPT_EDITOR_LINE_PADDING_LEFT}`);
     expect(injectedCss).toContain(
       `--cm-transcript-meta-content-gap: ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}`,
     );
     expect(injectedCss).toContain(`--cm-transcript-min-line-px: ${TRANSCRIPT_EDITOR_MIN_LINE_PX}px`);
 
-    expect(TRANSCRIPT_EDITOR_META_CONTENT_GAP).toBe("0.2rem");
+    expect(TRANSCRIPT_EDITOR_META_CONTENT_GAP).toBe("0.4rem");
     expect(TRANSCRIPT_EDITOR_MIN_LINE_PX).toBe(75);
   });
 });

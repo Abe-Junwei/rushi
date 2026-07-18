@@ -31,10 +31,17 @@ export const TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX = 12;
 export const TRANSCRIPT_EDITOR_MIN_LINE_PX = 75;
 
 /**
- * CM 列表 meta 列与正文之间的缝宽（`.cm-line` paddingLeft；播放钮右侧同值）。
- * 时间戳↔按钮总距主要由 meta 列宽（`TRANSCRIPT_META_WIDTH_DEFAULT`）决定。
+ * CM 列表「时间戳 ↔ 播放钮 ↔ 正文」两侧对称缝宽。
+ * 播放钮落在 meta 右缘与正文之间：左缝 = meta paddingRight，右缝 = 钮右到正文；
+ * `.cm-line` paddingLeft = playSize + 2×本值。
  */
-export const TRANSCRIPT_EDITOR_META_CONTENT_GAP = "0.2rem";
+export const TRANSCRIPT_EDITOR_META_CONTENT_GAP = "0.4rem";
+
+/** Hover-reveal 段播钮边长（对齐 CONTROL_BTN_ICON_GHOST 28px）。 */
+export const TRANSCRIPT_EDITOR_PLAY_SIZE = "1.75rem";
+
+/** CM 列表行左侧为播放钮预留的总 padding（钮宽 + 左右对称缝）。 */
+export const TRANSCRIPT_EDITOR_LINE_PADDING_LEFT = `calc(var(--cm-transcript-play-size, ${TRANSCRIPT_EDITOR_PLAY_SIZE}) + 2 * var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}))`;
 
 /** 左栏 index + 时间叠放的最小内容高度（px，与 meta marker 字号/gap 对齐）。 */
 const TRANSCRIPT_EDITOR_META_STACK_MIN_PX = 34;

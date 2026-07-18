@@ -24,17 +24,21 @@ import {
   isTranscriptSegmentVisible,
   transcriptFilterVisibilityField,
 } from "./filterLineVisibility";
+import {
+  TRANSCRIPT_EDITOR_META_CONTENT_GAP,
+  TRANSCRIPT_EDITOR_PLAY_SIZE,
+} from "../../../utils/segmentLayout";
 
 export const CM_SEGMENT_PLAY_ATTR = "data-cm-segment-play";
 export const CM_SEGMENT_PLAY_IDX_ATTR = "data-cm-segment-play-idx";
 /** Removed from text UI; kept exported so stale HMR chunks that re-export it do not crash Vite. */
 export const CM_SEGMENT_LOOP_ATTR = "data-cm-segment-loop";
 
-/** Quiet stroke glyphs — hover play control, not a loud filled transport pill. */
+/** Stroke glyphs aligned with stage-gutter icons (12–14px @ 1.75 stroke). */
 const PLAY_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4v16l13 -8z"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5v14l11 -7z"/></svg>';
 const PAUSE_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+  '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>';
 
 export type TranscriptSegmentTransportHandlers = {
   onToggleSegmentPlay?: (idx: number) => void;
@@ -99,9 +103,9 @@ const hostForcedDeco = Decoration.line({
 });
 
 /**
- * Play control overflows left into the meta gutter (CM gutters z-index 200).
- * Geometry hit-test so clicks on the visible button still fire play even when
- * the event target is the gutter underneath.
+ * Play control sits in the meta↔text seam (translated right of the gutter edge).
+ * Geometry hit-test so clicks on the visible button still fire play even when the
+ * event target is the gutter/line box underneath.
  */
 export function resolvePlayButtonIdxAtPoint(
   root: ParentNode,
@@ -258,6 +262,8 @@ export function createTranscriptSegmentTransportOverlayExtensions(
       pointerEvents: "none",
       boxSizing: "border-box",
     },
+    // Ghost icon affordance (Notion Zen): no pill, no shadow — matches
+    // CONTROL_BTN_ICON_GHOST + waveform `.region-action-btn`.
     ".cm-transcript-segment-play": {
       position: "absolute",
       left: "0",
@@ -266,54 +272,63 @@ export function createTranscriptSegmentTransportOverlayExtensions(
       alignItems: "center",
       justifyContent: "center",
       boxSizing: "border-box",
-      width: "var(--cm-transcript-play-size, 2.25rem)",
-      height: "var(--cm-transcript-play-size, 2.25rem)",
+      width: `var(--cm-transcript-play-size, ${TRANSCRIPT_EDITOR_PLAY_SIZE})`,
+      height: `var(--cm-transcript-play-size, ${TRANSCRIPT_EDITOR_PLAY_SIZE})`,
       margin: "0",
       padding: "0",
-      border: "1px solid color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
-      borderRadius: "9999px",
-      background: "color-mix(in srgb, var(--notion-bg) 88%, var(--accent-action))",
-      color: "var(--accent-action)",
-      boxShadow: "0 1px 4px color-mix(in srgb, var(--notion-text) 10%, transparent)",
+      border: "1px solid transparent",
+      borderRadius: "0.25rem",
+      background: "transparent",
+      color: "var(--notion-text-muted)",
+      boxShadow: "none",
       cursor: "pointer",
       opacity: "0",
       pointerEvents: "none",
-      // Meta↔text seam; gap matches `.cm-line` paddingLeft (meta column is left-aligned).
-      transform: "translate(calc(-100% - var(--cm-transcript-meta-content-gap, 0.2rem)), -50%)",
-      transition: "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
+      // Sit in the meta↔text seam: left gap (= meta paddingRight) and right gap match.
+      transform: `translate(var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}), -50%)`,
+      transition:
+        "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out, color 80ms ease-out",
     },
     ".cm-transcript-line-play-host:hover .cm-transcript-segment-play": {
-      opacity: "0.94",
+      opacity: "1",
       pointerEvents: "auto",
     },
     // Content + left meta gutter hover (hoverSegmentField includes gutters).
     ".cm-transcript-line-play-host--forced .cm-transcript-segment-play": {
-      opacity: "0.94",
+      opacity: "1",
       pointerEvents: "auto",
     },
     ".cm-transcript-segment-play--active": {
-      opacity: "0.94",
+      opacity: "1",
       pointerEvents: "auto",
-      borderColor: "color-mix(in srgb, var(--accent-action) 40%, var(--notion-divider))",
+      color: "var(--accent-action)",
+      background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+      borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
     },
     ".cm-transcript-segment-play:hover": {
       opacity: "1",
-      background: "color-mix(in srgb, var(--notion-bg) 78%, var(--accent-action))",
-      borderColor: "color-mix(in srgb, var(--accent-action) 45%, var(--notion-divider))",
+      color: "var(--accent-action)",
+      background: "color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg))",
+      borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
+    },
+    ".cm-transcript-segment-play--active:hover": {
+      background: "color-mix(in srgb, var(--accent-action) 18%, var(--notion-bg))",
+      borderColor: "color-mix(in srgb, var(--accent-action) 38%, var(--notion-divider))",
     },
     ".cm-transcript-segment-play:focus-visible": {
-      outline: "2px solid color-mix(in srgb, var(--accent-action) 40%, transparent)",
+      outline: "2px solid color-mix(in srgb, var(--notion-text) 28%, transparent)",
       outlineOffset: "2px",
       opacity: "1",
       pointerEvents: "auto",
     },
     ".cm-transcript-segment-play svg": {
-      width: "1.125rem",
-      height: "1.125rem",
+      width: "0.875rem",
+      height: "0.875rem",
       display: "block",
       pointerEvents: "none",
       flexShrink: "0",
-      marginLeft: "0.07rem",
+      // Optical center for the play triangle (point bias).
+      marginLeft: "0.06rem",
     },
     ".cm-transcript-segment-play--active svg": {
       marginLeft: "0",

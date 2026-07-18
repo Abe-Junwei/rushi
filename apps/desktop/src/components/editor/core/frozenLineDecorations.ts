@@ -122,7 +122,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
   ".cm-transcript-frozen-line.cm-transcript-frozen-selected": {
     backgroundColor: "color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
     boxShadow: [
-      "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
+      "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
       "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 70%, transparent)",
     ].join(", "),
   },
@@ -130,7 +130,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
   ".cm-transcript-frozen-line.cm-transcript-frozen-in-selection": {
     backgroundColor: "color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
     boxShadow: [
-      "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
+      "calc(-1 * var(--cm-meta-gutter-width, 6rem)) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
       "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 color-mix(in srgb, var(--notion-callout-bg) 40%, transparent)",
     ].join(", "),
   },
@@ -141,7 +141,7 @@ export const transcriptFrozenLineTheme = EditorView.theme({
     position: "absolute",
     top: "0",
     bottom: "0",
-    left: "calc(-1 * var(--cm-meta-gutter-width, 8.25rem))",
+    left: "calc(-1 * var(--cm-meta-gutter-width, 6rem))",
     right: "calc(-1 * var(--cm-stage-gutter-width, 6.75rem))",
     zIndex: "-1",
     backgroundImage: FROZEN_HATCH,
