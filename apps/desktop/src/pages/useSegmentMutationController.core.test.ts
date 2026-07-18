@@ -257,6 +257,22 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[1]?.start_sec).toBe(1);
   });
 
+  it("updateSegmentBounds reverts live preview when commit is below min span", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" })]),
+    );
+
+    // Live drag to a span valid under the live threshold (0.02s) but below the
+    // commit threshold (0.05s), then commit — the invalid preview must snap back.
+    act(() => result.current.mutations.updateSegmentBounds(0, 0, 0.03, "live"));
+    expect(result.current.segments[0]?.end_sec).toBe(0.03);
+
+    act(() => result.current.mutations.updateSegmentBounds(0, 0, 0.03, "commit"));
+
+    expect(result.current.segments[0]?.end_sec).toBe(1);
+    expect(result.current.segmentsRef.current[0]?.end_sec).toBe(1);
+  });
+
   it("updateSegmentBounds eat deletes neighbor below min span", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([

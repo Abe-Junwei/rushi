@@ -99,6 +99,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   } = deps;
 
   const segmentBoundsLiveGestureRef = useRef(false);
+  /** Committed segments captured at live-drag start; used to revert a rejected commit. */
+  const segmentBoundsPreLiveRef = useRef<SegmentDto[] | null>(null);
 
   const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
   const undoRedo = useSegmentUndoRedo(segmentPublish.publishTextBulk, getCurrentSegmentsSnapshot);
@@ -232,6 +234,20 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const prev = getCurrentSegmentsSnapshot();
       const s = prev[idx];
       if (!s) return;
+
+      // Commit-phase reject: reset gesture flag and, if a live drag already pushed
+      // a preview into state/ref, snap back to the committed snapshot so an invalid
+      // preview is never autosaved.
+      const rejectCommit = () => {
+        segmentBoundsLiveGestureRef.current = false;
+        const snapshot = segmentBoundsPreLiveRef.current;
+        segmentBoundsPreLiveRef.current = null;
+        if (snapshot && snapshot !== prev) {
+          segmentPublish.publishStructure(() => snapshot);
+          dispatchTranscriptSyncMetaFromSegments(snapshot);
+        }
+      };
+
       let lo = Math.min(startSec, endSec);
       let hi = Math.max(startSec, endSec);
       const neighborPatches = options?.neighborPatches ?? [];
@@ -243,7 +259,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         neighborPatches.some((p) => isSegmentFrozen(prev[p.idx])) ||
         deleteIndices.some((i) => isSegmentFrozen(prev[i]));
       if (frozenTouched) {
-        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        if (phase === "commit") rejectCommit();
         if (phase !== "live") setError("请先解冻语段后再调整边界");
         return;
       }
@@ -260,12 +276,12 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       hi = roundSec3(hi);
       const minSpan = phase === "live" ? SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC : WAVEFORM_SEGMENT_MIN_SPAN_SEC;
       if (!segmentBoundsMeetMinSpan(lo, hi, minSpan)) {
-        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        if (phase === "commit") rejectCommit();
         return;
       }
       for (const patch of neighborPatches) {
         if (!segmentBoundsMeetMinSpan(patch.startSec, patch.endSec, minSpan)) {
-          if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+          if (phase === "commit") rejectCommit();
           return;
         }
       }
@@ -273,13 +289,16 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const unchangedActive =
         Math.abs(s.start_sec - lo) < 0.0005 && Math.abs(s.end_sec - hi) < 0.0005;
       if (unchangedActive && !eatMode) {
-        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        if (phase === "commit") rejectCommit();
         return;
       }
 
       if (phase === "live") {
         if (!segmentBoundsLiveGestureRef.current) {
           segmentBoundsLiveGestureRef.current = true;
+          // Snapshot committed bounds so a rejected commit can snap back (ref is
+          // reconciled to the live preview on render, so early-return alone leaks it).
+          segmentBoundsPreLiveRef.current = prev;
           pushUndo();
         }
         let next = prev.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x));
@@ -297,6 +316,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
       const hadLiveGesture = segmentBoundsLiveGestureRef.current;
       segmentBoundsLiveGestureRef.current = false;
+      segmentBoundsPreLiveRef.current = null;
       if (!hadLiveGesture) pushUndo();
 
       let next = prev.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x));
