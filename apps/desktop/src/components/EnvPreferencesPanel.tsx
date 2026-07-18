@@ -164,7 +164,7 @@ export function EnvPreferencesPanel() {
           <EnvPrefSwitchRow
             id="pref-tab-advance-loop"
             label="跳段后 loop 播新语段"
-            hint="在语段正文按 Enter 一校、Ctrl/⌘+Enter 定稿或 Tab 跳到下一段后，自动 loop 播放新语段（听打默认开）。"
+            hint="在语段正文按 Enter 一校、Ctrl/⌘+Enter 定稿或 Tab 跳到下一段后，自动 loop 播放新语段（默认关）。"
             checked={tabAdvanceLoops}
             onChange={setTabAdvanceLoops}
           />

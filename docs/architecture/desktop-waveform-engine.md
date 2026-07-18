@@ -290,7 +290,7 @@
 | `rushi.p1.waveformHeightPx` | 主波形高度 | **设置 → 偏好设置**；波形底缘拖拽 |
 | `rushi.p1.transcriptFontPx` | 语段正文字号 | **设置 → 偏好设置**；行高拖拽 / 右键 |
 | `rushi.p1.waveformGlobalPlaybackRate` | 全局播放速度 | **设置 → 偏好设置**；工具条 |
-| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并 loop 播放 | **设置 → 偏好设置**（默认开） |
+| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并 loop 播放 | **设置 → 偏好设置**（默认关） |
 | `rushi.p1.waveformMinimap` | L0 总览条 | **设置 → 偏好设置**；Zoom 条 |
 | `rushi.p1.waveformPlaybackScrollFollow` | 播放滚屏 center/edge | **设置 → 偏好设置**；工具条 |
 | `rushi.p1.transcriptPlaybackFollow` | 文稿跟播（Playback Focus；默认开） | **设置 → 偏好设置** |

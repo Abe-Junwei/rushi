@@ -12,6 +12,7 @@ import {
   writeStoredWaveformPxPerSec,
   subscribeWaveformPrefs,
   writeStoredTabAdvanceLoopsSegment,
+  readStoredTabAdvanceLoopsSegment,
   readStoredTranscriptPlaybackFollow,
   writeStoredTranscriptPlaybackFollow,
 } from "./waveformPrefs";
@@ -76,6 +77,15 @@ describe("waveformPrefs localStorage", () => {
   it("round-trips waveform height after clamp", () => {
     writeStoredWaveformHeightPx(WAVEFORM_HEIGHT_DEFAULT);
     expect(readStoredWaveformHeightPx()).toBe(WAVEFORM_HEIGHT_DEFAULT);
+  });
+
+  it("defaults tab-advance loop playback to off", () => {
+    localStorage.removeItem("rushi.p1.tabAdvanceLoopsSegment");
+    expect(readStoredTabAdvanceLoopsSegment()).toBe(false);
+    writeStoredTabAdvanceLoopsSegment(true);
+    expect(readStoredTabAdvanceLoopsSegment()).toBe(true);
+    writeStoredTabAdvanceLoopsSegment(false);
+    expect(readStoredTabAdvanceLoopsSegment()).toBe(false);
   });
 
   it("notifies subscribers when editor prefs change", () => {

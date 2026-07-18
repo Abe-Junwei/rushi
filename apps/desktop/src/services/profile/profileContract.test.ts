@@ -56,7 +56,7 @@ describe("profileContract", () => {
 
     const profile = buildSettingsProfileV1();
     expect(profile.version).toBe(2);
-    expect(profile.editor?.tab_advance_loops_segment).toBe(true);
+    expect(profile.editor?.tab_advance_loops_segment).toBe(false);
     const dumped = JSON.stringify(profile);
     expect(profile.llm?.api_key_id).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(dumped).not.toContain("sk-secret-should-not-export");

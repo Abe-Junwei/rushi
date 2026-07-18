@@ -51,6 +51,9 @@ describe("EnvPreferencesPanel", () => {
 
   it("persists tab advance loop preference", () => {
     render(<EnvPreferencesPanel />);
+    // Default off → first click turns on.
+    fireEvent.click(screen.getByRole("switch", { name: "跳段后 loop 播新语段" }));
+    expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("1");
     fireEvent.click(screen.getByRole("switch", { name: "跳段后 loop 播新语段" }));
     expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("0");
   });
