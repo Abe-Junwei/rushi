@@ -21,7 +21,16 @@ export function resolveTranscriptSegmentIdxAtPointer(
   clientY: number,
   target?: EventTarget | null,
 ): number | null {
-  const fromLineEl = resolveIdxFromLineElement(view, resolveElementFromTarget(target));
+  const el = resolveElementFromTarget(target);
+
+  // Left meta / other gutters live outside `.cm-content`. Map by row height so
+  // hover (and play-button force-reveal) stays active across the timestamp seam.
+  if (el && view.dom.contains(el) && !view.contentDOM.contains(el)) {
+    const fromGutter = resolveIdxFromHeight(view, clientY);
+    if (fromGutter != null) return fromGutter;
+  }
+
+  const fromLineEl = resolveIdxFromLineElement(view, el);
   if (fromLineEl != null) return fromLineEl;
 
   // Browser hit-test at the raw coords (covers cases where target was detached
@@ -49,24 +58,32 @@ function resolveIdxFromLineElement(view: EditorView, el: Element | null): number
   if (!el || !view.contentDOM.contains(el)) return null;
   const lineEl = el.closest(".cm-line");
   if (!lineEl || !view.contentDOM.contains(lineEl)) return null;
-  const pos = view.posAtDOM(lineEl, 0);
-  if (pos < 0 || pos > view.state.doc.length) return null;
-  return view.state.doc.lineAt(pos).number - 1;
+  try {
+    const pos = view.posAtDOM(lineEl, 0);
+    if (pos < 0 || pos > view.state.doc.length) return null;
+    return view.state.doc.lineAt(pos).number - 1;
+  } catch {
+    return null;
+  }
 }
 
 function resolveIdxFromHeight(view: EditorView, clientY: number): number | null {
-  const height = clientY - view.documentTop;
-  if (height < 0) return null;
+  try {
+    const height = clientY - view.documentTop;
+    if (height < 0) return null;
 
-  const blocks = view.viewportLineBlocks;
-  if (blocks.length > 0 && height >= blocks[0].top && height <= blocks[blocks.length - 1].bottom) {
-    const hit = blocks.find((b) => height >= b.top && height <= b.bottom);
-    if (hit && hit.from >= 0 && hit.from <= view.state.doc.length) {
-      return view.state.doc.lineAt(hit.from).number - 1;
+    const blocks = view.viewportLineBlocks;
+    if (blocks.length > 0 && height >= blocks[0].top && height <= blocks[blocks.length - 1].bottom) {
+      const hit = blocks.find((b) => height >= b.top && height <= b.bottom);
+      if (hit && hit.from >= 0 && hit.from <= view.state.doc.length) {
+        return view.state.doc.lineAt(hit.from).number - 1;
+      }
     }
-  }
 
-  const block = view.lineBlockAtHeight(height);
-  if (block.from < 0 || block.from > view.state.doc.length) return null;
-  return view.state.doc.lineAt(block.from).number - 1;
+    const block = view.lineBlockAtHeight(height);
+    if (block.from < 0 || block.from > view.state.doc.length) return null;
+    return view.state.doc.lineAt(block.from).number - 1;
+  } catch {
+    return null;
+  }
 }

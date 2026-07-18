@@ -23,7 +23,6 @@ import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSeg
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
 import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
 import { applyContextMenuSelectionBeforeOpen } from "../services/selection/segmentContextMenuSelection";
-
 export type TranscriptionLayerApi = ReturnType<typeof useTranscriptionLayer>;
 export type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
@@ -244,7 +243,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
   const selectSegmentFromList = useCallback(
-    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean; forceSeek?: boolean }) => {
       const source = opts
         ? "list"
         : nextListSelectSource(Date.now(), segmentListDrag.listSelectSourceStateRef.current);

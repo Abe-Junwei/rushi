@@ -93,23 +93,16 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(children.indexOf(chip as Element)).toBeLessThan(children.indexOf(note as Element));
   });
 
-  it("places loop transport left of play when showSegmentPlay", () => {
+  it("does not mount transport controls in the stage gutter", () => {
     const segs = makeSegments(1);
     const state = buildTranscriptEditorState(segs, {
       extensions: transcriptEditorCoreExtensions({ withProjection: false }),
     });
     const meta = state.field(segmentMetaField);
-    const stage = buildTranscriptStageMarker(meta[0], {
-      showSegmentPlay: true,
-      segmentLoopActive: true,
-      segmentPlayActive: true,
-    });
+    const stage = buildTranscriptStageMarker(meta[0], { rowHover: true });
     const dom = stage!.toDOM();
-    const children = [...dom.children];
-    expect(children[0]?.getAttribute("data-cm-segment-loop")).toBe("1");
-    expect(children[0]?.getAttribute("aria-pressed")).toBe("true");
-    expect(children[1]?.getAttribute("data-cm-segment-play")).toBe("1");
-    expect(children[1]?.getAttribute("aria-label")).toBe("停止语段播放");
+    expect(dom.querySelector("[data-cm-segment-play]")).toBeNull();
+    expect(dom.querySelector(".cm-transcript-stage-chip")).toBeTruthy();
   });
 
   it("derives gutter width from full legacy meta column (stage is after-gutter)", () => {

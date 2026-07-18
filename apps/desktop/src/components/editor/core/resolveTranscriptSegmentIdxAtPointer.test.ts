@@ -76,7 +76,7 @@ describe("resolveTranscriptSegmentIdxAtPointer", () => {
     expect(resolveTranscriptSegmentIdxAtPointer(view, 0, clientY, lineEl)).toBe(targetIdx);
   });
 
-  it("ignores targets outside the editor content and falls back to height", () => {
+  it("ignores targets outside the editor and falls back to height", () => {
     view = mountView(4);
     const outside = document.createElement("div");
     document.body.appendChild(outside);
@@ -84,5 +84,30 @@ describe("resolveTranscriptSegmentIdxAtPointer", () => {
     // returns null rather than a wrong row.
     expect(resolveTranscriptSegmentIdxAtPointer(view, 0, -9999, outside)).toBeNull();
     outside.remove();
+  });
+
+  it("resolves left meta / gutter targets by row height (not content box only)", () => {
+    const parent = document.createElement("div");
+    parent.style.height = "320px";
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(4), {
+      extensions: [
+        ...transcriptEditorCoreExtensions({ withProjection: false, withMetaGutter: true }),
+        EditorView.theme({
+          "&": { height: "320px" },
+          ".cm-scroller": { overflow: "auto", height: "100%" },
+        }),
+      ],
+    });
+    view = new EditorView({ state, parent });
+
+    const targetIdx = 2;
+    const block = view.lineBlockAt(view.state.doc.line(targetIdx + 1).from);
+    const clientY = view.documentTop + block.top + Math.min(8, block.bottom - block.top - 1);
+    const gutterEl =
+      view.dom.querySelector(".cm-gutters") ?? view.dom.querySelector(".cm-gutterElement");
+    expect(gutterEl).toBeTruthy();
+    expect(view.contentDOM.contains(gutterEl!)).toBe(false);
+    expect(resolveTranscriptSegmentIdxAtPointer(view, 0, clientY, gutterEl)).toBe(targetIdx);
   });
 });

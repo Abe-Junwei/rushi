@@ -14,8 +14,6 @@ import { selectSegmentCommand } from "./selectionCommands";
 import type { TranscriptRowSelectionKind } from "./metaGutter";
 import { transcriptHoverSegmentField } from "./hoverSegmentField";
 import { transcriptPlaybackFocusField } from "./playbackFocusField";
-import { transcriptScopedPlayingField } from "./scopedPlayingField";
-import { transcriptSegmentLoopField } from "./segmentLoopField";
 import { shouldApplyContextMenuSelection } from "../../../services/selection/segmentContextMenuSelection";
 import {
   isTranscriptSegmentVisible,
@@ -58,20 +56,11 @@ const STAGE_ICON_SVG: Record<string, string> = {
   ),
 };
 
-const PLAY_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>';
-const STOP_ICON_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
-const LOOP_ICON_SVG = transcriptGutterIconSvg(
-  '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
-);
 /** MessageSquare — annotation present (ambient glyph; matches PRODUCT_ICON.segmentAnnotation). */
 const ANNOTATION_DOC_ICON_SVG = transcriptGutterIconSvg(
   '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
 );
 
-export const CM_SEGMENT_PLAY_ATTR = "data-cm-segment-play";
-export const CM_SEGMENT_LOOP_ATTR = "data-cm-segment-loop";
 export const CM_SEGMENT_ANNOTATION_ATTR = "data-cm-segment-annotation";
 
 export class TranscriptStageMarker extends GutterMarker {
@@ -82,16 +71,8 @@ export class TranscriptStageMarker extends GutterMarker {
     readonly selectionKind: TranscriptRowSelectionKind = null,
     /** True when this row is the current playback-focus line (may coexist with primary). */
     readonly isPlaybackFocus: boolean = false,
-    /**
-     * Mount transport controls (opacity-gated). Visible on row hover / content hover /
-     * scoped playing / loop arm — not primary-only.
-     */
-    readonly showSegmentPlay: boolean = false,
-    readonly segmentPlayActive: boolean = false,
-    /** Content-hover force-visible (gutter :hover also reveals via CSS). */
-    readonly segmentPlayForced: boolean = false,
-    /** Primary row with segment loop armed. */
-    readonly segmentLoopActive: boolean = false,
+    /** Content-hover affordance (stage chip ink). */
+    readonly rowHover: boolean = false,
     /** Show document icon to the right of the stage chip when the segment has a note. */
     readonly hasAnnotation: boolean = false,
   ) {
@@ -105,10 +86,7 @@ export class TranscriptStageMarker extends GutterMarker {
       this.tooltip === other.tooltip &&
       this.selectionKind === other.selectionKind &&
       this.isPlaybackFocus === other.isPlaybackFocus &&
-      this.showSegmentPlay === other.showSegmentPlay &&
-      this.segmentPlayActive === other.segmentPlayActive &&
-      this.segmentPlayForced === other.segmentPlayForced &&
-      this.segmentLoopActive === other.segmentLoopActive &&
+      this.rowHover === other.rowHover &&
       this.hasAnnotation === other.hasAnnotation
     );
   }
@@ -128,52 +106,10 @@ export class TranscriptStageMarker extends GutterMarker {
     wrap.className = [
       "cm-transcript-stage-cell",
       kindClass,
-      this.segmentPlayForced ? "cm-transcript-stage-cell--row-hover" : "",
+      this.rowHover ? "cm-transcript-stage-cell--row-hover" : "",
     ]
       .filter(Boolean)
       .join(" ");
-
-    if (this.showSegmentPlay) {
-      const transportVisible = this.segmentPlayForced || this.segmentPlayActive || this.segmentLoopActive;
-      const loopBtn = document.createElement("button");
-      loopBtn.type = "button";
-      loopBtn.className = [
-        "cm-transcript-segment-transport",
-        "cm-transcript-segment-loop",
-        this.segmentPlayForced ? "cm-transcript-segment-transport--forced" : "",
-        this.segmentLoopActive ? "cm-transcript-segment-transport--active" : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-      loopBtn.setAttribute(CM_SEGMENT_LOOP_ATTR, "1");
-      loopBtn.tabIndex = transportVisible ? 0 : -1;
-      const loopLabel = this.segmentLoopActive ? "关闭语段循环播放" : "开启语段循环播放";
-      loopBtn.title = `${loopLabel}（⌘/Ctrl+L）`;
-      loopBtn.setAttribute("aria-label", loopLabel);
-      loopBtn.setAttribute("aria-pressed", this.segmentLoopActive ? "true" : "false");
-      loopBtn.innerHTML = LOOP_ICON_SVG;
-      wrap.append(loopBtn);
-
-      const playBtn = document.createElement("button");
-      playBtn.type = "button";
-      playBtn.className = [
-        "cm-transcript-segment-transport",
-        "cm-transcript-segment-play",
-        this.segmentPlayForced ? "cm-transcript-segment-transport--forced" : "",
-        this.segmentPlayActive ? "cm-transcript-segment-transport--active" : "",
-      ]
-        .filter(Boolean)
-        .join(" ");
-      playBtn.setAttribute(CM_SEGMENT_PLAY_ATTR, "1");
-      playBtn.tabIndex = transportVisible ? 0 : -1;
-      const playLabel = this.segmentPlayActive
-        ? "停止语段播放"
-        : "播本语段（至段尾）";
-      playBtn.title = playLabel;
-      playBtn.setAttribute("aria-label", playLabel);
-      playBtn.innerHTML = this.segmentPlayActive ? STOP_ICON_SVG : PLAY_ICON_SVG;
-      wrap.append(playBtn);
-    }
 
     const el = document.createElement("span");
     el.className = [
@@ -214,10 +150,7 @@ export function buildTranscriptStageMarker(
   opts: {
     selectionKind?: TranscriptRowSelectionKind;
     isPlaybackFocus?: boolean;
-    showSegmentPlay?: boolean;
-    segmentPlayActive?: boolean;
-    segmentPlayForced?: boolean;
-    segmentLoopActive?: boolean;
+    rowHover?: boolean;
   } = {},
 ): TranscriptStageMarker | null {
   if (!meta?.stage) return null;
@@ -229,18 +162,13 @@ export function buildTranscriptStageMarker(
     labels.tooltip,
     opts.selectionKind ?? null,
     opts.isPlaybackFocus === true,
-    opts.showSegmentPlay === true,
-    opts.segmentPlayActive === true,
-    opts.segmentPlayForced === true,
-    opts.segmentLoopActive === true,
+    opts.rowHover === true,
     Boolean(meta.hasAnnotation),
   );
 }
 
 export type TranscriptStageGutterOptions = {
   onSelectSegment?: (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => void;
-  onToggleSegmentPlay?: (idx: number) => void;
-  onToggleSegmentLoop?: (idx: number) => void;
   onOpenSegmentAnnotationDialog?: (idx: number) => void;
   isBusy?: () => boolean;
 };
@@ -268,18 +196,6 @@ export function handleTranscriptStageGutterMousedown(
     if (!opts.isBusy?.()) {
       opts.onOpenSegmentAnnotationDialog?.(idx);
     }
-    return true;
-  }
-  if (target?.closest(`[${CM_SEGMENT_LOOP_ATTR}]`)) {
-    event.preventDefault();
-    event.stopPropagation();
-    opts.onToggleSegmentLoop?.(idx);
-    return true;
-  }
-  if (target?.closest(`[${CM_SEGMENT_PLAY_ATTR}]`)) {
-    event.preventDefault();
-    event.stopPropagation();
-    opts.onToggleSegmentPlay?.(idx);
     return true;
   }
   const multi = view.state.field(transcriptMultiSelectionField);
@@ -310,7 +226,8 @@ export function handleTranscriptStageGutterMousedown(
 
 /**
  * Trailing stage chip gutter (legacy SegmentRowStageBadge column parity).
- * Segment transport sits beside text: hover-reveal on any row; stop/loop stay while armed.
+ * Segment play/loop transport lives as a centered line overlay (see
+ * `segmentTransportOverlayDecorations.ts`).
  */
 export function createTranscriptStageGutter(
   opts: TranscriptStageGutterOptions = {},
@@ -326,8 +243,6 @@ export function createTranscriptStageGutter(
       const multi = view.state.field(transcriptMultiSelectionField);
       const hoverIdx = view.state.field(transcriptHoverSegmentField);
       const playbackIdx = view.state.field(transcriptPlaybackFocusField);
-      const scopedPlaying = view.state.field(transcriptScopedPlayingField);
-      const segmentLoop = view.state.field(transcriptSegmentLoopField);
       const selectionKind: TranscriptRowSelectionKind =
         idx === primary
           ? "primary"
@@ -336,17 +251,10 @@ export function createTranscriptStageGutter(
             : playbackIdx != null && playbackIdx === idx
               ? "playback"
               : null;
-      const isPrimary = selectionKind === "primary";
-      const segmentPlayActive = isPrimary && scopedPlaying;
-      const segmentLoopActive = isPrimary && segmentLoop;
       return buildTranscriptStageMarker(view.state.field(segmentMetaField)[idx], {
         selectionKind,
         isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
-        // Always mount to reserve hit target; visibility via CSS + forced/active.
-        showSegmentPlay: true,
-        segmentPlayActive,
-        segmentPlayForced: hoverIdx === idx,
-        segmentLoopActive,
+        rowHover: hoverIdx === idx,
       });
     },
     lineMarkerChange(update) {
@@ -365,11 +273,7 @@ export function createTranscriptStageGutter(
         update.startState.field(transcriptHoverSegmentField) !==
           update.state.field(transcriptHoverSegmentField) ||
         update.startState.field(transcriptPlaybackFocusField) !==
-          update.state.field(transcriptPlaybackFocusField) ||
-        update.startState.field(transcriptScopedPlayingField) !==
-          update.state.field(transcriptScopedPlayingField) ||
-        update.startState.field(transcriptSegmentLoopField) !==
-          update.state.field(transcriptSegmentLoopField)
+          update.state.field(transcriptPlaybackFocusField)
       );
     },
     initialSpacer: () =>
@@ -377,9 +281,6 @@ export function createTranscriptStageGutter(
         "auto_transcribe",
         "机转",
         "自动转写",
-        null,
-        false,
-        true,
       ),
     domEventHandlers: {
       mousedown(view, line, event) {
@@ -392,8 +293,8 @@ export function createTranscriptStageGutter(
 export const transcriptStageGutterTheme = EditorView.theme({
   // Flush against content — avoid a blank seam between text highlight and stage chip.
   ".cm-transcript-stage-gutter": {
-    // loop (1.75) + play (1.75) + gaps + chip max (6.5) + optional annotation (1.0) + cell pad ≈ 12.0
-    minWidth: "12rem",
+    // chip max (6.5) + optional annotation (1.0) + gaps + cell pad ≈ 8.75
+    minWidth: "8.75rem",
     paddingLeft: "0",
     paddingRight: "0.35rem",
     borderLeft: "none",
@@ -440,57 +341,6 @@ export const transcriptStageGutterTheme = EditorView.theme({
   ".cm-transcript-stage-cell--in-selection, .cm-transcript-stage-cell--playback": {
     "--cm-stage-affordance":
       "color-mix(in srgb, var(--notion-text-light) 35%, var(--notion-text-muted))",
-  },
-  ".cm-transcript-segment-transport": {
-    display: "inline-flex",
-    flexShrink: "0",
-    alignItems: "center",
-    justifyContent: "center",
-    boxSizing: "border-box",
-    // Always reserve hit target so stage chip never shifts when controls appear.
-    width: "1.75rem",
-    height: "1.375rem",
-    minHeight: "1.375rem",
-    margin: "0",
-    padding: "0",
-    overflow: "hidden",
-    border: "1px solid transparent",
-    borderRadius: "0.375rem",
-    background: "transparent",
-    color: "var(--accent-action)",
-    cursor: "pointer",
-    opacity: "0",
-    pointerEvents: "none",
-    transition: "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
-  },
-  // Gutter cell hover keeps the button clickable (mouse can leave the text).
-  ".cm-transcript-stage-cell:hover .cm-transcript-segment-transport": {
-    opacity: "1",
-    pointerEvents: "auto",
-    borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
-    background: "color-mix(in srgb, var(--accent-action) 12%, transparent)",
-  },
-  ".cm-transcript-segment-transport--forced": {
-    opacity: "1",
-    pointerEvents: "auto",
-    borderColor: "color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
-    background: "color-mix(in srgb, var(--accent-action) 12%, transparent)",
-  },
-  ".cm-transcript-segment-transport:hover": {
-    background: "color-mix(in srgb, var(--accent-action) 22%, transparent)",
-  },
-  ".cm-transcript-segment-transport--active": {
-    opacity: "1",
-    pointerEvents: "auto",
-    background: "color-mix(in srgb, var(--accent-action) 22%, transparent)",
-    borderColor: "color-mix(in srgb, var(--accent-action) 42%, var(--notion-divider))",
-  },
-  ".cm-transcript-segment-transport svg": {
-    width: "0.75rem",
-    height: "0.75rem",
-    display: "block",
-    pointerEvents: "none",
-    flexShrink: "0",
   },
   // Stage mark: flat icon + label — grayscale ink shared with annotation.
   ".cm-transcript-stage-chip": {

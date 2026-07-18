@@ -29,6 +29,10 @@ import {
   createTranscriptRowHeightResizeExtensions,
   type TranscriptRowHeightDragFromDom,
 } from "./segmentRowHeightResizeDecorations";
+import {
+  createTranscriptSegmentTransportOverlayExtensions,
+  type TranscriptSegmentTransportHandlers,
+} from "./segmentTransportOverlayDecorations";
 import { transcriptPlaybackFocusExtensions } from "./playbackFocusField";
 import { transcriptScopedPlayingExtensions } from "./scopedPlayingField";
 import { transcriptSegmentLoopExtensions } from "./segmentLoopField";
@@ -62,6 +66,7 @@ export type TranscriptEditorCoreExtensionsOptions = {
   metaGutter?: TranscriptMetaGutterOptions;
   stageGutter?: TranscriptStageGutterOptions;
   rowHeightDragFromDomRef?: MutableRefObject<TranscriptRowHeightDragFromDom | undefined>;
+  segmentTransportHandlersRef?: MutableRefObject<TranscriptSegmentTransportHandlers>;
 };
 
 /**
@@ -86,6 +91,9 @@ export function transcriptEditorCoreExtensions(
     ...transcriptHoverExtensions,
     ...(opts.rowHeightDragFromDomRef
       ? createTranscriptRowHeightResizeExtensions(opts.rowHeightDragFromDomRef)
+      : []),
+    ...(opts.segmentTransportHandlersRef
+      ? createTranscriptSegmentTransportOverlayExtensions(opts.segmentTransportHandlersRef)
       : []),
     ...transcriptPlaybackFocusExtensions,
     ...transcriptScopedPlayingExtensions,

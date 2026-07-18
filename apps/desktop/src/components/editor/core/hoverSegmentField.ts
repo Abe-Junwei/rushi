@@ -1,5 +1,5 @@
 import { RangeSetBuilder, StateEffect, StateField, type Extension } from "@codemirror/state";
-import { Decoration, EditorView } from "@codemirror/view";
+import { Decoration, EditorView, ViewPlugin } from "@codemirror/view";
 import type { DecorationSet } from "@codemirror/view";
 import {
   primarySegmentIdx,
@@ -10,11 +10,13 @@ import {
   setTranscriptPlaybackFocusEffect,
   transcriptPlaybackFocusField,
 } from "./playbackFocusField";
+import { resolveTranscriptSegmentIdxAtPointer } from "./resolveTranscriptSegmentIdxAtPointer";
 
 /**
  * Tracks which segment line the pointer is over.
  * Drives a light row wash (skipped on selected / playback-focus rows) and
- * force-reveals the stage play control.
+ * force-reveals the play control (including when the pointer is over the left
+ * meta gutter / seam — not only the text content box).
  */
 export const setTranscriptHoverSegmentEffect = StateEffect.define<number | null>();
 
@@ -91,27 +93,68 @@ export const transcriptHoverDecorations = StateField.define<DecorationSet>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-export function createTranscriptHoverPointerHandlers(): Extension {
-  return EditorView.domEventHandlers({
-    mousemove(event, view) {
-      // precise=false: map gutter / padding coords to nearest line so hover-play
-      // stays when the pointer moves from text onto the stage play control.
-      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
-      const next = pos == null ? null : view.state.doc.lineAt(pos).number - 1;
-      if (next === view.state.field(transcriptHoverSegmentField)) return false;
-      view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(next) });
-      return false;
-    },
-    mouseleave(_event, view) {
-      if (view.state.field(transcriptHoverSegmentField) == null) return false;
-      view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(null) });
-      return false;
-    },
-  });
+/**
+ * Include text, play-seam widget, and left meta gutter (timestamp column).
+ *
+ * Must NOT use `EditorView.domEventHandlers` for this: CM6 attaches those to
+ * `contentDOM` only, so moving into the left meta gutter fires `mouseleave` and
+ * clears hover — exactly when the play control (over the meta↔text seam) needs
+ * to stay revealed.
+ */
+function resolveHoverSegmentIdx(view: EditorView, event: MouseEvent): number | null {
+  const prev = view.state.field(transcriptHoverSegmentField);
+  try {
+    const next = resolveTranscriptSegmentIdxAtPointer(
+      view,
+      event.clientX,
+      event.clientY,
+      event.target,
+    );
+    if (next != null) return next;
+    const el = event.target instanceof Element ? event.target : null;
+    if (prev != null && el != null && view.dom.contains(el)) return prev;
+    return null;
+  } catch {
+    return prev;
+  }
 }
+
+function setHoverIdx(view: EditorView, next: number | null) {
+  if (next === view.state.field(transcriptHoverSegmentField)) return;
+  view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(next) });
+}
+
+/**
+ * Listen on `view.dom` (gutters + content), not `contentDOM`.
+ */
+export const transcriptHoverPointerPlugin = ViewPlugin.fromClass(
+  class {
+    private readonly onMove: (event: MouseEvent) => void;
+    private readonly onLeave: (event: MouseEvent) => void;
+
+    constructor(private readonly view: EditorView) {
+      this.onMove = (event: MouseEvent) => {
+        setHoverIdx(this.view, resolveHoverSegmentIdx(this.view, event));
+      };
+      this.onLeave = (event: MouseEvent) => {
+        // Only clear when leaving the whole editor chrome (not content→gutter).
+        const related = event.relatedTarget;
+        if (related instanceof Node && this.view.dom.contains(related)) return;
+        setHoverIdx(this.view, null);
+      };
+      this.view.dom.addEventListener("mousemove", this.onMove);
+      this.view.dom.addEventListener("mouseleave", this.onLeave);
+    }
+
+    destroy() {
+      this.view.dom.removeEventListener("mousemove", this.onMove);
+      this.view.dom.removeEventListener("mouseleave", this.onLeave);
+    }
+  },
+);
 
 export const transcriptHoverExtensions: Extension[] = [
   transcriptHoverSegmentField,
   transcriptHoverDecorations,
-  createTranscriptHoverPointerHandlers(),
+  transcriptHoverPointerPlugin,
 ];

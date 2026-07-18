@@ -1,3 +1,4 @@
+import type { MutableRefObject } from "react";
 import { Compartment, type Extension } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
@@ -48,7 +49,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
-      "--cm-stage-gutter-width": "12rem",
+      "--cm-stage-gutter-width": "8.75rem",
       "--cm-transcript-line-pad": `${linePad}px`,
       "--cm-transcript-min-line-px": `${minLine}px`,
       "--cm-transcript-meta-content-gap": TRANSCRIPT_EDITOR_META_CONTENT_GAP,
@@ -105,7 +106,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-        "var(--cm-stage-gutter-width, 12rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
     },
     ".cm-line.cm-transcript-line-resize-host": {
@@ -127,14 +128,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
-        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-in-selection-list)",
+        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-in-selection-list)",
       ].join(", "),
     },
     // Same fill as primary — playback-focus only drives icon/class, not a second wash.
@@ -142,14 +143,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-playback-focus": {
       backgroundColor: "var(--transcript-playback-focus-fill)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
-        "var(--cm-stage-gutter-width, 12rem) 0 0 0 var(--transcript-playback-focus-fill)",
+        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--transcript-playback-focus-fill)",
       ].join(", "),
     },
   });
@@ -194,16 +195,23 @@ export function buildTranscriptEditorCoreExtensions(args: {
     args.onSelectSegmentRef.current?.(idx, opts);
   };
 
+  const segmentTransportHandlersRef: MutableRefObject<{
+    onToggleSegmentPlay?: (idx: number) => void;
+  }> = {
+    current: {
+      onToggleSegmentPlay: (idx) => args.onToggleSegmentPlayRef.current?.(idx),
+    },
+  };
+
   return [
     ...transcriptEditorCoreExtensions({
       withProjection: true,
       rowHeightDragFromDomRef: args.rowHeightDragFromDomRef,
+      segmentTransportHandlersRef,
       metaGutter: {
         onSelectSegment: (idx, opts) => bridgePrimaryMoved(idx, opts),
       },
       stageGutter: {
-        onToggleSegmentPlay: (idx) => args.onToggleSegmentPlayRef.current?.(idx),
-        onToggleSegmentLoop: (idx) => args.onToggleSegmentLoopRef.current?.(idx),
         onOpenSegmentAnnotationDialog: (idx) =>
           args.onOpenSegmentAnnotationDialogRef?.current?.(idx),
         isBusy: () => args.busyRef.current,

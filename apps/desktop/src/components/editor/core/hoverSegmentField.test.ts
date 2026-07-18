@@ -115,4 +115,43 @@ describe("hoverSegmentField", () => {
     expect(hit).toBeTruthy();
     expect(hit?.querySelector("[class*='__tri']")).toBeNull();
   });
+
+  it("keeps hover when the pointer moves from content into the left meta gutter", () => {
+    const parent = document.createElement("div");
+    parent.style.height = "320px";
+    document.body.appendChild(parent);
+    const state = buildTranscriptEditorState(makeSegments(3), {
+      extensions: [
+        ...transcriptEditorCoreExtensions({ withProjection: false, withMetaGutter: true }),
+        EditorView.theme({
+          "&": { height: "320px" },
+          ".cm-scroller": { overflow: "auto", height: "100%" },
+        }),
+      ],
+    });
+    view = new EditorView({ state, parent });
+
+    const lineEl = view.contentDOM.querySelector(".cm-line");
+    expect(lineEl).toBeTruthy();
+    lineEl!.dispatchEvent(
+      new MouseEvent("mousemove", { bubbles: true, clientX: 80, clientY: 40 }),
+    );
+    // contentDOM-only handlers would mouseleave-clear here; view.dom listeners must keep it.
+    view.contentDOM.dispatchEvent(
+      new MouseEvent("mouseleave", {
+        bubbles: true,
+        clientX: 10,
+        clientY: 40,
+        relatedTarget: view.dom.querySelector(".cm-gutters"),
+      }),
+    );
+    const gutter = view.dom.querySelector(".cm-gutters") ?? view.dom.querySelector(".cm-gutterElement");
+    expect(gutter).toBeTruthy();
+    const block = view.lineBlockAt(view.state.doc.line(1).from);
+    const clientY = view.documentTop + block.top + 4;
+    gutter!.dispatchEvent(
+      new MouseEvent("mousemove", { bubbles: true, clientX: 12, clientY }),
+    );
+    expect(view.state.field(transcriptHoverSegmentField)).toBe(0);
+  });
 });

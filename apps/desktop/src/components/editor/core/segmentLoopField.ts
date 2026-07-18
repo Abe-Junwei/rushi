@@ -1,6 +1,6 @@
 import { StateEffect, StateField, type Extension } from "@codemirror/state";
 
-/** True when selected-segment loop playback is armed (list gutter loop chrome). */
+/** True when selected-segment loop playback is armed (waveform transport overlay). */
 export const setTranscriptSegmentLoopEffect = StateEffect.define<boolean>();
 
 export const transcriptSegmentLoopField = StateField.define<boolean>({
