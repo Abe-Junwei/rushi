@@ -3,7 +3,6 @@ import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
-import { ProjectHubView } from "./ProjectHubView";
 import { WelcomeView } from "./WelcomeView";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
@@ -29,6 +28,8 @@ export function ProjectPanel() {
     llmUiEpoch,
     welcomePage,
     setWelcomePage,
+    welcomeLedgerTab,
+    setWelcomeLedgerTab,
     glossaryWorkspaceId,
     setGlossaryWorkspaceId,
     exportKey,
@@ -44,6 +45,7 @@ export function ProjectPanel() {
     openLlmSettings,
     notifyLlmRuntimeChanged,
     onLeaveProjectForWelcome,
+    onGoProjectsLibrary,
     showTranscribeGlossaryLink,
     openGlossaryFromTranscribe,
     stayAfterCloseAttempt,
@@ -136,7 +138,7 @@ export function ProjectPanel() {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {workspaceShellVariant === "welcome" ? (
+        {workspaceShellVariant === "welcome" || workspaceShellVariant === "hub" ? (
           <WelcomeView
             controller={c}
             onOpenSettings={openEnvironment}
@@ -146,21 +148,12 @@ export function ProjectPanel() {
             llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
             onPageChange={setWelcomePage}
+            ledgerTab={welcomeLedgerTab}
+            onLedgerTabChange={setWelcomeLedgerTab}
+            onGoProjectsLibrary={onGoProjectsLibrary}
             glossaryWorkspaceId={glossaryWorkspaceId}
             onGlossaryWorkspaceChange={setGlossaryWorkspaceId}
-          />
-        ) : workspaceShellVariant === "hub" ? (
-          <ProjectHubView
-            controller={c}
-            onOpenSettings={openEnvironment}
-            onOpenAsrSettings={openAsrSettings}
-            onOpenOnlineSttSettings={openOnlineSttSettings}
-            onOpenLlmSettings={openLlmSettings}
-            llmStatusRefreshSeq={llmUiEpoch}
-            onLeaveProjectForWelcome={onLeaveProjectForWelcome}
-            glossaryWorkspaceId={glossaryWorkspaceId}
-            onGlossaryWorkspaceChange={setGlossaryWorkspaceId}
-            headerSlot={transcribeBanners}
+            headerSlot={workspaceShellVariant === "hub" ? transcribeBanners : undefined}
           />
         ) : (
           <CollapsibleWorkspaceShell
@@ -171,11 +164,10 @@ export function ProjectPanel() {
                 onOpenSettings={openEnvironment}
                 page="home"
                 onPageChange={() => {}}
+                onGoProjectsLibrary={onGoProjectsLibrary}
                 hubMode
                 editorMode
                 embeddedInCollapsibleShell
-                activeProjectId={c.current?.id ?? null}
-                activeFileId={c.currentFileId}
                 onLeaveProjectForWelcome={onLeaveProjectForWelcome}
                 glossaryWorkspaceId={glossaryWorkspaceId}
                 onGlossaryWorkspaceChange={setGlossaryWorkspaceId}

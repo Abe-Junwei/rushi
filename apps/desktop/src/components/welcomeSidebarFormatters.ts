@@ -4,8 +4,10 @@ import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 /** 侧栏项目行：图标槽（与 px-5 + gap-2 配合，文件行 pl-14 与标题左缘对齐） */
 export const WELCOME_PROJECT_ROW_ICON =
   "flex h-7 w-7 shrink-0 items-center justify-center text-notion-text-muted";
+/** 14/20 — 与分页行高预算 LEDGER_ROW_TITLE_LINE_PX 对齐 */
 export const WELCOME_SIDEBAR_PROJECT_NAME =
-  "block truncate text-sm font-semibold leading-5 text-notion-text";
+  "block truncate text-title font-semibold leading-5 text-notion-text";
+/** 11/16 + mt-0.5(2) — 与 LEDGER_ROW_META_* 对齐 */
 export const WELCOME_SIDEBAR_PROJECT_META =
   "mt-0.5 block truncate text-label leading-4 text-notion-text-muted";
 /** 侧栏嵌套文件行左内边距：与项目行 px-5 + icon(28px) + gap-2(8px) 对齐 */

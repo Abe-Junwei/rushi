@@ -1,6 +1,6 @@
 import {
+  WELCOME_SEARCH_DROPDOWN_PANEL_CLASS,
   WELCOME_TOPBAR_DROPDOWN_HEADER_STRIP_CLASS,
-  WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS,
 } from "../config/workspaceShellLayout";
 import { WelcomeSearchScopeChips } from "./WelcomeSearchScopeChips";
 import { WelcomeSearchEmptyQueryState } from "./WelcomeSearchEmptyQueryState";
@@ -46,7 +46,7 @@ export function WelcomeSearchResults({
 }: Props) {
   return (
     <div
-      className={`${WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS} z-50`}
+      className={`${WELCOME_SEARCH_DROPDOWN_PANEL_CLASS} z-50`}
       role="region"
       aria-label="搜索结果"
       onMouseDown={(e) => e.preventDefault()}

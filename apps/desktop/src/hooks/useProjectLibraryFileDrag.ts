@@ -1,19 +1,22 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { setDirectLayoutStyle } from "../utils/cspElementLayout";
 
-export type SidebarFileDragPayload = {
+export type ProjectLibraryFileDragPayload = {
   fileId: string;
   projectId: string;
   fileName: string;
 };
 
-export const SIDEBAR_FILE_DRAG_THRESHOLD_PX = 6;
+export const PROJECT_LIBRARY_FILE_DRAG_THRESHOLD_PX = 6;
+
+/** Drop target attribute on project rows in WorkspaceProjectLibrary. */
+export const PROJECT_LIBRARY_PROJECT_ID_ATTR = "data-library-project-id";
 
 /**
- * In-app pointer drag for sidebar file → project move.
+ * In-app pointer drag for library file → project move.
  * Avoids HTML5 DnD, which Tauri disables while `dragDropEnabled` (OS file drop) is on.
  */
-export function useSidebarFileProjectDrag(options: {
+export function useProjectLibraryFileDrag(options: {
   busy: boolean;
   onMove: (args: {
     fileId: string;
@@ -22,16 +25,16 @@ export function useSidebarFileProjectDrag(options: {
   }) => void;
 }) {
   const { busy, onMove } = options;
-  const [dragging, setDragging] = useState<SidebarFileDragPayload | null>(null);
+  const [dragging, setDragging] = useState<ProjectLibraryFileDragPayload | null>(null);
   const [dropTargetId, setDropTargetId] = useState<string | null>(null);
   const suppressOpenClickRef = useRef(false);
-  const draggingRef = useRef<SidebarFileDragPayload | null>(null);
+  const draggingRef = useRef<ProjectLibraryFileDragPayload | null>(null);
   const dropTargetRef = useRef<string | null>(null);
   const onMoveRef = useRef(onMove);
   onMoveRef.current = onMove;
 
   const beginFilePointerDrag = useCallback(
-    (e: ReactPointerEvent, payload: SidebarFileDragPayload) => {
+    (e: ReactPointerEvent, payload: ProjectLibraryFileDragPayload) => {
       if (busy || e.button !== 0) return;
       const startX = e.clientX;
       const startY = e.clientY;
@@ -39,7 +42,7 @@ export function useSidebarFileProjectDrag(options: {
 
       const onMovePointer = (ev: PointerEvent) => {
         const dist = Math.hypot(ev.clientX - startX, ev.clientY - startY);
-        if (!started && dist >= SIDEBAR_FILE_DRAG_THRESHOLD_PX) {
+        if (!started && dist >= PROJECT_LIBRARY_FILE_DRAG_THRESHOLD_PX) {
           started = true;
           suppressOpenClickRef.current = true;
           draggingRef.current = payload;
@@ -48,8 +51,8 @@ export function useSidebarFileProjectDrag(options: {
         }
         if (!started) return;
         const el = document.elementFromPoint(ev.clientX, ev.clientY);
-        const projectEl = el?.closest("[data-sidebar-project-id]");
-        const id = projectEl?.getAttribute("data-sidebar-project-id") ?? null;
+        const projectEl = el?.closest(`[${PROJECT_LIBRARY_PROJECT_ID_ATTR}]`);
+        const id = projectEl?.getAttribute(PROJECT_LIBRARY_PROJECT_ID_ATTR) ?? null;
         dropTargetRef.current = id;
         setDropTargetId(id);
       };

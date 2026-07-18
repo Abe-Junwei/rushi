@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GlossaryWorkspaceId } from "../components/glossary/glossaryWorkspaceTypes";
+import type { WelcomeLedgerTabId } from "../components/WelcomeFileLedger";
 import type { WelcomePageId } from "../components/WelcomeView";
 import { resolveWorkspaceShellVariant } from "./resolveWorkspaceShellVariant";
 import type { useProjectController } from "./useProjectController";
@@ -9,9 +10,11 @@ type ProjectController = ReturnType<typeof useProjectController>;
 /** Welcome / hub / editor shell routing (sidebar collapse is scoped to CollapsibleWorkspaceShell). */
 export function useProjectPanelWorkspaceNav(c: ProjectController) {
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
+  const [welcomeLedgerTab, setWelcomeLedgerTab] = useState<WelcomeLedgerTabId>("recent");
   const [glossaryWorkspaceId, setGlossaryWorkspaceId] = useState<GlossaryWorkspaceId>("vocabulary");
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
   const pendingGlossaryWorkspaceRef = useRef<GlossaryWorkspaceId | null>(null);
+  const pendingLedgerTabRef = useRef<WelcomeLedgerTabId | null>(null);
 
   const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(
     () =>
@@ -24,11 +27,18 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
   );
 
   useEffect(() => {
-    if (workspaceShellVariant !== "welcome") setWelcomePage("home");
+    if (workspaceShellVariant === "editor") setWelcomePage("home");
+    // hub 旁路欢迎库：强制 home +「所有文件」
+    if (workspaceShellVariant === "hub") {
+      setWelcomePage("home");
+      setWelcomeLedgerTab("all");
+    }
   }, [workspaceShellVariant]);
 
   useEffect(() => {
-    if (workspaceShellVariant === "welcome" && pendingWelcomePageRef.current) {
+    const onWelcomeSurface =
+      workspaceShellVariant === "welcome" || workspaceShellVariant === "hub";
+    if (onWelcomeSurface && pendingWelcomePageRef.current) {
       const page = pendingWelcomePageRef.current;
       pendingWelcomePageRef.current = null;
       setWelcomePage(page);
@@ -36,6 +46,10 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
         setGlossaryWorkspaceId(pendingGlossaryWorkspaceRef.current);
         pendingGlossaryWorkspaceRef.current = null;
       }
+    }
+    if (onWelcomeSurface && pendingLedgerTabRef.current) {
+      setWelcomeLedgerTab(pendingLedgerTabRef.current);
+      pendingLedgerTabRef.current = null;
     }
   }, [workspaceShellVariant]);
 
@@ -49,6 +63,18 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
     },
     [c],
   );
+
+  /** 侧栏「主页」→ 欢迎 home +「所有文件」tab（编辑器先关项目；hub 旁路仅切 tab）。 */
+  const onGoProjectsLibrary = useCallback(() => {
+    if (workspaceShellVariant === "editor") {
+      pendingLedgerTabRef.current = "all";
+      pendingWelcomePageRef.current = "home";
+      c.closeProject();
+      return;
+    }
+    setWelcomePage("home");
+    setWelcomeLedgerTab("all");
+  }, [c, workspaceShellVariant]);
 
   const openGlossaryFromTranscribe = useCallback(() => {
     c.cancelTranscribeStart();
@@ -68,10 +94,13 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
   return {
     welcomePage,
     setWelcomePage,
+    welcomeLedgerTab,
+    setWelcomeLedgerTab,
     glossaryWorkspaceId,
     setGlossaryWorkspaceId,
     workspaceShellVariant,
     onLeaveProjectForWelcome,
+    onGoProjectsLibrary,
     openGlossaryFromTranscribe,
     stayAfterCloseAttempt,
   };

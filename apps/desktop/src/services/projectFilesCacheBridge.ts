@@ -1,4 +1,4 @@
-/** Sidebar nested file list cache — mutations live above WelcomeSidebar. */
+/** Welcome「所有文件」嵌套文件列表缓存 — invalidator 由 WelcomeView 注册。 */
 
 type Invalidator = (projectIds: string[]) => void;
 

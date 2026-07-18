@@ -1,18 +1,16 @@
-import { CONTROL_BTN_ICON_GHOST, CONTROL_TEXT_INPUT } from "../config/controlStyles";
+import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
-import { useWelcomeSearchController } from "../hooks/useWelcomeSearchController";
-import { requestCloseActivityInbox } from "../services/ui/activityInboxEvents";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
-import {
-  IconArrowLeft as ArrowLeft,
-  IconSearch as Search,
-} from "@tabler/icons-react";
+import { IconArrowLeft as ArrowLeft } from "@tabler/icons-react";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { WelcomeActivityBell } from "./WelcomeActivityBell";
-import { WelcomeSearchResults } from "./WelcomeSearchResults";
+import {
+  WelcomeSearchField,
+  type WelcomeSearchController,
+} from "./WelcomeSearchField";
 
 export interface WelcomeTopBarProps {
   controller: ProjectControllerApi;
@@ -24,6 +22,8 @@ export interface WelcomeTopBarProps {
   onCreateProject?: () => void;
   /** Hub：关闭当前项目并回到欢迎主页（所有项目）。 */
   onGoHome?: () => void;
+  /** 首页 ledger 已挂搜索时传 null；热词页等仍用顶栏搜索。 */
+  search?: WelcomeSearchController | null;
 }
 
 export function WelcomeTopBar({
@@ -35,9 +35,9 @@ export function WelcomeTopBar({
   onOpenLlmSettings,
   onCreateProject,
   onGoHome,
+  search = null,
 }: WelcomeTopBarProps) {
-  const search = useWelcomeSearchController(controller);
-  const searchDisabled = controller.busy;
+  const barDisabled = controller.busy;
 
   return (
     <header
@@ -49,7 +49,7 @@ export function WelcomeTopBar({
         <button
           type="button"
           className={`${CONTROL_BTN_ICON_GHOST} shadow-none`}
-          disabled={searchDisabled}
+          disabled={barDisabled}
           onClick={onGoHome}
           title="关闭当前项目，返回主页"
           aria-label="关闭当前项目，返回主页"
@@ -72,66 +72,16 @@ export function WelcomeTopBar({
           ) : null}
         </div>
 
-        <div ref={search.searchRootRef} className="relative">
-          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-notion-text-light">
-            <Search className={`block ${LUCIDE_ICON_SIZE_MD}`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          </span>
-          <input
-            type="search"
-            className={`w-64 pl-9 pr-4 ${CONTROL_TEXT_INPUT}`}
-            placeholder="搜索文件与转写内容…"
-            disabled={searchDisabled}
-            value={search.query}
-            aria-expanded={search.showPanel}
-            aria-controls="welcome-search-panel"
-            aria-activedescendant={
-              search.activeIndex >= 0 ? `welcome-search-item-${search.activeIndex}` : undefined
-            }
-            onFocus={() => {
-              requestCloseActivityInbox();
-              search.setOpen(true);
-            }}
-            onChange={(e) => {
-              search.setQuery(e.target.value);
-              search.setOpen(true);
-            }}
-            onKeyDown={search.handleInputKeyDown}
-          />
-          {search.showPanel ? (
-            <div id="welcome-search-panel">
-              <WelcomeSearchResults
-                scope={search.scope}
-                queryEmpty={search.queryEmpty}
-                scopeDisabled={searchDisabled}
-                loading={search.loading}
-                error={search.error}
-                fileResults={search.fileResults}
-                contentResults={search.contentResults}
-                recentQueries={search.recentQueries}
-                navItems={search.navItems}
-                activeIndex={search.activeIndex}
-                onScopeChange={search.setScope}
-                onFileSelect={(hit) => void search.navigateToFileHub(hit)}
-                onFileOpen={(hit) => void search.openFileFromSearch(hit)}
-                onContentSelect={(hit) => void search.navigateToContentHit(hit)}
-                onRecentQuerySelect={(q) => {
-                  search.setQuery(q);
-                  search.setOpen(true);
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
+        {search ? <WelcomeSearchField search={search} disabled={barDisabled} /> : null}
 
         <WelcomeActivityBell
           controller={controller}
-          disabled={searchDisabled}
+          disabled={barDisabled}
           onOpenAsrSettings={onOpenAsrSettings}
           onOpenOnlineSttSettings={onOpenOnlineSttSettings}
           onCreateProject={onCreateProject}
-          onPanelOpen={search.closeSearch}
+          onPanelOpen={search?.closeSearch}
         />
-
       </div>
     </header>
   );

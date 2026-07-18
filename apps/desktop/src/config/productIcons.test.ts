@@ -2,12 +2,14 @@ import { describe, expect, it } from "vitest";
 import {
   IconArrowsUpDown as ArrowDownUp,
   IconChartBar as BarChart3,
+  IconBook as BookOpen,
   IconBookmarks as BookMarked,
   IconRobot as Bot,
   IconBrain as Brain,
   IconCircleCaretRight as CirclePlay,
   IconCloud as Cloud,
   IconCpu as Cpu,
+  IconHome as Home,
   IconInfoCircle as Info,
   IconKeyboard as Keyboard,
   IconListCheck as ListChecks,
@@ -23,6 +25,12 @@ import {
 import { PRODUCT_ICON } from "./productIcons";
 
 describe("productIcons", () => {
+  it("maps welcome sidebar primary nav icons", () => {
+    expect(PRODUCT_ICON.navHome).toBe(Home);
+    expect(PRODUCT_ICON.navTranscript).toBe(Mic);
+    expect(PRODUCT_ICON.navGlossary).toBe(BookOpen);
+  });
+
   it("assigns distinct icons for former Sparkles conflicts", () => {
     expect(PRODUCT_ICON.navLlm).toBe(Brain);
     expect(PRODUCT_ICON.navGlossaryMemory).toBe(BookMarked);

@@ -57,7 +57,7 @@ export interface FileSummary {
   duration_sec?: number | null;
   /** Non-placeholder segment count. */
   segment_count?: number;
-  /** 生稿：尚未一校/定稿。 */
+  /** 草稿：尚未一校/定稿。 */
   draft_count?: number;
   /** 一校：text_stage = first_proof。 */
   first_proof_count?: number;

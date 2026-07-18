@@ -11,6 +11,7 @@ import {
   IconCloud as Cloud,
   IconCpu as Cpu,
   IconFileSpreadsheet as FileSpreadsheet,
+  IconHome as Home,
   IconInfoCircle as Info,
   IconKeyboard as Keyboard,
   IconListCheck as ListChecks,
@@ -50,7 +51,13 @@ export const PRODUCT_ICON = {
   /** 环境页 · 关于 */
   navAbout: Info,
 
-  /** 侧栏 · 转写词汇表 */
+  /** 侧栏 · 主页（项目与文件库） */
+  navHome: Home,
+  /** 侧栏 · 转录（打开上次校对工作区） */
+  navTranscript: Mic,
+  /** 侧栏 · 词表（原热词与记忆入口） */
+  navGlossary: BookOpen,
+  /** 侧栏 · 转写词汇表（词表子页） */
   navGlossaryVocabulary: BookOpen,
   /** 侧栏 · 纠错记忆 */
   navGlossaryMemory: BookMarked,

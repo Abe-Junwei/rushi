@@ -16,7 +16,7 @@
 
 关键路径：
 
-- UI：`WelcomeSidebarProjectList.tsx`、`ProjectFilesHubFileList.tsx`、`SegmentContextMenu.tsx`
+- UI：`WorkspaceProjectLibrary.tsx`、`ProjectFilesHubFileList.tsx`、`SegmentContextMenu.tsx`
 - 写路径：`file_cmd.rs`、`project_storage.rs`、`waveform_peaks.rs`
 - Controller：`useProjectFileMutationController.ts`、`useProjectMutationController.ts`
 
@@ -63,7 +63,7 @@
 | Docs | 本文 |
 | Rust | `file_cmd::move_file_to_project` + peaks relocate helper |
 | TS | `fileApi.moveFileToProject`、file/project context menu models、mutation controller |
-| UI | `WelcomeSidebarProjectList`、`ProjectFilesHubFileList` + CompactConfirm |
+| UI | `WorkspaceProjectLibrary`、`ProjectFilesHubFileList` + CompactConfirm |
 
 ---
 

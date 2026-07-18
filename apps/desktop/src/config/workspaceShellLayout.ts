@@ -31,6 +31,10 @@ export const EDITOR_WORKSPACE_FOOTER_HEIGHT = "30px";
 export const WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS =
   "absolute right-0 top-full mt-1 w-[min(28rem,calc(100vw-5rem))] overflow-hidden rounded-md border border-notion-border bg-notion-bg shadow-lg";
 
+/** 欢迎页搜索结果下拉（比活动铃面板更窄） */
+export const WELCOME_SEARCH_DROPDOWN_PANEL_CLASS =
+  "absolute right-0 top-full mt-1 w-[min(18rem,calc(100vw-5rem))] overflow-hidden rounded-md border border-notion-border bg-notion-bg shadow-lg";
+
 /** 下拉面板上缘工具条（搜索 scope 行 / 活动标题行） */
 export const WELCOME_TOPBAR_DROPDOWN_HEADER_STRIP_CLASS =
   "border-b border-notion-border bg-notion-sidebar/40";
@@ -39,13 +43,20 @@ export const WELCOME_TOPBAR_DROPDOWN_HEADER_STRIP_CLASS =
 export const WELCOME_TOPBAR_DROPDOWN_HEADER_INSET_CLASS = "px-2.5 py-1.5";
 
 /** TopBar 下方主舞台：自顶向下滚动，顶距见 workspace.css `--workspace-home-stage-offset-top` */
-export const WORKSPACE_HOME_STAGE_CLASS = `welcome-home-stage flex min-h-0 flex-1 flex-col overflow-y-auto ${MAIN_SHELL_SURFACE_CLASS.pageBg}`;
+/** 欢迎 / Hub 主舞台：占满侧栏旁列高，禁止整页滚动（列表超高走分页） */
+export const WORKSPACE_HOME_STAGE_CLASS = `welcome-home-stage flex min-h-0 flex-1 flex-col overflow-hidden ${MAIN_SHELL_SURFACE_CLASS.pageBg}`;
 
 /** Stage 内容页水平留白容器；顶距由 stage 壳层 padding-top 控制 */
 export const WORKSPACE_HOME_PAGE_CLASS = "welcome-home-page";
 
 /** 开放式内容页宽度 — Welcome / Hub / 空项目页，不自带边框、圆角或阴影 */
 export const WORKSPACE_PAGE_PANEL_CLASS = "relative flex w-full max-w-[672px] flex-col";
+
+/**
+ * 欢迎页主区垂直栈（hero / onboarding / ledger）。
+ * 8px 网格 · DESIGN「区块 24px」；与 ledger 顶分割线下方 `pt-4`(16) 组成 ≈1.5 段间比（近 φ）。
+ */
+export const WELCOME_HOME_STACK_GAP = "gap-6";
 
 /** 文件列表行 — Welcome / Hub 共用：全宽贴边、无圆角 */
 export const WORKSPACE_FILE_ROW_CLASS =
@@ -56,45 +67,60 @@ export const WORKSPACE_FILE_ROW_CLASS =
  */
 export const WELCOME_LEDGER_INSET_X = "px-6";
 
-/** 欢迎页 ledger 三 tab 间距（设计稿 gap-8） */
-export const WELCOME_LEDGER_TAB_GAP = "gap-8";
+/**
+ * 「所有文件」嵌套文件行水平内边距：相对项目行缩进
+ * （ledger px-6 + 文件夹图标 28px + gap-2 ≈ pl-16，右侧仍 pr-6）。
+ */
+export const WELCOME_LEDGER_NESTED_FILE_INSET_X = "pl-16 pr-6";
 
-/** 欢迎页 ledger 行垂直留白（设计稿 py-10 → Zen 略收为 py-8） */
-export const WELCOME_LEDGER_ROW_Y = "py-8";
+/** 欢迎页 ledger 分割线下方内边距（与 `WELCOME_HOME_STACK_GAP` 成对） */
+export const WELCOME_LEDGER_DIVIDER_PT = "pt-4";
 
-/** 侧栏主功能区导航栈（设计稿 space-y-6 + 更宽内边距） */
-export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-6 px-5 pb-6";
+/** 欢迎页 ledger tab 间距（8 网格：24px） */
+export const WELCOME_LEDGER_TAB_GAP = "gap-6";
+
+/** tab 栏 → 列表（8 网格：16px） */
+export const WELCOME_LEDGER_TAB_MB = "mb-4";
+
+/**
+ * 欢迎页 ledger 行垂直留白（compact–comfortable：与字号行高预算对齐）。
+ * title 20 + meta gap 2 + meta 16 + py-2×2(16) = 54px → 分页预算 56。
+ */
+export const WELCOME_LEDGER_ROW_Y = "py-2";
+
+/** 侧栏主功能区导航栈（图示图标+文案列表；8 网格紧凑） */
+export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-2 px-5 pb-4";
 
 const WORKSPACE_SIDEBAR_NAV_ITEM_BASE =
-  "flex w-full min-h-10 items-center gap-3 rounded-md border-0 px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors";
+  "flex w-full min-h-8 items-center gap-2 rounded-sm border-0 px-2 py-1.5 text-left text-title font-medium leading-snug transition-colors";
 
-/** 主页面切换项：圆角块 + 40px 最小高度，区别于贴边工具行 */
+/** 主页面切换项：图示气质 — 激活靠字重/色，无厚底圆角块 */
 export function workspaceSidebarNavItemClass(opts: { active?: boolean; disabled?: boolean }): string {
   if (opts.disabled) {
     return `${WORKSPACE_SIDEBAR_NAV_ITEM_BASE} cursor-not-allowed text-notion-text-light opacity-40`;
   }
   return opts.active
-    ? `${WORKSPACE_SIDEBAR_NAV_ITEM_BASE} bg-notion-sidebar-active font-semibold text-notion-text`
-    : `${WORKSPACE_SIDEBAR_NAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text`;
+    ? `${WORKSPACE_SIDEBAR_NAV_ITEM_BASE} bg-transparent font-semibold text-notion-text`
+    : `${WORKSPACE_SIDEBAR_NAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:text-notion-text`;
 }
 
 const WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE =
-  "flex w-full min-h-9 items-center gap-2 rounded-md border-0 py-2 pl-9 pr-3 text-left text-title font-medium leading-snug transition-colors";
+  "flex w-full min-h-8 items-center gap-2 rounded-sm border-0 py-1.5 pl-8 pr-2 text-left text-title font-medium leading-snug transition-colors";
 
 /** 主功能下的子工作区（如热词与记忆三分段） */
 export function workspaceSidebarSubNavItemClass(active: boolean): string {
   return active
-    ? `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-notion-sidebar-active font-semibold text-accent-action`
-    : `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text`;
+    ? `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-transparent font-semibold text-accent-action`
+    : `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:text-notion-text`;
 }
 
-/** 侧栏底栏：上手清单 / 设置 — 纵向栈（对齐设计稿 gap-4 + pt-8） */
-export const WORKSPACE_SIDEBAR_FOOTER_STACK = "flex flex-col gap-4 px-5 pb-8 pt-6";
+/** 侧栏底栏：上手清单 / 设置 — 横排；按钮外观沿用原 ghost 图标+标签 */
+export const WORKSPACE_SIDEBAR_FOOTER_STACK = "flex flex-row items-center gap-1 px-5 pb-4 pt-4";
 
 const WORKSPACE_SIDEBAR_FOOTER_ITEM_BASE =
-  "flex w-full items-center gap-3 rounded-md border-0 px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors";
+  "flex min-w-0 flex-1 items-center gap-3 rounded-md border-0 px-3 py-2.5 text-left text-sm font-medium leading-snug transition-colors";
 
-/** 底栏纵向项：图标 + 标签横排 */
+/** 底栏项：图标 + 标签横排（外观同改前；容器为横排） */
 export function workspaceSidebarFooterItemClass(opts: { active?: boolean }): string {
   return opts.active
     ? `${WORKSPACE_SIDEBAR_FOOTER_ITEM_BASE} bg-notion-sidebar-active text-notion-text`

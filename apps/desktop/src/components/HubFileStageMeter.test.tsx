@@ -31,21 +31,21 @@ describe("HubFileStageMeter", () => {
     expect(status?.textContent).toMatch(/未转录/);
   });
 
-  it("ledger empty: 未转录 above pale track", () => {
+  it("ledger empty: 未转录 only (no dashed track)", () => {
     const { container } = render(<HubFileStageMeter file={emptyFile} variant="ledger" />);
     const status = container.querySelector('[role="status"]');
     expect(status).not.toBeNull();
-    const children = Array.from(status!.children);
-    expect(children[0]?.textContent).toBe("未转录");
-    expect(children[1]?.className).toMatch(/h-0\.5/);
+    expect(status?.textContent).toBe("未转录");
+    expect(status?.querySelector(".h-0\\.5")).toBeNull();
   });
 
-  it("ledger staged: legend above thin track", () => {
+  it("ledger staged: thin track + compact ratio, full legend in title", () => {
     const { container } = render(<HubFileStageMeter file={stagedFile} variant="ledger" />);
     const img = container.querySelector('[role="img"]');
     expect(img).not.toBeNull();
+    expect(img?.getAttribute("title")).toBe("草稿 5 · 一校 2 · 定稿 3");
     const children = Array.from(img!.children);
-    expect(children[0]?.textContent).toBe("生稿 5 · 一校 2 · 定稿 3");
-    expect(children[1]?.className).toMatch(/h-0\.5/);
+    expect(children[0]?.className).toMatch(/h-0\.5/);
+    expect(children[1]?.textContent).toBe("定稿 3");
   });
 });

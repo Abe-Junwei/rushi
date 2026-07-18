@@ -1,9 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import {
-  SIDEBAR_FILE_DRAG_THRESHOLD_PX,
-  useSidebarFileProjectDrag,
-} from "./useSidebarFileProjectDrag";
+  PROJECT_LIBRARY_FILE_DRAG_THRESHOLD_PX,
+  PROJECT_LIBRARY_PROJECT_ID_ATTR,
+  useProjectLibraryFileDrag,
+} from "./useProjectLibraryFileDrag";
 
 function dispatchPointer(type: "pointermove" | "pointerup", x: number, y: number) {
   window.dispatchEvent(
@@ -18,15 +19,15 @@ function stubElementFromPoint(el: Element | null) {
   });
 }
 
-describe("useSidebarFileProjectDrag", () => {
+describe("useProjectLibraryFileDrag", () => {
   it("moves file when pointer crosses threshold and releases on another project", () => {
     const onMove = vi.fn();
     const { result } = renderHook(() =>
-      useSidebarFileProjectDrag({ busy: false, onMove }),
+      useProjectLibraryFileDrag({ busy: false, onMove }),
     );
 
     const target = document.createElement("div");
-    target.setAttribute("data-sidebar-project-id", "dest-p");
+    target.setAttribute(PROJECT_LIBRARY_PROJECT_ID_ATTR, "dest-p");
     document.body.appendChild(target);
     stubElementFromPoint(target);
 
@@ -45,7 +46,7 @@ describe("useSidebarFileProjectDrag", () => {
     });
 
     act(() => {
-      dispatchPointer("pointermove", 10 + SIDEBAR_FILE_DRAG_THRESHOLD_PX + 1, 10);
+      dispatchPointer("pointermove", 10 + PROJECT_LIBRARY_FILE_DRAG_THRESHOLD_PX + 1, 10);
     });
     expect(result.current.dragging?.fileId).toBe("f1");
     expect(result.current.dropTargetId).toBe("dest-p");
@@ -68,7 +69,7 @@ describe("useSidebarFileProjectDrag", () => {
   it("does not move when released without crossing threshold", () => {
     const onMove = vi.fn();
     const { result } = renderHook(() =>
-      useSidebarFileProjectDrag({ busy: false, onMove }),
+      useProjectLibraryFileDrag({ busy: false, onMove }),
     );
 
     const start = {
@@ -97,11 +98,11 @@ describe("useSidebarFileProjectDrag", () => {
   it("does not move onto the source project", () => {
     const onMove = vi.fn();
     const { result } = renderHook(() =>
-      useSidebarFileProjectDrag({ busy: false, onMove }),
+      useProjectLibraryFileDrag({ busy: false, onMove }),
     );
 
     const target = document.createElement("div");
-    target.setAttribute("data-sidebar-project-id", "src-p");
+    target.setAttribute(PROJECT_LIBRARY_PROJECT_ID_ATTR, "src-p");
     document.body.appendChild(target);
     stubElementFromPoint(target);
 
@@ -117,7 +118,7 @@ describe("useSidebarFileProjectDrag", () => {
         projectId: "src-p",
         fileName: "a.wav",
       });
-      dispatchPointer("pointermove", SIDEBAR_FILE_DRAG_THRESHOLD_PX + 2, 0);
+      dispatchPointer("pointermove", PROJECT_LIBRARY_FILE_DRAG_THRESHOLD_PX + 2, 0);
       dispatchPointer("pointerup", 20, 0);
     });
 

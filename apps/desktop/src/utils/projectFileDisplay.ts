@@ -122,13 +122,43 @@ export function formatHubFileEmptyProgressLabel(file: FileSummary): string {
   return file.file_type === "text" ? "无语段" : "未转录";
 }
 
-/** Non-zero stage buckets as `生稿 a · 一校 b · 定稿 c`. */
+/** Stage stats（不含语段总数）: `草稿 a · 一校 b · 定稿 c`。 */
 export function formatHubFileStageLegend(counts: HubFileStageCounts): string {
-  const parts: string[] = [];
-  if (counts.draft > 0) parts.push(`生稿 ${counts.draft}`);
-  if (counts.firstProof > 0) parts.push(`一校 ${counts.firstProof}`);
-  if (counts.finalized > 0) parts.push(`定稿 ${counts.finalized}`);
-  return parts.length > 0 ? parts.join(" · ") : "未转录";
+  if (counts.total <= 0) return "未转录";
+  return `草稿 ${counts.draft} · 一校 ${counts.firstProof} · 定稿 ${counts.finalized}`;
+}
+
+export type HubFileStageLegendPart = {
+  key: "draft" | "first" | "final";
+  label: string;
+  count: number;
+  /** Tailwind text color token class for the legend chip. */
+  textClass: string;
+};
+
+/** Colored legend parts aligned with stage track tokens（不含语段总数）。 */
+export function hubFileStageLegendParts(counts: HubFileStageCounts): HubFileStageLegendPart[] {
+  if (counts.total <= 0) return [];
+  return [
+    {
+      key: "draft",
+      label: "草稿",
+      count: counts.draft,
+      textClass: "text-notion-text-light",
+    },
+    {
+      key: "first",
+      label: "一校",
+      count: counts.firstProof,
+      textClass: "text-zen-status-warn-action",
+    },
+    {
+      key: "final",
+      label: "定稿",
+      count: counts.finalized,
+      textClass: "text-zen-success",
+    },
+  ];
 }
 
 /** @deprecated Prefer HubFileStageMeter; kept for unit tests of empty/live copy. */

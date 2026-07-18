@@ -7,11 +7,15 @@ import {
 } from "./projectWorkspaceContextMenuModel";
 
 describe("projectWorkspaceContextMenuModel", () => {
-  it("builds project row actions", () => {
+  it("builds project row actions including hub-migrated items", () => {
     const items = buildProjectContextMenuItems({ isExpanded: false });
     expect(items.map((i) => i.key)).toEqual([
       "toggleExpand",
       "revealLocation",
+      "projectInfo",
+      "importAudio",
+      "importText",
+      "batchTranscribe",
       "rename",
       "delete",
     ]);

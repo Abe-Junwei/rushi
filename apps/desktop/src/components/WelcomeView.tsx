@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   IconDownload as Download,
   IconPlus as Plus,
@@ -8,6 +8,7 @@ import {
   CONTROL_BTN_SECONDARY_PROMINENT,
 } from "../config/controlStyles";
 import {
+  WELCOME_HOME_STACK_GAP,
   WORKSPACE_HOME_SHELL_PURPOSE,
   WORKSPACE_PAGE_PANEL_CLASS,
 } from "../config/workspaceShellLayout";
@@ -17,11 +18,15 @@ import { useOnlineSttTopBarPresentation } from "../hooks/useOnlineSttTopBarPrese
 import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { GlossaryPage } from "./GlossaryPage";
-import { WelcomeFileLedger } from "./WelcomeFileLedger";
+import { WelcomeFileLedger, type WelcomeLedgerTabId } from "./WelcomeFileLedger";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 import { WorkspaceHomeMainStage } from "./WorkspaceHomeMainStage";
+import { WorkspaceProjectLibrary } from "./WorkspaceProjectLibrary";
 import { WorkspaceShellLayout } from "./WorkspaceShellLayout";
+import { useWelcomeProjectTree } from "../hooks/useWelcomeProjectTree";
+import { registerProjectFilesCacheInvalidator } from "../services/projectFilesCacheBridge";
+import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
@@ -33,6 +38,7 @@ import {
 } from "../services/lastWorkspace";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { useOnboardingChecklistController } from "../hooks/useOnboardingChecklistController";
+import { useWelcomeSearchController } from "../hooks/useWelcomeSearchController";
 import { WelcomeOnboardingChecklist } from "./WelcomeOnboardingChecklist";
 
 export type { WelcomePageId } from "./welcomeTypes";
@@ -46,8 +52,13 @@ interface WelcomeViewProps {
   llmStatusRefreshSeq?: number;
   page: WelcomePageId;
   onPageChange: (page: WelcomePageId) => void;
+  ledgerTab: WelcomeLedgerTabId;
+  onLedgerTabChange: (tab: WelcomeLedgerTabId) => void;
+  onGoProjectsLibrary: () => void;
   glossaryWorkspaceId: GlossaryWorkspaceId;
   onGlossaryWorkspaceChange: (id: GlossaryWorkspaceId) => void;
+  /** Hub 旁路时转写进度条等（主列 TopBar 之上） */
+  headerSlot?: ReactNode;
 }
 
 
@@ -60,15 +71,27 @@ export function WelcomeView({
   llmStatusRefreshSeq = 0,
   page,
   onPageChange,
+  ledgerTab,
+  onLedgerTabChange,
+  onGoProjectsLibrary,
   glossaryWorkspaceId,
   onGlossaryWorkspaceChange,
+  headerSlot,
 }: WelcomeViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
   const onboarding = useOnboardingChecklistController();
+  const welcomeSearch = useWelcomeSearchController(c);
   const onlineSttPresentation = useOnlineSttTopBarPresentation(c.sttOnlineRuntimeEpoch);
   const effectiveTranscribeSource = resolveEffectiveTranscribeSource(c.transcribeSource);
+  const projects = useMemo(() => sortWelcomeProjects(c.projects), [c.projects]);
+  const projectTree = useWelcomeProjectTree(c);
+
+  useEffect(() => {
+    registerProjectFilesCacheInvalidator(projectTree.invalidateProjectFilesCaches);
+    return () => registerProjectFilesCacheInvalidator(null);
+  }, [projectTree.invalidateProjectFilesCaches]);
 
   const welcomeEnvBanner = (() => {
     if (effectiveTranscribeSource === "online") {
@@ -141,6 +164,7 @@ export function WelcomeView({
           onOpenSettings={onOpenSettings}
           page={page}
           onPageChange={onPageChange}
+          onGoProjectsLibrary={onGoProjectsLibrary}
           glossaryWorkspaceId={glossaryWorkspaceId}
           onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}
           onRestoreOnboardingChecklist={onboarding.restore}
@@ -148,6 +172,7 @@ export function WelcomeView({
         />
       }
     >
+        {headerSlot}
         <WelcomeTopBar
           controller={c}
           asrPresentation={c.asrPresentation}
@@ -156,6 +181,7 @@ export function WelcomeView({
           onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
           onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
           onCreateProject={() => setShowCreateModal(true)}
+          search={page === "glossary" ? welcomeSearch : null}
         />
 
         {page === "glossary" ? (
@@ -163,10 +189,10 @@ export function WelcomeView({
         ) : (
           <WorkspaceHomeMainStage beforePage={welcomeEnvBanner}>
             <section
-              className={`${WORKSPACE_PAGE_PANEL_CLASS} gap-6`}
+              className={`${WORKSPACE_PAGE_PANEL_CLASS} ${WELCOME_HOME_STACK_GAP} min-h-0 flex-1`}
               data-purpose="welcome-home-page"
             >
-              <header className="flex flex-col items-center gap-4 text-center" data-purpose="hero-content">
+              <header className="flex shrink-0 flex-col items-center gap-4 text-center" data-purpose="hero-content">
                 <div className="flex flex-col gap-2">
                   <h1 className="text-display font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     欢迎回来
@@ -176,7 +202,7 @@ export function WelcomeView({
                   </p>
                 </div>
                 <div
-                  className="flex flex-wrap items-center justify-center gap-3"
+                  className="flex flex-wrap items-center justify-center gap-2"
                   data-purpose="welcome-cta-row"
                 >
                   <button
@@ -219,22 +245,40 @@ export function WelcomeView({
               </header>
 
               {onboarding.visible ? (
-                <WelcomeOnboardingChecklist
-                  progress={onboarding.progress}
-                  onDismiss={onboarding.dismiss}
-                  transcribeSource={effectiveTranscribeSource}
-                  onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
-                  onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
-                  onCreateProject={() => setShowCreateModal(true)}
-                  onOpenLastEditor={() => void c.openLastEditorWorkspace()}
-                />
+                <div className="shrink-0">
+                  <WelcomeOnboardingChecklist
+                    progress={onboarding.progress}
+                    onDismiss={onboarding.dismiss}
+                    transcribeSource={effectiveTranscribeSource}
+                    onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
+                    onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
+                    onCreateProject={() => setShowCreateModal(true)}
+                    onOpenLastEditor={() => void c.openLastEditorWorkspace()}
+                  />
+                </div>
               ) : null}
 
               <WelcomeFileLedger
+                activeTab={ledgerTab}
+                onTabChange={onLedgerTabChange}
                 files={recentFiles}
                 loading={loadingRecentFiles}
                 busy={c.busy}
                 onOpenFile={(f) => void handleOpenRecentFile(f)}
+                search={welcomeSearch}
+                allFilesContent={
+                  <WorkspaceProjectLibrary
+                    controller={c}
+                    projects={projects}
+                    expandedProjectId={projectTree.expandedProjectId}
+                    projectFilesById={projectTree.projectFilesById}
+                    loadingFilesById={projectTree.loadingFilesById}
+                    onOpenProjectFile={(projectId, fileId) =>
+                      void projectTree.handleOpenProjectFile(projectId, fileId)
+                    }
+                    onToggleProjectExpanded={projectTree.toggleProjectExpanded}
+                  />
+                }
               />
             </section>
           </WorkspaceHomeMainStage>

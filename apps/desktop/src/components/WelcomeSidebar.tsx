@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, type ReactNode } from "react";
+import { useCallback, type ReactNode } from "react";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import {
   IconList as List,
@@ -13,11 +13,7 @@ import {
   WORKSPACE_SIDEBAR_PANEL_ATTR,
   workspaceSidebarFooterItemClass,
 } from "../config/workspaceShellLayout";
-import { useWelcomeSidebarProjectTree } from "../hooks/useWelcomeSidebarProjectTree";
-import { registerProjectFilesCacheInvalidator } from "../services/projectFilesCacheBridge";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
-import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
-import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
 import { WelcomeSidebarNav } from "./WelcomeSidebarNav";
 
 export interface WelcomeSidebarProps {
@@ -25,13 +21,13 @@ export interface WelcomeSidebarProps {
   onOpenSettings: () => void;
   page: WelcomePageId;
   onPageChange: (page: WelcomePageId) => void;
+  /** 导航「主页」→ 欢迎页「所有文件」 */
+  onGoProjectsLibrary: () => void;
   hubMode?: boolean;
-  activeProjectId?: string | null;
   onLeaveProjectForWelcome?: (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => void;
   glossaryWorkspaceId?: GlossaryWorkspaceId;
   onGlossaryWorkspaceChange?: (id: GlossaryWorkspaceId) => void;
   editorMode?: boolean;
-  activeFileId?: string | null;
   embeddedInCollapsibleShell?: boolean;
   onRestoreOnboardingChecklist?: () => void;
   onboardingChecklistDismissed?: boolean;
@@ -42,44 +38,21 @@ export function WelcomeSidebar({
   onOpenSettings,
   page,
   onPageChange,
+  onGoProjectsLibrary,
   hubMode = false,
-  activeProjectId = null,
   onLeaveProjectForWelcome,
   editorMode = false,
-  activeFileId = null,
   embeddedInCollapsibleShell: _embeddedInCollapsibleShell = false,
   glossaryWorkspaceId = "vocabulary",
   onGlossaryWorkspaceChange,
   onRestoreOnboardingChecklist,
   onboardingChecklistDismissed = false,
 }: WelcomeSidebarProps) {
-  const projects = useMemo(() => sortWelcomeProjects(c.projects), [c.projects]);
-  const projectListRef = useRef<HTMLDivElement | null>(null);
-
-  const projectTree = useWelcomeSidebarProjectTree(c, {
-    hubMode,
-    editorMode,
-    activeProjectId,
-  });
-
-  useEffect(() => {
-    registerProjectFilesCacheInvalidator(projectTree.invalidateProjectFilesCaches);
-    return () => registerProjectFilesCacheInvalidator(null);
-  }, [projectTree.invalidateProjectFilesCaches]);
-
   const handleOpenEditor = useCallback(() => {
     void c.openLastEditorWorkspace();
   }, [c]);
 
   const inProjectContext = hubMode || editorMode;
-
-  const scrollToProjectList = useCallback(() => {
-    window.requestAnimationFrame(() => {
-      projectListRef.current?.scrollIntoView({ block: "start" });
-    });
-  }, []);
-
-  const showProjectList = page === "home" || hubMode || editorMode;
 
   const settingsOpenHint = editorShortcutMenuHint("workflow.openSettings");
 
@@ -134,31 +107,16 @@ export function WelcomeSidebar({
         onLeaveProjectForWelcome={onLeaveProjectForWelcome}
         onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}
         onOpenEditor={handleOpenEditor}
-        onScrollToProjectList={scrollToProjectList}
+        onGoProjectsLibrary={onGoProjectsLibrary}
       />
-      {showProjectList ? (
-        <div ref={projectListRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <WelcomeSidebarProjectList
-            controller={c}
-            projects={projects}
-            inProjectContext={inProjectContext}
-            activeProjectId={activeProjectId}
-            editorMode={editorMode}
-            activeFileId={activeFileId}
-            expandedProjectId={projectTree.expandedProjectId}
-            projectFilesById={projectTree.projectFilesById}
-            loadingFilesById={projectTree.loadingFilesById}
-            onOpenProject={projectTree.handleOpenProject}
-            onOpenProjectFile={(projectId, fileId) => void projectTree.handleOpenProjectFile(projectId, fileId)}
-            onToggleProjectExpanded={projectTree.toggleProjectExpanded}
-          />
-        </div>
-      ) : (
+      {page === "glossary" && !inProjectContext ? (
         <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-10 text-center">
           <p className="text-title leading-relaxed text-notion-text-muted">
             全局设置：术语表→转写热词；纠错记忆→编辑规则。
           </p>
         </div>
+      ) : (
+        <div className="min-h-0 flex-1" aria-hidden />
       )}
       <div
         className={`mt-auto shrink-0 border-t ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`}

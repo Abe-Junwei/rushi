@@ -574,19 +574,34 @@
   justify-content: flex-start;
   align-items: stretch;
   box-sizing: border-box;
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
   padding-top: var(--workspace-home-stage-offset-top, 4.5rem);
 }
 
 .empty-project-page,
 .welcome-home-page {
   box-sizing: border-box;
-  flex: 0 0 auto;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding-inline: 2rem;
   padding-bottom: 2.5rem;
+  overflow: hidden;
+}
+
+/* 欢迎页「最近 / 所有」列表视口：占满 hero 下方剩余高度，超高分页、禁止滚动 */
+.welcome-ledger-viewport {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: var(--welcome-ledger-viewport-min-height, 12rem);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Welcome / Hub：固定双栏 grid（CSS 真源，不依赖 Tailwind 扫描） */

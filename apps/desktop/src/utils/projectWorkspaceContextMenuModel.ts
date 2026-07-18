@@ -5,12 +5,24 @@ function displayProjectName(name: string): string {
   return name.replace(/\s+/g, " ").trim();
 }
 
-export type ProjectContextMenuKey = "toggleExpand" | "revealLocation" | "rename" | "delete";
+export type ProjectContextMenuKey =
+  | "toggleExpand"
+  | "revealLocation"
+  | "projectInfo"
+  | "importAudio"
+  | "importText"
+  | "batchTranscribe"
+  | "rename"
+  | "delete";
 
 export function isProjectContextMenuKey(key: string): key is ProjectContextMenuKey {
   return (
     key === "toggleExpand" ||
     key === "revealLocation" ||
+    key === "projectInfo" ||
+    key === "importAudio" ||
+    key === "importText" ||
+    key === "batchTranscribe" ||
     key === "rename" ||
     key === "delete"
   );
@@ -19,6 +31,7 @@ export function isProjectContextMenuKey(key: string): key is ProjectContextMenuK
 export function buildProjectContextMenuItems(input: {
   isExpanded: boolean;
   busy?: boolean;
+  canBatchTranscribe?: boolean;
 }): ContextMenuItem[] {
   const busy = Boolean(input.busy);
   return [
@@ -28,6 +41,14 @@ export function buildProjectContextMenuItems(input: {
       disabled: busy,
     },
     { key: "revealLocation", label: "打开所在位置", disabled: busy },
+    { key: "projectInfo", label: "项目信息", disabled: busy },
+    { key: "importAudio", label: "导入音频", disabled: busy },
+    { key: "importText", label: "导入转录文本", disabled: busy },
+    {
+      key: "batchTranscribe",
+      label: "批量转写",
+      disabled: busy || input.canBatchTranscribe === false,
+    },
     { key: "rename", label: "重命名", disabled: busy },
     { key: "delete", label: "删除项目", disabled: busy },
   ];

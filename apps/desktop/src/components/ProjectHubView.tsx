@@ -18,6 +18,7 @@ interface ProjectHubViewProps {
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   onLeaveProjectForWelcome: (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => void;
+  onGoProjectsLibrary: () => void;
   glossaryWorkspaceId: GlossaryWorkspaceId;
   onGlossaryWorkspaceChange: (id: GlossaryWorkspaceId) => void;
   /** 转写进度条等，仅渲染于右侧主列 TopBar 之上 */
@@ -33,6 +34,7 @@ export function ProjectHubView({
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   onLeaveProjectForWelcome,
+  onGoProjectsLibrary,
   glossaryWorkspaceId,
   onGlossaryWorkspaceChange,
   headerSlot,
@@ -50,8 +52,8 @@ export function ProjectHubView({
           onPageChange={(page) => {
             if (page !== "home") onLeaveProjectForWelcome(page);
           }}
+          onGoProjectsLibrary={onGoProjectsLibrary}
           hubMode
-          activeProjectId={c.current?.id ?? null}
           onLeaveProjectForWelcome={onLeaveProjectForWelcome}
           glossaryWorkspaceId={glossaryWorkspaceId}
           onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}

@@ -9,6 +9,7 @@ import {
   formatProjectHubMetadataLine,
   hubFileRowMetaLines,
   hubFileStageCounts,
+  hubFileStageLegendParts,
 } from "./projectFileDisplay";
 import type { FileSummary } from "../tauri/projectTypes";
 
@@ -117,10 +118,15 @@ describe("hub file row meta", () => {
         finalized_count: 0,
       }),
     ).toBe("未转录");
-    expect(formatHubFileProgressMetaLine(base)).toBe("生稿 5 · 一校 2 · 定稿 3");
+    expect(formatHubFileProgressMetaLine(base)).toBe("草稿 5 · 一校 2 · 定稿 3");
     expect(
       formatHubFileStageLegend({ draft: 3472, firstProof: 0, finalized: 2, total: 3474 }),
-    ).toBe("生稿 3472 · 定稿 2");
+    ).toBe("草稿 3472 · 一校 0 · 定稿 2");
+    expect(hubFileStageLegendParts(hubFileStageCounts(base)).map((p) => p.label)).toEqual([
+      "草稿",
+      "一校",
+      "定稿",
+    ]);
     expect(formatHubFileProgressMetaLine(base, { kind: "transcribing", percent: 45 })).toBe(
       "转写中 · 45%",
     );

@@ -26,7 +26,7 @@ export function WelcomeFileLedgerRow({ file, busy, onOpen }: Props) {
     <div className={WORKSPACE_FILE_ROW_CLASS}>
       <button
         type="button"
-        className={`flex w-full min-w-0 items-start gap-6 border-0 bg-transparent text-left disabled:opacity-40 ${WELCOME_LEDGER_INSET_X} ${WELCOME_LEDGER_ROW_Y}`}
+        className={`flex w-full min-w-0 items-center gap-4 border-0 bg-transparent text-left disabled:opacity-40 ${WELCOME_LEDGER_INSET_X} ${WELCOME_LEDGER_ROW_Y}`}
         disabled={busy}
         onClick={() => void onOpen()}
         title={file.name}
@@ -39,11 +39,11 @@ export function WelcomeFileLedgerRow({ file, busy, onOpen }: Props) {
           <HoverRevealText
             text={file.name}
             revealed={rowHovered}
-            className="text-sm font-medium text-notion-text"
+            className="text-title font-medium leading-5 text-notion-text"
           />
           <span
             className={[
-              "mt-2 block truncate",
+              "mt-0.5 block truncate text-label leading-4",
               PANEL_TYPOGRAPHY.meta,
               warning ? "text-zen-cinnabar" : "text-notion-text-muted",
             ].join(" ")}
@@ -51,7 +51,7 @@ export function WelcomeFileLedgerRow({ file, busy, onOpen }: Props) {
             {meta}
           </span>
         </span>
-        <span className="w-[12rem] shrink-0 pt-0.5">
+        <span className="w-[12rem] shrink-0">
           <HubFileStageMeter file={file.summary} variant="ledger" />
         </span>
       </button>

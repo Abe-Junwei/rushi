@@ -121,7 +121,7 @@ export function AutoTranscribeStartDialog({
                   disabled={busy}
                   onClick={onOpenGlossary}
                 >
-                  前往热词与记忆…
+                  前往词表…
                 </button>
               ) : null}
             </>
