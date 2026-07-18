@@ -31,9 +31,8 @@ export const TRANSCRIPT_EDITOR_LINE_PAD_MIN_PX = 12;
 export const TRANSCRIPT_EDITOR_MIN_LINE_PX = 75;
 
 /**
- * CM 列表 meta 列（固定宽度）与正文之间的可见间距。
- * 注意：meta gutter 宽度固定，marker 自身的 padding-right 只影响文字在盒内的位置，
- * 不产生可见间距——可见间距完全由 `.cm-line` 的 paddingLeft 决定，此常量只应用在那里。
+ * CM 列表 meta 列与正文之间的缝宽（`.cm-line` paddingLeft；播放钮右侧同值）。
+ * 时间戳↔按钮总距主要由 meta 列宽（`TRANSCRIPT_META_WIDTH_DEFAULT`）决定。
  */
 export const TRANSCRIPT_EDITOR_META_CONTENT_GAP = "0.2rem";
 

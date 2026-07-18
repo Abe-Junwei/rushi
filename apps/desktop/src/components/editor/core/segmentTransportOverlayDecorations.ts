@@ -266,8 +266,8 @@ export function createTranscriptSegmentTransportOverlayExtensions(
       alignItems: "center",
       justifyContent: "center",
       boxSizing: "border-box",
-      width: "2.25rem",
-      height: "2.25rem",
+      width: "var(--cm-transcript-play-size, 2.25rem)",
+      height: "var(--cm-transcript-play-size, 2.25rem)",
       margin: "0",
       padding: "0",
       border: "1px solid color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider))",
@@ -278,8 +278,8 @@ export function createTranscriptSegmentTransportOverlayExtensions(
       cursor: "pointer",
       opacity: "0",
       pointerEvents: "none",
-      // Between timestamp (meta gutter) and copy.
-      transform: "translate(calc(-100% - 0.15rem), -50%)",
+      // Meta↔text seam; gap matches `.cm-line` paddingLeft (meta column is left-aligned).
+      transform: "translate(calc(-100% - var(--cm-transcript-meta-content-gap, 0.2rem)), -50%)",
       transition: "opacity 80ms ease-out, background-color 80ms ease-out, border-color 80ms ease-out",
     },
     ".cm-transcript-line-play-host:hover .cm-transcript-segment-play": {

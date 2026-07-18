@@ -130,6 +130,8 @@ export class TranscriptStageMarker extends GutterMarker {
     el.append(icon, label);
     wrap.append(el);
 
+    // Always reserve the annotation slot so the stage chip does not shift left
+    // when a note appears (column width stays at the "has note" size).
     if (this.hasAnnotation) {
       const note = document.createElement("button");
       note.type = "button";
@@ -140,6 +142,11 @@ export class TranscriptStageMarker extends GutterMarker {
       note.setAttribute("aria-label", "查看并编辑备注");
       note.innerHTML = ANNOTATION_DOC_ICON_SVG;
       wrap.append(note);
+    } else {
+      const slot = document.createElement("span");
+      slot.className = "cm-transcript-annotation-icon cm-transcript-annotation-icon--slot";
+      slot.setAttribute("aria-hidden", "true");
+      wrap.append(slot);
     }
     return wrap;
   }
@@ -291,12 +298,12 @@ export function createTranscriptStageGutter(
 }
 
 export const transcriptStageGutterTheme = EditorView.theme({
-  // Flush against content — avoid a blank seam between text highlight and stage chip.
+  // Right stage column: always sized for chip + annotation slot (no layout shift).
   ".cm-transcript-stage-gutter": {
-    // chip max (6.5) + optional annotation (1.0) + gaps + cell pad ≈ 8.75
-    minWidth: "8.75rem",
+    // chip (≤4.5) + gap + annotation slot (1) + cell pad L/R ≈ 6.75
+    minWidth: "6.75rem",
     paddingLeft: "0",
-    paddingRight: "0.35rem",
+    paddingRight: "0.45rem",
     borderLeft: "none",
     marginLeft: "0",
     marginRight: "0",
@@ -315,15 +322,16 @@ export const transcriptStageGutterTheme = EditorView.theme({
   ".cm-transcript-stage-cell": {
     display: "flex",
     alignItems: "center",
-    justifyContent: "flex-start",
+    justifyContent: "flex-end",
     gap: "0.25rem",
     boxSizing: "border-box",
     alignSelf: "stretch",
     height: "100%",
     minHeight: "100%",
     width: "100%",
+    // Left: breath from copy. Right: clearer pane-edge inset.
     padding:
-      "var(--cm-transcript-line-pad, 1rem) 0.5rem var(--cm-transcript-line-pad, 1rem) 0.35rem",
+      "var(--cm-transcript-line-pad, 1rem) 0.85rem var(--cm-transcript-line-pad, 1rem) 0.3rem",
     borderRadius: "0",
     backgroundColor: "transparent",
     transition: "none",
@@ -350,7 +358,7 @@ export const transcriptStageGutterTheme = EditorView.theme({
     gap: "0.1875rem",
     height: "1.375rem",
     minHeight: "1.375rem",
-    maxWidth: "6.5rem",
+    maxWidth: "4.5rem",
     padding: "0",
     margin: "0",
     border: "0",
@@ -405,6 +413,13 @@ export const transcriptStageGutterTheme = EditorView.theme({
     pointerEvents: "auto",
     cursor: "pointer",
     transition: "color 120ms ease, opacity 120ms ease",
+  },
+  // Invisible spacer — same box as the real icon so chip position stays put.
+  ".cm-transcript-annotation-icon--slot": {
+    opacity: "0",
+    pointerEvents: "none",
+    cursor: "default",
+    visibility: "hidden",
   },
   ".cm-transcript-annotation-icon svg": {
     width: "0.75rem",

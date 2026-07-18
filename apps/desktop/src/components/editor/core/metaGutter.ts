@@ -247,9 +247,8 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     width: "100%",
     height: "100%",
     minHeight: "100%",
-    // Accent bar 4px + 9px gap before index/time. Right padding here is purely
-    // internal (gutter width is fixed) — the visible left-column↔text gap
-    // comes from `.cm-line` paddingLeft in transcriptEditorCoreMount.ts.
+    // Accent bar 4px + 9px before index/time. Column width (not this pad) sets
+    // how much air sits between timestamp and the play/text seam.
     padding:
       `var(--cm-transcript-line-pad, 1rem) var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP}) var(--cm-transcript-line-pad, 1rem) 9px`,
     lineHeight: "1.2",

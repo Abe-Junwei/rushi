@@ -49,7 +49,9 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--notion-bg)",
       "--cm-meta-gutter-width": `${args.metaGutterWidthPx}px`,
       // Keep in sync with `.cm-transcript-stage-gutter` minWidth (stageGutter.ts).
-      "--cm-stage-gutter-width": "8.75rem",
+      "--cm-stage-gutter-width": "6.75rem",
+      // Play control in the meta↔text seam (metaGutter paddingRight + overlay size).
+      "--cm-transcript-play-size": "2.25rem",
       "--cm-transcript-line-pad": `${linePad}px`,
       "--cm-transcript-min-line-px": `${minLine}px`,
       "--cm-transcript-meta-content-gap": TRANSCRIPT_EDITOR_META_CONTENT_GAP,
@@ -57,7 +59,8 @@ export function buildTranscriptAppearanceTheme(args: {
     ".cm-scroller": {
       overflow: "auto",
       fontFamily: "inherit",
-      padding: "0.75rem",
+      // Left/meta unchanged; trailing inset for stage/annotation breathing room.
+      padding: "0.75rem 0.7rem 0.75rem 0.75rem",
       boxSizing: "border-box",
       backgroundColor: "transparent",
     },
@@ -88,7 +91,8 @@ export function buildTranscriptAppearanceTheme(args: {
       // Meta gutter width is fixed — this paddingLeft is the ONLY thing that
       // produces the visible gap between the left column and segment text.
       paddingLeft: `var(--cm-transcript-meta-content-gap, ${TRANSCRIPT_EDITOR_META_CONTENT_GAP})`,
-      paddingRight: "0.75rem",
+      // Breath before the stage column (keep modest — wide stage minWidth already gaps).
+      paddingRight: "0.4rem",
       minHeight: `${minLine}px`,
       lineHeight: String(lineHeight),
       fontWeight: "inherit",
@@ -106,7 +110,7 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
-        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
+        "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 color-mix(in srgb, var(--notion-sidebar) 35%, transparent)",
       ].join(", "),
     },
     ".cm-line.cm-transcript-line-resize-host": {
@@ -128,14 +132,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-in-selection-line": {
       backgroundColor: "var(--segment-fill-in-selection-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-in-selection-list)",
-        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-in-selection-list)",
+        "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-in-selection-list)",
       ].join(", "),
     },
     // Same fill as primary — playback-focus only drives icon/class, not a second wash.
@@ -143,14 +147,14 @@ export function buildTranscriptAppearanceTheme(args: {
       backgroundColor: "var(--segment-fill-selected-list)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--segment-fill-selected-list)",
-        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--segment-fill-selected-list)",
+        "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--segment-fill-selected-list)",
       ].join(", "),
     },
     ".cm-transcript-playback-focus": {
       backgroundColor: "var(--transcript-playback-focus-fill)",
       boxShadow: [
         "calc(-1 * var(--cm-meta-gutter-width, 8.25rem)) 0 0 0 var(--transcript-playback-focus-fill)",
-        "var(--cm-stage-gutter-width, 8.75rem) 0 0 0 var(--transcript-playback-focus-fill)",
+        "var(--cm-stage-gutter-width, 6.75rem) 0 0 0 var(--transcript-playback-focus-fill)",
       ].join(", "),
     },
   });

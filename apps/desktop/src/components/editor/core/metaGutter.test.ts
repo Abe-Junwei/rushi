@@ -66,7 +66,10 @@ describe("P4 meta gutter + reveal + stage", () => {
       "cm-transcript-stage-chip--auto_transcribe",
     );
     expect(stage0?.toDOM().querySelector(".cm-transcript-stage-chip__icon svg")).toBeTruthy();
-    expect(stage0?.toDOM().querySelector(".cm-transcript-annotation-icon")).toBeNull();
+    // Empty annotation slot keeps chip position stable when a note appears later.
+    const slot = stage0?.toDOM().querySelector(".cm-transcript-annotation-icon--slot");
+    expect(slot).toBeTruthy();
+    expect(slot?.getAttribute("aria-hidden")).toBe("true");
 
     const stage1 = buildTranscriptStageMarker(meta[1]);
     expect(stage1?.label).toBe("手改");
