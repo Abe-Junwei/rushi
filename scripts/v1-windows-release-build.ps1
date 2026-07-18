@@ -122,44 +122,19 @@ Invoke-Npm @("run", "asr:stage-bundled-models")
 if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed (portable requires models)" }
 & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -AllowModelsForPortable
 
-Write-Host "== portable zip (CPU sidecar + Plan B models) =="
+Write-Host "== portable zip (CPU sidecar + Plan B models; ASCII tar → Chinese rename) =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
-if (-not (Test-Path -LiteralPath $Exe)) { throw "Missing $Exe" }
-
-$Stage = Join-Path $Root "dist\windows-portable"
-$ZipAscii = Join-Path $Root "dist\windows-portable-build.zip"
-if (Test-Path $Stage) { Remove-Item -Recurse -Force $Stage }
-New-Item -ItemType Directory -Force -Path $Stage | Out-Null
-Copy-Item $Exe (Join-Path $Stage "rushi-desktop.exe")
-Copy-Item (Join-Path $TauriRoot "resources") (Join-Path $Stage "resources") -Recurse
-
 $Zip = Join-Path $Root $PortableZipName
-if (Test-Path $Zip) { Remove-Item -Force $Zip }
-if (Test-Path $ZipAscii) { Remove-Item -Force $ZipAscii }
-# Compress-Archive OOMs on sidecar+models; tar streams and is reliable on Win10+.
-# ASCII intermediate zip avoids Unicode -f quirks; then rename to Chinese product name.
-Push-Location $Stage
-try {
-  & tar -a -c -f $ZipAscii .
-  if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE" }
-} finally {
-  Pop-Location
-}
-Move-Item -LiteralPath $ZipAscii -Destination $Zip
-
-$sidecarInZip = Join-Path $Stage "resources\bundled-asr\rushi-asr-sidecar"
-$manifestInZip = Join-Path $Stage "resources\bundled-asr-models\manifest.json"
-if (-not (Test-Path -LiteralPath $sidecarInZip)) { throw "portable stage missing CPU sidecar: $sidecarInZip" }
-if (-not (Test-Path -LiteralPath $manifestInZip)) { throw "portable stage missing Plan B models: $manifestInZip" }
-
-$HashPath = "$Zip.sha256"
-(Get-FileHash -Algorithm SHA256 -Path $Zip).Hash.ToLower() | Set-Content -Path $HashPath -NoNewline
-Add-Content -Path $HashPath -Value "  $PortableZipName"
+& pwsh (Join-Path $Root "scripts\ci-pack-windows-portable-zip.ps1") `
+  -ExePath $Exe `
+  -ResourcesDir (Join-Path $TauriRoot "resources") `
+  -FinalZipPath $Zip `
+  -WriteSha256
 
 if (Test-Path -LiteralPath $NsisSetup) {
   $nsisSha = "$NsisSetup.sha256"
-  (Get-FileHash -Algorithm SHA256 -Path $NsisSetup).Hash.ToLower() | Set-Content -Path $nsisSha -NoNewline
-  Add-Content -Path $nsisSha -Value "  $NsisSetupName"
+  $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NsisSetup).Hash.ToLowerInvariant()
+  Set-Content -Encoding utf8 -Path $nsisSha -Value "$hash  $NsisSetupName"
 }
 
 if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
@@ -170,14 +145,11 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
   if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
     & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
   }
-  $cudaCdn = Join-Path $Root "dist\cuda-cdn"
-  New-Item -ItemType Directory -Force -Path $cudaCdn | Out-Null
-  $cudaZip = Join-Path $cudaCdn $CudaZipName
-  if (Test-Path $cudaZip) { Remove-Item -Force $cudaZip }
-  Compress-Archive -Path $cudaDir -DestinationPath $cudaZip
-  $cudaSha = "$cudaZip.sha256"
-  (Get-FileHash -Algorithm SHA256 -Path $cudaZip).Hash.ToLower() | Set-Content -Path $cudaSha -NoNewline
-  Add-Content -Path $cudaSha -Value "  $CudaZipName"
+  $cudaZip = Join-Path $Root "dist\cuda-cdn\$CudaZipName"
+  & pwsh (Join-Path $Root "scripts\ci-pack-windows-cuda-zip.ps1") `
+    -CudaOnedir $cudaDir `
+    -FinalZipPath $cudaZip `
+    -WriteSha256
   Write-Host "CUDA CDN zip: $cudaZip"
 } else {
   Write-Host "SKIP: RUSHI_SKIP_CUDA_CDN=1"

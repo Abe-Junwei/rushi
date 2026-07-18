@@ -16,7 +16,11 @@
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
 - **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis mmap / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑，不默认切本地。
 - **makensis MAX_PATH**：侧车内 `torch-*.dist-info/licenses/third_party/...` 过深会 abort；CI/本地在 NSIS 前跑 `scripts/prune-windows-sidecar-for-nsis.ps1`（删 runtime 不需要的 licenses 树）。
-- **portable zip**：CI 在短路径 `C:\rp` 暂存并用 ASCII 中间名 `tar`，再改名为中文便携版（避免 `D:\a\rushi\rushi\...` + modelscope 过长导致 tar 失败）。CUDA 汇报勿当成主失败——主失败看「Build Windows portable zip」。
+- **portable zip**：真源 `scripts/ci-pack-windows-portable-zip.ps1`（CI + `npm run release:win` 共用）。硬规则：
+  1. CI 短路径暂存 `C:\rp`（避免 `D:\a\rushi\rushi\...` + modelscope **MAX_PATH**）；
+  2. **`tar.exe` 的 `-f` 只用 ASCII 路径**（create + extract）；校验通过后再 `Move-Item` 成中文便携版名；
+  3. **禁止**对中文最终名跑 `tar -xf`（Windows bsdtar 会变成 `????.zip` 并失败）。
+  CUDA zip 同理：`scripts/ci-pack-windows-cuda-zip.ps1`。CUDA 汇报勿当成主失败——主失败看「Build + verify Windows portable zip」。
 
 ## 1. 物料
 

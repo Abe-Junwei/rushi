@@ -108,6 +108,7 @@
 - **可选 GPU 包**：Release CI 将 CUDA onedir 打成 **`如是我闻_<ver>_Windows_x64_CUDA侧车.zip`** 上传 CDN；`rushi-runtime-manifest.json` 含 **`asr-sidecar-cuda`** 组件（`windows-x86_64`）；桌面壳编译期注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL`。
 - **UX**：`windows_cuda_probe_ok()` 为真且本地无 CUDA onedir → 环境页 **推荐**（非强制）下载；失败或拒绝 → CPU 转写不受影响。
 - **CI 顺序**：NSIS（无模型）→ stage Plan B → 打 portable（侧车+模型）→ CDN；portable 缺侧车或模型则 **fail closed**。CI Windows 失败时本机 `npm run release:win` + `npm run release:win:upload`。
+- **Windows `tar.exe` / 中文文件名**：打包与解压校验必须走 ASCII 中间 zip，再改名为 `如是我闻_*`（见 `scripts/ci-pack-windows-portable-zip.ps1`）；勿对 Unicode 路径调用 `tar -f`。
 - 调研：[`win-nsis-cpu-cuda-cdn-opt-in-research.md`](../execution/specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)。
 
 ---

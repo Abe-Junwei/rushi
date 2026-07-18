@@ -20,6 +20,8 @@
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
 # Windows Git Bash: never pass /d/a/... absolutes into native node/python (cwd-relative only).
+# Windows tar.exe: NEVER pass Unicode paths to `tar -f` (bsdtar mangles to ????.zip).
+#   Portable/CUDA pack via scripts/ci-pack-windows-*-zip.ps1 — ASCII intermediate → verify → Chinese rename.
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
 # on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
@@ -500,92 +502,26 @@ jobs:
         shell: pwsh
         run: pwsh scripts/ci-measure-windows-bundle-size.ps1 -AllowModelsForPortable
 
-      - name: Build Windows portable zip
+      - name: Build + verify Windows portable zip
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $root = "apps/desktop/src-tauri"
-          $exe = Join-Path $root "target/release/rushi-desktop.exe"
-          if (-not (Test-Path $exe)) {
-            Write-Error "Missing $exe — run tauri build before packaging portable zip."
+          # ASCII tar create/extract → Chinese rename (see scripts/ci-pack-windows-portable-zip.ps1).
+          # Do NOT tar -xf the Chinese final name — Windows tar.exe mangles Unicode -f paths.
+          pwsh scripts/ci-pack-windows-portable-zip.ps1 `
+            -ExePath "apps/desktop/src-tauri/target/release/rushi-desktop.exe" `
+            -ResourcesDir "apps/desktop/src-tauri/resources" `
+            -FinalZipPath (Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP) `
+            -WriteSha256
+          $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
+          if (-not (Test-Path -LiteralPath $nsis)) {
+            throw "Missing $nsis for checksum"
           }
-          # CI checkout paths are long (D:\a\rushi\rushi\...); staging under a short root
-          # avoids tar/MAX_PATH failures when packing Plan B modelscope trees.
-          if ($env:GITHUB_ACTIONS -eq "true") {
-            $stage = "C:\rp"
-            $zipAscii = "C:\rp-build.zip"
-          } else {
-            $stage = "dist/windows-portable"
-            $zipAscii = "dist/windows-portable-build.zip"
-          }
-          if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $stage | Out-Null
-          Copy-Item $exe (Join-Path $stage "rushi-desktop.exe")
-          Copy-Item (Join-Path $root "resources") (Join-Path $stage "resources") -Recurse
-          if (Test-Path -LiteralPath $zipAscii) { Remove-Item -LiteralPath $zipAscii -Force }
-          # Compress-Archive OOMs on sidecar+models (~2GB+); tar streams reliably on Win10+.
-          # Use ASCII zip path first — some bsdtar builds mishandle Unicode -f names.
-          Push-Location $stage
-          try {
-            & tar -a -c -f $zipAscii .
-            if ($LASTEXITCODE -ne 0) { throw "tar zip failed with exit $LASTEXITCODE (ascii=$zipAscii)" }
-          } finally {
-            Pop-Location
-          }
-          $zipFinal = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
-          if (Test-Path -LiteralPath $zipFinal) { Remove-Item -LiteralPath $zipFinal -Force }
-          Move-Item -LiteralPath $zipAscii -Destination $zipFinal
-          Write-Host "OK: wrote portable zip $zipFinal ($((Get-Item -LiteralPath $zipFinal).Length) bytes)"
-
-      - name: Verify Windows portable zip (sidecar + models required)
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          $zip = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
-          if (-not (Test-Path -LiteralPath $zip)) {
-            throw "Missing $zip"
-          }
-          Get-Item -LiteralPath $zip
-          if ($env:GITHUB_ACTIONS -eq "true") {
-            $probe = "C:\rp-probe"
-          } else {
-            $probe = "dist/windows-portable-probe"
-          }
-          if (Test-Path -LiteralPath $probe) { Remove-Item -LiteralPath $probe -Recurse -Force }
-          New-Item -ItemType Directory -Force -Path $probe | Out-Null
-          & tar -xf $zip -C $probe
-          if ($LASTEXITCODE -ne 0) { throw "tar extract failed ($LASTEXITCODE)" }
-          $sidecar = Join-Path $probe "resources\bundled-asr\rushi-asr-sidecar"
-          $manifest = Join-Path $probe "resources\bundled-asr-models\manifest.json"
-          $modelscope = Join-Path $probe "resources\bundled-asr-models\modelscope"
-          if (-not (Test-Path -LiteralPath $sidecar)) {
-            throw "portable zip missing CPU sidecar onedir: $sidecar"
-          }
-          if (-not (Test-Path -LiteralPath $manifest)) {
-            throw "portable zip missing Plan B models manifest: $manifest"
-          }
-          if (-not (Test-Path -LiteralPath $modelscope)) {
-            throw "portable zip missing Plan B modelscope/: $modelscope"
-          }
-          Write-Host "OK: $zip contains CPU sidecar + Plan B models."
-          Remove-Item -LiteralPath $probe -Recurse -Force
-
-      - name: Checksum portable + NSIS
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          foreach ($f in @(
-            $env:WIN_PORTABLE_ZIP,
-            "apps/desktop/src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
-          )) {
-            if (-not (Test-Path -LiteralPath $f)) {
-              throw "Missing $f for checksum"
-            }
-            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $f).Hash.ToLowerInvariant()
-            $name = Split-Path -Leaf $f
-            Set-Content -Encoding utf8 -Path "$f.sha256" -Value "$hash  $name"
-            Write-Host "Wrote $f.sha256"
-          }
+          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $nsis).Hash.ToLowerInvariant()
+          $name = Split-Path -Leaf $nsis
+          Set-Content -Encoding utf8 -Path "$nsis.sha256" -Value "$hash  $name"
+          Write-Host "Wrote $nsis.sha256"
+          Get-Item -LiteralPath (Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP) | Format-List Name, Length, FullName
 
       - name: Upload Windows portable zip artifact (early)
         if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
@@ -681,17 +617,10 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $cudaDir = "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda"
-          $exe = Join-Path $cudaDir "rushi-asr-sidecar-cuda.exe"
-          if (-not (Test-Path -LiteralPath $exe)) { throw "Missing $exe" }
-          New-Item -ItemType Directory -Force -Path "dist/cuda-cdn" | Out-Null
-          $zip = Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)"
-          if (Test-Path -LiteralPath $zip) { Remove-Item -Force $zip }
-          # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
-          Compress-Archive -Path $cudaDir -DestinationPath $zip
-          $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $zip).Hash.ToLowerInvariant()
-          Set-Content -Encoding utf8 -Path "$zip.sha256" -Value "$hash  $($env:WIN_CUDA_ZIP)"
-          Get-Item $zip | Format-List Name, Length, FullName
+          pwsh scripts/ci-pack-windows-cuda-zip.ps1 `
+            -CudaOnedir "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" `
+            -FinalZipPath (Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)") `
+            -WriteSha256
           "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         continue-on-error: true
 
