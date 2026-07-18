@@ -7,8 +7,8 @@
 # Push tag only (`git push origin vX.Y.Z`). Sidecar is built before Tauri bundle.
 # Win artifact names: 如是我闻_<ver>_Windows_x64_{便携版.zip|安装包.exe|CUDA侧车.zip}
 #   (see scripts/rushi-win-release-artifact-names.sh).
-# Release order: remote CI first. Local `npm run release:win` + `release:win:upload`
-#   ONLY if Windows fails due to model-pack OOM (makensis/zip/runner memory).
+# Win job: self-hosted runner (label rushi-release) — GH hosted windows-latest OOMs on Plan B NSIS.
+#   Fallback: local `npm run release:win` + `release:win:upload` if self-hosted offline.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 # App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD + R2_* secrets.
 #   Tauri generates .app.tar.gz + .sig (mac) and Chinese NSIS + .sig (win);
@@ -313,8 +313,9 @@ jobs:
 
   tauri-windows:
     if: ${{ !cancelled() }}
-    runs-on: windows-latest
-    # Prefer this job. Local pack only on model-pack OOM (see windows-release-checklist §5).
+    # pc-office-win-release: self-hosted, Windows, X64, rushi-release (E:\actions-runner).
+    # Keep run.cmd / svc running or this job queues forever.
+    runs-on: [self-hosted, Windows, X64, rushi-release]
     steps:
       - uses: actions/checkout@v7
 

@@ -14,7 +14,7 @@
 - **NSIS + portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。**stage 在 NSIS 之前**。
 - NSIS 中文安装包（OTA）：与 portable **同内容边界**（侧车+模型；无 CUDA）。未签名时下载页应引导「更多信息 → 仍要运行」。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
-- **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis mmap / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑，不默认切本地。
+- **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；`tauri-windows` 跑 **self-hosted**（label `rushi-release`，本机 `E:\actions-runner`，须 Online）。② self-hosted 离线或仍 OOM 时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑。
 - **makensis MAX_PATH**：侧车内 `torch-*.dist-info/licenses/third_party/...` 过深会 abort；CI/本地在 NSIS 前跑 `scripts/prune-windows-sidecar-for-nsis.ps1`（删 runtime 不需要的 licenses 树）。
 - **portable zip**：真源 `scripts/ci-pack-windows-portable-zip.ps1`（CI + `npm run release:win` 共用）。硬规则：
   1. CI 短路径暂存 `C:\rp`（避免 `D:\a\rushi\rushi\...` + modelscope **MAX_PATH**）；
@@ -55,19 +55,20 @@
 - [ ] NVIDIA 机：环境页出现「下载 GPU 加速组件」推荐 → 下载 → 重启侧车 → CUDA 优先；失败时 CPU 回退仍可转写（或 `RUSHI_FORCE_BUNDLED_ASR_CPU=1`）。
 - [ ] CDN：`/<tag>/如是我闻_*_便携版.zip`、`/<tag>/如是我闻_*_安装包.exe`、`/<tag>/如是我闻_*_CUDA侧车.zip`、`/runtime/rushi-runtime-manifest.json` 可访问。
 
-## 5. 远程优先；模型 OOM 时才本地上传
+## 5. 远程优先（Win = self-hosted）；离线/仍失败再本地上传
 
-1. tag push 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
-2. **成功**：CDN 验收 §4；不必本地打包。  
+1. 发版前确认 GitHub → Actions → Runners：`pc-office-win-release` **Idle/Online**（本机 `E:\actions-runner` 的 `run.cmd` 或服务在跑）。
+2. tag push 或 `workflow_dispatch` 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
+3. **成功**：CDN 验收 §4；不必再手搓本地打包。  
    - **安装 CDN**（便携版/DMG/NSIS）：单侧成功即可上传。  
    - **OTA `latest.json`**：**硬闸门** — 须同时有 mac+win 合法 fragment（url+signature）才覆盖；否则保留旧 latest（Tauri 整文件校验）。  
    - 缺 `.sig` → fragment 软跳过，不影响安装 CDN。  
    - verify：mac 或 win 成功即可跑；portable 硬门禁仅 win 成功时；若本次上传了 latest 则双平台硬验。  
    - 同 tag 重推取消旧跑；Authenticode 失败不挡 NSIS/portable。
-3. **失败且日志含模型/打包 OOM**（如 makensis mmap、`tar`/`Compress-Archive` OOM、runner killed）：再走本地：
+4. **Runner 离线或仍 OOM**：再走本地：
 
 ```powershell
-# 本机 Windows x64，仓库根 — 仅 OOM 回退
+# 本机 Windows x64，仓库根 — self-hosted 不可用时的回退
 npm run release:win
 $env:R2_ACCESS_KEY_ID="..."
 $env:R2_SECRET_ACCESS_KEY="..."
