@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   IconDownload as Download,
   IconPlus as Plus,
@@ -25,7 +25,10 @@ import { WorkspaceHomeMainStage } from "./WorkspaceHomeMainStage";
 import { WorkspaceProjectLibrary } from "./WorkspaceProjectLibrary";
 import { WorkspaceShellLayout } from "./WorkspaceShellLayout";
 import { useWelcomeProjectTree } from "../hooks/useWelcomeProjectTree";
-import { registerProjectFilesCacheInvalidator } from "../services/projectFilesCacheBridge";
+import {
+  registerProjectFilesCacheInvalidator,
+  registerRecentWorkspaceFilesRefresh,
+} from "../services/projectFilesCacheBridge";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
@@ -127,29 +130,59 @@ export function WelcomeView({
     [recentProjectIds, c.projects],
   );
 
+  const [recentRefreshEpoch, setRecentRefreshEpoch] = useState(0);
+  const recentFetchGenRef = useRef(0);
+
+  const reloadRecentFiles = useCallback(() => {
+    setRecentRefreshEpoch((n) => n + 1);
+  }, []);
+
   useEffect(() => {
-    let cancelled = false;
+    registerRecentWorkspaceFilesRefresh(reloadRecentFiles);
+    return () => registerRecentWorkspaceFilesRefresh(null);
+  }, [reloadRecentFiles]);
+
+  useEffect(() => {
+    const gen = ++recentFetchGenRef.current;
     void (async () => {
       if (!shouldFetchRecentFiles) {
-        setRecentFiles([]);
-        setLoadingRecentFiles(false);
+        if (gen === recentFetchGenRef.current) {
+          setRecentFiles([]);
+          setLoadingRecentFiles(false);
+        }
         return;
       }
       setLoadingRecentFiles(true);
       try {
         const merged = await listRecentWorkspaceFiles(recentProjectIds, 8);
-        if (!cancelled) setRecentFiles(merged);
+        if (gen === recentFetchGenRef.current) setRecentFiles(merged);
       } catch {
-        if (!cancelled) setRecentFiles([]);
+        if (gen === recentFetchGenRef.current) setRecentFiles([]);
       } finally {
-        if (!cancelled) setLoadingRecentFiles(false);
+        if (gen === recentFetchGenRef.current) setLoadingRecentFiles(false);
       }
     })();
+  }, [recentProjectIds, shouldFetchRecentFiles, recentRefreshEpoch]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [recentProjectIds, shouldFetchRecentFiles]);
+  // Hub↔welcome 不卸载 WelcomeView：切回「最近」或离开项目时重刷 stage。
+  const prevLedgerTabRef = useRef(ledgerTab);
+  useEffect(() => {
+    const prev = prevLedgerTabRef.current;
+    prevLedgerTabRef.current = ledgerTab;
+    if (prev !== "recent" && ledgerTab === "recent") {
+      reloadRecentFiles();
+    }
+  }, [ledgerTab, reloadRecentFiles]);
+
+  const prevCurrentIdRef = useRef(c.current?.id ?? null);
+  useEffect(() => {
+    const next = c.current?.id ?? null;
+    const prev = prevCurrentIdRef.current;
+    prevCurrentIdRef.current = next;
+    if (prev && !next) {
+      reloadRecentFiles();
+    }
+  }, [c.current?.id, reloadRecentFiles]);
 
   const handleOpenRecentFile = async (item: RecentWorkspaceFile) => {
     await c.openWorkspaceFile(item.projectId, item.fileId);

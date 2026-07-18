@@ -16,6 +16,7 @@ import { pushEditHistoryRestoreActivity } from "../services/ui/pushActivity";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import { invalidateProjectFilesCaches } from "../services/projectFilesCacheBridge";
 import {
   runProjectSavePersistPipeline,
   type SavePersistPipelineOptions,
@@ -99,6 +100,7 @@ export function useProjectSaveController(args: Args) {
         });
         dirty.setSavedSnapshot(snapshotBase);
         notifySegmentsPersistedRef.current();
+        invalidateProjectFilesCaches([current.id]);
         if (!options?.quiet) {
           toast.success("保存成功");
         }
@@ -267,6 +269,7 @@ export function useProjectSaveController(args: Args) {
         dirty.setSavedSnapshot(segs);
         notifySegmentsPersistedRef.current();
         if (current?.id) {
+          invalidateProjectFilesCaches([current.id]);
           const fileLabel =
             current.files?.find((file) => file.id === currentFileId)?.name?.trim() || current.name;
           pushEditHistoryRestoreActivity({

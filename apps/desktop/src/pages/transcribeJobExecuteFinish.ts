@@ -11,6 +11,7 @@ import {
 import { pushTranscribeOutcomeActivity } from "../services/ui/pushActivity";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
+import { invalidateProjectFilesCaches } from "../services/projectFilesCacheBridge";
 import * as p1 from "../tauri/projectApi";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 
@@ -54,6 +55,7 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
   resetMutationHistory();
   const projectDetail = await p1.projectLoad(projectId);
   setCurrent(projectDetail);
+  invalidateProjectFilesCaches([projectId]);
   const segments = out.detail.segments;
   segmentPublish.publishTextBulk(segments);
   onTranscribeSuccess?.(out);

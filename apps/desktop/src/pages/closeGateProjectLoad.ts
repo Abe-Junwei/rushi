@@ -1,6 +1,7 @@
 import * as p1 from "../tauri/projectApi";
 import type { ProjectDetail, ProjectSummary } from "../tauri/projectApi";
 import { resolveEditorResumeTarget, type WorkspaceFileTarget } from "../services/lastWorkspace";
+import { refreshRecentWorkspaceFiles } from "../services/projectFilesCacheBridge";
 import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
 
 export type CloseGateProjectLoadDeps = {
@@ -88,6 +89,8 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
     try {
       const detail = await p1.projectLoad(id);
       deps.applyDetail(detail);
+      // Hub「所有文件」经 current.updated_at_ms 同步；此处只刷「最近」。
+      refreshRecentWorkspaceFiles();
       if (!detail.files?.length) {
         deps.dirty.clearSavedSnapshot();
       }

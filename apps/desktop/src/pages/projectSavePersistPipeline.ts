@@ -84,11 +84,8 @@ export async function runProjectSavePersistPipeline(
     p1.projectLoad(current.id),
     fileApi.loadFile(currentFileId),
   ]);
-  setCurrent((prev) =>
-    prev?.id === projectDetail.id && prev.updated_at_ms === projectDetail.updated_at_ms
-      ? prev
-      : projectDetail,
-  );
+  // Always apply: stage counts on files can change even when clocks collide.
+  setCurrent(projectDetail);
   const persistedSegments = getCurrentSegmentsSnapshot();
   const prevUid = persistedSegments[selectedIdxRef.current]?.uid;
   const segs = normalizeSegmentList(fileDetail.segments);

@@ -92,5 +92,6 @@ describe("runProjectSavePersistPipeline", () => {
     );
     expect(outcome.snapshotBase[0]?.text).toBe("latest");
     expect(setSelectedIdx).not.toHaveBeenCalled();
+    expect(setCurrent).toHaveBeenCalledWith(current);
   });
 });
