@@ -780,11 +780,13 @@ fn import_v1_bundle_trims_name_consistently_with_conflict_preview() {
         Some(existing.file_id.as_str())
     );
 
-    let resolutions = vec![super::bundle_import_name_conflict::BundleFileNameResolution {
-        id: preview.conflicts[0].id.clone(),
-        action: "rename".into(),
-        rename_to: Some("重名文件 (2)".into()),
-    }];
+    let resolutions = vec![
+        super::bundle_import_name_conflict::BundleFileNameResolution {
+            id: preview.conflicts[0].id.clone(),
+            action: "rename".into(),
+            rename_to: Some("重名文件 (2)".into()),
+        },
+    ];
     let (rename_map, _overwrite_ids) = plan_from_resolutions(&preview, &resolutions).unwrap();
     let imported =
         import_project_bundle_from_path_with_renames(&st, &zip_path, &rename_map).unwrap();

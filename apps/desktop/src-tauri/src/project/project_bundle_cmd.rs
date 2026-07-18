@@ -644,12 +644,22 @@ pub(super) fn import_project_bundle_from_path_with_renames(
     }
     let source_key = manifest.project.original_id.clone();
     match manifest.version {
-        PROJECT_BUNDLE_VERSION_V1 => {
-            import_v1(st, zip_path, &mut archive, manifest, rename_map, &source_key)
-        }
-        PROJECT_BUNDLE_VERSION => {
-            import_v2(st, zip_path, &mut archive, manifest, rename_map, &source_key)
-        }
+        PROJECT_BUNDLE_VERSION_V1 => import_v1(
+            st,
+            zip_path,
+            &mut archive,
+            manifest,
+            rename_map,
+            &source_key,
+        ),
+        PROJECT_BUNDLE_VERSION => import_v2(
+            st,
+            zip_path,
+            &mut archive,
+            manifest,
+            rename_map,
+            &source_key,
+        ),
         found => Err(CommandError::BundleUnsupportedVersion {
             found,
             supported: PROJECT_BUNDLE_VERSION,
@@ -845,13 +855,11 @@ fn import_project_from_parts(
                 .get(&(source_key.to_string(), file_name.clone()))
                 .cloned()
                 .unwrap_or_else(|| file_name.clone());
-            if name_taken(&tx, &write_name, None).map_err(|detail| {
-                CommandError::ImportProjectBundle { detail }
-            })? {
+            if name_taken(&tx, &write_name, None)
+                .map_err(|detail| CommandError::ImportProjectBundle { detail })?
+            {
                 return Err(CommandError::ImportProjectBundle {
-                    detail: format!(
-                        "文件名「{write_name}」仍冲突，请先解决重名后再导入。"
-                    ),
+                    detail: format!("文件名「{write_name}」仍冲突，请先解决重名后再导入。"),
                 });
             }
             let new_file_id = Uuid::new_v4().to_string();

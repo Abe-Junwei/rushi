@@ -17,7 +17,8 @@ use super::library_bundle_cmd::{
     ImportExchangeBundleResult, LIBRARY_BUNDLE_KIND,
 };
 use super::project_bundle_cmd::{
-    export_project_bundle_to_path, import_project_bundle_from_path_with_renames, PROJECT_BUNDLE_KIND,
+    export_project_bundle_to_path, import_project_bundle_from_path_with_renames,
+    PROJECT_BUNDLE_KIND,
 };
 use super::types::SegmentDto;
 use super::utils::open_db;
@@ -211,13 +212,13 @@ fn apply_exchange_bundle_inner(
     drop(conn);
 
     for fid in &overwrite_ids {
-        delete_file_inner(st, fid).map_err(|detail| CommandError::ImportProjectBundle { detail })?;
+        delete_file_inner(st, fid)
+            .map_err(|detail| CommandError::ImportProjectBundle { detail })?;
     }
 
     match preview.kind.as_str() {
         k if k == PROJECT_BUNDLE_KIND => {
-            let project =
-                import_project_bundle_from_path_with_renames(st, zip_path, &rename_map)?;
+            let project = import_project_bundle_from_path_with_renames(st, zip_path, &rename_map)?;
             Ok(ImportExchangeBundleResult {
                 project,
                 imported_count: 1,
