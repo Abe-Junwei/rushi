@@ -29,7 +29,10 @@ import type { TranscriptPanelHighlight } from "./panelHighlightField";
 import { setTranscriptFilterVisibleEffect, setTranscriptFilterCriteriaEffect, isTranscriptSegmentVisible } from "./filterLineVisibility";
 import { segmentMetaField, setSegmentMetaEffect } from "./segmentMetaField";
 import { segmentDtoToMeta } from "./structureCommands";
-import { revealSegmentAfterStructureChange, readSegmentViewportAnchorOffsetPx } from "./revealSegmentAfterStructure";
+import {
+  revealSegmentAfterStructureChange,
+  readSegmentViewportAnchorOffsetPx,
+} from "./revealSegmentAfterStructure";
 import { setTranscriptScopedPlayingEffect } from "./scopedPlayingField";
 import { setTranscriptSegmentLoopEffect } from "./segmentLoopField";
 import { peekFileViewRestoreForFile } from "../../../services/fileViewStateBridge";

@@ -95,14 +95,17 @@ function revealSegmentPreservingViewportOffsetInline(
   const block = view.lineBlockAt(line.from);
   const viewportH = Math.max(1, scroller.clientHeight);
   const maxTop = Math.max(0, scroller.scrollHeight - viewportH);
+  const centerOffsetPx = Math.max(0, (viewportH - Math.min(block.height, viewportH)) / 2);
 
   if (priorAnchorOffsetPx == null || !Number.isFinite(priorAnchorOffsetPx)) {
-    return revealSegmentInScrollDOM(view, primaryIdx, { y: "nearest" });
+    return revealSegmentInScrollDOM(view, primaryIdx, { y: "center" });
   }
 
-  let nextTop = block.top - priorAnchorOffsetPx;
+  // Same-primary structure ops: keep the line in-view at viewport middle
+  // (prior offset only gates this path; bottom-stuck preserve was the bug).
+  let nextTop = block.top - centerOffsetPx;
   if (block.height > viewportH) {
-    nextTop = Math.min(nextTop, block.top);
+    nextTop = block.top;
   }
   if (block.top > nextTop + viewportH - 1) {
     nextTop = block.top;
@@ -241,9 +244,8 @@ export function scheduleRevealSegment(
   }
 
   /**
-   * Structure merges use preserveAnchor. Re-applying that after wrap measure
-   * with a pre-merge offset stably jumps the list upward — only nudge if the
-   * line start left the viewport.
+   * preserveAnchor settle: only nudge if the line start left the viewport.
+   * Re-applying a pre-structure offset after wrap measure jumps the list.
    */
   if (opts.preserveAnchor) {
     if (typeof requestAnimationFrame !== "function") {
@@ -270,7 +272,7 @@ export function scheduleRevealSegment(
       const top = scroller.scrollTop;
       const viewportH = Math.max(1, scroller.clientHeight);
       if (geom && (geom.top < top - 1 || geom.top > top + viewportH - 1)) {
-        revealSegmentInScrollDOM(view, segmentIdx, { y: "nearest" });
+        revealSegmentInScrollDOM(view, segmentIdx, { y: "center" });
       }
       cleanup();
     });

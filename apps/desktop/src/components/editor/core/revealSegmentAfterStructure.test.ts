@@ -62,9 +62,10 @@ describe("revealSegmentAfterStructure", () => {
     expect(readSegmentViewportAnchorOffsetPx(view, 1)).toBe(50);
   });
 
-  it("preserves prior viewport offset after structure geometry change", () => {
+  it("places same-primary line at viewport middle after structure change", () => {
     const { view, scrollDOM } = makeView({
       scrollTop: 350,
+      clientHeight: 200,
       blocks: [
         { top: 0, bottom: 50, height: 50 },
         // After merge, line1 sits higher (collapsed lines above).
@@ -73,11 +74,12 @@ describe("revealSegmentAfterStructure", () => {
         { top: 600, bottom: 650, height: 50 },
       ],
     });
-    // Prior offset was 50 (400 - 350). Keep line start 50px below viewport top → scrollTop 150.
+    // Center offset = (200 - 80) / 2 = 60 → scrollTop 200 - 60 = 140.
+    // Not the prior bottom-stuck offset (50 → 150).
     expect(
       revealSegmentPreservingViewportOffset(view, 1, { priorAnchorOffsetPx: 50 }),
     ).toBe(true);
-    expect(scrollDOM.scrollTop).toBe(150);
+    expect(scrollDOM.scrollTop).toBe(140);
   });
 
   it("pins oversized merged line start instead of scrolling to bottom", () => {
@@ -94,8 +96,8 @@ describe("revealSegmentAfterStructure", () => {
     expect(
       revealSegmentPreservingViewportOffset(view, 0, { priorAnchorOffsetPx: 20 }),
     ).toBe(true);
-    // min(80-20, 80) = 60; start stays visible, not snapped to 900-200=700.
-    expect(scrollDOM.scrollTop).toBe(60);
+    // Oversized: pin start at 80 (not center math, not bottom 900-200=700).
+    expect(scrollDOM.scrollTop).toBe(80);
   });
 
   it("scheduleRevealSegment cancels prior generation", () => {
@@ -169,8 +171,8 @@ describe("revealSegmentAfterStructure", () => {
       deferLayout: true,
       validateTarget: false,
     });
-    // Sync: keep offset 50 → scrollTop 350.
-    expect(scrollDOM.scrollTop).toBe(350);
+    // Sync: viewport middle → offset 60 → scrollTop 340.
+    expect(scrollDOM.scrollTop).toBe(340);
     scrollDOM.scrollTop = 360;
     for (const cb of raf) cb(0);
     // Line start 400 still inside [360, 560] → no nudge.

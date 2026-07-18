@@ -127,8 +127,8 @@ export function replaceTranscriptSegmentsTransaction(
     ],
     selection: EditorSelection.single(anchor),
     // Merged lines often wrap taller than the viewport. CM `scrollIntoView: true`
-    // (and nearest-to-bottom) can jump the scroller to the block end — looks like
-    // the segment fled the current viewport. Reveal start deliberately below.
+    // (and nearest-to-bottom) can jump the scroller to the block end. Reveal is
+    // handled explicitly via revealSegmentAfterStructureChange (viewport middle).
     scrollIntoView: false,
   };
 }

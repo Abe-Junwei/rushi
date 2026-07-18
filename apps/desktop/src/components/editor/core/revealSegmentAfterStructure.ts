@@ -23,9 +23,9 @@ export function readSegmentViewportAnchorOffsetPx(
  * Keep a segment line on-screen after merge/split/delete.
  *
  * Full-doc replace and React `segments` → `view.setState` wipe CM scroll while
- * selection/projection (waveform highlight) stay on the merged line — text
- * leaves the viewport. Prefer preserving the prior viewport offset; fall back
- * to pinning the line start when the line would otherwise stay off-screen.
+ * selection/projection stay on the merged line. Use the pre-replace anchor as a
+ * same-primary signal, then place the line in the vertical middle of the
+ * viewport (not the prior bottom-stuck offset, and not absolute doc jump).
  */
 export function revealSegmentPreservingViewportOffset(
   view: EditorView,
@@ -39,16 +39,20 @@ export function revealSegmentPreservingViewportOffset(
   const viewportH = Math.max(1, scroller.clientHeight);
   const maxTop = Math.max(0, scroller.scrollHeight - viewportH);
 
+  // Viewport-middle offset for the visible portion of the line.
+  const centerOffsetPx = Math.max(0, (viewportH - Math.min(block.height, viewportH)) / 2);
+
   if (opts?.priorAnchorOffsetPx == null || !Number.isFinite(opts.priorAnchorOffsetPx)) {
-    return revealSegmentInScrollDOM(view, primaryIdx, { y: "nearest" });
+    // No pre-replace anchor (primary changed): still prefer center over nearest
+    // bottom-align, which sticks merged lines to the viewport edge.
+    return revealSegmentInScrollDOM(view, primaryIdx, { y: "center" });
   }
 
-  // Keep the line where it was in the viewport when possible.
-  let nextTop = block.top - opts.priorAnchorOffsetPx;
+  let nextTop = block.top - centerOffsetPx;
 
-  // Oversized wrapped merge: always keep the line start visible (never snap to bottom).
+  // Oversized wrapped merge: keep the line start visible (cannot truly center).
   if (block.height > viewportH) {
-    nextTop = Math.min(nextTop, block.top);
+    nextTop = block.top;
   }
 
   // If start would sit below the viewport, pin to start.
@@ -67,7 +71,7 @@ export function revealSegmentPreservingViewportOffset(
 /**
  * Reveal now + at most one settle pass after wrap/layout (CM lineWrapping).
  * Uses the shared cancellable scheduler — later reveals cancel earlier ones.
- * Settle only re-scrolls when line block geometry actually changed (merge wrap).
+ * Settle only nudges if the line start left the viewport after wrap.
  */
 export function revealSegmentAfterStructureChange(
   view: EditorView,
