@@ -264,7 +264,7 @@ export function llmConfigHint(): string {
   if (isLocalLoopbackLlmConfig(cfg)) {
     return `请在「${ENV_NAV.llm}」确认 Ollama 已启动并保存模型。`;
   }
-  return `请在「${ENV_NAV.llm}」选择厂商并保存 API Key。`;
+  return `请在「${ENV_NAV.llm}」选择厂商并保存 API 密钥。`;
 }
 
 export { resolveStageBBlockReason } from "./llmRuntimeBlockReasons";

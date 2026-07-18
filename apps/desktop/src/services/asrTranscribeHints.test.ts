@@ -51,7 +51,7 @@ describe("deriveTranscribeHints", () => {
       ["online_vocabulary_sync_failed"],
       [{ text: "a" }],
     );
-    expect(h.some((x) => x.includes("vocabulary_id"))).toBe(true);
+    expect(h.some((x) => x.includes("热词表 ID"))).toBe(true);
   });
 
   it("flags openai prompt vocabulary truncation", () => {

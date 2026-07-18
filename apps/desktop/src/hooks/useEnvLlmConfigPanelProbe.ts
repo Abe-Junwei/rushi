@@ -77,7 +77,7 @@ export function useEnvLlmConfigPanelProbe({
       }
       const bridge = tryBuildPostprocessRuntimeBridge();
       if (!bridge) {
-        throw new Error("请先填写 API Key，或使用已保存的本地密钥。");
+        throw new Error("请先填写 API 密钥，或使用已保存的本地密钥。");
       }
       return bridge;
     },
@@ -120,7 +120,7 @@ export function useEnvLlmConfigPanelProbe({
             persistLlmRuntimeConfig(probedConfig, { clearApiKeyId: true });
           } else {
             if (!nextApiKeyId) {
-              throw new Error("请先填写 API Key，再点击探测连接。");
+              throw new Error("请先填写 API 密钥，再点击探测连接。");
             }
             persistLlmRuntimeConfig({ ...probedConfig, apiKeyId: nextApiKeyId });
           }

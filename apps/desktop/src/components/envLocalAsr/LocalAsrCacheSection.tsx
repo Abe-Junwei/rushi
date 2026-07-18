@@ -86,7 +86,7 @@ export function LocalAsrCacheSection({
           <InfoRow label="当前占用" value={formatBytes(asrModelCacheInfo?.total_bytes ?? 0)} />
           <InfoRow label="权重子目录" value={asrModelCacheInfo?.modelscope_cache ?? "未读取"} mono />
           <InfoRow label="HuggingFace" value={asrModelCacheInfo?.huggingface_cache ?? "未读取"} mono />
-          <InfoRow label="manifest 校验" value={manifestStatus} />
+          <InfoRow label="清单校验" value={manifestStatus} />
         </div>
         <EnvUtilitiesMetaGroup>
           {asrModelCacheInfo?.manifest_path ? (

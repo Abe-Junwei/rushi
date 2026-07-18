@@ -138,7 +138,7 @@ export function useEnvLlmConfigPanelPersistence({
     toast.info(
       restored.apiKeyId
         ? `已切换到 ${label}，请探测连接。`
-        : `已切换到 ${label}，请填写 Key 并保存。`,
+        : `已切换到 ${label}，请填写密钥并保存。`,
     );
     bumpKeychainCheck();
     onLlmRuntimeChanged?.();
@@ -200,7 +200,7 @@ export function useEnvLlmConfigPanelPersistence({
         setLlmApiKeyInMemory(null);
         bumpKeychainCheck();
         onLlmRuntimeChanged?.();
-        toast.info("已保存 LLM 配置与提示词；云端调用前仍需填写 API Key。");
+        toast.info("已保存 LLM 配置与提示词；云端调用前仍需填写 API 密钥。");
         return "skip";
       }
       persistLlmRuntimeConfig({
@@ -261,7 +261,7 @@ export function useEnvLlmConfigPanelPersistence({
       setLlmApiKeyInMemory(null);
       bumpKeychainCheck();
       onLlmRuntimeChanged?.();
-      toast.success("已清除已保存的 API Key。");
+      toast.success("已清除已保存的 API 密钥。");
     } catch (e) {
       toast.errorFromUnknown(e);
     } finally {

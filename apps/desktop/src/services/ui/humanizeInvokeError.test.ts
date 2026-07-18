@@ -35,7 +35,13 @@ describe("humanizeInvokeError", () => {
   });
 
   it("passes through normal business errors", () => {
-    expect(humanizeInvokeError(new Error("API Key 为空，无法保存。"))).toBe("API Key 为空，无法保存。");
+    expect(humanizeInvokeError(new Error("API 密钥为空，无法保存。"))).toBe("API 密钥为空，无法保存。");
+  });
+
+  it("maps Failed to fetch to Chinese", () => {
+    expect(humanizeInvokeError(new Error("Failed to fetch"))).toBe(
+      "网络请求失败，请检查网络与代理后重试。",
+    );
   });
 
   it("shortens reqwest network errors with a Chinese prefix", () => {

@@ -106,7 +106,7 @@ export function busyOverlayCopy(
         options?.elapsedSec ?? 0,
       );
     case "save":
-      return { title: "正在保存", lead: "写入 SQLite", detail: "请勿关闭应用" };
+      return { title: "正在保存", lead: "写入本地数据库", detail: "请勿关闭应用" };
     case "create":
       return { title: "正在创建项目", lead: "复制音频并写入数据库" };
     case "load":

@@ -125,8 +125,8 @@ export function OnlineSttRuntimeCredentialFields({
         <span className={fieldLabel}>
           {providerDef?.credentialFieldLabel ??
             (providerDef?.authStyle === "header" && providerDef.headerName
-              ? `根凭证 / Token（HTTP 头 ${providerDef.headerName}）`
-              : "根凭证 / API Key")}
+              ? `根凭证 / 令牌（HTTP 头 ${providerDef.headerName}）`
+              : "根凭证 / API 密钥")}
         </span>
         <input
           type="password"

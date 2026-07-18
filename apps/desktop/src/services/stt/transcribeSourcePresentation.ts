@@ -63,5 +63,5 @@ export function resolveTranscribeSourceDescription(
     return `在线 STT 已就绪 · ${providerLabel}`;
   }
 
-  return `请到「${ENV_NAV.onlineStt}」保存 Key 并探测连接。`;
+  return `请到「${ENV_NAV.onlineStt}」保存密钥并探测连接。`;
 }

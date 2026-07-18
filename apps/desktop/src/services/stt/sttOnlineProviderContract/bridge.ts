@@ -157,7 +157,7 @@ export function resolveOnlineTranscribeBlock(): string | null {
     if (def?.requiresApiSecret) {
       return `在线 STT：请到「${ENV_NAV.onlineStt}」填写 AppID、APISecret、APIKey 并保存。`;
     }
-    return `在线 STT：请到「${ENV_NAV.onlineStt}」保存 Key。`;
+    return `在线 STT：请到「${ENV_NAV.onlineStt}」保存密钥。`;
   }
   if (!isSttOnlineRuntimeConnectionVerified()) {
     return `在线 STT：请到「${ENV_NAV.onlineStt}」探测连接。`;

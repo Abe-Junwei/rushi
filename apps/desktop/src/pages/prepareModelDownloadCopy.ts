@@ -109,7 +109,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   }
   if (c === "model_manifest_path_missing") {
     return {
-      headline: "已启用模型 manifest 校验，但找不到校验清单文件。",
+      headline: "已启用模型清单校验，但找不到校验清单文件。",
       tips: [
         "若设置了 RUSHI_MODEL_VERIFY_MANIFEST，请确认路径正确且进程可读。",
         "不需要校验时，可在启动 ASR 的环境中移除此变量。",
@@ -118,10 +118,10 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   }
   if (c.includes("sha256_mismatch") || c.includes("manifest_")) {
     return {
-      headline: "模型文件与 manifest 校验不一致。",
+      headline: "模型文件与清单校验不一致。",
       tips: [
-        "若使用固定 manifest 发布，请核对 SHA256 是否与当前缓存文件一致。",
-        "开发环境可删除对应缓存目录后重新下载，或更新 manifest。",
+        "若使用固定清单发布，请核对 SHA256 是否与当前缓存文件一致。",
+        "开发环境可删除对应缓存目录后重新下载，或更新校验清单。",
       ],
     };
   }

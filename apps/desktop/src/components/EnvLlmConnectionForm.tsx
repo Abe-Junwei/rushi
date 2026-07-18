@@ -103,18 +103,18 @@ export function EnvLlmConnectionForm(props: Props) {
 
         {props.localLoopback ? (
           <p className={PANEL_TYPOGRAPHY.meta}>
-            本机 Ollama 不需要 API Key。模型 ID 须与{" "}
+            本机 Ollama 不需要 API 密钥。模型 ID 须与{" "}
             <code className={PANEL_TYPOGRAPHY.code}>ollama list</code> 一致（推荐 qwen2.5:7b）。
           </p>
         ) : (
           <>
             <label className={fieldGroup}>
-              <span className={fieldLabel}>API Key</span>
+              <span className={fieldLabel}>API 密钥</span>
               <input
                 className={monoField}
                 type="password"
                 autoComplete="off"
-                aria-label="API Key"
+                aria-label="API 密钥"
                 value={apiKeyDisplay}
                 disabled={props.formBusy}
                 onFocus={(e) => {
@@ -173,7 +173,7 @@ export function EnvLlmConnectionForm(props: Props) {
             disabled={props.formBusy || !props.savedApiKeyId}
             onClick={() => void props.clearSavedApiKey()}
           >
-            清除已保存 Key
+            清除已保存密钥
           </button>
         ) : null}
         <button type="button" className={CONTROL_BTN_PRIMARY} disabled={props.formBusy} onClick={() => void props.save()}>

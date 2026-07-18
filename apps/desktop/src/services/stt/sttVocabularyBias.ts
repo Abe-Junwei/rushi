@@ -26,16 +26,16 @@ const CHANNEL_BY_PROVIDER_ID: Readonly<Record<string, SttOnlineVocabularyChannel
 
 const FIELD_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
   openAiPrompt:
-    "OpenAI 音频转写 `prompt`（≤224 字；按词条最近更新时间优先，超限截断）",
+    "OpenAI 转写提示词（最多约 224 字；按词条最近更新优先，超限截断）",
   assemblyAiKeyterms:
-    "AssemblyAI `keyterms_prompt`（≤100 条；识别偏置，非 custom_spelling 转写后替换）",
+    "AssemblyAI 识别偏置词表（最多约 100 条；非转写后替换）",
   deepgramKeywords:
-    "Deepgram URL `keywords` 参数（≤50 个；默认无强度 boost）",
+    "Deepgram 关键词参数（最多约 50 个）",
   dashScopeVocabulary:
-    "百炼 `speech-biasing` 热词表（vocabulary_id；单条非 ASCII ≤15 字或 ASCII ≤7 词；target_model=fun-asr）",
+    "百炼语音偏置热词表（热词表 ID；单条非 ASCII ≤15 字或 ASCII ≤7 词；目标模型 fun-asr）",
   xunfeiSpeedAsrHotword:
     "讯飞极速大模型热词（英文逗号分隔；单条 ≤16 字；≤200 条）",
-  genericMultipartHotwords: "代理 multipart `hotwords`（须兼容 Rushi 契约）",
+  genericMultipartHotwords: "代理上传热词字段（须兼容 Rushi 契约）",
   unsupported: "",
 };
 
@@ -63,9 +63,9 @@ export function glossaryBiasSummaryForProviderId(providerId: string): string | n
 }
 
 const PREFLIGHT_BIAS_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
-  openAiPrompt: "在线 OpenAI：术语写入转写 prompt。",
+  openAiPrompt: "在线 OpenAI：术语写入转写提示词。",
   assemblyAiKeyterms: "在线 AssemblyAI：术语作为识别偏置提交。",
-  deepgramKeywords: "在线 Deepgram：术语作为 keywords 提交。",
+  deepgramKeywords: "在线 Deepgram：术语作为关键词提交。",
   dashScopeVocabulary: "在线百炼：术语同步为厂商热词表。",
   xunfeiSpeedAsrHotword: "在线讯飞极速大模型：术语将作为转写热词提交。",
   genericMultipartHotwords: "在线代理：术语随转写请求提交。",

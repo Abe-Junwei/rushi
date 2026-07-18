@@ -22,12 +22,12 @@ export type EnvNavItemDef = {
 /** 顺序：转写能力 → 编辑 → 数据/维护 → 关于（贴底） */
 export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断" },
-  { id: "online-stt", label: "在线 STT", description: "厂商与 API Key" },
+  { id: "online-stt", label: "在线 STT", description: "厂商与 API 密钥" },
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama" },
   { id: "preferences", label: "偏好设置", description: "外观与转写编辑体验" },
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作" },
   { id: "profile", label: "配置迁移", description: "导入 / 导出偏好" },
-  { id: "quality", label: "质量评测", description: "CER / 发版门禁" },
+  { id: "quality", label: "质量评测", description: "字错率 / 发版门禁" },
   { id: "about", label: "关于", description: "版本与第三方许可", pinBottom: true },
 ];
 

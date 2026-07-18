@@ -13,7 +13,7 @@ export const LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS: ReadonlyArray<{
 }> = [
   { id: "zh", label: "中文", description: "默认；适合中文录音转写。" },
   { id: "auto", label: "自动检测", description: "由识别模型自动判断语种（若支持）。" },
-  { id: "en", label: "English", description: "英文为主的内容。" },
+  { id: "en", label: "英语", description: "英文为主的内容。" },
   { id: "ja", label: "日本語", description: "日文为主的内容。" },
   { id: "ko", label: "한국어", description: "韩文为主的内容。" },
   { id: "yue", label: "粤语", description: "粤语/广东话内容。" },

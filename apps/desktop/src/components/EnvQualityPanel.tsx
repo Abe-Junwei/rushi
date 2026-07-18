@@ -30,7 +30,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
   const q = useQualityEvalController();
   const disabled = appBusy || q.busy;
   const evalRunHint = packagedOrDev(
-    "在仓库根执行 npm run eval:run 后导入 JSON。",
+    "在仓库根执行评测命令后导入报告。",
     "点「导入报告」选择评测 JSON 文件。",
   );
   const [exportRedact, setExportRedact] = useState(true);
@@ -63,21 +63,21 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
       <section className={ENV_PANEL_SECTION_TOOLS_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>质量评测</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
-          R4：展示最近一次 eval 批跑摘要（CER / 术语命中）。发版前请运行 R4-GATE（制控专名样例）并可选设定回归基线。
+          展示最近一次评测批跑摘要（字错率 / 术语命中）。发版前请运行制控专名门禁样例，并可选设定回归基线。
         </p>
 
         <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={CONTROL_BTN_PRIMARY} disabled={disabled} onClick={() => void q.runEval()}>
           <PRODUCT_ICON.runJob className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          运行全量 eval
+          运行全量评测
         </button>
         <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={() => void q.runGateEval()}>
           <PRODUCT_ICON.qualityGate className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          R4-GATE（制控专名）
+          制控专名门禁
         </button>
         <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={() => void q.importReport()}>
           <FileUp className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          导入报告 JSON
+          导入报告
         </button>
         <button
           type="button"
@@ -103,13 +103,13 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         {q.summary ? (
           <div className="grid gap-4 rounded-lg bg-notion-callout-bg p-4 md:grid-cols-2 lg:grid-cols-4">
           <Metric label="评测条目" value={String(q.summary.itemCount)} />
-          <Metric label="平均 CER" value={formatQualityCer(q.summary.meanCer)} />
+          <Metric label="平均字错率" value={formatQualityCer(q.summary.meanCer)} />
           <Metric label="平均术语命中" value={formatQualityPct(q.summary.meanTermHit)} />
           <Metric label={`门禁 ${q.summary.gateItemId}`} value={formatQualityPct(q.summary.gateTermHit)} />
           {q.delta ? (
             <>
               <Metric
-                label="Δ 平均 CER（相对基线）"
+                label="Δ 平均字错率（相对基线）"
                 value={
                   q.delta.meanCerDelta != null
                     ? (q.delta.meanCerDelta >= 0 ? "+" : "") + q.delta.meanCerDelta.toFixed(4)
@@ -117,12 +117,12 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
                 }
               />
               <Metric
-                label="Δ 制控 term_hit"
+                label="Δ 制控术语命中"
                 value={
                   q.delta.gateTermHitDelta != null
                     ? (q.delta.gateTermHitDelta >= 0 ? "+" : "") +
                       (q.delta.gateTermHitDelta * 100).toFixed(1) +
-                      " pp"
+                      " 百分点"
                     : "—"
                 }
               />
@@ -133,7 +133,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
           </div>
         ) : (
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-            尚无评测报告。请确保本机 ASR（127.0.0.1:8741）已就绪，或{evalRunHint}
+            尚无评测报告。请确保本机 ASR 已就绪，或{evalRunHint}
           </p>
         )}
 
@@ -146,9 +146,9 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
             <table className={`w-full min-w-[32rem] text-left ${PANEL_TYPOGRAPHY.body}`}>
               <thead className="border-b border-notion-divider text-notion-text-muted">
                 <tr>
-                  <th className="px-3 py-2 font-medium">ID</th>
-                  <th className="px-3 py-2 font-medium">CER</th>
-                  <th className="px-3 py-2 font-medium">term_hit</th>
+                  <th className="px-3 py-2 font-medium">条目 ID</th>
+                  <th className="px-3 py-2 font-medium">字错率</th>
+                  <th className="px-3 py-2 font-medium">术语命中</th>
                   <th className="px-3 py-2 font-medium">状态</th>
                 </tr>
               </thead>
@@ -161,7 +161,13 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
                     <td className={`px-3 py-2 ${PANEL_TYPOGRAPHY.code}`}>{it.id}</td>
                     <td className="px-3 py-2 text-notion-text">{formatQualityCer(it.cerChars ?? null)}</td>
                     <td className="px-3 py-2 text-notion-text">{formatQualityPct(it.termHitRate ?? null)}</td>
-                    <td className="px-3 py-2 text-notion-text-muted">{it.error ?? it.skipped ?? "ok"}</td>
+                    <td className="px-3 py-2 text-notion-text-muted">
+                      {it.error
+                        ? it.error
+                        : it.skipped
+                          ? `已跳过：${it.skipped}`
+                          : "正常"}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -171,7 +177,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
       </section>
 
       <section className={ENV_PANEL_SECTION_CLASS}>
-        <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>纠错记忆导出（R4）</h3>
+        <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>纠错记忆导出</h3>
         <label className={`flex items-center gap-2 ${PANEL_TYPOGRAPHY.controlText}`}>
           <input
             type="checkbox"
@@ -183,13 +189,13 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </label>
         <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={handleExportMemory}>
           <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          导出 correction_memory JSONL
+          导出纠错记忆（JSONL）
         </button>
       </section>
 
       {!readShellManagesBundledSidecarSync() ? (
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>
-          终端等价命令：npm run eval:run · npm run eval:run:hotwords-on --filter-id proper-noun-zhikong
+          终端等价命令见评测文档（eval:run / 热词对照）。
         </p>
       ) : null}
     </div>

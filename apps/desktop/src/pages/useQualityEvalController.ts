@@ -55,8 +55,8 @@ export function useQualityEvalController() {
         setError("");
         setStatus(
           gate
-            ? "R4-GATE：正在转写制控样例并计算 term_hit（约 3～15 分钟，窗口可继续浏览但请勿重复点击）…"
-            : "正在运行全量 eval 批跑（条目多时可较久；ASR 须 8741 已就绪）…",
+            ? "发版门禁：正在转写制控样例并计算术语命中（约 3～15 分钟，窗口可继续浏览但请勿重复点击）…"
+            : "正在运行全量评测批跑（条目多时可较久；本机 ASR 须已就绪）…",
         );
       });
       try {

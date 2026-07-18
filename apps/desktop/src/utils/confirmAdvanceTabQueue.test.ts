@@ -1,10 +1,19 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import {
   CONFIRM_ADVANCE_TAB_QUEUE_MAX,
   enqueueConfirmAdvanceTab,
   type ConfirmAdvanceTabQueueRef,
 } from "./confirmAdvanceTabQueue";
+import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
+
+vi.mock("./waveformPrefs", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("./waveformPrefs")>();
+  return {
+    ...actual,
+    readStoredTabAdvanceLoopsSegment: vi.fn(() => false),
+  };
+});
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -59,6 +68,10 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
 }
 
 describe("confirmAdvanceTabQueue", () => {
+  afterEach(() => {
+    vi.mocked(readStoredTabAdvanceLoopsSegment).mockReturnValue(false);
+  });
+
   it("Tab advance queues steps without finalizing", async () => {
     let selectedIdx = 0;
     const ctx = makeCtx();
@@ -94,6 +107,38 @@ describe("confirmAdvanceTabQueue", () => {
     expect(confirmSegmentEditAndAdvance).not.toHaveBeenCalled();
     expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
     expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
+    // Default: Tab advance does not auto-loop the landed segment.
+    expect(deps.wf.playSegmentAtIndex).not.toHaveBeenCalled();
+  });
+
+  it("Tab advance plays landed segment when loop preference is on", async () => {
+    vi.mocked(readStoredTabAdvanceLoopsSegment).mockReturnValue(true);
+    let selectedIdx = 0;
+    const ctx = makeCtx();
+    const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));
+    const selectSegmentAt = vi.fn((idx: number) => {
+      selectedIdx = idx;
+    });
+    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pending: [] };
+    const deps = {
+      getCtx,
+      segmentListFilterNavState: { active: false, indices: [] },
+      selectSegmentAt,
+      focusSegmentTextarea: vi.fn(),
+      wf: {
+        preserveLoopForNextSegmentSelect: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+      },
+    };
+
+    enqueueConfirmAdvanceTab(queue, deps);
+    enqueueConfirmAdvanceTab(queue, deps);
+
+    await vi.waitFor(() => {
+      expect(queue.inFlight).toBe(false);
+      expect(queue.pending).toHaveLength(0);
+    });
+
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledTimes(1);
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledWith(2, { loop: true });
   });

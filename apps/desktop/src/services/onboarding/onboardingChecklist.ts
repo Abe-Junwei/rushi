@@ -51,7 +51,7 @@ export function resolveOnboardingTranscribeEnvStep(source: TranscribeSource): Pi
   if (source === "online") {
     return {
       title: "配置在线 STT",
-      description: "在环境页选择服务商、保存 Key 并探测连接。",
+      description: "在环境页选择服务商、保存密钥并探测连接。",
     };
   }
   return {

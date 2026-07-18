@@ -95,11 +95,11 @@ export function bannerDetail(input: {
   }
   switch (input.connectionStatus) {
     case "missing":
-      return `请在「${ENV_NAV.llm}」选择厂商并保存 API Key。`;
+      return `请在「${ENV_NAV.llm}」选择厂商并保存 API 密钥。`;
     case "keychain_missing":
       return "本地未找到密钥，请重新保存。";
     case "unverified":
-      return "Key 已保存，请探测连接。";
+      return "密钥已保存，请探测连接。";
     case "verified":
       return "已验证，导出润色可用。";
   }
@@ -124,7 +124,7 @@ export function blockReasonForPresentation(input: {
   if (!tryBuildPostprocessRuntimeBridge()) {
     return input.mode === "local"
       ? `请在「${ENV_NAV.llm}」选择 Ollama 并保存模型。`
-      : `请在「${ENV_NAV.llm}」选择厂商并保存 API Key。`;
+      : `请在「${ENV_NAV.llm}」选择厂商并保存 API 密钥。`;
   }
   if (input.mode === "local") {
     if (input.ollamaDetectBusy) return "正在检测本机 Ollama…";
@@ -146,7 +146,7 @@ export function blockReasonForPresentation(input: {
     return null;
   }
   if (!input.runtimeReady) {
-    return `请在「${ENV_NAV.llm}」保存 API Key。`;
+    return `请在「${ENV_NAV.llm}」保存 API 密钥。`;
   }
   if (!input.connectionVerified) {
     return `请在「${ENV_NAV.llm}」探测连接。`;

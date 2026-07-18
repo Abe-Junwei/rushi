@@ -151,14 +151,14 @@ export function buildOnlineSttEnvPresentation(
       return withChip({
         tone: "warn",
         bannerTitle: "在线 STT · 待填写凭证",
-        bannerDetail: "请填写 API Key 并保存。",
+        bannerDetail: "请填写 API 密钥并保存。",
         chipOk: false,
       });
     }
     return withChip({
       tone: "warn",
       bannerTitle: "在线 STT · 待验证",
-      bannerDetail: "请填写 Key 并探测。",
+      bannerDetail: "请填写密钥并探测。",
       chipOk: false,
     });
   }

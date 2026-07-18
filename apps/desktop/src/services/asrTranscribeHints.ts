@@ -76,14 +76,14 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     );
   } else if (warnings.some((w) => w === "online_vocabulary_truncated_dashscope_terms")) {
     hints.push(
-      "部分术语不符合百炼热词长度规则（非 ASCII 单条 ≤15 字；纯英文 ≤7 个词），已跳过；其余词条已同步为 vocabulary_id。",
+      "部分术语不符合百炼热词长度规则（非 ASCII 单条 ≤15 字；纯英文 ≤7 个词），已跳过；其余词条已同步为热词表 ID。",
     );
   } else if (warnings.some((w) => w === "online_vocabulary_truncated_xunfei_speed_asr_hotword")) {
     hints.push(
       "部分术语超过讯飞热词长度或数量上限（单条 ≤16 字、≤200 条），已截断；其余词条已写入 business.dhw。",
     );
   } else if (warnings.some((w) => w === "online_vocabulary_sync_failed")) {
-    hints.push("百炼热词表同步失败，本次转写未携带 vocabulary_id；请检查 API Key 权限与网络。");
+    hints.push("百炼热词表同步失败，本次转写未携带热词表 ID；请检查 API 密钥权限与网络。");
   } else if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
     hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在「热词与记忆」减少条目或优先保留关键专名。");
   }
@@ -95,7 +95,7 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   }
   if (warnings.some((w) => w.includes("funasr_whole_track_fallback"))) {
     hints.push(
-      "识别完成，但模型未返回分句时间戳：已用整轨单语段承载全文。可在波形上拖选拆分，或换用带 sentence_info 的 FunASR 模型后重新拉取。",
+      "识别完成，但模型未返回分句时间戳：已用整轨单语段承载全文。可在波形上拖选拆分，或换用带分句时间戳的 FunASR 模型后重新拉取。",
     );
   } else if (warnings.some((w) => w === "online_segmentation_proportional")) {
     hints.push(

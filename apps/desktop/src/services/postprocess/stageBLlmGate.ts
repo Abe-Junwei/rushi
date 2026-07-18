@@ -80,16 +80,16 @@ export async function ensureStageBLlmActionReady(input: {
   const cfg = readLlmRuntimeConfigFromStorage();
   const apiKeyId = cfg.apiKeyId?.trim();
   if (!apiKeyId) {
-    return `请在「${ENV_NAV.llm}」选择厂商并保存 Key。`;
+    return `请在「${ENV_NAV.llm}」选择厂商并保存密钥。`;
   }
 
   try {
     const ok = await llmHasStoredApiKey({ apiKeyId });
     if (!ok) {
-      return `本地未找到 Key，请在「${ENV_NAV.llm}」重新保存。`;
+      return `本地未找到密钥，请在「${ENV_NAV.llm}」重新保存。`;
     }
   } catch {
-    return `无法读取 Key，请在「${ENV_NAV.llm}」重新保存。`;
+    return `无法读取密钥，请在「${ENV_NAV.llm}」重新保存。`;
   }
 
   if (!tryBuildPostprocessRuntimeBridge()) {

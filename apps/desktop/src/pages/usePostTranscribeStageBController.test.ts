@@ -169,7 +169,7 @@ describe("usePostTranscribeStageBController", () => {
 
   it("offerPostTranscribeStageB toasts when keychain check fails before consent", async () => {
     vi.mocked(ensureStageBLlmActionReady).mockResolvedValue(
-      "本地未找到 API Key，请在「环境 → LLM 配置」重新保存。",
+      "本地未找到 API 密钥，请在「环境 → LLM 配置」重新保存。",
     );
     const args = baseArgs();
     const { result } = renderHook(() => usePostTranscribeStageBController(args));
@@ -179,7 +179,7 @@ describe("usePostTranscribeStageBController", () => {
     });
 
     expect(toast.warning).toHaveBeenCalledWith(
-      "本地未找到 API Key，请在「环境 → LLM 配置」重新保存。",
+      "本地未找到 API 密钥，请在「环境 → LLM 配置」重新保存。",
     );
     expect(result.current.postTranscribeStageBDialog).toEqual({ phase: "closed" });
   });

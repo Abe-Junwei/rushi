@@ -16,7 +16,7 @@ describe("ProjectBusyOverlay transcribe copy (R3t-B)", () => {
   it("shows save-specific copy", () => {
     const copy = busyOverlayCopy("save" satisfies BusyReason, null);
     expect(copy.title).toBe("正在保存");
-    expect(copy.lead).toContain("SQLite");
+    expect(copy.lead).toContain("本地数据库");
   });
 });
 

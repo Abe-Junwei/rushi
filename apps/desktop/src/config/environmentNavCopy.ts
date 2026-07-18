@@ -11,13 +11,13 @@ export const ENV_NAV = {
   about: "环境 → 关于",
 } as const;
 
-/** API Key 保存状态一行说明（LLM / 在线 STT 共用）。 */
+/** API 密钥保存状态一行说明（LLM / 在线 STT 共用）。 */
 export function localSecretStoreReferenceMessage(
   apiKeyId: string | null | undefined,
   keychainPresent: boolean | null,
 ): string {
   const label = apiKeyId?.trim();
-  if (!label) return "未保存 Key。";
+  if (!label) return "未保存密钥。";
   if (keychainPresent === null) return `检查密钥（${label}）…`;
   if (keychainPresent) return `已保存（${label}）；留空即用。`;
   return `未找到密钥（${label}），请重新保存。`;

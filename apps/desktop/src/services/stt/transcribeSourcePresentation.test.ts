@@ -212,6 +212,6 @@ describe("resolveTranscribeSourceDescription", () => {
     );
     const text = resolveTranscribeSourceDescription("online", { onlineReady: false });
     expect(text).toContain("探测连接");
-    expect(text).toContain("保存 Key");
+    expect(text).toContain("保存密钥");
   });
 });

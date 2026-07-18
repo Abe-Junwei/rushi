@@ -63,7 +63,7 @@ export function useEnvOnlineSttPanelProbe({
       const providerDef = getSttOnlineProviderDefinition(olProviderId);
       const providerApiKeyId = resolveSttApiKeyIdForProvider(olProviderId);
       const providerApiSecretId = resolveSttApiSecretIdForProvider(olProviderId);
-      const apiKeyLabel = providerDef?.credentialFieldLabel ?? "API Key";
+      const apiKeyLabel = providerDef?.credentialFieldLabel ?? "API 密钥";
       let nextApiKeyId = normalizeSttApiKeyId(savedApiKeyId ?? readExternalSttOnlineRuntimeConfigFromStorage().apiKeyId);
       let nextApiSecretId = normalizeSttApiKeyId(
         savedApiSecretId ?? readSttOnlineApiSecretIdFromStorage(),

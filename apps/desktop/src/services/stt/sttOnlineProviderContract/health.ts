@@ -87,7 +87,7 @@ export async function probeExternalSttOnlineHealth(
       state: "unconfigured",
       available: false,
       endpoint: resolveSttOnlinePresetTranscribeUrl(runtime.selectedProviderId) ?? undefined,
-      message: "请填写并保存 API Key。",
+      message: "请填写并保存 API 密钥。",
     };
   }
 

@@ -72,7 +72,7 @@ export function useEnvOnlineSttPanelCredentialActions({
         });
         clearSttConnectionVerified();
       }
-      const apiKeyLabel = providerDef?.credentialFieldLabel ?? "API Key";
+      const apiKeyLabel = providerDef?.credentialFieldLabel ?? "API 密钥";
       if (!nextApiKeyId) {
         throw new Error(`请先填写 ${apiKeyLabel}，再点击保存在线配置。`);
       }

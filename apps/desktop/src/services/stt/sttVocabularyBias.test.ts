@@ -20,13 +20,13 @@ describe("sttVocabularyBias", () => {
     expect(glossaryBiasFieldHint("openAiPrompt")).toContain("224");
     expect(glossaryBiasFieldHint("openAiPrompt")).toContain("最近更新");
     expect(glossaryBiasFieldHint("assemblyAiKeyterms")).toContain("100");
-    expect(glossaryBiasFieldHint("assemblyAiKeyterms")).toContain("custom_spelling");
+    expect(glossaryBiasFieldHint("assemblyAiKeyterms")).toContain("识别偏置");
     expect(glossaryBiasFieldHint("deepgramKeywords")).toContain("50");
   });
 
   it("summary for supported providers references mapping", () => {
     const s = glossaryBiasSummaryForProviderId("openai");
-    expect(s).toContain("prompt");
+    expect(s).toContain("转写提示词");
     expect(s).toContain("224");
   });
 

@@ -97,7 +97,7 @@ export function OnlineSttRuntimeForm({
   const authSummary =
     providerDef?.authStyle === "header" && providerDef.headerName
       ? `HTTP 头 ${providerDef.headerName}`
-      : "标准 Bearer / API Key";
+      : "标准令牌认证 / API 密钥";
   const presetDisplay = resolveSttOnlinePresetEndpointDisplay(providerId);
   const showCustomEndpoint = sttOnlineProviderEndpointUserConfigurable(providerId);
   const keychainResolved = keychainChecking ? null : keychainReady;

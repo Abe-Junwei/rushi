@@ -50,6 +50,10 @@ export function humanizeInvokeError(raw: unknown): string {
     return "网络请求失败，请检查网络与代理后重试。";
   }
 
+  if (/^failed to fetch$/i.test(trimmed) || /networkerror when attempting to fetch/i.test(trimmed)) {
+    return "网络请求失败，请检查网络与代理后重试。";
+  }
+
   if (
     /TooLarge|20971520|BadRequest\.TooLarge/i.test(trimmed) &&
     (/百炼/i.test(trimmed) || /dashscope/i.test(trimmed))

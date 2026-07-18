@@ -38,7 +38,7 @@ export function resolveStageBBlockReason(input: {
     return "正在检查 LLM 密钥状态…";
   }
   if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
-    return `本地未找到 API Key，请在「${ENV_NAV.llm}」重新保存。`;
+    return `本地未找到 API 密钥，请在「${ENV_NAV.llm}」重新保存。`;
   }
   if (!isLlmConnectionVerified()) {
     return `请在「${ENV_NAV.llm}」完成探测后再使用智能改稿。`;
