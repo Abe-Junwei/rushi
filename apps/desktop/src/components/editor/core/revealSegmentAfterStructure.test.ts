@@ -17,6 +17,7 @@ function makeView(args?: {
   clientHeight?: number;
   scrollHeight?: number;
   blocks?: Array<{ top: number; bottom: number; height: number }>;
+  withRequestMeasure?: boolean;
 }) {
   const state = EditorState.create({ doc: "line0\nline1\nline2\nline3" });
   const scrollDOM = document.createElement("div");
@@ -39,6 +40,7 @@ function makeView(args?: {
     { top: 800, bottom: 850, height: 50 },
     { top: 1200, bottom: 1250, height: 50 },
   ];
+  const measureRequests: Array<{ read: () => unknown; write: (v: unknown) => void }> = [];
   const view = {
     state,
     scrollDOM,
@@ -47,8 +49,22 @@ function makeView(args?: {
       const b = blocks[line.number - 1] ?? { top: 0, bottom: 50, height: 50 };
       return { from: line.from, to: line.to, ...b, type: "text" };
     },
+    ...(args?.withRequestMeasure
+      ? {
+          requestMeasure(req: { read: () => unknown; write: (v: unknown) => void }) {
+            measureRequests.push(req);
+          },
+        }
+      : {}),
   } as unknown as EditorView;
-  return { view, scrollDOM };
+  return { view, scrollDOM, measureRequests };
+}
+
+/** Flush queued rAF callbacks (structure waitForMeasure uses nested rAF). */
+function flushRafs(raf: FrameRequestCallback[]): void {
+  const snapshot = [...raf];
+  raf.length = 0;
+  for (const cb of snapshot) cb(0);
 }
 
 describe("revealSegmentAfterStructure", () => {
@@ -112,6 +128,71 @@ describe("revealSegmentAfterStructure", () => {
     expect(getRevealScheduleGenerationForTests(view)).toBeGreaterThan(g2);
   });
 
+  it("waitForMeasure does not scroll synchronously; centers after rAF", () => {
+    const raf: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      raf.push(cb);
+      return raf.length;
+    });
+    const { view, scrollDOM } = makeView({
+      scrollTop: 0,
+      clientHeight: 200,
+      blocks: [
+        { top: 0, bottom: 50, height: 50 },
+        { top: 400, bottom: 480, height: 80 },
+        { top: 500, bottom: 550, height: 50 },
+        { top: 600, bottom: 650, height: 50 },
+      ],
+    });
+    scheduleRevealSegment(view, 1, {
+      preserveAnchor: true,
+      priorAnchorOffsetPx: 50,
+      waitForMeasure: true,
+      validateTarget: false,
+    });
+    // Sync path must not move scroll (avoids CM measure fight).
+    expect(scrollDOM.scrollTop).toBe(0);
+    flushRafs(raf);
+    // First rAF applies center: offset 60 → scrollTop 340.
+    expect(scrollDOM.scrollTop).toBe(340);
+    flushRafs(raf);
+    // Second rAF settle: line start still in view → no further jump.
+    expect(scrollDOM.scrollTop).toBe(340);
+    void revealSegmentAfterStructureChange;
+  });
+
+  it("waitForMeasure schedules apply outside requestMeasure write", () => {
+    const raf: FrameRequestCallback[] = [];
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      raf.push(cb);
+      return raf.length;
+    });
+    const { view, scrollDOM, measureRequests } = makeView({
+      scrollTop: 10,
+      clientHeight: 200,
+      withRequestMeasure: true,
+      blocks: [
+        { top: 0, bottom: 50, height: 50 },
+        { top: 400, bottom: 480, height: 80 },
+        { top: 500, bottom: 550, height: 50 },
+        { top: 600, bottom: 650, height: 50 },
+      ],
+    });
+    scheduleRevealSegment(view, 1, {
+      preserveAnchor: true,
+      priorAnchorOffsetPx: 50,
+      waitForMeasure: true,
+      validateTarget: false,
+    });
+    expect(scrollDOM.scrollTop).toBe(10);
+    expect(measureRequests).toHaveLength(1);
+    // Measure write only queues rAF — must not scroll inside measure.
+    measureRequests[0]!.write(measureRequests[0]!.read());
+    expect(scrollDOM.scrollTop).toBe(10);
+    flushRafs(raf);
+    expect(scrollDOM.scrollTop).toBe(340);
+  });
+
   it("revealSegmentAfterStructureChange bumps generation (cancelable chain)", () => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
       cb(0);
@@ -119,15 +200,13 @@ describe("revealSegmentAfterStructure", () => {
     });
     const { view } = makeView({ scrollTop: 0 });
     const before = getRevealScheduleGenerationForTests(view);
-    // Bypass validateTarget path for bare mock view — schedule directly.
     scheduleRevealSegment(view, 1, {
       preserveAnchor: true,
       priorAnchorOffsetPx: 10,
-      deferLayout: true,
+      waitForMeasure: true,
       validateTarget: false,
     });
     expect(getRevealScheduleGenerationForTests(view)).toBeGreaterThan(before);
-    void revealSegmentAfterStructureChange;
   });
 
   it("deferLayout settle skips re-scroll when line geometry is unchanged", () => {
@@ -179,4 +258,3 @@ describe("revealSegmentAfterStructure", () => {
     expect(scrollDOM.scrollTop).toBe(360);
   });
 });
-

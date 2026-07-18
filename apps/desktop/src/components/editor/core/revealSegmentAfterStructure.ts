@@ -69,9 +69,9 @@ export function revealSegmentPreservingViewportOffset(
 }
 
 /**
- * Reveal now + at most one settle pass after wrap/layout (CM lineWrapping).
- * Uses the shared cancellable scheduler — later reveals cancel earlier ones.
- * Settle only nudges if the line start left the viewport after wrap.
+ * After merge/split/delete: wait for CM measure / one frame, then place the
+ * primary line at viewport middle once. Sync scroll during lineWrapping settle
+ * fights the heightmap ("Viewport failed to stabilize").
  */
 export function revealSegmentAfterStructureChange(
   view: EditorView,
@@ -82,7 +82,7 @@ export function revealSegmentAfterStructureChange(
     preserveAnchor: true,
     priorAnchorOffsetPx: opts?.priorAnchorOffsetPx,
     validateTarget: true,
-    deferLayout: true,
+    waitForMeasure: true,
   });
 }
 

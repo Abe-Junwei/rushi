@@ -156,6 +156,12 @@ export type ScheduleRevealSegmentOpts = {
    * triple scroll — that fights lineWrapping height settle after merge).
    */
   deferLayout?: boolean;
+  /**
+   * After structure replace: do not scroll synchronously. Wait for CM measure /
+   * one frame, then scroll once (viewport middle). Avoids fighting lineWrapping
+   * heightmap ("Viewport failed to stabilize").
+   */
+  waitForMeasure?: boolean;
 };
 
 function readRevealLineGeom(
@@ -166,6 +172,17 @@ function readRevealLineGeom(
   const line = view.state.doc.line(segmentIdx + 1);
   const block = view.lineBlockAt(line.from);
   return { top: block.top, height: block.height };
+}
+
+function targetStillValid(
+  view: EditorView,
+  segmentIdx: number,
+  validateTarget: boolean | undefined,
+): boolean {
+  if (!validateTarget) return true;
+  if (primarySegmentIdx(view.state) !== segmentIdx) return false;
+  if (!isTranscriptSegmentVisible(view.state, segmentIdx)) return false;
+  return true;
 }
 
 /**
@@ -200,23 +217,102 @@ export function scheduleRevealSegment(
   };
   state.cleanup = cleanup;
 
-  let lastGeom: { top: number; height: number } | null = null;
+  const generationLive = () => getRevealSchedule(view).generation === generation;
 
-  const run = (mode: "force" | "ifChanged"): boolean => {
-    if (getRevealSchedule(view).generation !== generation) return false;
+  const applyReveal = (): boolean => {
+    if (!generationLive()) return false;
     if (userInterrupted) {
       cleanup();
       return false;
     }
-    if (opts.validateTarget) {
-      if (primarySegmentIdx(view.state) !== segmentIdx) {
-        cleanup();
-        return false;
+    if (!targetStillValid(view, segmentIdx, opts.validateTarget)) {
+      cleanup();
+      return false;
+    }
+    if (opts.preserveAnchor) {
+      revealSegmentPreservingViewportOffsetInline(view, segmentIdx, opts.priorAnchorOffsetPx);
+    } else {
+      revealSegmentInScrollDOM(view, segmentIdx, { y: opts.y ?? "nearest" });
+    }
+    return true;
+  };
+
+  const nudgeIfOffscreen = (): void => {
+    if (!generationLive()) return;
+    if (userInterrupted) {
+      cleanup();
+      return;
+    }
+    if (!targetStillValid(view, segmentIdx, opts.validateTarget)) {
+      cleanup();
+      return;
+    }
+    const geom = readRevealLineGeom(view, segmentIdx);
+    const top = scroller.scrollTop;
+    const viewportH = Math.max(1, scroller.clientHeight);
+    if (geom && (geom.top < top - 1 || geom.top > top + viewportH - 1)) {
+      revealSegmentInScrollDOM(view, segmentIdx, { y: "center" });
+    }
+    cleanup();
+  };
+
+  /**
+   * Structure path: never write scrollTop inside CM measure `write` (restarts
+   * the measure loop → "Viewport failed to stabilize"). Schedule apply on rAF
+   * after measure has had a chance to settle.
+   */
+  if (opts.waitForMeasure) {
+    let applyScheduled = false;
+    const scheduleApplyAndSettle = () => {
+      if (applyScheduled) return;
+      applyScheduled = true;
+      if (typeof requestAnimationFrame !== "function") {
+        applyReveal();
+        nudgeIfOffscreen();
+        return;
       }
-      if (!isTranscriptSegmentVisible(view.state, segmentIdx)) {
-        cleanup();
-        return false;
+      requestAnimationFrame(() => {
+        if (!applyReveal()) return;
+        requestAnimationFrame(() => {
+          nudgeIfOffscreen();
+        });
+      });
+    };
+
+    if (typeof view.requestMeasure === "function") {
+      view.requestMeasure({
+        key: "rushi-structure-reveal",
+        read: () => readRevealLineGeom(view, segmentIdx),
+        write: () => {
+          // Queue scroll outside the measure cycle.
+          scheduleApplyAndSettle();
+        },
+      });
+      // Fallback when measure never flushes (tests / destroyed view).
+      if (typeof requestAnimationFrame === "function") {
+        requestAnimationFrame(() => {
+          if (!applyScheduled && generationLive()) scheduleApplyAndSettle();
+        });
+      } else if (!applyScheduled) {
+        scheduleApplyAndSettle();
       }
+    } else {
+      scheduleApplyAndSettle();
+    }
+    return generation;
+  }
+
+  let lastGeom: { top: number; height: number } | null = null;
+
+  const run = (mode: "force" | "ifChanged"): boolean => {
+    if (!generationLive()) return false;
+    if (userInterrupted) {
+      cleanup();
+      return false;
+    }
+    if (!targetStillValid(view, segmentIdx, opts.validateTarget)) {
+      cleanup();
+      return false;
     }
     const geom = readRevealLineGeom(view, segmentIdx);
     if (
@@ -253,35 +349,14 @@ export function scheduleRevealSegment(
       return generation;
     }
     requestAnimationFrame(() => {
-      if (getRevealSchedule(view).generation !== generation) return;
-      if (userInterrupted) {
-        cleanup();
-        return;
-      }
-      if (opts.validateTarget) {
-        if (primarySegmentIdx(view.state) !== segmentIdx) {
-          cleanup();
-          return;
-        }
-        if (!isTranscriptSegmentVisible(view.state, segmentIdx)) {
-          cleanup();
-          return;
-        }
-      }
-      const geom = readRevealLineGeom(view, segmentIdx);
-      const top = scroller.scrollTop;
-      const viewportH = Math.max(1, scroller.clientHeight);
-      if (geom && (geom.top < top - 1 || geom.top > top + viewportH - 1)) {
-        revealSegmentInScrollDOM(view, segmentIdx, { y: "center" });
-      }
-      cleanup();
+      nudgeIfOffscreen();
     });
     return generation;
   }
 
   /** Non-anchor defer: re-scroll only when wrap/filter geometry moved. */
   const polish = () => {
-    if (getRevealSchedule(view).generation !== generation) return;
+    if (!generationLive()) return;
     run("ifChanged");
   };
 
