@@ -14,7 +14,8 @@
 - **portable 硬门禁**：**必须**含 CPU 侧车 onedir + Plan B `bundled-asr-models/`（缺一则 CI fail）。
 - NSIS 中文安装包仍产出（OTA 用）：**仅 CPU 侧车**（makensis 限制，不含模型）；**未签名时**下载页应引导「更多信息 → 仍要运行」，不作为小白主路径。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
-- **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis / `Compress-Archive` / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败先修 workflow 重跑，不默认切本地。
+- **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；② **仅当** Windows 因 **打包模型 OOM**（makensis mmap / runner 内存）失败时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑，不默认切本地。
+- **makensis MAX_PATH**：侧车内 `torch-*.dist-info/licenses/third_party/...` 过深会 abort；CI/本地在 NSIS 前跑 `scripts/prune-windows-sidecar-for-nsis.ps1`（删 runtime 不需要的 licenses 树）。
 
 ## 1. 物料
 

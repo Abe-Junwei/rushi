@@ -81,6 +81,12 @@ Write-Host "== sidecar health smoke =="
 & pwsh (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1")
 if ($LASTEXITCODE -ne 0) { throw "sidecar health smoke failed" }
 
+Write-Host "== prune sidecar for makensis MAX_PATH =="
+& pwsh (Join-Path $Root "scripts\prune-windows-sidecar-for-nsis.ps1") -Onedir @(
+  "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar"
+)
+if ($LASTEXITCODE -ne 0) { throw "prune-windows-sidecar-for-nsis failed" }
+
 Write-Host "== measure bundle size spike (pre-NSIS) =="
 & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1")
 

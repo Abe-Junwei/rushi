@@ -132,6 +132,10 @@ if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
 New-Item -ItemType Directory -Force (Split-Path $Dest) | Out-Null
 Copy-Item -Recurse $DistOnedir $Dest
 
+# Drop torch *.dist-info/licenses trees so makensis does not hit MAX_PATH.
+& pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root "scripts\prune-windows-sidecar-for-nsis.ps1") -Onedir @($DestRel)
+if ($LASTEXITCODE -ne 0) { throw "prune-windows-sidecar-for-nsis failed ($LASTEXITCODE)" }
+
 $gitSha = "unknown"
 if (Get-Command git -ErrorAction SilentlyContinue) {
   $gitResult = git -C $Root rev-parse --short HEAD 2>$null

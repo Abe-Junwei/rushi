@@ -363,6 +363,12 @@ jobs:
         run: pwsh scripts/smoke-asr-sidecar-health.ps1
         timeout-minutes: 10
 
+      - name: Prune sidecar deep license trees (makensis MAX_PATH)
+        # torch *.dist-info/licenses/.../third_party/... exceeds ~260 chars under
+        # apps/desktop/src-tauri/resources/bundled-asr/... and aborts makensis.
+        shell: pwsh
+        run: pwsh scripts/prune-windows-sidecar-for-nsis.ps1 -Onedir apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar
+
       - name: Guard — Plan B models must not enter Windows NSIS
         # Second knife: NSIS still OOMs with CPU+models (see win-nsis research).
         # Plan B weights are staged AFTER NSIS into the portable zip (主分发).
