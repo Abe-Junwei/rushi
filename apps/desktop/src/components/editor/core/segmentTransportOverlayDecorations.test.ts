@@ -80,9 +80,9 @@ describe("segmentTransportOverlayDecorations", () => {
     view.dispatch({ effects: setTranscriptHoverSegmentEffect.of(0) });
     const play = view.contentDOM.querySelector(
       `.cm-transcript-line-play-host--forced [${CM_SEGMENT_PLAY_ATTR}]`,
-    ) as HTMLElement | null;
+    );
     expect(play).toBeTruthy();
-    Object.defineProperty(play!, "getBoundingClientRect", {
+    Object.defineProperty(play, "getBoundingClientRect", {
       value: () =>
         ({
           left: 10,
@@ -105,8 +105,8 @@ describe("segmentTransportOverlayDecorations", () => {
       } as CSSStyleDeclaration;
     });
 
-    expect(resolvePlayButtonIdxAtPoint(view!.contentDOM, 20, 30)).toBe(0);
-    expect(resolvePlayButtonIdxAtPoint(view!.contentDOM, 200, 300)).toBeNull();
+    expect(resolvePlayButtonIdxAtPoint(view.contentDOM, 20, 30)).toBe(0);
+    expect(resolvePlayButtonIdxAtPoint(view.contentDOM, 200, 300)).toBeNull();
 
     view.dom.dispatchEvent(
       new MouseEvent("mousedown", {

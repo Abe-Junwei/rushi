@@ -187,7 +187,9 @@ describe("revealSegmentAfterStructure", () => {
     expect(scrollDOM.scrollTop).toBe(10);
     expect(measureRequests).toHaveLength(1);
     // Measure write only queues rAF — must not scroll inside measure.
-    measureRequests[0]!.write(measureRequests[0]!.read());
+    const measure = measureRequests[0];
+    expect(measure).toBeTruthy();
+    measure.write(measure.read());
     expect(scrollDOM.scrollTop).toBe(10);
     flushRafs(raf);
     expect(scrollDOM.scrollTop).toBe(340);

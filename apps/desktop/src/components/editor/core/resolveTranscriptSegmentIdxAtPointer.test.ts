@@ -107,7 +107,7 @@ describe("resolveTranscriptSegmentIdxAtPointer", () => {
     const gutterEl =
       view.dom.querySelector(".cm-gutters") ?? view.dom.querySelector(".cm-gutterElement");
     expect(gutterEl).toBeTruthy();
-    expect(view.contentDOM.contains(gutterEl!)).toBe(false);
+    expect(view.contentDOM.contains(gutterEl)).toBe(false);
     expect(resolveTranscriptSegmentIdxAtPointer(view, 0, clientY, gutterEl)).toBe(targetIdx);
   });
 });
