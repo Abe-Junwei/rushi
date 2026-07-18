@@ -1674,4 +1674,74 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(chromeDuringArm.every((v) => v === true)).toBe(true);
     expect(result.current.isSelectedSegmentPlaying).toBe(true);
   });
+
+  it("keeps Stop chrome across loop-boundary auto-pause (no Play flash between iterations)", async () => {
+    let playhead = 10;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      on,
+    });
+    const wsRef = { current: ws };
+    // Stable callbacks: an inline getPlayheadTime would change identity each render,
+    // cascading through resolvePlayheadSec → syncSelectedSegmentPlayingUi and making the
+    // selection effect reset loop every render (a harness artifact, not production).
+    const getPlayheadTime = () => playhead;
+    const getGlobalPlaybackRate = () => 1;
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef,
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate,
+        getPlayheadTime,
+        getAuthorityPlayheadTimeSec: getPlayheadTime,
+      }),
+    );
+
+    // Start looped scoped playback of segment 0 with an armed end-bound.
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { fromSec: 10, loop: true });
+    });
+    expect(result.current.segmentLoopPlayback).toBe(true);
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+    expect(playing).toBe(true);
+
+    // Advance mid-segment so the end-bound settles armed.
+    playhead = 15;
+    act(() => {
+      emit("audioprocess");
+    });
+
+    // Reach segment end → enforceSegmentPlaybackBound auto-pauses. In loop mode the
+    // bound + Stop chrome are held for the pending replay-from-start.
+    playhead = 19.99;
+    await act(async () => {
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
+    });
+    expect(playing).toBe(false);
+
+    // The (native/WS) pause event lands after the optimistic pause. The overlay must
+    // NOT flash Play between loop iterations — useWaveformSegmentLoopReplay restarts
+    // from the segment start on this same pause event.
+    act(() => {
+      emit("pause");
+    });
+    expect(result.current.isSelectedSegmentPlaying).toBe(true);
+  });
 });

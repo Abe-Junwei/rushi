@@ -249,6 +249,13 @@ export function useWaveformSegmentPlaybackBoundSync(
         return;
       }
       if (!host.isPlaying()) {
+        // Loop-boundary auto-pause: enforceSegmentPlaybackBound stops at endSec and
+        // useWaveformSegmentLoopReplay restarts from the segment start on this same
+        // pause event. Hold Stop chrome + bound so the overlay does not flash Play
+        // between loop iterations. Manual pause is caught earlier (segmentPauseInFlightRef).
+        if (segmentLoopPlaybackRef.current && isSelectedSegmentPlayingRef.current) {
+          return;
+        }
         if (segmentPlaybackBoundRef.current) segmentPlaybackBoundRef.current = null;
         // Keep globalPlayGenRef across the arm-before-play window (beginGlobalPlayback
         // then React re-render before ws.play). Cleared by segment arm / clear/cancel.
@@ -323,6 +330,7 @@ export function useWaveformSegmentPlaybackBoundSync(
       playGenerationRef,
       playStartInFlightGenerationRef,
       segmentPauseInFlightRef,
+      segmentLoopPlaybackRef,
       resolvePlayheadSec,
       resolveSelectedPlaybackRange,
       segmentBoundStopInFlightRef,

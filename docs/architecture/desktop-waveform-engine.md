@@ -282,6 +282,26 @@
 - **保留在外**：DOM playhead 投影、tier scroll、WS canvas/peaks。Transport 只消费时间与 seekPolicy，不拥有选区 chrome。
 - **禁止**：组件层直接 `ws.setTime`（架构守卫）；第二套时钟 / WS native cursor / 第二套 hit-test。
 
+## 段播守卫与时序（generation + in-flight）
+
+段播状态（`isSelectedSegmentPlaying` = 浮层/旁侧 Stop chrome、`segmentPlaybackBoundRef` = 段尾停边界）由 [`useWaveformSegmentPlaybackBoundSync`](../../apps/desktop/src/hooks/useWaveformSegmentPlaybackBoundSync.ts) 按 **playback-frame + native TimeUpdate/play/pause/finish + WS audioprocess** 三源逐帧协调。native pause 为异步 Channel IPC，`host.isPlaying()` 会**滞后** true —— 全部竞争都靠下列守卫（改任一分支前先理解全表）：
+
+| 守卫 ref | 语义 | 谁置位 / 清位 | 逐帧 sync 的作用 |
+|---|---|---|---|
+| `playGenerationRef` | 每次 play/stop/cancel 自增的代号；bound 携带 `generation` | `beginGlobalPlayback` / `runPlaySegmentResolved` / `cancelSegmentPlaybackBound` / 段尾停 | `isActiveSegmentPlaybackBound(bound, gen)` 代号不符即视为失效 |
+| `globalPlayGenRef` | 当前是**全局通读**代（== playGen 时） | `beginGlobalPlayback` | 通读进入选中段区间**永不**自动 scope 段尾（`syncSelectedSegmentPlayingUi` 内） |
+| `segmentBoundStopInFlightRef` | 段尾停的 `host.pause()` 在途 | `enforceSegmentPlaybackBound` 起停 / pause settle | sync 早退，防 TimeUpdate 在 pause 落地前重新 arm |
+| `playStartInFlightGenerationRef` | seek+play arm 窗口（含边播边 seek） | `runPlaySegmentResolved` | 该窗口 sync 强制 Stop chrome=on，禁 outside-range 翻 Play |
+| `segmentPauseInFlightRef` | 手动 pause（段按钮/Space）在途 | `toggleSelectedWaveformPlayImpl` | sync 强制 Stop→off 且不重 arm，直到 pause 落地（防 Play↔Stop 闪） |
+| `unboundedSelectedPlayGenRef` | 起播点已过段尾（无 bound 自由续播） | `runPlaySegmentResolved` past-end | 保 Stop chrome 直到真正停 |
+| `segmentLoopPlaybackRef` | 循环开 | `handleToggleSelectedWaveformLoop` / `runPlaySegmentResolved({loop})` | **循环边界不翻 chrome**（见下） |
+
+**段尾停时序**（`enforceSegmentPlaybackBound`，稀疏帧常在 `currentSec > endSec` 才命中）：置 `stopInFlight` → 自增 `playGen`（作废在途）→ `host.pause()` →（settle）非循环则 null bound + `setIsSelectedSegmentPlaying(false)` + `syncDisplayPlayheadAfterSeek(endSec)` 显示钳位；循环则仅置 `loopRestart` phase，**保 bound、保 chrome**。
+
+**循环边界不闪 Play（2026-07 修复）**：native 下 `host.pause()` 乐观 resolve 后，`paused` Channel 事件晚到时会再跑一遍 `syncSelectedSegmentPlayingUi`；其「media 已停」分支原本会把 chrome 翻 false、随后 [`useWaveformSegmentLoopReplay`](../../apps/desktop/src/hooks/useWaveformSegmentLoopReplay.ts) 的 rAF 重播再翻 true → 每次循环边界 **Stop→Play→Stop 抖动**。修复：该分支若 `segmentLoopPlaybackRef.current && isSelectedSegmentPlayingRef.current` 则**保持 Stop chrome + bound**（重播在同一 pause 事件上必至）；手动 pause 仍由 `segmentPauseInFlightRef` 更早分支正确翻 false。回归：`useWaveformSegmentPlaybackControls.test.ts` >「keeps Stop chrome across loop-boundary auto-pause」。
+
+> **循环仍为「JS 轮询 + pause 后 rAF 重播」**（引擎不含段调度）：稀疏 TimeUpdate（WKWebView 实测 13–17Hz）下段尾可能越界一帧才 pause，靠显示钳位遮蔽；重播衔接精度受 IPC / Windows seek ACK（120ms 断路器）限制。属既定取舍，非缺陷。
+
 ## 偏好（localStorage）
 
 | Key | 含义 | 设置入口 |
