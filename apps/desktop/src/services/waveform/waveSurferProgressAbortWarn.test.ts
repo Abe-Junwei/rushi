@@ -35,4 +35,15 @@ describe("waveSurferProgressAbortWarn", () => {
     expect(warn).toHaveBeenCalledWith("[codemirror] Viewport failed to stabilize");
     expect(warn).toHaveBeenCalledWith("[codemirror] Measure loop restarted more than 5 times");
   });
+
+  it("suppresses Tauri stale callback warnings after webview reload", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    installWaveSurferProgressAbortWarnFilter();
+    console.warn(
+      "[TAURI] Couldn't find callback id 3180525239. This might happen when the app is reloaded while Rust is running an asynchronous operation.",
+    );
+    console.warn("unrelated");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0]?.[0]).toBe("unrelated");
+  });
 });
