@@ -1,10 +1,21 @@
-import type { EditorShortcutDefinition, EditorShortcutId, ShortcutBinding } from "./editorShortcutTypes";
+import type {
+  EditorShortcutDefinition,
+  EditorShortcutId,
+  ShortcutBinding,
+  ShortcutBindingPlatform,
+} from "./editorShortcutTypes";
 import { EDITOR_SHORTCUT_DEFINITIONS } from "./editorShortcutDefinitions";
 
 function normalizeEventKey(e: Pick<KeyboardEvent, "key" | "code">): string {
   if (e.key === " " || e.code === "Space") return " ";
   if (e.key === "Backspace" || e.code === "Backspace") return "Backspace";
   return e.key.length === 1 ? e.key.toLowerCase() : e.key;
+}
+
+function detectShortcutBindingPlatform(
+  platform = typeof navigator !== "undefined" ? navigator.platform : "",
+): ShortcutBindingPlatform {
+  return /Mac|iPod|iPhone|iPad/.test(platform) ? "mac" : "win";
 }
 
 /** 单字母绑定在 macOS 正文内按 Option 时 `key` 常为特殊字符，须回退 `code`。 */
@@ -49,7 +60,12 @@ function eventKeyMatchesBinding(binding: ShortcutBinding, e: KeyboardEvent): boo
   return hasModifier && e.code === letterCode;
 }
 
-function bindingMatches(binding: ShortcutBinding, e: KeyboardEvent): boolean {
+function bindingMatches(
+  binding: ShortcutBinding,
+  e: KeyboardEvent,
+  platform: ShortcutBindingPlatform,
+): boolean {
+  if (binding.platform != null && binding.platform !== platform) return false;
   if (!eventKeyMatchesBinding(binding, e)) return false;
   const wantsMod = binding.mod === true;
   const wantsAlt = binding.alt === true;
@@ -85,13 +101,14 @@ function bindingAllowedInTextarea(
 
 export function matchEditorShortcut(
   e: KeyboardEvent,
-  opts?: { inTextarea?: boolean },
+  opts?: { inTextarea?: boolean; platform?: ShortcutBindingPlatform },
 ): EditorShortcutId | null {
   const inTextarea = opts?.inTextarea ?? false;
+  const platform = opts?.platform ?? detectShortcutBindingPlatform();
   for (const def of EDITOR_SHORTCUT_DEFINITIONS) {
     for (const binding of def.bindings) {
       if (!bindingAllowedInTextarea(binding, def, inTextarea)) continue;
-      if (bindingMatches(binding, e)) return def.id;
+      if (bindingMatches(binding, e, platform)) return def.id;
     }
   }
   return null;

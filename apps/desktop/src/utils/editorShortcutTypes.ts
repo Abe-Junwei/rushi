@@ -36,6 +36,8 @@ export type EditorShortcutId =
   | "waveform.lowConfidencePrev"
   | "waveform.lowConfidenceNext";
 
+export type ShortcutBindingPlatform = "mac" | "win";
+
 export type ShortcutBinding = {
   key: string;
   /** ⌘/Ctrl */
@@ -47,6 +49,8 @@ export type ShortcutBinding = {
   allowInTextarea?: boolean;
   /** 仅语段正文 textarea 内生效（如 Tab 跳下一段） */
   textareaOnly?: boolean;
+  /** 仅该平台生效；缺省为跨平台 */
+  platform?: ShortcutBindingPlatform;
 };
 
 export type EditorShortcutDefinition = {

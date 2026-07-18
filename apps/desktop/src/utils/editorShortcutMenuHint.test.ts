@@ -31,6 +31,8 @@ describe("editorShortcutMenuHint", () => {
     expect(editorShortcutMenuHint("segment.mergeNext", "mac")).toBe("⌘J");
     expect(editorShortcutMenuHint("playback.toggleSegmentLoop", "mac")).toBe("⌘L");
     expect(editorShortcutMenuHint("workflow.addCorrectionMemory", "mac")).toBe("⇧⌘L");
+    expect(editorShortcutMenuHint("playback.toggle", "mac")).toBe("Space");
+    expect(editorShortcutMenuHint("playback.toggle", "win")).toBe("Space");
   });
 
   it("detectShortcutMenuPlatform treats macOS as mac", () => {

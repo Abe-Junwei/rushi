@@ -38,7 +38,7 @@ function assertBindingsWithinKeyLimit(definitions: EditorShortcutDefinition[]): 
 
 /**
  * 默认绑定（优先 2 键）：
- * - 合并 ⌘J/K · 拆分 ⌘D · 播放：正文外 Space；正文内 ⇧Space（裸 Space 输入空格）
+ * - 合并 ⌘J/K · 拆分 ⌘D · 播放：正文外 Space；正文内 macOS ⇧Space / Windows Ctrl+Space
  * - 语段正文切换 ↑↓（见 legacy hints）；波形区 ←→
  * - 波形区专用键 scope=waveform
  */
@@ -109,16 +109,18 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
   },
   {
     id: "playback.toggle",
-    // Dual binding (global-vs-segment UX research): bare Space outside transcript
-    // edit targets; Shift+Space inside so Space still types a space in CM6/textarea.
+    // Bare Space outside edit. In edit: macOS ⇧Space; Windows Ctrl+Space (IME-safe chord
+    // vs typing a space). Shift+Space still works outside edit on Windows.
     bindings: [
       BINDING.plain(" ", { allowInTextarea: false }),
-      BINDING.plain(" ", { shift: true, allowInTextarea: true }),
+      BINDING.plain(" ", { shift: true, allowInTextarea: true, platform: "mac" }),
+      BINDING.plain(" ", { shift: true, allowInTextarea: false, platform: "win" }),
+      BINDING.mod(" ", { allowInTextarea: true, textareaOnly: true, platform: "win" }),
     ],
-    keysLabel: "Space / Shift + Space",
+    keysLabel: "Space / ⇧Space（Mac 正文）· Ctrl+Space（Win 正文）",
     footerAction: "播放/暂停",
     panelAction:
-      "会话粘性播放或暂停（正文外 Space；正文内 ⇧Space）。无会话且有选中语段时起播=段播；已在全局通读会话中则暂停后再 Space 从停点续通读。语段会话=续播/重播该句。工具条「全局播放」可进入/退出语段会话。旁侧/浮层亦可开段播",
+      "会话粘性播放或暂停（正文外 Space；正文内 macOS ⇧Space、Windows Ctrl+Space）。无会话且有选中语段时起播=段播；已在全局通读会话中则暂停后再 Space 从停点续通读。语段会话=续播/重播该句。工具条「全局播放」可进入/退出语段会话。旁侧/浮层亦可开段播",
     allowInTextarea: true,
   },
   {

@@ -48,7 +48,8 @@ export function editorShortcutMenuHint(
   platform: ShortcutMenuPlatform = detectShortcutMenuPlatform(),
 ): string {
   const def = getEditorShortcutDefinition(id);
-  const binding = def.bindings[0];
+  const binding =
+    def.bindings.find((b) => b.platform == null || b.platform === platform) ?? def.bindings[0];
   if (!binding) return "";
   return formatShortcutBindingMenuLabel(binding, platform);
 }

@@ -161,7 +161,7 @@ export function executeEditorShortcut(
     }
     case "playback.toggle": {
       if (!ctx.mediaUrl) return true;
-      // Space（正文外）/ ⇧Space（正文内）：会话粘性 togglePlay（非语段 scoped 钮；段播见波形浮层）。
+      // Space（正文外）/ ⇧Space（Mac 正文）/ Ctrl+Space（Win 正文）：会话粘性 togglePlay。
       void wf.togglePlay();
       return true;
     }

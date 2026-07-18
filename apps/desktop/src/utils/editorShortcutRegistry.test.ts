@@ -49,12 +49,41 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "d", metaKey: true }))).toBe("segment.splitPlayhead");
   });
 
-  it("matches bare Space for playback outside transcript edit, Shift+Space everywhere", () => {
+  it("matches bare Space for playback outside transcript edit", () => {
     expect(matchEditorShortcut(keyEvent({ key: " " }))).toBe("playback.toggle");
-    expect(matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }))).toBe("playback.toggle");
+    expect(matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), { platform: "mac" })).toBe(
+      "playback.toggle",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), { platform: "win" })).toBe(
+      "playback.toggle",
+    );
+  });
+
+  it("matches in-edit playback: Shift+Space on mac, Ctrl+Space on Windows", () => {
     expect(
-      matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), { inTextarea: true }),
+      matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), {
+        inTextarea: true,
+        platform: "mac",
+      }),
     ).toBe("playback.toggle");
+    expect(
+      matchEditorShortcut(keyEvent({ key: " ", ctrlKey: true }), {
+        inTextarea: true,
+        platform: "win",
+      }),
+    ).toBe("playback.toggle");
+    expect(
+      matchEditorShortcut(keyEvent({ key: " ", shiftKey: true }), {
+        inTextarea: true,
+        platform: "win",
+      }),
+    ).toBeNull();
+    expect(
+      matchEditorShortcut(keyEvent({ key: " ", ctrlKey: true }), {
+        inTextarea: true,
+        platform: "mac",
+      }),
+    ).toBeNull();
   });
 
   it("ignores bare Space inside transcript edit (Space inputs text)", () => {
@@ -63,7 +92,10 @@ describe("editorShortcutRegistry", () => {
 
   it("ignores Shift+Cmd+Space for playback (legacy chord removed)", () => {
     expect(
-      matchEditorShortcut(keyEvent({ key: " ", metaKey: true, shiftKey: true }), { inTextarea: true }),
+      matchEditorShortcut(keyEvent({ key: " ", metaKey: true, shiftKey: true }), {
+        inTextarea: true,
+        platform: "mac",
+      }),
     ).toBeNull();
   });
 
@@ -97,8 +129,9 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "s", metaKey: true }))).toBe("workflow.save");
   });
 
-  it("matches focus text on Cmd+E", () => {
+  it("matches focus text on Cmd/Ctrl+E", () => {
     expect(matchEditorShortcut(keyEvent({ key: "e", metaKey: true }))).toBe("segment.focusText");
+    expect(matchEditorShortcut(keyEvent({ key: "e", ctrlKey: true }))).toBe("segment.focusText");
   });
 
   it("matches delete segment on Cmd+Backspace", () => {
@@ -187,7 +220,7 @@ describe("formatEditorShortcutPanelSections", () => {
     expect(transcript?.rows.some((r) => r.id === "segment.mergeNext")).toBe(true);
 
     const playback = sections.find((s) => s.id === "playback");
-    expect(playback?.rows[0]?.keys).toBe("Space / Shift + Space");
+    expect(playback?.rows[0]?.keys).toBe("Space / ⇧Space（Mac 正文）· Ctrl+Space（Win 正文）");
     expect(playback?.rows[0]?.action).toMatch(/会话粘性|全局/);
 
     const waveform = sections.find((s) => s.id === "waveform");

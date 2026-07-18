@@ -278,7 +278,7 @@ describe("useEditorShortcutDispatcher", () => {
     input.remove();
   });
 
-  it("toggles global play on Shift+Space inside segment textarea", () => {
+  it("toggles global play on Ctrl+Space inside segment textarea (Windows edit chord)", () => {
     const togglePlay = vi.fn();
     const textarea = document.createElement("textarea");
     textarea.setAttribute("aria-label", "语段正文");
@@ -292,7 +292,7 @@ describe("useEditorShortcutDispatcher", () => {
       const event = new KeyboardEvent("keydown", {
         key: " ",
         code: "Space",
-        shiftKey: true,
+        ctrlKey: true,
         bubbles: true,
         cancelable: true,
       });
