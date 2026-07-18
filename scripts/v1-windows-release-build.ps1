@@ -5,6 +5,7 @@
 #   npm run release:win
 # Optional env:
 #   RUSHI_FORCE_MODELS_IN_NSIS=1  # dangerous: stage Plan B into NSIS (makensis may OOM)
+#   RUSHI_SKIP_SIDECAR_BUILD=1   # reuse existing CPU onedir (still prune + smoke)
 #   RUSHI_SKIP_SIDECAR_SIGN=1
 #   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
 # Signing (optional): SIGNTOOL, SIGN_PFX, SIGN_PASS — see sign-windows-sidecar.ps1
@@ -42,11 +43,15 @@ if ($env:RUSHI_SKIP_RELEASE_PREFLIGHT -eq "1") {
   if ($LASTEXITCODE -ne 0) { throw "architecture guard failed" }
 }
 
-Write-Host "== build ASR sidecar (CPU only for NSIS) =="
-Invoke-Npm @("run", "asr:build-sidecar-windows-cpu")
-
 $cpuExe = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar\rushi-asr-sidecar.exe"
-if (-not (Test-Path -LiteralPath $cpuExe)) { throw "Missing sidecar: $cpuExe" }
+if ($env:RUSHI_SKIP_SIDECAR_BUILD -eq "1") {
+  Write-Host "SKIP: ASR sidecar rebuild (RUSHI_SKIP_SIDECAR_BUILD=1)"
+  if (-not (Test-Path -LiteralPath $cpuExe)) { throw "Missing sidecar: $cpuExe" }
+} else {
+  Write-Host "== build ASR sidecar (CPU only for NSIS) =="
+  Invoke-Npm @("run", "asr:build-sidecar-windows-cpu")
+  if (-not (Test-Path -LiteralPath $cpuExe)) { throw "Missing sidecar: $cpuExe" }
+}
 
 $cudaDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar-cuda"
 if (Test-Path -LiteralPath $cudaDir) {
