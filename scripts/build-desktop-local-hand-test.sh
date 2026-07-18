@@ -27,6 +27,14 @@ echo "== Local hand-test build (.app only, createUpdaterArtifacts=false) =="
 )
 
 APP="${ROOT}/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app"
+
+# Repair linker-signed adhoc so LaunchServices / installed-smoke stay alive (P1-7).
+if [[ "${RUSHI_SKIP_CODESIGN_REPAIR:-0}" != "1" ]] && command -v codesign >/dev/null 2>&1; then
+  echo "== codesign repair (deep adhoc) =="
+  codesign --force --deep --sign - "${APP}"
+  echo "  OK: ${APP}"
+fi
+
 echo ""
 echo "OK: ${APP}"
 echo "Open: npm run desktop:open-release-app"

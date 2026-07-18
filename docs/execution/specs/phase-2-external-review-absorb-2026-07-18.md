@@ -1,7 +1,7 @@
 # 吸收记录：第二阶段路线图外部技术评估（2026-07-18）
 
 > **状态**：**已归档基线**（终审绿灯 2026-07-18；写入 Phase 2 §8.1–§8.2）  
-> **来源**：产品侧对 [`rushi-phase-2-roadmap.md`](../plans/rushi-phase-2-roadmap.md) 的工程评估（两轮：架构吸收 + 编码前微调）  
+> **来源**：产品侧对 [`rushi-phase-2-roadmap.md`](../plans/rushi-phase-2-roadmap.md) 的工程评估（三轮：架构吸收 + 编码前微调 + 可行性深度调研）  
 > **落点索引**：见下文「已写入何处」
 
 ---
@@ -64,6 +64,21 @@
 - **绿灯通过，正式归档为 Phase 2 执行基线。**  
 - 后续研发：纵向薄片 + 严格遵守 [`rushi-phase-2-roadmap.md`](../plans/rushi-phase-2-roadmap.md) §8.1–§8.2。
 
+### 2.9 可行性深度调研吸收（2026-07-18 第三轮）
+
+> 来源：Phase 2 系统架构与技术选型可行性深度调研（ULID / 波形 OOM / React 19 Form / LAN TLS / ASR 调度）。
+
+| 主张 | 裁决 | 落点 |
+|------|------|------|
+| M0 ULID TEXT + 禁 PG UUID | **已对齐**；维持 M0→R8 硬门；不禁止 R6∥M | Phase 2 §5 / §8.2 ID-TEXT |
+| Wave M∥C 全局串行 | **不采纳**；仅 R8 卡 M0 | Phase 2 §4 |
+| M8 与 M1/M2 合并为退出硬片 | **部分采纳**：M2 后 / 3h+ 手测前**必须穿插**；仍不挡 Wave M 退出 | Phase 2 §5 M8 |
+| audiowaveform JSON + MediaElement 新真源 | **不采纳另造真源**；沿用 peaks `.dat` + 原生播放；禁 2h AudioBuffer | Phase 2 §8.1 · AV-PRE-5 |
+| React 19 Action×409 payload 回显 | **已对齐** | §8.2 C-409 |
+| 受控 `<select>` reset 竞态 | **新采纳** → **C-SELECT**（稳定业务 key 重挂载；禁 `Date.now()` 每渲染） | §8.2 C-SELECT |
+| Caddy Local-CA + Rust RFC1918 | **已对齐**；D4 冒烟加分、**不替代** D3 | §5 D3/D4 · LAN-RUST |
+| Wave C 前 FunASR→Whisper.cpp | **拒作硬门**；Nice/进程树可杀 → **ASR-SCHED** 挂现有 supervisor/LRC | §8.2 ASR-SCHED |
+
 ---
 
 ## 3. 已写入何处
@@ -85,3 +100,4 @@
 |------|------|
 | 2026-07-18 | 初版吸收记录 |
 | 2026-07-18 | 终审：§8.2 C-409 / ID-TEXT / LAN-RUST；基线归档 |
+| 2026-07-18 | §2.9 可行性深度调研：采纳 C-SELECT / ASR-SCHED / M8 穿插；拒引擎换栈硬门与 JSON 波形另造 |

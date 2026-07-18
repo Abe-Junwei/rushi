@@ -14,6 +14,16 @@ STAMP="$(bash "${ROOT}/scripts/resolve-bundled-sidecar-stamp-in-app.sh" "${APP}"
 
 [[ -x "${BIN}" ]] || { echo "Missing release app: ${BIN}" >&2; exit 1; }
 
+# Local Tauri `linker-signed` adhoc often fails Gatekeeper/smoke until deep re-sign.
+# Skip when already Developer ID signed, or when RUSHI_SKIP_CODESIGN_REPAIR=1.
+if [[ "${RUSHI_SKIP_CODESIGN_REPAIR:-0}" != "1" ]] && command -v codesign >/dev/null 2>&1; then
+  if codesign -dv --verbose=2 "${APP}" 2>&1 | grep -q 'Signature=adhoc\|flags=.*linker-signed\|TeamIdentifier=not set'; then
+    echo "== codesign repair (deep adhoc) =="
+    codesign --force --deep --sign - "${APP}"
+    echo "  OK: codesign --force --deep --sign -"
+  fi
+fi
+
 echo "== v1 installed smoke =="
 echo "App: ${APP}"
 echo "App data: ${APP_ROOT}"

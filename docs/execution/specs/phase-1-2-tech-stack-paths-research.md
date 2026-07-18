@@ -97,10 +97,12 @@
 | # | 坑 | 规避（已采纳） |
 |---|-----|----------------|
 | 11 | Ripple 后语段时间断裂 | **Interval mapping**：语段存 Source 时间；见 [`media-timeline-interval-mapping.md`](../../architecture/media-timeline-interval-mapping.md)；**勿**批量 UPDATE 所有语段起止 |
-| 12 | 2h 读入 Web Audio `AudioBuffer` OOM | **禁止**；沿用 peaks + 原生播放；弱机上 **AV-PRE-5 Proxy** |
+| 12 | 2h 读入 Web Audio `AudioBuffer` OOM | **禁止**；沿用 peaks `.dat` + 原生播放（**勿**另造 audiowaveform JSON 真源）；弱机上 **AV-PRE-5 Proxy**（M2 后 / 3h+ 手测前穿插） |
 | 13 | 自增 ID 推协作碰撞 | **ID-STABLE**：ULID 字符串；双库 **TEXT**；禁 PG `UUID` 类型（§8.2 ID-TEXT） |
 | 14 | React 19 Action×409 冲掉输入 | 失败 payload 进 `errorState`/Zustand；禁依赖 Action rollback（§8.2 C-409） |
-| 15 | LAN 降级只改前端 fetch | Rust `reqwest`/`danger_accept_invalid_certs`（§8.2 LAN-RUST） |
+| 15 | LAN 降级只改前端 fetch | Rust `reqwest`/`danger_accept_invalid_certs`（§8.2 LAN-RUST）；B′ 不替代 Local-CA |
+| 16 | React 19 受控 `<select>` + Form reset 竞态 | 稳定业务 key 重挂载（§8.2 **C-SELECT**）；禁 `Date.now()` 每渲染 |
+| 17 | ASR 满载抢音频 / 侧车僵尸 | 进程树可杀 + Nice/`BELOW_NORMAL`（§8.2 **ASR-SCHED**）；**勿**把 Whisper.cpp 换栈当 Wave C 硬门 |
 
 ### 3.5 Wave M 路径决策摘要
 
@@ -235,3 +237,4 @@
 |------|------|
 | 2026-07-18 | 初版：两阶段技术路径 / 栈 / 业内坑 / 规避 |
 | 2026-07-18 | 吸收外部评估：mapping、Web Audio 禁令、409 草稿、Presence TTL、LAN Local-CA、ID-STABLE |
+| 2026-07-18 | §3.4 增补 #16–17：C-SELECT / ASR-SCHED；Proxy 穿插与 peaks 真源澄清 |

@@ -30,13 +30,21 @@
 | `check:doc-links` | `check-internal-doc-links.mjs` | 内部文档链接检查 |
 | `build:user-guide-pdf`（desktop workspace） | `build-user-guide-pdf.sh` | 用户指南 PDF |
 
+**Windows 等价入口（避免 `VAR=val` Unix 语法）：**
+
+| 命令 | 用途 |
+|------|------|
+| `pwsh scripts/run-asr-pytest.ps1` | ASR pytest（`.venv\Scripts\python.exe`） |
+| `pwsh scripts/run-desktop-e2e-desktop.ps1` | Playwright `desktop-ui` |
+| `pwsh scripts/run-desktop-e2e-asr.ps1` | Playwright `asr-api` |
+
 **未进 package.json 但常用：**
 
 | 命令 | 用途 |
 |------|------|
 | `node scripts/check-architecture-guard.mjs` | 架构守卫（提交前与 CI 同级） |
 | `bash scripts/prepare-stitch-upload.sh` | Stitch 上传包刷新 |
-| `bash scripts/v1-release-installed-smoke.sh` | 已安装 `.app` 冒烟（见 `docs/execution/v1-release-installed-smoke-evidence.md`） |
+| `bash scripts/v1-release-installed-smoke.sh` | 已安装 `.app` 冒烟（见 `docs/execution/v1-release-installed-smoke-evidence.md`）；本地 adhoc 会自动 deep 重签 |
 
 ---
 

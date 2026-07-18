@@ -136,10 +136,10 @@ flowchart LR
 | M5 | **AV-PRE-3** | 可选响度 | 默认关或显式勾选 | research |
 | M6 | **AV-PRE-4** | 降噪 spike→Gate→可选 | Gate 不过则不上默认 | ACC L0 |
 | M7 | **EDIT-BASIC-3** | 可选压长静音 | 可跳过 | research |
-| M8 | **AV-PRE-5** | **Proxy 低码率听音轨**（禁 2h 全量 Web AudioBuffer） | peaks 仍走现有管线；弱机可 scrub | 吸收记录 §2.6 |
+| M8 | **AV-PRE-5** | **Proxy 低码率听音轨**（禁 2h 全量 Web AudioBuffer；**沿用现有 peaks `.dat`**，勿另造 audiowaveform JSON 波形真源） | **M2 后 / 3h+ 手测前强烈建议穿插**（仍不挡 Wave M 退出）；弱机可 scrub | 吸收记录 §2.6 · §2.9 |
 
 **Wave M 退出（核心）**：**M0–M3** 闭合即可签收——导入→（可选预处理 M1）→Trim/删废段（映射正确）→本机转写（写 source 时间）→校对；硬闸门绿。  
-**可选不挡退出**：**M4–M8**（工作台/响度/降噪/静音/Proxy）；其中 **3h+ 手测强烈建议穿插 M8**，勿拖到 Wave 末才发现听音卡顿。
+**可选不挡退出**：**M4–M7**（工作台/响度/降噪/静音）。**M8 Proxy** 亦不挡退出，但 **EDIT-BASIC（M2）完成后、3h+ 手测前必须穿插**，勿拖到 Wave 末才发现听音卡顿。
 
 ### Wave C — 协作核心（约 5.5～7 周）
 
@@ -147,7 +147,7 @@ flowchart LR
 |----|-----|------|----------|------|
 | C1 | **R6 COL-1** | `services/collab` + PG + 最小 API（建议子签收：health→迁移→projects→segments；**含邀请制认证雏形**） | Compose 起服；建项读语段 | [foundation](./collaboration-foundation-plan.md) §3 Phase1 · [审核](../specs/phase-2-roadmap-audit-2026-07-18.md) §5-E |
 | C2 | **R7 COL-2** | `ProjectSource`；协作只读；连接 UI（云/LAN 预设；§8.2 LAN-RUST 挂钩点） | 不污染 local SQLite 写路径 | 主路线图 R7 |
-| C3 | **R8 COL-3** | 语段写 + version + revision_events；**409→冲突草稿 UI**（不静默覆盖） | 建议多轮：**R8a CAS 写路径** → **R8b 409 草稿+§8.2 C-409** | 主路线图 R8 · 吸收记录 §2.4 |
+| C3 | **R8 COL-3** | 语段写 + version + revision_events；**409→冲突草稿 UI**（不静默覆盖） | 建议多轮：**R8a CAS 写路径** → **R8b 409 草稿+§8.2 C-409 / C-SELECT** | 主路线图 R8 · 吸收记录 §2.4 · §2.9 |
 | C4 | **C4** | 批注线程 / 建议修改；`review` 模式 | 转录模式隐藏批注 | [domain API](../../architecture/collaboration-review-domain-api.md) |
 | C5 | **C5** | Presence WS + 活动流；**心跳 3–5s / TTL≈10s** | 无僵尸在线 | 同上 · 吸收记录 §2.5 |
 | C6 | **C6** | Word 审阅导出 | ≠ 单机 EXP-WORD | [collab Word spec](../specs/collaboration-review-word-export.md) |
@@ -164,7 +164,7 @@ flowchart LR
 | D1 | **C7** | 协作离线缓存/草稿恢复；正式镜像与版本号 | 断线重连可恢复；与 409 草稿空间衔接 | foundation Phase7 |
 | D2 | **COL-DEPLOY-A** | `cloud_vps` Compose+Caddy ACME + pg_dump 备份 | HTTPS；PG 不暴露 | [dual-deploy plan](../specs/collab-dual-deploy-local-asr-plan.md) |
 | D3 | **COL-DEPLOY-B** | `lan`：**Caddy `tls internal`** + 导出 `root.crt` 分发信任；桌面 HTTPS/WSS | 内网 TLS 可连；文档含 Win/mac 信任步骤 | 同上 · 吸收记录 §2.7 |
-| D4 | **COL-DEPLOY-B′** | （可选）桌面对 RFC1918 **降级接受自签** / 明文 HTTP 调试开关 | 仅 LAN 预设；默认仍推 Local-CA | Tauri/reqwest 策略 |
+| D4 | **COL-DEPLOY-B′** | （可选）桌面对 RFC1918 **降级接受自签** / 明文 HTTP 调试开关；可作 LAN 冒烟加分，**不替代** D3 Local-CA 签收 | 仅 LAN 预设；默认仍推 Local-CA | Tauri/reqwest · §8.2 LAN-RUST |
 | D5 | **COL-DEPLOY-C** | 可选 OSS（云） | 同地域内网读 | 可选 |
 | D6 | **COL-DEPLOY-D** | 可选 mDNS spike | 失败则手动 URL | 可选 |
 
@@ -230,10 +230,11 @@ flowchart LR
 ### 8.1 已冻结的工程纪律（架构防御）
 
 1. 语段时间 = Source；Working 仅经 [interval mapping](../../architecture/media-timeline-interval-mapping.md)。  
-2. 剪辑置 `media_dirty`；禁止 2h 全量 Web AudioBuffer。  
+2. 剪辑置 `media_dirty`；禁止 2h 全量 Web AudioBuffer；波形真源继续 **peaks `.dat` + 原生播放**（WS-2b），不为 Proxy 另造 JSON 包络真源。  
 3. 409 → 冲突草稿空间，禁止静默刷掉输入。  
 4. Presence = 心跳 + TTL，禁止永驻内存无过期。  
-5. LAN 主路径 = Caddy `tls internal` + 根证书信任；非「假装和公网同一套 ACME」。
+5. LAN 主路径 = Caddy `tls internal` + 根证书信任；非「假装和公网同一套 ACME」。B′ 降级为调试/加分，不替代 Local-CA。  
+6. 本机 ASR 侧车：进程树可回收 + 调度降权（§8.2 **ASR-SCHED**）；引擎换栈须新 ADR，**非** Wave C 硬门。
 
 ### 8.2 开编码前冻结（React 19 / SQLite↔PG / Tauri 落地警示）
 
@@ -242,8 +243,10 @@ flowchart LR
 | # | 薄片 | 纪律 |
 |---|------|------|
 | **C-409** | R8 / C3 | 若用 React 19 `useActionState` / Form Actions：捕获 409 时须把**失败 payload（用户最新文本）**写入 `errorState` 或 Zustand/草稿机，**禁止**依赖 Action 默认 rollback 清空输入。验收：409 后输入框内容仍在，直至用户显式选择覆盖/采纳服务器。 |
+| **C-SELECT** | R8 / C3 / 协作表单 | 受控 `<select>` 与 Form Actions / `useActionState` 同表时：提交完成后须用**稳定业务 key**（如实体 ID + 成功/冲突世代计数）强制重挂载，规避 React 19 `form.reset` 与受控 `value` 竞态导致显示跳回首项。**禁止**用 `Date.now()` 作每渲染 key。验收：提交后选项保持用户所选，再次提交载荷正确。 |
 | **ID-TEXT** | M0 ID-STABLE | 桌面生成 **ULID 字符串**（建议 Crockford 26 字符）。SQLite 与 PostgreSQL **一律 `TEXT` / `VARCHAR(26)`** 存储。**禁止**云端用 PG 原生 `UUID` 类型（避免连字符/大小写/类型转换漂移）。 |
-| **LAN-RUST** | COL-DEPLOY-B′ / R7 连接 | 「忽略局域网自签 / 明文 HTTP」开关必须在 **Rust `reqwest`（或 Tauri http 插件客户端）** 层按 RFC1918 + 用户开关设置 `danger_accept_invalid_certs`；**禁止**只改前端 `fetch` 以为生效。 |
+| **LAN-RUST** | COL-DEPLOY-B′ / R7 连接 | 「忽略局域网自签 / 明文 HTTP」开关必须在 **Rust `reqwest`（或 Tauri http 插件客户端）** 层按 RFC1918 + 用户开关设置 `danger_accept_invalid_certs`；**禁止**只改前端 `fetch` 以为生效。公网请求一律禁止跳过校验。 |
+| **ASR-SCHED** | 本机 ASR 侧车（Wave C/D 联测） | 长转写联测须保证侧车**整棵进程树可杀尽**（挂现有 runtime supervisor / LRC）；Unix Nice / Windows `BELOW_NORMAL` 降权优先加固现栈。**禁止**把 FunASR→Whisper.cpp（或其它引擎重写）当作 Wave C 硬前置——换栈须新 ADR。 |
 
 **变更记录**
 
@@ -253,3 +256,4 @@ flowchart LR
 | 2026-07-18 | 吸收外部评估：M0 ID-STABLE、区间映射、media_dirty、409 草稿、Presence TTL、LAN Local-CA |
 | 2026-07-18 | **终审归档基线**；§8.2 编码前冻结（React 19 Action×409、ULID 双库 TEXT、Tauri Rust 降级） |
 | 2026-07-18 | 全面审核：修正 Wave R 笔误、M 退出可选片、M0/M2/R8 多轮建议、工期注记；见 audit 文 |
+| 2026-07-18 | 可行性深度调研吸收：§8.2 **C-SELECT** / **ASR-SCHED**；M8 穿插纪律收紧；D4 不替代 Local-CA；明确 peaks 真源 |

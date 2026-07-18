@@ -14,7 +14,11 @@ source .venv-lockgen-cpu/bin/activate
 python -m pip install -U pip setuptools wheel
 python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -e ".[funasr]"
-python -m pip install "setuptools==78.1.1"
+# Floor pins for known CVEs (pip-audit): pillow PYSEC-2026-* · setuptools PYSEC-2026-3447.
+# Note: as of 2026-07, PyTorch CPU index may ship torch 2.13 with torchaudio still at 2.11 — accept that skew.
+python -m pip install "pillow>=12.3.0" "setuptools>=83.0.0"
+python -c 'import torch,torchvision,torchaudio,PIL,setuptools; print("torch",torch.__version__,"tv",torchvision.__version__,"ta",torchaudio.__version__,"pillow",PIL.__version__,"setuptools",setuptools.__version__)'
+
 
 {
   cat <<'HDR'

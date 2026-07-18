@@ -68,7 +68,7 @@
 
 | ID | 范围 | 验收 |
 |----|------|------|
-| **ID-STABLE** | 对外 ID → ULID/UUIDv4 | 新建语段不依赖 AUTOINCREMENT 同步 |
+| **ID-STABLE** | 对外 ID → ULID 字符串（双库 TEXT；§8.2 ID-TEXT） | 新建语段不依赖 AUTOINCREMENT 同步 |
 | AV-PRE-1 | source/working + 恒等 mapping + 任务 + demux/remux + 入口 A/B | 视频可出工作音频；映射恒等可测 |
 | EDIT-BASIC-1 | Trim + Ripple + 映射更新 + peaks + `media_dirty` | 投影正确；删区→working null；**不**批量改写语段行 |
 | EDIT-BASIC-2 | Split→第二 File；重置 working（映射回恒等） | source 仍在 |
@@ -76,7 +76,7 @@
 | AV-PRE-3 | 可选响度 | 默认不强制 |
 | AV-PRE-4 | 降噪 Gate | 不过则不上默认开 |
 | EDIT-BASIC-3 | 压长静音 | 可选 |
-| AV-PRE-5 | Proxy 低码率听音 | **禁止** 2h 全量 AudioBuffer；peaks 管线不变 |
+| AV-PRE-5 | Proxy 低码率听音 | **禁止** 2h 全量 AudioBuffer；peaks `.dat` 管线不变（勿另造 JSON 包络真源）；**M2 后 / 3h+ 手测前强烈建议穿插**（不挡 Wave M 退出） |
 
 每薄片开编码前补 `*-intent.md` / `*-acceptance.md`（可合并短片），顶部链接本 plan + research。
 
@@ -106,3 +106,4 @@
 |------|------|
 | 2026-07-18 | 初版；挂 Phase 2 Wave M |
 | 2026-07-18 | 吸收评估：区间映射、media_dirty、ID-STABLE、Proxy 纪律 |
+| 2026-07-18 | AV-PRE-5：M8 穿插纪律 + peaks 真源澄清（可行性调研 §2.9） |
