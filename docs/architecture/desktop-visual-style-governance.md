@@ -111,7 +111,8 @@
 | `stageAutoTranscribe` | Bot | 语段 stage · 自动转写 |
 | `stageAiRevised` | Wand2 | 语段 stage · AI 改稿后 |
 | `stageManual` | PenLine | 语段 stage · 人工转写 |
-| `stageFinalized` | Check | 语段 stage · 已定稿 |
+| `stageFirstProof` | EyeCheck | 语段 stage · 一校 |
+| `stageFinalized` | CircleCheck | 语段 stage · 已定稿 |
 | `playAudio` | Play | 波形 · 播放 |
 | `pauseAudio` | Pause | 波形 · 暂停 |
 | `runJob` | CirclePlay | 非音频任务启动（eval 等） |

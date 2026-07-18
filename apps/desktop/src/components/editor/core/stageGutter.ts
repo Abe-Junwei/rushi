@@ -48,9 +48,9 @@ const STAGE_ICON_SVG: Record<string, string> = {
   manual_transcribe: transcriptGutterIconSvg(
     '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>',
   ),
-  // CircleNumber1 — first proof
+  // EyeCheck — first proof (校阅过目；对齐 PRODUCT_ICON.stageFirstProof)
   first_proof: transcriptGutterIconSvg(
-    '<circle cx="12" cy="12" r="10"/><path d="M10 10h2v6"/><path d="M9 16h6"/>',
+    '<path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0"/><path d="M11.102 17.957c-3.204 -.307 -5.904 -2.294 -8.102 -5.957c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6a19.5 19.5 0 0 1 -.663 1.032"/><path d="M15 19l2 2l4 -4"/>',
   ),
   // CircleCheck — finalized (stronger “sealed” read than bare check)
   finalized: transcriptGutterIconSvg(

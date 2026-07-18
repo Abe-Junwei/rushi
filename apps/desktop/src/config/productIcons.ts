@@ -7,10 +7,10 @@ import {
   IconRobot as Bot,
   IconBrain as Brain,
   IconCircleCheck as CircleCheck,
-  IconCircleNumber1 as CircleNumber1,
   IconCircleCaretRight as CirclePlay,
   IconCloud as Cloud,
   IconCpu as Cpu,
+  IconEyeCheck as EyeCheck,
   IconFileSpreadsheet as FileSpreadsheet,
   IconFileText as FileText,
   IconHome as Home,
@@ -83,8 +83,8 @@ export const PRODUCT_ICON = {
   stageAiRevised: Wand2,
   /** 语段 stage · 人工转写/编辑 */
   stageManual: PenLine,
-  /** 语段 stage · 一校 */
-  stageFirstProof: CircleNumber1,
+  /** 语段 stage · 一校（校阅过目，区别于定稿 CircleCheck） */
+  stageFirstProof: EyeCheck,
   /** 语段 stage · 已定稿 */
   stageFinalized: CircleCheck,
 

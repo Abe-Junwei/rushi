@@ -9,6 +9,7 @@ import {
   IconCircleCaretRight as CirclePlay,
   IconCloud as Cloud,
   IconCpu as Cpu,
+  IconEyeCheck as EyeCheck,
   IconFileText as FileText,
   IconHome as Home,
   IconInfoCircle as Info,
@@ -68,6 +69,10 @@ describe("productIcons", () => {
     expect(PRODUCT_ICON.transcribeAction).toBe(Mic);
     expect(PRODUCT_ICON.stageAutoTranscribe).toBe(Bot);
     expect(PRODUCT_ICON.transcribeAction).not.toBe(PRODUCT_ICON.stageAutoTranscribe);
+  });
+
+  it("uses EyeCheck for first-proof stage (not a numeral badge)", () => {
+    expect(PRODUCT_ICON.stageFirstProof).toBe(EyeCheck);
   });
 
   it("maps workbench editor actions", () => {

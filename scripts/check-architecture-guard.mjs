@@ -1001,6 +1001,7 @@ const PRODUCT_SEMANTIC_TABLER_NAMES = new Set([
   'IconCircleCaretRight',
   'IconCloud',
   'IconCpu',
+  'IconEyeCheck',
   'IconFileSpreadsheet',
   'IconKeyboard',
   'IconListCheck',
