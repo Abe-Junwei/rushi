@@ -88,11 +88,11 @@ export const WELCOME_LEDGER_TAB_MB = "mb-4";
  */
 export const WELCOME_LEDGER_ROW_Y = "py-2";
 
-/** 侧栏主功能区导航栈（图示图标+文案列表；8 网格紧凑） */
-export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-2 px-5 pb-4";
+/** 侧栏主功能区导航栈（设计稿 space-y-6：三项主 tab 间距 24px） */
+export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-6 px-5 pb-6";
 
 const WORKSPACE_SIDEBAR_NAV_ITEM_BASE =
-  "flex w-full min-h-8 items-center gap-2 rounded-sm border-0 px-2 py-1.5 text-left text-title font-medium leading-snug transition-colors";
+  "flex w-full min-h-9 items-center gap-3 rounded-sm border-0 px-2 py-2 text-left text-title font-medium leading-snug transition-colors";
 
 /** 主页面切换项：图示气质 — 激活靠字重/色，无厚底圆角块 */
 export function workspaceSidebarNavItemClass(opts: { active?: boolean; disabled?: boolean }): string {

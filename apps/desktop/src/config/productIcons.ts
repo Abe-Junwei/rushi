@@ -3,6 +3,7 @@ import {
   IconChartBar as BarChart3,
   IconBookmarks as BookMarked,
   IconBook as BookOpen,
+  IconBooks as Books,
   IconRobot as Bot,
   IconBrain as Brain,
   IconCircleCheck as CircleCheck,
@@ -11,6 +12,7 @@ import {
   IconCloud as Cloud,
   IconCpu as Cpu,
   IconFileSpreadsheet as FileSpreadsheet,
+  IconFileText as FileText,
   IconHome as Home,
   IconInfoCircle as Info,
   IconKeyboard as Keyboard,
@@ -53,10 +55,10 @@ export const PRODUCT_ICON = {
 
   /** 侧栏 · 主页（项目与文件库） */
   navHome: Home,
-  /** 侧栏 · 转录（打开上次校对工作区） */
-  navTranscript: Mic,
-  /** 侧栏 · 词表（原热词与记忆入口） */
-  navGlossary: BookOpen,
+  /** 侧栏 · 转录（文档形，对齐设计稿「转录列表」） */
+  navTranscript: FileText,
+  /** 侧栏 · 词表（书册叠放，区别于子页单书 BookOpen） */
+  navGlossary: Books,
   /** 侧栏 · 转写词汇表（词表子页） */
   navGlossaryVocabulary: BookOpen,
   /** 侧栏 · 纠错记忆 */

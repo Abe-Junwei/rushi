@@ -76,7 +76,7 @@
 |------|------|------|
 | 对话框 / 环境页 / Hub | `controlStyles.ts` `CONTROL_BTN_*` | 手写 `bg-transparent hover:bg-notion-sidebar-hover` |
 | 波形工作条 40px 行 | `waveform.css` `.icon-btn`、`.workbench-label-btn`、`.waveform-playback-btn` | 在工作条上套 `CONTROL_BTN_SECONDARY` |
-| 侧栏页面切换 | `workspaceShellLayout.ts` `workspaceSidebarNavItemClass` | `CONTROL_BTN_GHOST`（侧栏为紧凑图标+文案行：`min-h-8` · 激活靠字重，无厚底块） |
+| 侧栏页面切换 | `workspaceShellLayout.ts` `workspaceSidebarNavItemClass` | `CONTROL_BTN_GHOST`（侧栏主 tab：`gap-6` 栈 · `min-h-9` · 激活靠字重，无厚底块） |
 | 图标 | `lucide-react` + `lucideIconSpec.ts` | 混装 Tabler/Phosphor 整包；Lucide 为主，补缺仅单 SVG |
 
 **Ghost 阶梯**（尺寸有意区分，禁止合并）：`GHOST` · `TOOLBAR_GHOST` · `WORKSPACE_IMPORT` · `ICON_GHOST`。
@@ -98,8 +98,8 @@
 | `navQuality` | BarChart3 | 环境页 · 质量评测 |
 | `navAbout` | Info | 环境页 · 关于 |
 | `navHome` | Home | 侧栏 · 主页 |
-| `navTranscript` | Mic | 侧栏 · 转录 |
-| `navGlossary` | BookOpen | 侧栏 · 词表 |
+| `navTranscript` | FileText | 侧栏 · 转录 |
+| `navGlossary` | Books | 侧栏 · 词表 |
 | `navGlossaryVocabulary` | BookOpen | 侧栏 · 转写词汇表（词表子页） |
 | `navGlossaryMemory` | BookMarked | 侧栏 · 纠错记忆 |
 | `navGlossaryBundle` | FileSpreadsheet | 侧栏 · 词表包 |

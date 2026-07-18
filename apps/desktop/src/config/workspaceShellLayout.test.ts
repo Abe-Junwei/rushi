@@ -35,10 +35,11 @@ describe("workspaceShellLayout shell grid", () => {
 });
 
 describe("workspaceShellLayout sidebar nav", () => {
-  it("uses compact text+icon primary nav on 8px grid", () => {
+  it("uses design-draft nav stack spacing (gap-6) with text+icon rows", () => {
     expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("px-5");
-    expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("gap-2");
-    expect(workspaceSidebarNavItemClass({ active: false })).toContain("min-h-8");
+    expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("gap-6");
+    expect(workspaceSidebarNavItemClass({ active: false })).toContain("min-h-9");
+    expect(workspaceSidebarNavItemClass({ active: false })).toContain("gap-3");
     expect(workspaceSidebarNavItemClass({ active: false })).toContain("text-notion-text-muted");
     expect(workspaceSidebarNavItemClass({ active: true })).toContain("font-semibold");
     expect(workspaceSidebarNavItemClass({ active: true })).toContain("text-notion-text");
