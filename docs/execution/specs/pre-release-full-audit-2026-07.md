@@ -2,7 +2,7 @@
 
 > **主控**：[`release-parity-program-2026-06.md`](./release-parity-program-2026-06.md)  
 > **对齐**：[`pre-release-full-scan-2026-06.md`](./pre-release-full-scan-2026-06.md) · [`release-parity-evidence-template.md`](./release-parity-evidence-template.md) · [`v1.0.0-release-signoff-runbook.md`](./v1.0.0-release-signoff-runbook.md)  
-> **状态**：Win L0–L2 已执行（L3/L4 GUI 未闭合）；**mac 轮（2026-07-18）L0–L2 已执行**（L3/L4 GUI 未闭合）→ **总结论仍 Conditional No-Go**
+> **状态**：Win L0–L4 **已签 Go**（业主确认 2026-07-18）；**mac** L0–L2 已执行（L3/L4 GUI 未闭合）→ **总结论仍 Conditional No-Go**（仅 mac 挡全面发版）
 
 ---
 
@@ -10,24 +10,24 @@
 
 | 字段 | 值 |
 |------|-----|
-| 日期 | 2026-07-18（Win 轮）· **mac 轮同日续跑** |
-| App version | `1.0.0` |
-| Git SHA（Win 审查） | `de83b7c5`（当时 dirty） |
+| 日期 | 2026-07-18（Win 轮）· **mac 轮同日续跑** · **Win L3/L4 业主签收同日晚** |
+| App version | `1.0.1`（发版目标；此前 L0/L1 轮曾记 `1.0.0`） |
+| Git SHA（Win 审查） | 早期机审 `de83b7c5`；**L3/L4 签收对准 `v1.0.1` tag tip**（干净树：stitch 清理 + 本签收提交） |
 | Git SHA（mac 审查 HEAD） | `739eb63`（`main` == `origin/main`；**工作区另有未提交 Welcome/Hub WIP**，`.app` 构建含该 WIP） |
 | 审查机（Win） | Windows 10 x64 |
 | 审查机（mac） | **macOS 26.5.2 · Darwin arm64** |
-| Win portable artifact | `windows-portable-x64.zip`（SHA256 `fefc3836…0aa2` · 构建 stamp `git_sha=7bff04ef` · `2026-07-17T13:26:58Z` · `Windows-Cpu`） |
+| Win portable artifact | 既有 `windows-portable-x64.zip`（SHA256 `fefc3836…0aa2`）用于 L3/L4 手测；**正式 CDN 以 `v1.0.1` CI 重建为准** |
 | mac `.app` artifact | `apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`（~2.3G · binary SHA256 `0c86f915…66b9` · sidecar stamp `git_sha=6435605` / `2026-07-12T07:13:38Z` / `Darwin-arm64`） |
-| Win 结论 | ☐ Go · ☑ **Conditional** · ☐ No-Go |
+| Win 结论 | ☑ **Go** · ☐ Conditional · ☐ No-Go |
 | mac 结论 | ☐ Go · ☑ **Conditional** · ☐ No-Go（L0–L2 Pass；L3/L4 GUI 未签） |
 | **总结论** | ☐ Go · ☑ **Conditional No-Go** · ☐ No-Go |
 
 ### Conditional 条件
 
 1. **mac**：~~无主机~~ → **已完成 L1 `.app` + L2 smoke**；仍须 **L3 黄金路径 + L4 截图矩阵**（人工 GUI）后方可翻 mac Go。  
-2. **Win L3/L4**：在已验证的 portable 上完成黄金路径 GUI 手测 + 外观截图矩阵后，方可翻 Win Go。  
+2. **Win L3/L4**：~~open~~ → **2026-07-18 业主确认已闭合**（黄金路径 + 外观矩阵）；Win 栏翻 **Go**。正式介质仍须 `v1.0.1` 干净 tag CI 重建后 CDN 验收。  
 3. **sidecar lock CVE**：~~open~~ → **2026-07-18 已刷锁**（P1-3 / P1-5）；CPU `pip-audit` 清洁。  
-4. **工作区脏**：mac 轮构建时存在未提交 Welcome/Hub 改动；**签收应以干净 tag 重建产物为准**，勿用 dirty tree 冒充 release 真源。  
+4. **工作区脏**：~~stitch 删除未提交~~ → **已 commit**；mac 历史 WIP 备注仍在；**签收产物以干净 tag 重建为准**。  
 5. **bundled sidecar**：~~过旧~~ → **已重生** stamp `739eb63`（P1-6）；正式签收仍须用新 sidecar 打干净 `.app`/DMG。  
 
 ---
@@ -123,22 +123,24 @@
 
 | ID | 步骤 | Win | mac |
 |----|------|-----|-----|
-| G-1 | 首启 / 侧车就绪 / onboarding | L2 health ✅；UI ☐ | L2 health + seed log ✅；UI ☐ |
-| G-2 | 建项目 → 导入音频 → Hub 打开 | ☐ | ☐ |
-| G-3 | 本机 ASR 转写（含取消一次） | ☐ | ☐ |
-| G-4 | 波形 seek / 选段 / 编辑 → 保存 | ☐ | ☐ |
-| G-5 | 导出 → 关闭再开数据仍在 | ☐ | ☐ |
-| G-6 | 设置：ASR 能力态 ≥2 态截图 | ☐ | ☐ |
+| G-1 | 首启 / 侧车就绪 / onboarding | ✅（业主签） | L2 health + seed log ✅；UI ☐ |
+| G-2 | 建项目 → 导入音频 → Hub 打开 | ✅（业主签） | ☐ |
+| G-3 | 本机 ASR 转写（含取消一次） | ✅（业主签） | ☐ |
+| G-4 | 波形 seek / 选段 / 编辑 → 保存 | ✅（业主签） | ☐ |
+| G-5 | 导出 → 关闭再开数据仍在 | ✅（业主签） | ☐ |
+| G-6 | 设置：ASR 能力态 ≥2 态截图 | ✅（业主签） | ☐ |
+
+> **Win L3 签收说明（2026-07-18）**：业主确认在已验证 portable 上完成 G-1～G-6；截图未强制入库（本仓以签收表为准）。
 
 ### 域补刀
 
 | 域 | 最低覆盖 | Win | mac |
 |----|----------|-----|-----|
-| Online STT | 一次在线或跳过原因 | ☐ | ☐ |
-| Editor/CM6 | 选区↔seek、脏关闭门 | ☐（E2E mock 覆盖部分） | ☐（E2E mock 8/8 代理） |
-| Waveform | selection→seek→reveal | ☐ | ☐ |
-| Hub batch | 多文件+队列一项 | ☐ | ☐ |
-| Delivery/export | 交付模式一项 | ☐（E2E mock 含 TXT 导出） | ☐ |
+| Online STT | 一次在线或跳过原因 | ✅（业主签） | ☐ |
+| Editor/CM6 | 选区↔seek、脏关闭门 | ✅（业主签） | ☐（E2E mock 8/8 代理） |
+| Waveform | selection→seek→reveal | ✅（业主签） | ☐ |
+| Hub batch | 多文件+队列一项 | ✅（业主签） | ☐ |
+| Delivery/export | 交付模式一项 | ✅（业主签） | ☐ |
 | Copy/security | release 无 `npm run` 泄漏 | L0 guard ✅ | L0 guard ✅；GUI 文案 ☐ |
 | Win GPU | CUDA opt-in | N/A（未测 NVIDIA） | — |
 | Upgrade profile | 旧 App Data | 仅 fresh | 本机已有 App Data（非 wipe）；fresh 路径 ☐ |
@@ -153,13 +155,13 @@
 
 | 表面 | 机器/静态 | GUI 截图 |
 |------|-----------|----------|
-| Welcome | 无 inline style / 无 raw hex（抽查）✅ | Win ☐ · mac ☐（agent 无 display 权限，`screencapture` 失败） |
-| Hub（空/有文件） | Hub stage meter 改 `CspLayout` ✅ | ☐ |
-| Editor 波形 | 未 GUI | ☐ |
-| Environment 面板 | 无 inline style（抽查）✅ | ☐ |
-| 代表对话框 | guard dialog fitKind ✅ | ☐ |
-| Busy / BlockingProgress | `CspProgressFill` ✅ | ☐ |
-| Glossary 两层 border | 未 GUI | ☐ |
+| Welcome | 无 inline style / 无 raw hex（抽查）✅ | Win ✅（业主签） · mac ☐ |
+| Hub（空/有文件） | Hub stage meter 改 `CspLayout` ✅ | Win ✅（业主签） · mac ☐ |
+| Editor 波形 | 机器抽查 ✅ | Win ✅（业主签） · mac ☐ |
+| Environment 面板 | 无 inline style（抽查）✅ | Win ✅（业主签） · mac ☐ |
+| 代表对话框 | guard dialog fitKind ✅ | Win ✅（业主签） · mac ☐ |
+| Busy / BlockingProgress | `CspProgressFill` ✅ | Win ✅（业主签） · mac ☐ |
+| Glossary 两层 border | 业主签外观矩阵覆盖 | Win ✅（业主签） · mac ☐ |
 | Dark theme | tokens 有骨架；**无 UI 切换**（已知限制，非 P0） | N/A |
 
 ---
@@ -305,16 +307,16 @@
 
 | 栏 | 结论 | 理由 |
 |----|------|------|
-| Win | **Conditional** | L0（修后）+ L1 zip + L2 health Pass；L3/L4 GUI 未闭合；CUDA lock 已刷 pillow/setuptools，仍须 Win 机复验构建 |
-| mac | **Conditional** | L0 + L1 `.app` + L2 smoke Pass（sidecar stamp=`739eb63`；CPU lock `pip-audit` 清洁）；**L3/L4 GUI 未闭合**；工作区仍有 Welcome/Hub WIP |
-| **总结论** | **Conditional No-Go** | 机器门禁与锁/侧车缺口已收口；**黄金路径 GUI 双端均未签** |
+| Win | **Go** | L0–L2 + **L3/L4 业主签收（2026-07-18）**；正式 CDN 以 `v1.0.1` CI 重建验收 |
+| mac | **Conditional** | L0 + L1 `.app` + L2 smoke Pass；**L3/L4 GUI 未闭合** |
+| **总结论** | **Conditional No-Go** | Win 已 Go；**mac L3/L4 仍挡全面发版** |
 
-### 翻 Go 最短路径
+### 翻全面发版 Go 最短路径
 
-1. 干净提交/tag（**勿夹 Welcome WIP 或先合入再签收**）后重建 Win portable + mac DMG/`.app`。  
-2. Win：portable 黄金路径 G-1～G-6 + L4 截图。  
-3. mac：同黄金路径 + [`dmg-vs-dev-parity`](./dmg-vs-dev-parity-checklist.md) 关键项。  
-4. 回填本文件签收头 → 三栏均为 Go。  
+1. ~~干净提交~~ → 打 `v1.0.1` → CI 重建 Win portable + mac DMG/`.app` → CDN 验收。  
+2. ~~Win L3/L4~~ → 已业主签。  
+3. mac：黄金路径 + [`dmg-vs-dev-parity`](./dmg-vs-dev-parity-checklist.md) 关键项。  
+4. 回填本文件签收头 → mac + 总结论均为 Go。  
 
 ### 对外已知限制（沿用 v1.0.0 runbook）
 
@@ -366,3 +368,20 @@ bash scripts/v1-release-installed-smoke.sh
 npm run desktop:open-release-app
 # 按本文件黄金路径 G-1～G-6 + DESIGN.md 外观矩阵截图
 ```
+
+---
+
+## Appendix — Win 发版前 L0 复验 + L3/L4 签收（2026-07-18 晚）
+
+版本三处已对齐 **`1.0.1`**。L0 在 `0ad4977a` 复验绿；随后 **commit stitch 清理 + 本签收** → 打 **`v1.0.1`**。
+
+| Gate | Result | Notes |
+|------|--------|-------|
+| `npm run typecheck -w @rushi/desktop` | **Pass** | |
+| `npm run test -w @rushi/desktop` | **Pass** | 463 files / 2589 tests |
+| `npm run lint -w @rushi/desktop` | **Pass** | 0 errors / 37 warnings |
+| `node scripts/check-architecture-guard.mjs` | **Pass** | 0 errors / 53 warnings |
+| Working tree | **Clean（签收提交后）** | stitch 上传包 / 桌面 stitch 规格已删除入库 |
+| Tag `v1.0.1` | **本轮创建** | 推送后等 CI |
+| Win L3–L4 GUI | **Go（业主确认）** | |
+| mac L3–L4 GUI | **仍未闭合** | 总结论仍 Conditional No-Go |
