@@ -54,6 +54,7 @@ export function useStableTranscriptionLayerInput({
       deleteSegmentAt: c.deleteSegmentAt,
       requestDeleteSelection: c.requestDeleteSelection,
       confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
+      markSegmentFirstProof: c.markSegmentFirstProof,
       saveSegments: c.saveSegments,
       triggerFindReplaceShortcut: c.triggerFindReplaceShortcut,
       closeFile: c.closeFile,
@@ -102,6 +103,7 @@ export function useStableTranscriptionLayerInput({
   input.deleteSegmentAt = c.deleteSegmentAt;
   input.requestDeleteSelection = c.requestDeleteSelection;
   input.confirmSegmentEditAndAdvance = c.confirmSegmentEditAndAdvance;
+  input.markSegmentFirstProof = c.markSegmentFirstProof;
   input.saveSegments = c.saveSegments;
   input.triggerFindReplaceShortcut = c.triggerFindReplaceShortcut;
   input.closeFile = c.closeFile;

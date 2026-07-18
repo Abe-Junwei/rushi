@@ -9,6 +9,7 @@ import {
 import {
   segmentHasUnsavedText,
   segmentCanFinalize,
+  segmentCanMarkFirstProof,
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
 import { pushEditHistoryRestoreActivity } from "../services/ui/pushActivity";
@@ -184,6 +185,55 @@ export function useProjectSaveController(args: Args) {
     [finalizeSegmentAt],
   );
 
+  const markSegmentFirstProof = useCallback(
+    async (segmentIdx: number): Promise<boolean> => {
+      if (!current || !currentFileId || busy) return false;
+      const currentSegments = getCurrentSegmentsSnapshot();
+      if (segmentIdx < 0 || segmentIdx >= currentSegments.length) return false;
+      const stage = currentSegments[segmentIdx]?.text_stage ?? "auto_transcribe";
+      if (stage === "first_proof" || stage === "finalized") return true;
+      if (!segmentCanMarkFirstProof(currentSegments, segmentIdx, busy)) return false;
+      clearAutoSaveRef.current();
+      const hadUnsaved = segmentHasUnsavedText(
+        currentSegments,
+        dirty.getSavedSnapshot(),
+        segmentIdx,
+      );
+      if (saveInFlightRef.current) {
+        const idle = await waitForSaveIdle(saveInFlightRef);
+        if (!idle) {
+          toast.warning("保存语段失败：自动保存耗时过长，请稍候再试");
+          return false;
+        }
+      }
+      const firstProofSaveOptions = {
+        quiet: true,
+        countHits: hadUnsaved,
+        firstProofIntent: { segmentIdx },
+      } as const;
+      let saved = await saveSegments(firstProofSaveOptions);
+      if (!saved && saveInFlightRef.current) {
+        const idle = await waitForSaveIdle(saveInFlightRef);
+        if (idle) {
+          saved = await saveSegments(firstProofSaveOptions);
+        }
+      }
+      if (!saved) {
+        toast.warning("标记一校失败：请稍候再试（可能正在自动保存）");
+        return false;
+      }
+      return true;
+    },
+    [
+      busy,
+      current,
+      currentFileId,
+      dirty,
+      getCurrentSegmentsSnapshot,
+      saveSegments,
+    ],
+  );
+
   const restoreEditorFromEditLog = useCallback(
     async (editLogId: number) => {
       if (busy) {
@@ -258,6 +308,7 @@ export function useProjectSaveController(args: Args) {
     saveSegments,
     confirmSegmentEditAndAdvance,
     markSegmentFinalized,
+    markSegmentFirstProof,
     restoreEditorFromEditLog,
   };
 }

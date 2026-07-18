@@ -41,6 +41,7 @@ function makeController(selectedIdx: number): ProjectControllerApi {
     deleteSegmentAt: () => {},
     requestDeleteSelection: () => {},
     confirmSegmentEditAndAdvance: () => Promise.resolve(true),
+    markSegmentFirstProof: () => Promise.resolve(true),
     saveSegments: () => Promise.resolve(true),
     triggerFindReplaceShortcut: () => {},
     closeFile: () => {},

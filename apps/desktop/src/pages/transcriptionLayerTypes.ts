@@ -56,6 +56,7 @@ export type TranscriptionLayerInput = {
   deleteSegmentAt: (idx: number) => void;
   requestDeleteSelection: (lo: number, hi: number) => void;
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
+  markSegmentFirstProof: (segmentIdx: number) => Promise<boolean>;
   saveSegments: (options?: { quiet?: boolean; countHits?: boolean }) => Promise<boolean>;
   triggerFindReplaceShortcut: () => void;
   closeFile: () => void;

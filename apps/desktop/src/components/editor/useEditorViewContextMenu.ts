@@ -215,6 +215,9 @@ export function useEditorViewContextMenu({
         case "splitAtPointer":
           tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
           break;
+        case "markFirstProof":
+          void c.markSegmentFirstProof(i);
+          break;
         case "markFinalized":
           void c.markSegmentFinalized(i);
           break;

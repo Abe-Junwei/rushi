@@ -75,6 +75,16 @@ describe("segmentStagePersist", () => {
     expect(out[0]?.finalize_via).toBe("mark_only");
   });
 
+  it("firstProofIntent sets first_proof and clears finalize_via", () => {
+    const saved = [{ ...seg("a", "u1", "finalized"), finalize_via: "mark_only" as const }];
+    const live = [{ ...seg("a", "u1", "finalized"), finalize_via: "mark_only" as const }];
+    const out = applyStagePatchesBeforePersist(live, saved, {
+      firstProofIntent: { segmentIdx: 0 },
+    });
+    expect(out[0]?.text_stage).toBe("first_proof");
+    expect(out[0]?.finalize_via).toBeNull();
+  });
+
   it("llm writeback keeps ai_revised after manual pass on save", () => {
     const saved = [seg("old", "u1")];
     const live = [seg("new", "u1", "ai_revised")];

@@ -29,6 +29,10 @@ export function withAiRevisedStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: "ai_revised", finalize_via: clearedFinalize() };
 }
 
+export function withFirstProofStage(seg: SegmentDto): SegmentDto {
+  return { ...seg, text_stage: "first_proof", finalize_via: clearedFinalize() };
+}
+
 function withAutoTranscribeStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: DEFAULT_SEGMENT_TEXT_STAGE, finalize_via: clearedFinalize() };
 }
@@ -81,8 +85,13 @@ export type FinalizeStageIntent = {
   hadUnsavedDraft: boolean;
 };
 
+export type FirstProofStageIntent = {
+  segmentIdx: number;
+};
+
 export type StagePersistOptions = {
   finalizeIntent?: FinalizeStageIntent;
+  firstProofIntent?: FirstProofStageIntent;
   /** 本次 save 由 LLM 写回且文本变更的 uid；须在 manual 升阶之后再次标 ai_revised。 */
   aiRevisedUids?: ReadonlySet<string>;
 };
@@ -97,6 +106,13 @@ export function applyStagePatchesBeforePersist(
   let next = applyManualTranscribeStageOnTextSave(segments, savedSnapshot);
   if (opts.aiRevisedUids?.size) {
     next = applyAiRevisedStageToUids(next, opts.aiRevisedUids);
+  }
+  const firstProof = opts.firstProofIntent;
+  if (firstProof) {
+    next = next.map((seg, idx) => {
+      if (idx !== firstProof.segmentIdx) return seg;
+      return withFirstProofStage(seg);
+    });
   }
   const intent = opts.finalizeIntent;
   if (!intent) return next;

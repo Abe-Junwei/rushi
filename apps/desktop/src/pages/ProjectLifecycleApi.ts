@@ -67,9 +67,11 @@ export interface ProjectLifecycleApi {
     countHits?: boolean;
     explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
   }) => Promise<boolean>;
-  /** Enter：落笔保存未提交正文并选中下一语段。 */
+  /** Ctrl/⌘+Enter：定稿并（由快捷键队列）跳下一语段。 */
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
   markSegmentFinalized: (segmentIdx: number) => Promise<boolean>;
+  /** Enter / 右键：标记一校（快捷键路径会再跳下一语段）。 */
+  markSegmentFirstProof: (segmentIdx: number) => Promise<boolean>;
   manualCorrectionMemoryDialog: import("./useManualCorrectionMemoryDialog").ManualCorrectionMemoryDialogState;
   openManualCorrectionMemoryDialog: (wrong: string) => void;
   closeManualCorrectionMemoryDialog: () => void;

@@ -8,6 +8,7 @@ import { dispatchTranscriptEditorSelection } from "../components/editor/core/tra
 import { readFileViewState } from "../services/fileViewState";
 import { armFileViewRestore, clearFileViewRestore } from "../services/fileViewStateBridge";
 import { logDesktopUi } from "../services/desktopUiLog";
+import { patchProjectFileSummary } from "../utils/patchProjectFileSummary";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -53,6 +54,11 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       const saved = readFileViewState(fileId);
       const ni = findSegmentIndexByUid(segs, saved?.selectedSegmentUid);
       const nextIdx = ni >= 0 ? ni : 0;
+      if (detail.duration_sec != null && detail.duration_sec > 0) {
+        setCurrent((prev) =>
+          patchProjectFileSummary(prev, fileId, { duration_sec: detail.duration_sec }),
+        );
+      }
       setCurrentFileId(fileId);
       setSegments(segs);
       selectedIdxRef.current = nextIdx;

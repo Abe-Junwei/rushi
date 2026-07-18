@@ -12,6 +12,7 @@ import { segmentsToLearnBaselineAligned } from "../services/correctionLearnBasel
 import {
   applyStagePatchesBeforePersist,
   type FinalizeStageIntent,
+  type FirstProofStageIntent,
 } from "../services/segmentStagePersist";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 
@@ -21,6 +22,7 @@ export type SavePersistPipelineOptions = {
   explicitPairs?: fileApi.CorrectionExplicitPair[];
   learnBaselineTexts?: fileApi.LearnBaselineText[];
   finalizeIntent?: FinalizeStageIntent;
+  firstProofIntent?: FirstProofStageIntent;
   aiRevisedUids?: ReadonlySet<string>;
 };
 
@@ -60,10 +62,12 @@ export async function runProjectSavePersistPipeline(
     ...pendingAiRevisedUids,
     ...(options?.aiRevisedUids ?? []),
   ]);
-  const countHits = options?.countHits ?? !options?.finalizeIntent;
+  const countHits =
+    options?.countHits ?? !(options?.finalizeIntent || options?.firstProofIntent);
   const currentSegments = getCurrentSegmentsSnapshot();
   const staged = applyStagePatchesBeforePersist(currentSegments, savedSnapshot, {
     finalizeIntent: options?.finalizeIntent,
+    firstProofIntent: options?.firstProofIntent,
     aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
   });
   segmentPublish.publishTextBulk(staged);

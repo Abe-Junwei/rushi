@@ -48,6 +48,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     deleteSegmentAt: vi.fn(),
     requestDeleteSelection: vi.fn(),
     confirmSegmentEditAndAdvance: vi.fn(() => Promise.resolve(true)),
+    markSegmentFirstProof: vi.fn(() => Promise.resolve(true)),
     saveSegments: vi.fn(() => Promise.resolve(true)),
     triggerFindReplaceShortcut: vi.fn(),
     closeFile: vi.fn(),
@@ -312,6 +313,27 @@ describe("executeEditorShortcut", () => {
       expect(wf.playSegmentAtIndex).not.toHaveBeenCalled();
     }, { timeout: 3000 });
     document.body.innerHTML = "";
+  });
+
+  it("firstProofAdvance marks first proof then advances", async () => {
+    vi.spyOn(waveformPrefs, "readStoredTabAdvanceLoopsSegment").mockReturnValue(false);
+    const markSegmentFirstProof = vi.fn(() => Promise.resolve(true));
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({ selectedIdx: 0, markSegmentFirstProof, confirmSegmentEditAndAdvance });
+    const selectSegmentAt = vi.fn();
+    const focusSegmentTextarea = vi.fn();
+
+    executeEditorShortcut(
+      "workflow.firstProofAdvance",
+      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea }),
+    );
+
+    await vi.waitFor(() => {
+      expect(markSegmentFirstProof).toHaveBeenCalledWith(0);
+      expect(confirmSegmentEditAndAdvance).not.toHaveBeenCalled();
+      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
+      expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
+    }, { timeout: 3000 });
   });
 
   it("advanceSegment jumps without finalizing", async () => {

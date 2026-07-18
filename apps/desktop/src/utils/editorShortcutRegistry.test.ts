@@ -148,12 +148,21 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: "Tab" }), { inTextarea: false })).toBeNull();
   });
 
-  it("matches confirmAdvance on Enter in transcript textarea only", () => {
+  it("matches firstProofAdvance on Enter in transcript textarea only", () => {
     expect(matchEditorShortcut(keyEvent({ key: "Enter" }), { inTextarea: true })).toBe(
-      "workflow.confirmAdvance",
+      "workflow.firstProofAdvance",
     );
     expect(matchEditorShortcut(keyEvent({ key: "Enter" }), { inTextarea: false })).toBeNull();
-    expect(matchEditorShortcut(keyEvent({ key: "Enter", metaKey: true }), { inTextarea: true })).toBeNull();
+  });
+
+  it("matches confirmAdvance on Mod+Enter in transcript textarea only", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "Enter", metaKey: true }), { inTextarea: true })).toBe(
+      "workflow.confirmAdvance",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "Enter", ctrlKey: true }), { inTextarea: true })).toBe(
+      "workflow.confirmAdvance",
+    );
+    expect(matchEditorShortcut(keyEvent({ key: "Enter", metaKey: true }), { inTextarea: false })).toBeNull();
   });
 
   it("does not match confirmAdvance on Tab", () => {
@@ -191,6 +200,7 @@ describe("formatEditorShortcutPanelSections", () => {
     const workflow = sections.find((s) => s.id === "workflow");
     expect(workflow?.rows.some((r) => r.keys === "⌘/Ctrl + F")).toBe(true);
     expect(workflow?.rows.find((r) => r.keys === "Tab")?.action).toMatch(/不定稿/);
-    expect(workflow?.rows.find((r) => r.keys === "Enter")?.action).toMatch(/定稿/);
+    expect(workflow?.rows.find((r) => r.keys === "Enter")?.action).toMatch(/一校/);
+    expect(workflow?.rows.find((r) => r.keys === "⌘/Ctrl + Enter")?.action).toMatch(/定稿/);
   });
 });

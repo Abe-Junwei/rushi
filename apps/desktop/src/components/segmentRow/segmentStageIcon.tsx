@@ -8,6 +8,7 @@ const STAGE_ICONS: Record<SegmentTextStage, TablerIcon> = {
   auto_transcribe: PRODUCT_ICON.stageAutoTranscribe,
   ai_revised: PRODUCT_ICON.stageAiRevised,
   manual_transcribe: PRODUCT_ICON.stageManual,
+  first_proof: PRODUCT_ICON.stageFirstProof,
   finalized: PRODUCT_ICON.stageFinalized,
 };
 

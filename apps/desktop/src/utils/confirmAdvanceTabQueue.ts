@@ -9,8 +9,10 @@ import { effectiveTranscriptPrimaryIdx } from "../components/editor/core/project
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type ConfirmAdvanceStep = {
-  /** Enter / 右键定稿路径为 true；Tab 跳段为 false。 */
+  /** Ctrl/⌘+Enter 定稿路径。 */
   finalize: boolean;
+  /** Enter 一校路径。 */
+  firstProof: boolean;
 };
 
 export type ConfirmAdvanceTabQueueRef = {
@@ -45,10 +47,13 @@ function nextFrame(): Promise<void> {
 export function enqueueConfirmAdvanceTab(
   queue: ConfirmAdvanceTabQueueRef,
   deps: ConfirmAdvanceTabQueueDeps,
-  opts?: { finalize?: boolean },
+  opts?: { finalize?: boolean; firstProof?: boolean },
 ): void {
   if (queue.pending.length >= CONFIRM_ADVANCE_TAB_QUEUE_MAX) return;
-  queue.pending.push({ finalize: opts?.finalize === true });
+  queue.pending.push({
+    finalize: opts?.finalize === true,
+    firstProof: opts?.firstProof === true,
+  });
   if (!queue.inFlight) {
     void drainConfirmAdvanceTabQueue(queue, deps);
   }
@@ -80,6 +85,8 @@ export async function drainConfirmAdvanceTabQueue(
       if (nextIdx == null || nextIdx === fromIdx) {
         if (step.finalize) {
           await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+        } else if (step.firstProof) {
+          await deps.getCtx().markSegmentFirstProof(fromIdx);
         }
         continue;
       }
@@ -91,6 +98,8 @@ export async function drainConfirmAdvanceTabQueue(
       await nextFrame();
       if (step.finalize) {
         await deps.getCtx().confirmSegmentEditAndAdvance(fromIdx);
+      } else if (step.firstProof) {
+        await deps.getCtx().markSegmentFirstProof(fromIdx);
       }
     }
   } finally {

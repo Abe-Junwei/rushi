@@ -58,6 +58,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     saveSegments,
     confirmSegmentEditAndAdvance,
     markSegmentFinalized,
+    markSegmentFirstProof,
     restoreEditorFromEditLog,
   } = saveController;
 
@@ -106,6 +107,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     saveSegments,
     confirmSegmentEditAndAdvance,
     markSegmentFinalized,
+    markSegmentFirstProof,
     getSavedSnapshot: dirty.getSavedSnapshot,
     autoSaveFooterStatus: autoSave.autoSaveFooterStatus,
     ...mapEditorToolsLifecycleFields(editorTools),

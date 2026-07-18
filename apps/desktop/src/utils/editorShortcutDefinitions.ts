@@ -185,9 +185,17 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
-    id: "workflow.confirmAdvance",
+    id: "workflow.firstProofAdvance",
     bindings: [BINDING.plain("Enter", { allowInTextarea: true, textareaOnly: true })],
     keysLabel: "Enter",
+    footerAction: "一校并跳下一条",
+    panelAction: "标记一校并跳到下一语段（语段正文内生效）",
+    allowInTextarea: true,
+  },
+  {
+    id: "workflow.confirmAdvance",
+    bindings: [BINDING.mod("Enter", { allowInTextarea: true, textareaOnly: true })],
+    keysLabel: "⌘/Ctrl + Enter",
     footerAction: "定稿并跳下一条",
     panelAction: "定稿：落库（有未保存改词时写入纠错记忆）并跳到下一语段",
     allowInTextarea: true,

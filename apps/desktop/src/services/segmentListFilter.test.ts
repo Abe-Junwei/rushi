@@ -119,7 +119,7 @@ describe("segmentListFilter", () => {
       frozen: "frozen" as const,
     };
     expect(formatSegmentListFilterTriggerLabel(partial)).toBe(
-      "筛选 · 阶段 3/4 · 有备注 · 已冻结",
+      "筛选 · 阶段 4/5 · 有备注 · 已冻结",
     );
     expect(
       formatSegmentListFilterTriggerLabel(DEFAULT_SEGMENT_LIST_FILTER, {
@@ -149,6 +149,30 @@ describe("segmentListFilter", () => {
     expect(parseStoredSegmentListFilter(JSON.stringify(legacy))).toEqual({
       stages: DEFAULT_SEGMENT_LIST_FILTER.stages,
       annotation: "with",
+      frozen: "all",
+    });
+  });
+
+  it("upgrades legacy stage maps missing first_proof to enabled", () => {
+    const legacy = {
+      stages: {
+        auto_transcribe: true,
+        ai_revised: false,
+        manual_transcribe: true,
+        finalized: true,
+      },
+      annotation: "all",
+      frozen: "all",
+    };
+    expect(parseStoredSegmentListFilter(JSON.stringify(legacy))).toEqual({
+      stages: {
+        auto_transcribe: true,
+        ai_revised: false,
+        manual_transcribe: true,
+        first_proof: true,
+        finalized: true,
+      },
+      annotation: "all",
       frozen: "all",
     });
   });

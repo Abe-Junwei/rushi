@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   segmentCanConfirmEdit,
   segmentCanFinalize,
+  segmentCanMarkFirstProof,
   segmentHasTextContent,
   segmentHasUnsavedText,
 } from "./segmentConfirmEligible";
@@ -41,6 +42,28 @@ describe("segmentConfirmEligible", () => {
   it("blocks finalize when already finalized", () => {
     const rows = [{ ...seg("u1", "甲"), text_stage: "finalized" as const }];
     expect(segmentCanFinalize(rows, 0, false)).toBe(false);
+  });
+
+  it("allows mark first proof for non-proof segments", () => {
+    const rows = [seg("u1", "甲")];
+    expect(segmentCanMarkFirstProof(rows, 0, false)).toBe(true);
+  });
+
+  it("blocks mark first proof when already first_proof or finalized", () => {
+    expect(
+      segmentCanMarkFirstProof(
+        [{ ...seg("u1", "甲"), text_stage: "first_proof" as const }],
+        0,
+        false,
+      ),
+    ).toBe(false);
+    expect(
+      segmentCanMarkFirstProof(
+        [{ ...seg("u1", "甲"), text_stage: "finalized" as const }],
+        0,
+        false,
+      ),
+    ).toBe(false);
   });
 
   it("detects segment text content from segment.text", () => {

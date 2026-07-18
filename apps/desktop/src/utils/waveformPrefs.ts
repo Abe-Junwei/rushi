@@ -196,7 +196,7 @@ export function migrateLegacySegmentPlaybackRateToGlobal(): number | null {
   }
 }
 
-/** Enter 定稿 / Tab 跳段后是否自动 loop 播放新语段（听打默认开）。 */
+/** Enter 一校 / Ctrl+Enter 定稿 / Tab 跳段后是否自动 loop 播放新语段（听打默认开）。 */
 export function readStoredTabAdvanceLoopsSegment(): boolean {
   try {
     const raw = localStorage.getItem(LS_TAB_ADVANCE_LOOP);

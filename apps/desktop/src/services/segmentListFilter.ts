@@ -25,6 +25,7 @@ export const SEGMENT_TEXT_STAGES: readonly SegmentTextStage[] = [
   "auto_transcribe",
   "ai_revised",
   "manual_transcribe",
+  "first_proof",
   "finalized",
 ] as const;
 
@@ -32,6 +33,7 @@ const DEFAULT_SEGMENT_STAGE_FILTER: SegmentStageFilterMap = {
   auto_transcribe: true,
   ai_revised: true,
   manual_transcribe: true,
+  first_proof: true,
   finalized: true,
 };
 
@@ -182,11 +184,19 @@ export function resetSegmentListFilter(): SegmentListFilterState {
 
 export const SEGMENT_LIST_FILTER_STORAGE_KEY = "rushi.editor.segmentListFilter.v1";
 
-function isSegmentStageFilterMap(value: unknown): value is SegmentStageFilterMap {
-  if (!value || typeof value !== "object") return false;
-  return SEGMENT_TEXT_STAGES.every(
-    (stage) => typeof (value as SegmentStageFilterMap)[stage] === "boolean",
-  );
+/** Accept legacy maps missing newer stages (fill with default true). */
+function coerceSegmentStageFilterMap(value: unknown): SegmentStageFilterMap | null {
+  if (!value || typeof value !== "object") return null;
+  const raw = value as Record<string, unknown>;
+  let known = 0;
+  const stages = { ...DEFAULT_SEGMENT_STAGE_FILTER };
+  for (const stage of SEGMENT_TEXT_STAGES) {
+    if (typeof raw[stage] === "boolean") {
+      stages[stage] = raw[stage];
+      known += 1;
+    }
+  }
+  return known > 0 ? stages : null;
 }
 
 function parseTriState<T extends string>(
@@ -203,9 +213,10 @@ export function parseStoredSegmentListFilter(raw: string | null): SegmentListFil
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as Partial<SegmentListFilterState>;
-    if (!isSegmentStageFilterMap(parsed.stages)) return null;
+    const stages = coerceSegmentStageFilterMap(parsed.stages);
+    if (!stages) return null;
     return {
-      stages: parsed.stages,
+      stages,
       annotation: parseTriState(parsed.annotation, ["all", "with", "without"] as const, "all"),
       // Older persisted filters omit frozen — default to "all".
       frozen: parseTriState(parsed.frozen, ["all", "frozen", "unfrozen"] as const, "all"),

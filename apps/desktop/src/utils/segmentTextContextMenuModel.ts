@@ -6,7 +6,10 @@ import {
   buildSegmentContextMenuItems,
   type SegmentContextMenuOrigin,
 } from "./segmentContextMenuModel";
-import { segmentCanFinalize } from "../services/segmentConfirmEligible";
+import {
+  segmentCanFinalize,
+  segmentCanMarkFirstProof,
+} from "../services/segmentConfirmEligible";
 import { segmentAnnotationMenuLabel } from "./segmentAnnotation";
 import { editorShortcutMenuHint } from "./editorShortcutMenuHint";
 import { isSegmentFrozen } from "./frozenPlaybackSkip";
@@ -165,6 +168,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     busy: args.busy,
     pointerTimeSec: args.pointerTimeSec,
     origin: args.origin,
+    canMarkFirstProof: segmentCanMarkFirstProof(args.segments, args.segmentIdx, args.busy),
     canFinalize: segmentCanFinalize(args.segments, args.segmentIdx, args.busy),
     selectionLo: args.selectionLo,
     selectionHi: args.selectionHi,

@@ -3,6 +3,7 @@ export type SegmentTextStage =
   | "auto_transcribe"
   | "ai_revised"
   | "manual_transcribe"
+  | "first_proof"
   | "finalized";
 
 export type SegmentFinalizeVia = "confirm_edit" | "mark_only";
@@ -27,6 +28,10 @@ const STAGE_LABELS: Record<Exclude<SegmentTextStage, "finalized">, SegmentStageL
     category: "手改",
     tooltip: "手动转写，已保存，待确认定稿",
   },
+  first_proof: {
+    category: "一校",
+    tooltip: "已完成一校，待定稿",
+  },
 };
 
 const FINALIZED_TOOLTIPS: Record<SegmentFinalizeVia, string> = {
@@ -39,6 +44,7 @@ export function normalizeSegmentTextStage(raw: unknown): SegmentTextStage {
     raw === "auto_transcribe" ||
     raw === "ai_revised" ||
     raw === "manual_transcribe" ||
+    raw === "first_proof" ||
     raw === "finalized"
   ) {
     return raw;
@@ -77,7 +83,8 @@ const SEGMENT_STAGE_CERTAINTY_RANK: Record<SegmentTextStage, number> = {
   auto_transcribe: 0,
   ai_revised: 1,
   manual_transcribe: 2,
-  finalized: 3,
+  first_proof: 3,
+  finalized: 4,
 };
 
 /** 合并语段时取确信度较低（更未确认）的阶段。 */

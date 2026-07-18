@@ -18,6 +18,7 @@ export type EditorShortcutId =
   | "edit.paste"
   | "workflow.save"
   | "workflow.advanceSegment"
+  | "workflow.firstProofAdvance"
   | "workflow.confirmAdvance"
   | "workflow.find"
   | "workflow.closeFile"

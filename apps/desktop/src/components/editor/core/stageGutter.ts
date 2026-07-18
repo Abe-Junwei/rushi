@@ -34,7 +34,7 @@ function transcriptGutterIconSvg(innerPaths: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" ${ICON_STROKE} aria-hidden="true">${innerPaths}</svg>`;
 }
 
-/** Compact stage set — readable at 12px (机转 / AI改 / 手改 / 定稿). */
+/** Compact stage set — readable at 12px (机转 / AI改 / 手改 / 一校 / 定稿). */
 const STAGE_ICON_SVG: Record<string, string> = {
   // Bot — ASR / machine
   auto_transcribe: transcriptGutterIconSvg(
@@ -47,6 +47,10 @@ const STAGE_ICON_SVG: Record<string, string> = {
   // PenLine — manual edit
   manual_transcribe: transcriptGutterIconSvg(
     '<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>',
+  ),
+  // CircleNumber1 — first proof
+  first_proof: transcriptGutterIconSvg(
+    '<circle cx="12" cy="12" r="10"/><path d="M10 10h2v6"/><path d="M9 16h6"/>',
   ),
   // CircleCheck — finalized (stronger “sealed” read than bare check)
   finalized: transcriptGutterIconSvg(

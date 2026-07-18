@@ -36,6 +36,7 @@ export type SegmentContextMenuKey =
   | "mergeNext"
   | "mergeRange"
   | "splitAtPointer"
+  | "markFirstProof"
   | "markFinalized";
 
 export type SegmentContextMenuItem = {
@@ -50,7 +51,7 @@ export type SegmentContextMenuItem = {
  * Structure ops for waveform / list menus.
  * Unavailable actions are omitted (not greyed out).
  *
- * Order: 定稿 → 合并 → 删除 →（波形）拆分
+ * Order: 一校 → 定稿 → 合并 → 删除 →（波形）拆分
  */
 export function buildSegmentContextMenuItems(args: {
   segmentIdx: number;
@@ -58,6 +59,7 @@ export function buildSegmentContextMenuItems(args: {
   busy: boolean;
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
+  canMarkFirstProof?: boolean;
   canFinalize?: boolean;
   selectionLo?: number;
   selectionHi?: number;
@@ -72,6 +74,7 @@ export function buildSegmentContextMenuItems(args: {
     busy,
     pointerTimeSec,
     origin,
+    canMarkFirstProof = false,
     canFinalize = false,
     selectionLo = i,
     selectionHi = i,
@@ -114,6 +117,11 @@ export function buildSegmentContextMenuItems(args: {
   if (structureLocked || targetFrozen) return [];
 
   const items: SegmentContextMenuItem[] = [];
+  if (canMarkFirstProof) {
+    items.push(
+      menuItemWithShortcut({ key: "markFirstProof", label: "标记一校" }, "workflow.firstProofAdvance"),
+    );
+  }
   if (canFinalize) {
     items.push(
       menuItemWithShortcut({ key: "markFinalized", label: "标记定稿" }, "workflow.confirmAdvance"),

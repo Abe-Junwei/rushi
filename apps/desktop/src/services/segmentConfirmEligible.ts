@@ -27,7 +27,7 @@ export function segmentHasUnsavedText(
   return pair.live !== pair.saved;
 }
 
-/** Enter 定稿：仅当语段正文仍有未落库修改时可保存并跳下一条。 */
+/** 定稿写记忆：仅当语段正文仍有未落库修改时可计入纠错记忆。 */
 export function segmentCanConfirmEdit(
   segments: SegmentDto[],
   savedSnapshot: SegmentDto[],
@@ -46,7 +46,7 @@ export function segmentHasTextContent(segments: SegmentDto[], segmentIdx: number
 
 export const DELETE_SEGMENT_WITH_TEXT_CONFIRM = "该语段已有正文，确定删除？";
 
-/** 定稿（Enter / 右键）：非 busy 且尚未定稿即可。 */
+/** 定稿（Ctrl/⌘+Enter / 右键）：非 busy 且尚未定稿即可。 */
 export function segmentCanFinalize(
   segments: SegmentDto[],
   segmentIdx: number,
@@ -56,4 +56,16 @@ export function segmentCanFinalize(
   if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
   const stage = segments[segmentIdx]?.text_stage ?? "auto_transcribe";
   return stage !== "finalized";
+}
+
+/** 标记一校（Enter / 右键）：非 busy，且尚未一校 / 定稿。 */
+export function segmentCanMarkFirstProof(
+  segments: SegmentDto[],
+  segmentIdx: number,
+  busy: boolean,
+): boolean {
+  if (busy) return false;
+  if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
+  const stage = segments[segmentIdx]?.text_stage ?? "auto_transcribe";
+  return stage !== "first_proof" && stage !== "finalized";
 }

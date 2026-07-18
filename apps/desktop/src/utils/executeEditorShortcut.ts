@@ -25,7 +25,7 @@ type WfApi = ReturnType<typeof useProjectWaveform>;
 
 export type EditorShortcutExecuteDeps = {
   ctx: TranscriptionLayerInput;
-  /** 异步 shortcut（如 Enter 定稿跳段）完成后须读最新 ctx，避免闭包 stale。 */
+  /** 异步 shortcut（如 Enter 一校 / Ctrl+Enter 定稿跳段）完成后须读最新 ctx，避免闭包 stale。 */
   getCtx?: () => TranscriptionLayerInput;
   wf: WfApi;
   selectSegmentAt: (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void;
@@ -196,6 +196,7 @@ export function executeEditorShortcut(
       void ctx.saveSegments();
       return true;
     case "workflow.advanceSegment":
+    case "workflow.firstProofAdvance":
     case "workflow.confirmAdvance": {
       const ctx = readCtx(deps);
       const idx = resolveConfirmAdvanceStartingIdx(ctx);
@@ -215,7 +216,10 @@ export function executeEditorShortcut(
           focusSegmentTextarea: deps.focusSegmentTextarea,
           wf,
         },
-        { finalize: id === "workflow.confirmAdvance" },
+        {
+          finalize: id === "workflow.confirmAdvance",
+          firstProof: id === "workflow.firstProofAdvance",
+        },
       );
       return true;
     }

@@ -48,6 +48,7 @@ function makeCtx(): TranscriptionLayerInput {
     deleteSegmentAt: vi.fn(),
     requestDeleteSelection: vi.fn(),
     confirmSegmentEditAndAdvance: vi.fn(() => Promise.resolve(true)),
+    markSegmentFirstProof: vi.fn(() => Promise.resolve(true)),
     saveSegments: vi.fn(() => Promise.resolve(true)),
     triggerFindReplaceShortcut: vi.fn(),
     closeFile: vi.fn(),

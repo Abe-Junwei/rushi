@@ -57,6 +57,7 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     saveSegments: lifecycle.saveSegments,
     confirmSegmentEditAndAdvance: lifecycle.confirmSegmentEditAndAdvance,
     markSegmentFinalized: lifecycle.markSegmentFinalized,
+    markSegmentFirstProof: lifecycle.markSegmentFirstProof,
     canConfirmSegmentEdit: lifecycle.canConfirmSegmentEdit,
     getSavedSnapshot: lifecycle.getSavedSnapshot,
     editorSpansForText: lifecycle.editorSpansForText,

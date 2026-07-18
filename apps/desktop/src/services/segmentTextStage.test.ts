@@ -13,10 +13,11 @@ describe("segmentTextStage", () => {
     expect(normalizeSegmentTextStage("bogus")).toBe("auto_transcribe");
   });
 
-  it("resolveSegmentStageLabels uses short chip copy for auto/manual", () => {
+  it("resolveSegmentStageLabels uses short chip copy for auto/manual/first_proof", () => {
     expect(resolveSegmentStageLabels("auto_transcribe", null).category).toBe("机转");
     expect(resolveSegmentStageLabels("manual_transcribe", null).category).toBe("手改");
     expect(resolveSegmentStageLabels("ai_revised", null).category).toBe("AI改");
+    expect(resolveSegmentStageLabels("first_proof", null).category).toBe("一校");
   });
 
   it("resolveSegmentStageLabels for finalized confirm_edit", () => {
@@ -38,6 +39,12 @@ describe("segmentTextStage", () => {
   it("leastConfirmedSegmentStage picks the less confirmed stage", () => {
     expect(leastConfirmedSegmentStage("finalized", "auto_transcribe")).toBe("auto_transcribe");
     expect(leastConfirmedSegmentStage("manual_transcribe", "ai_revised")).toBe("ai_revised");
+    expect(leastConfirmedSegmentStage("finalized", "first_proof")).toBe("first_proof");
+    expect(leastConfirmedSegmentStage("first_proof", "manual_transcribe")).toBe("manual_transcribe");
+  });
+
+  it("normalizes first_proof", () => {
+    expect(normalizeSegmentTextStage("first_proof")).toBe("first_proof");
   });
 
   it("newUserCreatedSegment defaults to manual_transcribe", () => {

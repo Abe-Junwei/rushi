@@ -46,6 +46,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     deleteSegmentAt: vi.fn(),
     requestDeleteSelection: vi.fn(),
     confirmSegmentEditAndAdvance: vi.fn(() => Promise.resolve(true)),
+    markSegmentFirstProof: vi.fn(() => Promise.resolve(true)),
     saveSegments: vi.fn(() => Promise.resolve(true)),
     triggerFindReplaceShortcut: vi.fn(),
     closeFile: vi.fn(),
@@ -97,7 +98,7 @@ describe("confirmAdvanceTabQueue", () => {
     expect(deps.wf.playSegmentAtIndex).toHaveBeenCalledWith(2, { loop: true });
   });
 
-  it("Enter finalize path still confirms then advances", async () => {
+  it("Ctrl+Enter finalize path still confirms then advances", async () => {
     let selectedIdx = 0;
     const ctx = makeCtx();
     const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));
@@ -133,6 +134,39 @@ describe("confirmAdvanceTabQueue", () => {
     expect(confirmSegmentEditAndAdvance).toHaveBeenNthCalledWith(2, 1);
     expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
     expect(selectSegmentAt).toHaveBeenCalledWith(2, "listKeyboard");
+  });
+
+  it("Enter first-proof path marks first proof then advances", async () => {
+    let selectedIdx = 0;
+    const ctx = makeCtx();
+    const getCtx = vi.fn(() => ({ ...ctx, selectedIdx }));
+    const selectSegmentAt = vi.fn((idx: number) => {
+      selectedIdx = idx;
+    });
+    const markSegmentFirstProof = vi.fn(() => Promise.resolve(true));
+    ctx.markSegmentFirstProof = markSegmentFirstProof;
+
+    const queue: ConfirmAdvanceTabQueueRef = { inFlight: false, pending: [] };
+    const deps = {
+      getCtx,
+      segmentListFilterNavState: { active: false, indices: [] },
+      selectSegmentAt,
+      focusSegmentTextarea: vi.fn(),
+      wf: {
+        preserveLoopForNextSegmentSelect: vi.fn(),
+        playSegmentAtIndex: vi.fn(),
+      },
+    };
+
+    enqueueConfirmAdvanceTab(queue, deps, { firstProof: true });
+
+    await vi.waitFor(() => {
+      expect(queue.inFlight).toBe(false);
+      expect(queue.pending).toHaveLength(0);
+    });
+
+    expect(markSegmentFirstProof).toHaveBeenCalledWith(0);
+    expect(selectSegmentAt).toHaveBeenCalledWith(1, "listKeyboard");
   });
 
   it("caps queued Tab steps", () => {

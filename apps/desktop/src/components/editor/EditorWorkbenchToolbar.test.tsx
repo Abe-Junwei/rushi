@@ -48,6 +48,7 @@ function makeSegmentFilter() {
         auto_transcribe: true,
         ai_revised: true,
         manual_transcribe: true,
+        first_proof: true,
         finalized: true,
       },
       annotation: "all" as const,

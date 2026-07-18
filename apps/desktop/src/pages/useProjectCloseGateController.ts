@@ -14,6 +14,8 @@ import {
 import { createCloseGateNavigateHandlers } from "./closeGateNavigate";
 import { createCloseGateProjectLoadActions } from "./closeGateProjectLoad";
 import { useAppWindowCloseGuardEffect } from "./useAppWindowCloseGuardEffect";
+import * as fileApi from "../tauri/fileApi";
+import { patchProjectFilesList } from "../utils/patchProjectFileSummary";
 
 type Proceed = () => void | Promise<void>;
 
@@ -137,10 +139,25 @@ export function useProjectCloseGateController(
   const navigate = createCloseGateNavigateHandlers(navigateState, navigateCtx);
 
   function performCloseFile() {
+    const projectId = current?.id ?? null;
     persistLeavingFileViewState(currentFileId);
     closeFile();
     dirty.clearSavedSnapshot();
     resetMutationHistory();
+    // Soft-refresh Hub rows so duration_sec written during open/peaks is visible
+    // without a blocking busy overlay.
+    if (projectId) {
+      void fileApi
+        .listFiles(projectId)
+        .then((files) => {
+          setCurrent((prev) =>
+            prev?.id === projectId ? patchProjectFilesList(prev, files) : prev,
+          );
+        })
+        .catch(() => {
+          /* best-effort */
+        });
+    }
   }
 
   function runLeaveProject() {
