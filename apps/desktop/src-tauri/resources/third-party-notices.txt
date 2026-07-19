@@ -13,6 +13,26 @@
   许可正文：见「许可正文 — 专有软件许可（商业软件）」
 
 ------------------------------------------------------------------------
+桌面端音频处理组件
+------------------------------------------------------------------------
+
+Signalsmith Stretch
+  用途：原生播放的保音高变速处理
+  著作权：Geraint Luff / Signalsmith Audio Ltd.
+  许可：MIT License
+  来源：https://github.com/Signalsmith-Audio/signalsmith-stretch
+        构建锁定 57b93f4e9206a089a45387eaa39bdc9f310d3308
+  许可正文：见「许可正文 — MIT License」
+
+Signalsmith Linear
+  用途：Signalsmith Stretch 依赖的 FFT / STFT / 线性代数头文件
+  著作权：Signalsmith Audio
+  许可：MIT License
+  来源：https://github.com/Signalsmith-Audio/linear
+        构建锁定 7f53cdd1ccd52b409dacf2af24e7ff838c5580cd
+  许可正文：见「许可正文 — MIT License」
+
+------------------------------------------------------------------------
 本机 ASR 侧车组件
 ------------------------------------------------------------------------
 
