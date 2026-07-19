@@ -78,6 +78,29 @@ function Test-CommandVersion {
   return $cmd
 }
 
+function Test-Sha256sumAvailable {
+  $cmd = Get-Command "sha256sum" -ErrorAction SilentlyContinue
+  if ($cmd) {
+    $version = Get-NativeText -Command { & sha256sum --version }
+    if ($version.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($version.Text)) {
+      Add-Row "sha256sum" "ok" "$($version.Text) at $($cmd.Source)"
+      return $true
+    }
+  }
+
+  $bashProbe = Get-NativeText -Command {
+    & bash -lc "command -v sha256sum >/dev/null 2>&1 && sha256sum --version | head -n 1"
+  }
+  if ($bashProbe.ExitCode -eq 0 -and -not [string]::IsNullOrWhiteSpace($bashProbe.Text)) {
+    Add-Row "sha256sum" "ok" "available in Git Bash: $($bashProbe.Text)"
+    return $true
+  }
+
+  Add-Error "sha256sum not available in PowerShell PATH or Git Bash PATH"
+  Add-Row "sha256sum" "missing" "sha256sum not available in PowerShell or Git Bash"
+  return $false
+}
+
 function Add-PathForCurrentStep {
   param([Parameter(Mandatory)][string]$Path)
   if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
@@ -205,7 +228,7 @@ foreach ($candidate in $gitUsrBinCandidates | Select-Object -Unique) {
     break
   }
 }
-Test-CommandVersion -Name "sha256sum" -VersionCommand { & sha256sum --version } -Required | Out-Null
+Test-Sha256sumAvailable | Out-Null
 
 $bashPython = Get-NativeText -Command {
   & bash scripts/resolve-host-python312.sh
@@ -224,6 +247,12 @@ try {
   New-Item -ItemType Directory -Force -Path $tarProbeInput | Out-Null
   Set-Content -LiteralPath (Join-Path $tarProbeInput "probe.txt") -Encoding ascii -Value "rushi-release-tar-probe"
   $tarCreate = Get-NativeText -Command { & tar -a -c -f $tarProbeZip -C $tarProbeInput probe.txt }
+  $tarMode = "tar -a"
+  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tarProbeZip)) {
+    if (Test-Path -LiteralPath $tarProbeZip) { Remove-Item -LiteralPath $tarProbeZip -Force }
+    $tarCreate = Get-NativeText -Command { & tar --format zip -c -f $tarProbeZip -C $tarProbeInput probe.txt }
+    $tarMode = "tar --format zip"
+  }
   $tarList = if ($tarCreate.ExitCode -eq 0 -and (Test-Path -LiteralPath $tarProbeZip)) {
     Get-NativeText -Command { & tar -tf $tarProbeZip }
   } else {
@@ -235,10 +264,10 @@ try {
     @()
   }
   if ($tarCreate.ExitCode -ne 0 -or $tarList.ExitCode -ne 0 -or $tarList.Text -notmatch 'probe\.txt' -or $magic.Count -ne 2 -or $magic[0] -ne 0x50 -or $magic[1] -ne 0x4B) {
-    Add-Error "tar cannot create and read a real ZIP via -a; Windows release packaging requires ZIP-capable bsdtar."
-    Add-Row "tar:zip" "bad" "tar -a ZIP round-trip failed"
+    Add-Error "tar cannot create and read a real ZIP via -a or --format zip; Windows release packaging requires ZIP-capable bsdtar."
+    Add-Row "tar:zip" "bad" "ZIP round-trip failed"
   } else {
-    Add-Row "tar:zip" "ok" "ZIP create/list round-trip passed"
+    Add-Row "tar:zip" "ok" "ZIP create/list round-trip passed via $tarMode"
   }
 } catch {
   Add-Error "tar ZIP capability probe failed: $($_.Exception.Message)"

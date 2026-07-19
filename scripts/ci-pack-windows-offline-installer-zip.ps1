@@ -111,8 +111,18 @@ if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPa
 
 Push-Location -LiteralPath $StageDir
 try {
-  Invoke-RushiNativeChecked -FailMessage "tar zip failed (ascii=$AsciiZipPath)" -Command {
+  $tarCreate = Invoke-RushiNativeSoft -Command {
     & tar -a -c -f $AsciiZipPath .
+  }
+  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
+    if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
+    Write-Warning "tar -a zip failed; retrying with tar --format zip"
+    $tarCreate = Invoke-RushiNativeSoft -Command {
+      & tar --format zip -c -f $AsciiZipPath .
+    }
+  }
+  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
+    throw "tar zip failed (ascii=$AsciiZipPath, exit=$($tarCreate.ExitCode))"
   }
 } finally {
   Pop-Location

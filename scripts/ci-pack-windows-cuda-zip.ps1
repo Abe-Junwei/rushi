@@ -56,8 +56,18 @@ if ($cudaLeaf -ne "rushi-asr-sidecar-cuda") {
 }
 Push-Location -LiteralPath $cudaParent
 try {
-  Invoke-RushiNativeChecked -FailMessage "tar zip failed (ascii=$AsciiZipPath)" -Command {
+  $tarCreate = Invoke-RushiNativeSoft -Command {
     & tar -a -c -f $AsciiZipPath $cudaLeaf
+  }
+  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
+    if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
+    Write-Warning "tar -a zip failed; retrying with tar --format zip"
+    $tarCreate = Invoke-RushiNativeSoft -Command {
+      & tar --format zip -c -f $AsciiZipPath $cudaLeaf
+    }
+  }
+  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
+    throw "tar zip failed (ascii=$AsciiZipPath, exit=$($tarCreate.ExitCode))"
   }
 } finally {
   Pop-Location
