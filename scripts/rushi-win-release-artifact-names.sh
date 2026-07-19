@@ -28,9 +28,16 @@ rushi_win_normalize_version() {
 }
 
 rushi_win_portable_zip_name() {
+  # Deprecated (2026-07-19): portable retired; use rushi_win_offline_installer_zip_name.
   local version
   version="$(rushi_win_normalize_version "${1:-}")"
   echo "$(rushi_win_product_name)_${version}_Windows_x64_便携版.zip"
+}
+
+rushi_win_offline_installer_zip_name() {
+  local version
+  version="$(rushi_win_normalize_version "${1:-}")"
+  echo "$(rushi_win_product_name)_${version}_Windows_x64_离线安装包.zip"
 }
 
 rushi_win_nsis_setup_name() {

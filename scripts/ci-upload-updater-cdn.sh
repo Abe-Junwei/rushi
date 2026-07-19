@@ -14,7 +14,7 @@ Usage:
 Modes:
   macos-ota     app.tar.gz + .sig → CDN /<tag>/ (manifest merged separately)
   macos-dmg     *.dmg + *.sha256 → /<tag>/
-  windows       如是我闻_*_便携版.zip(+sha) and optional NSIS → /<tag>/
+  windows       如是我闻_*_离线安装包.zip(+sha) and optional NSIS → /<tag>/
   windows-ota   如是我闻_*_安装包.exe + .sig → CDN /<tag>/
   windows-cuda  CUDA sidecar zip(+sha) → /<tag>/; optional runtime manifest → /runtime/
   manifest      latest.json → CDN root + /<tag>/
@@ -156,23 +156,23 @@ case "$MODE" in
     # shellcheck source=scripts/rushi-win-release-artifact-names.sh
     source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
     APP_VER="$(rushi_win_app_version)"
-    PORTABLE_NAME="$(rushi_win_portable_zip_name "$APP_VER")"
+    OFFLINE_NAME="$(rushi_win_offline_installer_zip_name "$APP_VER")"
     NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VER")"
     uploaded=0
-    # Prefer ASCII local alias (CI writes windows-portable-x64.zip); S3 key stays Chinese.
-    if [ -f "${ROOT}/windows-portable-x64.zip" ]; then
-      upload_file "${ROOT}/windows-portable-x64.zip" "${TAG}/${PORTABLE_NAME}" "application/zip"
+    # Prefer ASCII local alias (CI writes windows-offline-x64.zip); S3 key stays Chinese.
+    if [ -f "${ROOT}/windows-offline-x64.zip" ]; then
+      upload_file "${ROOT}/windows-offline-x64.zip" "${TAG}/${OFFLINE_NAME}" "application/zip"
       uploaded=1
-      if [ -f "${ROOT}/windows-portable-x64.zip.sha256" ]; then
-        upload_file "${ROOT}/windows-portable-x64.zip.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
-      elif [ -f "${ROOT}/${PORTABLE_NAME}.sha256" ]; then
-        upload_file "${ROOT}/${PORTABLE_NAME}.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
+      if [ -f "${ROOT}/windows-offline-x64.zip.sha256" ]; then
+        upload_file "${ROOT}/windows-offline-x64.zip.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
+      elif [ -f "${ROOT}/${OFFLINE_NAME}.sha256" ]; then
+        upload_file "${ROOT}/${OFFLINE_NAME}.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
       fi
-    elif [ -f "${ROOT}/${PORTABLE_NAME}" ]; then
-      upload_file "${ROOT}/${PORTABLE_NAME}" "${TAG}/${PORTABLE_NAME}" "application/zip"
+    elif [ -f "${ROOT}/${OFFLINE_NAME}" ]; then
+      upload_file "${ROOT}/${OFFLINE_NAME}" "${TAG}/${OFFLINE_NAME}" "application/zip"
       uploaded=1
-      if [ -f "${ROOT}/${PORTABLE_NAME}.sha256" ]; then
-        upload_file "${ROOT}/${PORTABLE_NAME}.sha256" "${TAG}/${PORTABLE_NAME}.sha256" "text/plain"
+      if [ -f "${ROOT}/${OFFLINE_NAME}.sha256" ]; then
+        upload_file "${ROOT}/${OFFLINE_NAME}.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
       fi
     fi
     shopt -s nullglob

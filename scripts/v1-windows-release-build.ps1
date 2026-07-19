@@ -1,19 +1,16 @@
-# Local Windows release build — NSIS installer (OTA) + portable zip.
-# Prefer remote `release.yml` on tag push. Use this script ONLY when CI Windows
-# fails due to model-pack OOM; then: npm run release:win:upload -- --tag vX.Y.Z
+# Local Windows release build — thin NSIS (OTA) + offline installer zip (main).
+# Prefer remote `release.yml` on tag push. Fallback: npm run release:win:upload -- --tag vX.Y.Z
 # Run from repo root on Windows x64:
 #   npm run release:win
 # Optional env:
-#   RUSHI_SKIP_SIDECAR_BUILD=1   # reuse existing CPU onedir (still prune + smoke)
+#   RUSHI_SKIP_SIDECAR_BUILD=1
 #   RUSHI_SKIP_SIDECAR_SIGN=1
-#   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
-#   RUSHI_WIN_ARTIFACT_DIR         # default E:\rushi-artifacts — portable/CUDA zips go here (never repo root)
-# Signing (optional): SIGNTOOL, SIGN_PFX, SIGN_PASS — see sign-windows-sidecar.ps1
-# Manifest URL (injected into release shell):
-#   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
+#   RUSHI_SKIP_CUDA_CDN=1
+#   RUSHI_WIN_ARTIFACT_DIR         # default E:\rushi-artifacts
+#   RUSHI_FORCE_MODELS_IN_NSIS=1 # dangerous: may hit makensis ICE #12345
 #
-# Product rule (2026-07-19+): NSIS + portable BOTH include CPU sidecar + Plan B models.
-# Stage Plan B before NSIS; CUDA onedir stays CDN-only.
+# Product (2026-07-19+ Route 3): offline zip = thin NSIS + sibling Plan B models.
+# NSIS payload = shell + CPU sidecar only; models copied at install via installerHooks.
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
@@ -21,18 +18,16 @@ Set-Location $Root
 . (Join-Path $Root "scripts\rushi-win-release-artifact-names.ps1")
 . (Join-Path $Root "scripts\rushi-resolve-git-sha.ps1")
 $AppVersion = Get-RushiWinAppVersion
-$PortableZipName = Get-RushiWinPortableZipName $AppVersion
+$OfflineZipName = Get-RushiWinOfflineInstallerZipName $AppVersion
 $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
 $CudaZipName = Get-RushiWinCudaZipName $AppVersion
 $WinReleaseDir = Get-RushiWinReleaseArtifactDir
 $CudaArtifactDir = Get-RushiWinCudaArtifactDir
 New-Item -ItemType Directory -Force -Path $WinReleaseDir, $CudaArtifactDir | Out-Null
-Write-Host "Artifact names: portable=$PortableZipName nsis=$NsisSetupName"
+Write-Host "Artifact names: offline=$OfflineZipName nsis=$NsisSetupName"
 Write-Host "Artifact dir: $WinReleaseDir (override RUSHI_WIN_ARTIFACT_DIR)"
 
 function Invoke-Npm {
-  # Do not name the param $Args — that shadows PowerShell's automatic $Args and
-  # leaves the splat empty (npm prints help and exits non-zero).
   param([Parameter(Mandatory)][string[]] $NpmArgs)
   Invoke-RushiNativeChecked -FailMessage "npm $($NpmArgs -join ' ') failed" -Command {
     & npm @NpmArgs
@@ -67,10 +62,20 @@ if (Test-Path -LiteralPath $cudaDir) {
 }
 
 $modelsDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr-models"
-Write-Host "== stage Plan B models BEFORE NSIS (required for installer + portable) =="
-Invoke-Npm @("run", "asr:stage-bundled-models")
-Invoke-RushiNativeChecked -FailMessage "bundled-asr-models preflight failed" -Command {
-  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+if ($env:RUSHI_FORCE_MODELS_IN_NSIS -eq "1") {
+  Write-Host "== stage Plan B models BEFORE NSIS (RUSHI_FORCE_MODELS_IN_NSIS=1; may OOM) =="
+  Invoke-Npm @("run", "asr:stage-bundled-models")
+  Invoke-RushiNativeChecked -FailMessage "bundled-asr-models preflight failed" -Command {
+    & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+  }
+} else {
+  foreach ($sub in @("modelscope", "models")) {
+    $p = Join-Path $modelsDir $sub
+    if (Test-Path -LiteralPath $p) {
+      Write-Host "Removing $p before NSIS (models go into offline zip sibling after NSIS)"
+      Remove-Item -Recurse -Force -LiteralPath $p
+    }
+  }
 }
 
 if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
@@ -94,15 +99,15 @@ Invoke-RushiNativeChecked -FailMessage "prune-windows-sidecar-for-nsis failed" -
   )
 }
 
-Write-Host "== measure bundle size spike (CPU + models before NSIS) =="
+Write-Host "== measure bundle size spike (CPU only before NSIS) =="
 Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size failed" -Command {
-  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels
+  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1")
 }
 
 if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
 }
-Write-Host "== Tauri build NSIS (CPU sidecar + Plan B models) - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
+Write-Host "== Tauri build NSIS (CPU sidecar only) - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
 Push-Location (Join-Path $Root "apps\desktop")
 try {
   Invoke-Npm @("run", "tauri", "--", "build", "--bundles", "nsis")
@@ -120,26 +125,36 @@ Invoke-RushiNativeChecked -FailMessage "ci-normalize-windows-nsis-name failed" -
 $NsisSetup = Join-Path $BundleRoot "nsis\$NsisSetupName"
 if (Test-Path -LiteralPath $NsisSetup) {
   Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size (nsis) failed" -Command {
-    & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels -NsisPath $NsisSetup
+    & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -NsisPath $NsisSetup
   }
 }
 
-Write-Host "== portable zip (CPU sidecar + Plan B models; ASCII tar → Chinese rename) =="
-$Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
-$Zip = Join-Path $WinReleaseDir $PortableZipName
-Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-portable-zip failed" -Command {
-  & pwsh (Join-Path $Root "scripts\ci-pack-windows-portable-zip.ps1") `
-    -ExePath $Exe `
-    -ResourcesDir (Join-Path $TauriRoot "resources") `
+Write-Host "== stage Plan B models for offline zip sibling (required) =="
+Invoke-Npm @("run", "asr:stage-bundled-models")
+Invoke-RushiNativeChecked -FailMessage "bundled-asr-models preflight failed (offline zip requires models)" -Command {
+  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+}
+Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size (offline layout) failed" -Command {
+  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBForOfflineLayout
+}
+
+if (-not (Test-Path -LiteralPath $NsisSetup)) {
+  throw "Missing NSIS setup: $NsisSetup"
+}
+
+Write-Host "== offline installer zip (thin NSIS + sibling Plan B; ASCII tar → Chinese rename) =="
+$Zip = Join-Path $WinReleaseDir $OfflineZipName
+Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-offline-installer-zip failed" -Command {
+  & pwsh (Join-Path $Root "scripts\ci-pack-windows-offline-installer-zip.ps1") `
+    -NsisSetupPath $NsisSetup `
+    -ModelsDir $modelsDir `
     -FinalZipPath $Zip `
     -WriteSha256
 }
 
-if (Test-Path -LiteralPath $NsisSetup) {
-  $nsisSha = "$NsisSetup.sha256"
-  $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NsisSetup).Hash.ToLowerInvariant()
-  Set-Content -Encoding utf8 -Path $nsisSha -Value "$hash  $NsisSetupName"
-}
+$nsisSha = "$NsisSetup.sha256"
+$hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $NsisSetup).Hash.ToLowerInvariant()
+Set-Content -Encoding utf8 -Path $nsisSha -Value "$hash  $NsisSetupName"
 
 if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
   Write-Host "== build CUDA sidecar for CDN zip (after NSIS) =="
@@ -164,10 +179,9 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
 }
 
 Write-Host ""
-Write-Host "OK: Windows release build finished (NSIS + portable = CPU sidecar + Plan B models)."
+Write-Host "OK: Windows release build finished (thin NSIS + offline zip = setup + sibling Plan B)."
 Write-Host "Next (CI failed / manual CDN): npm run release:win:upload -- --tag v$AppVersion"
 Get-Item $Zip
-if (Test-Path -LiteralPath $NsisSetup) { Get-Item $NsisSetup }
-Write-Host "Portable: $Zip"
-Write-Host "SHA256:   $HashPath"
-if (Test-Path -LiteralPath $NsisSetup) { Write-Host "NSIS OTA: $NsisSetup" }
+Get-Item $NsisSetup
+Write-Host "Offline: $Zip"
+Write-Host "NSIS OTA: $NsisSetup"

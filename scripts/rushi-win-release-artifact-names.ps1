@@ -30,9 +30,24 @@ function Get-RushiWinNormalizedVersion {
 
 function Get-RushiWinPortableZipName {
   param([string]$Version = "")
+  # Deprecated (2026-07-19): portable retired; use Get-RushiWinOfflineInstallerZipName.
   $v = Get-RushiWinNormalizedVersion $Version
   # _Windows_x64_便携版.zip
   $role = -join @([char]0x4FBF, [char]0x643A, [char]0x7248)
+  return "$(Get-RushiWinProductName)_${v}_Windows_x64_${role}.zip"
+}
+
+function Get-RushiWinOfflineInstallerZipName {
+  param([string]$Version = "")
+  $v = Get-RushiWinNormalizedVersion $Version
+  # _Windows_x64_离线安装包.zip
+  $role = -join @(
+    [char]0x79BB
+    [char]0x7EBF
+    [char]0x5B89
+    [char]0x88C5
+    [char]0x5305
+  )
   return "$(Get-RushiWinProductName)_${v}_Windows_x64_${role}.zip"
 }
 

@@ -44,7 +44,7 @@ APP_VERSION="$(cd "$ROOT" && node -p "require('./apps/desktop/package.json').ver
 # shellcheck source=scripts/rushi-win-release-artifact-names.sh
 source "$ROOT/scripts/rushi-win-release-artifact-names.sh"
 WIN_NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VERSION")"
-WIN_PORTABLE_NAME="$(rushi_win_portable_zip_name "$APP_VERSION")"
+WIN_OFFLINE_NAME="$(rushi_win_offline_installer_zip_name "$APP_VERSION")"
 LATEST_URL="${CDN_BASE}/latest.json"
 
 http_code() {
@@ -78,7 +78,7 @@ verify_platform() {
       echo "latest.json missing platforms.${platform}.url or .signature" >&2
       exit 1
     fi
-    echo "::warning::latest.json omits platforms.${platform} (OTA skip for this platform; portable CDN may still be required)."
+    echo "::warning::latest.json omits platforms.${platform} (OTA skip for this platform; offline zip CDN may still be required)."
     return 0
   fi
 
@@ -145,14 +145,15 @@ verify_url() {
   echo "::warning::CDN asset missing for ${label} (HTTP ${code}): ${url}"
 }
 
-# Portable is hard when Windows job succeeded; soft when verify runs mac-only.
-REQUIRE_PORTABLE="${RUSHI_VERIFY_REQUIRE_PORTABLE:-true}"
-if [ "$REQUIRE_PORTABLE" = "false" ]; then
-  verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 0
-  verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 0
+# Offline zip is hard when Windows job succeeded; soft when verify runs mac-only.
+# RUSHI_VERIFY_REQUIRE_PORTABLE kept as alias for older callers.
+REQUIRE_OFFLINE="${RUSHI_VERIFY_REQUIRE_OFFLINE:-${RUSHI_VERIFY_REQUIRE_PORTABLE:-true}}"
+if [ "$REQUIRE_OFFLINE" = "false" ]; then
+  verify_url "windows-offline" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}" 0
+  verify_url "windows-offline.sha256" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}.sha256" 0
 else
-  verify_url "windows-portable" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}" 1
-  verify_url "windows-portable.sha256" "${CDN_BASE}/${TAG}/${WIN_PORTABLE_NAME}.sha256" 1
+  verify_url "windows-offline" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}" 1
+  verify_url "windows-offline.sha256" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}.sha256" 1
 fi
 verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}.sha256" 0
 
@@ -164,5 +165,5 @@ verify_url "runtime-manifest" "${CDN_BASE}/runtime/rushi-runtime-manifest.json" 
 if [ -n "$MANIFEST_VERSION" ]; then
   echo "OTA CDN OK: version=${MANIFEST_VERSION}"
 else
-  echo "Portable/install CDN OK (latest.json not verified this run)."
+  echo "Offline/install CDN OK (latest.json not verified this run)."
 fi

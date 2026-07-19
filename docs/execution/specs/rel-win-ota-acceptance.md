@@ -13,10 +13,10 @@
 
 | 项 | 结论 |
 |----|------|
-| 首装推荐 | CDN `/<tag>/rushi-desktop-setup.exe`（NSIS） |
-| 便携版 | `windows-portable-x64.zip` 仍提供，**无 OTA** |
-| portable → OTA | 须 **手动装一次 NSIS** 后进入 OTA 链 |
-| OTA baseline | 与 mac 共用 `APP_UPDATE_OTA_BASELINE_VERSION`（当前 `0.1.2`）；v1.0.0 NSIS 用户可直接 OTA |
+| 首装推荐 | CDN `/<tag>/如是我闻_<ver>_Windows_x64_离线安装包.zip`（完整解压后装同级 NSIS） |
+| 便携版 | **已退役**（2026-07-19 路线三）；勿再发/勿再验 |
+| OTA 载体 | 瘦 NSIS（`*_安装包.exe` + `.sig`）；缺旁路时 POSTINSTALL 静默跳过模型拷贝 |
+| OTA baseline | 与 mac 共用 `APP_UPDATE_OTA_BASELINE_VERSION`（当前 `0.1.2`）；已装 NSIS 用户可直接 OTA |
 | Authenticode | 可选；**非** OTA 硬依赖 |
 
 ---
@@ -38,19 +38,19 @@
 |----|--------|-------------|------|
 | C-1 | Release workflow 全绿 | `gh run list --workflow=release.yml --limit 3` · `tauri-macos` + `tauri-windows` + `verify-cdn-release` success | ☐ |
 | C-2 | `latest.json` 可达 | `curl -fsSL https://updates.rushi.app/latest.json \| jq .version,.platforms` | ☐ |
-| C-3 | Win 平台条目 | `jq -r '.platforms["windows-x86_64"].url'` → `.../vX.Y.Z/rushi-desktop-setup.exe` | ☐ |
+| C-3 | Win 平台条目 | `jq -r '.platforms["windows-x86_64"].url'` → `.../vX.Y.Z/*_安装包.exe` | ☐ |
 | C-4 | Win 安装包 HTTP 200 | `curl -fsSIL "<url>"` → 200 | ☐ |
 | C-5 | 本地校验脚本 | `bash scripts/ci-verify-updater-manifest.sh --tag vX.Y.Z` | ☐ |
-| C-6 | NSIS 首装包 CDN | `https://updates.rushi.app/<tag>/rushi-desktop-setup.exe` 可下载 | ☐ |
-| C-7 | portable 仍可用 | `https://updates.rushi.app/<tag>/windows-portable-x64.zip` 可下载（可选渠道） | ☐ |
+| C-6 | 离线安装包 CDN | `https://updates.rushi.app/<tag>/*_离线安装包.zip` 可下载 | ☐ |
+| C-7 | NSIS OTA 包 CDN | `https://updates.rushi.app/<tag>/*_安装包.exe` + `.sig` 可下载 | ☐ |
 
 ---
 
-## H-WIN 基础手测（NSIS 首装）
+## H-WIN 基础手测（离线包首装）
 
 | ID | 步骤 | 期望 | 结果 |
 |----|------|------|------|
-| H-WIN-1 | 从 CDN 下载并安装 `rushi-desktop-setup.exe` | 安装完成 · 应用可启动 | ☐ |
+| H-WIN-1 | CDN 下载离线 zip，完整解压后装同级 `*_安装包.exe` | 安装完成 · Plan B 释放 · 应用可启动 | ☐ |
 | H-WIN-2 | 关于页版本 | 与 `package.json` / Release tag 一致 | ☐ |
 | H-WIN-3 | 导入音频 → 波形 → 本机转写 | 侧车 OK · 语段可见 | ☐ |
 | H-WIN-4 | 导出 Word | 成功 | ☐ |
@@ -63,7 +63,7 @@
 |----|------|------|------|
 | H-WIN-OTA-1 | 已装 vN NSIS；CDN 发布 vN+1（更高 `latest.json` version） | 启动后提示更新 → 确认 → 安装 → 重启后版本为 vN+1 | ☐ |
 | H-WIN-OTA-2 | 关于 → **检查更新**（manifest 无更新） | 提示已是最新；busy 时不重复弹窗 | ☐ |
-| H-WIN-OTA-3 | 仅 portable 用户点「检查更新」 | 若版本 ≥ baseline 但非 NSIS 安装路径：更新可能失败或行为异常 — 文档指引改装 NSIS（见 user-guide §6） | ☐ |
+| H-WIN-OTA-3 | OTA 瘦包无旁路模型 | 不 Abort；壳/侧车升级；App Data 模型仍可用 | ☐ |
 | H-WIN-OTA-4 | 断网 / manifest 404 | 中文错误 · 不 crash | ☐ |
 | H-WIN-OTA-5 | 篡改签名（可选） | 验签失败 · 拒绝安装 | ☐ |
 

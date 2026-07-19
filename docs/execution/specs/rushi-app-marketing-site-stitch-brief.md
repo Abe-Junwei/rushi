@@ -115,7 +115,7 @@
 | 平台 | 主推形态 | 说明文案方向 |
 |------|----------|--------------|
 | macOS | `.dmg` | Apple Silicon / Intel 以 CDN 实际产物为准 |
-| Windows | **便携版 zip**（主推） | 解压即用；另可提安装包若 CDN 有 |
+| Windows | **离线安装包 zip**（主推） | 完整解压后运行同级安装包；CUDA 另见 CDN |
 | GPU | 不单独当「第二安装包」主 CTA | 短说明：有 NVIDIA 显卡时，在应用「环境」中下载 GPU 加速组件 |
 
 禁止：App Store / Microsoft Store 徽章（当前无）。

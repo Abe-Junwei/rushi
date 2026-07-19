@@ -103,12 +103,12 @@
 
 ## 10. Windows CUDA 包分发方式（已定，2026-07-18 修订）
 
-- **主分发（`如是我闻_<ver>_Windows_x64_便携版.zip`）**：**必须**含 **CPU 侧车**（`rushi-asr-sidecar` onedir）+ **Plan B 默认 Paraformer 三件套**（`bundled-asr-models/`）；首启 seed 至 App Data `models/`（与 §0 / §5 一致）。**不含** CUDA onedir。
-- **NSIS（`如是我闻_<ver>_Windows_x64_安装包.exe`，OTA）**：**必须**含 **CPU 侧车 + Plan B 模型**（与 portable 同内容边界；2026-07-19 起撤回「第二刀无模型」）。**不含** CUDA。安装包体积须 **&lt; 2GB**；makensis MAX_PATH 靠 `prune-windows-sidecar-for-nsis.ps1`。
+- **主分发（`如是我闻_<ver>_Windows_x64_离线安装包.zip`）**：外层 zip = **瘦 NSIS** + 同级 `resources/bundled-asr-models/`（Plan B）。安装时 `NSIS_HOOK_POSTINSTALL` 将模型 CopyFiles 进安装目录（验 `modelscope`）；首启 seed 至 App Data。**便携版已退役**（2026-07-19 路线三）。**不含** CUDA onedir。
+- **NSIS（`如是我闻_<ver>_Windows_x64_安装包.exe`，OTA + 离线包入口）**：载荷含 **CPU 侧车**；**不含** Plan B（stock `makensis` mmap ICE）。首装须从离线 zip **完整解压**后运行；**OTA / 静默升级**无旁路时跳过模型拷贝（不 Abort）。体积须 **&lt; 2GB**；MAX_PATH 靠 `prune-windows-sidecar-for-nsis.ps1`。
 - **可选 GPU 包**：Release CI 将 CUDA onedir 打成 **`如是我闻_<ver>_Windows_x64_CUDA侧车.zip`** 上传 CDN；`rushi-runtime-manifest.json` 含 **`asr-sidecar-cuda`** 组件（`windows-x86_64`）；桌面壳编译期注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL`。
 - **UX**：`windows_cuda_probe_ok()` 为真且本地无 CUDA onedir → 环境页 **推荐**（非强制）下载；失败或拒绝 → CPU 转写不受影响。
-- **CI 顺序**：stage Plan B → NSIS（侧车+模型）→ 打 portable（同 resources）→ CDN；缺侧车或模型则 **fail closed**。CI Windows 失败时本机 `npm run release:win` + `npm run release:win:upload`。
-- **Windows `tar.exe` / 中文文件名**：打包与解压校验必须走 ASCII 中间 zip，再改名为 `如是我闻_*`（见 `scripts/ci-pack-windows-portable-zip.ps1`）；勿对 Unicode 路径调用 `tar -f`。
+- **CI 顺序**：瘦 NSIS → stage Plan B → 打离线 zip → CDN；缺侧车或模型则 **fail closed**。CI Windows 失败时本机 `npm run release:win` + `npm run release:win:upload`。
+- **Windows `tar.exe` / 中文文件名**：打包与解压校验必须走 ASCII 中间 zip，再改名为 `如是我闻_*`（见 `scripts/ci-pack-windows-offline-installer-zip.ps1`）；勿对 Unicode 路径调用 `tar -f`。
 - 调研：[`win-nsis-cpu-cuda-cdn-opt-in-research.md`](../execution/specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)。
 
 ---

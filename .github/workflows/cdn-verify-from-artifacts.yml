@@ -98,13 +98,13 @@ jobs:
           repository: ${{ github.repository }}
           run-id: ${{ inputs.source_run_id }}
 
-      - name: Download Windows portable zip
+      - name: Download Windows offline installer zip
         if: ${{ inputs.unnest_only == false }}
         uses: actions/download-artifact@v7
         continue-on-error: true
         with:
-          name: windows-portable-x64
-          path: artifacts/portable
+          name: windows-offline-x64
+          path: artifacts/offline
           github-token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
           run-id: ${{ inputs.source_run_id }}
@@ -154,7 +154,7 @@ jobs:
           source scripts/rushi-win-release-artifact-names.sh
           WIN_VER="$(rushi_win_app_version)"
           NSIS_NAME="$(rushi_win_nsis_setup_name "$WIN_VER")"
-          PORTABLE_NAME="$(rushi_win_portable_zip_name "$WIN_VER")"
+          OFFLINE_NAME="$(rushi_win_offline_installer_zip_name "$WIN_VER")"
           SETUP="$(find artifacts/windows -name "$NSIS_NAME" | head -1)"
           if [ -z "$SETUP" ]; then
             SETUP="$(find artifacts/windows -name '*安装包.exe' | head -1)"
@@ -165,14 +165,19 @@ jobs:
             exit 1
           fi
           WIN_BUNDLE="$(cd "$(dirname "$SETUP")/.." && pwd)"
-          PORTABLE="$(find artifacts/portable artifacts/windows -name "$PORTABLE_NAME" 2>/dev/null | head -1 || true)"
-          if [ -z "$PORTABLE" ]; then
-            PORTABLE="$(find artifacts/portable artifacts/windows -name '*便携版.zip' 2>/dev/null | head -1 || true)"
+          OFFLINE="$(find artifacts/offline artifacts/windows -name "$OFFLINE_NAME" 2>/dev/null | head -1 || true)"
+          if [ -z "$OFFLINE" ]; then
+            OFFLINE="$(find artifacts/offline artifacts/windows -name '*离线安装包.zip' 2>/dev/null | head -1 || true)"
           fi
-          if [ -n "$PORTABLE" ]; then
-            cp "$PORTABLE" "./${PORTABLE_NAME}"
-            if [ -f "${PORTABLE}.sha256" ]; then
-              cp "${PORTABLE}.sha256" "./${PORTABLE_NAME}.sha256"
+          if [ -z "$OFFLINE" ] && [ -f artifacts/offline/windows-offline-x64.zip ]; then
+            OFFLINE="artifacts/offline/windows-offline-x64.zip"
+          fi
+          if [ -n "$OFFLINE" ]; then
+            cp "$OFFLINE" "./windows-offline-x64.zip"
+            if [ -f "${OFFLINE}.sha256" ]; then
+              cp "${OFFLINE}.sha256" "./windows-offline-x64.zip.sha256"
+            elif [ -f "artifacts/offline/windows-offline-x64.zip.sha256" ]; then
+              cp "artifacts/offline/windows-offline-x64.zip.sha256" "./windows-offline-x64.zip.sha256"
             fi
           fi
           bash scripts/ci-upload-updater-cdn.sh \

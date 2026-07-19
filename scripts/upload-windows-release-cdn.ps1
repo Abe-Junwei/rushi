@@ -11,7 +11,8 @@ param(
   [string]$Tag = "",
   [switch]$SkipOta,
   [switch]$SkipCuda,
-  [switch]$SkipPortableNsis
+  [switch]$SkipPortableNsis,
+  [switch]$SkipOfflineNsis
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,18 +41,18 @@ foreach ($req in @("R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT")) {
 }
 
 $AppVersion = Get-RushiWinAppVersion
-$PortableZipName = Get-RushiWinPortableZipName $AppVersion
+$OfflineZipName = Get-RushiWinOfflineInstallerZipName $AppVersion
 $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
 $CudaZipName = Get-RushiWinCudaZipName $AppVersion
 $BundleRoot = "apps/desktop/src-tauri/target/release/bundle"
 $NsisPath = Join-Path $Root "apps\desktop\src-tauri\target\release\bundle\nsis\$NsisSetupName"
 $WinReleaseDir = Get-RushiWinReleaseArtifactDir
 $CudaArtifactDir = Get-RushiWinCudaArtifactDir
-# Prefer E:\rushi-artifacts (or RUSHI_WIN_ARTIFACT_DIR); fall back to legacy repo-root / dist/ paths.
-$PortablePath = Join-Path $WinReleaseDir $PortableZipName
-if (-not (Test-Path -LiteralPath $PortablePath)) {
-  $legacyPortable = Join-Path $Root $PortableZipName
-  if (Test-Path -LiteralPath $legacyPortable) { $PortablePath = $legacyPortable }
+# Prefer E:\rushi-artifacts (or RUSHI_WIN_ARTIFACT_DIR); fall back to legacy repo-root paths.
+$OfflinePath = Join-Path $WinReleaseDir $OfflineZipName
+if (-not (Test-Path -LiteralPath $OfflinePath)) {
+  $legacyOffline = Join-Path $Root $OfflineZipName
+  if (Test-Path -LiteralPath $legacyOffline) { $OfflinePath = $legacyOffline }
 }
 $CudaZip = Join-Path $CudaArtifactDir $CudaZipName
 if (-not (Test-Path -LiteralPath $CudaZip)) {
@@ -62,9 +63,9 @@ $CdnBase = if ($env:RUSHI_UPDATER_CDN_BASE) { $env:RUSHI_UPDATER_CDN_BASE } else
 
 Write-Host "== Manual Windows CDN upload =="
 Write-Host "Tag: $Tag"
-Write-Host "Portable: $PortablePath"
-Write-Host "NSIS:     $NsisSetupName"
-Write-Host "CUDA:     $CudaZip"
+Write-Host "Offline: $OfflinePath"
+Write-Host "NSIS:    $NsisSetupName"
+Write-Host "CUDA:    $CudaZip"
 
 function Invoke-BashUpload {
   param([Parameter(Mandatory)][string[]]$BashArgs)
@@ -82,12 +83,24 @@ if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
   }
 }
 
-if (-not $SkipPortableNsis) {
-  if (-not (Test-Path -LiteralPath $PortablePath)) {
-    throw "Missing portable zip: $PortablePath — run npm run release:win first."
+$skipCore = $SkipOfflineNsis -or $SkipPortableNsis
+if (-not $skipCore) {
+  if (-not (Test-Path -LiteralPath $OfflinePath)) {
+    throw "Missing offline zip: $OfflinePath — run npm run release:win first."
   }
   if (-not (Test-Path -LiteralPath $NsisPath)) {
-    Write-Warning "NSIS missing at $NsisPath — uploading portable only if present."
+    Write-Warning "NSIS missing at $NsisPath — uploading offline zip only if present."
+  }
+  # ASCII alias for ci-upload-updater-cdn.sh (hardlink when same volume; else copy).
+  $asciiZip = Join-Path $Root "windows-offline-x64.zip"
+  if (Test-Path -LiteralPath $asciiZip) { Remove-Item -LiteralPath $asciiZip -Force }
+  try {
+    New-Item -ItemType HardLink -Path $asciiZip -Target $OfflinePath | Out-Null
+  } catch {
+    Copy-Item -LiteralPath $OfflinePath -Destination $asciiZip -Force
+  }
+  if (Test-Path -LiteralPath "$OfflinePath.sha256") {
+    Copy-Item -LiteralPath "$OfflinePath.sha256" -Destination (Join-Path $Root "windows-offline-x64.zip.sha256") -Force
   }
   Invoke-BashUpload @(
     "scripts/ci-upload-updater-cdn.sh",
@@ -142,7 +155,7 @@ if (-not $SkipCuda -and (Test-Path -LiteralPath $CudaZip)) {
 
 Write-Host ""
 Write-Host "OK: uploaded to $CdnBase/$Tag/"
-Write-Host "  $CdnBase/$Tag/$PortableZipName"
+Write-Host "  $CdnBase/$Tag/$OfflineZipName"
 if (Test-Path -LiteralPath $NsisPath) {
   Write-Host "  $CdnBase/$Tag/$NsisSetupName"
 }

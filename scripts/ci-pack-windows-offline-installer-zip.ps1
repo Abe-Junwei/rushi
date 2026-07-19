@@ -1,25 +1,21 @@
-# DEPRECATED (2026-07-19 Route 3): portable retired.
-# Use scripts/ci-pack-windows-offline-installer-zip.ps1 instead.
-# Pack + verify Windows portable zip (CPU sidecar + Plan B models).
+# Pack + verify Windows offline installer zip (thin NSIS + sibling Plan B models).
+#
+# Layout inside zip:
+#   <中文安装包.exe>
+#   resources/bundled-asr-models/...
 #
 # HARD RULE (Windows bsdtar / tar.exe): NEVER pass Unicode paths to `tar -f`.
-# Create and extract only via an ASCII intermediate zip, then rename to the
-# Chinese product filename for CDN / artifacts. .NET APIs (Move-Item,
-# Get-FileHash, Test-Path -LiteralPath) handle Unicode; tar.exe does not.
+# ASCII intermediate zip → verify extract → Move-Item to Chinese final name.
 #
-# Staging: on GitHub Actions use a short ASCII root (E:\rp when present, else C:\rp)
-# to avoid MAX_PATH when
-# packing modelscope trees under D:\a\rushi\rushi\...
-#
-# Usage (repo root or any cwd; paths may be absolute or relative):
-#   pwsh scripts/ci-pack-windows-portable-zip.ps1 `
-#     -ExePath apps/desktop/src-tauri/target/release/rushi-desktop.exe `
-#     -ResourcesDir apps/desktop/src-tauri/resources `
-#     -FinalZipPath (Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP)
+# Usage (repo root):
+#   pwsh scripts/ci-pack-windows-offline-installer-zip.ps1 `
+#     -NsisSetupPath apps/desktop/src-tauri/target/release/bundle/nsis/<中文安装包>.exe `
+#     -ModelsDir apps/desktop/src-tauri/resources/bundled-asr-models `
+#     -FinalZipPath (Join-Path (Get-Location) $env:WIN_OFFLINE_ZIP)
 
 param(
-  [Parameter(Mandatory = $true)][string]$ExePath,
-  [Parameter(Mandatory = $true)][string]$ResourcesDir,
+  [Parameter(Mandatory = $true)][string]$NsisSetupPath,
+  [Parameter(Mandatory = $true)][string]$ModelsDir,
   [Parameter(Mandatory = $true)][string]$FinalZipPath,
   [string]$StageDir = "",
   [string]$AsciiZipPath = "",
@@ -39,38 +35,42 @@ function Resolve-FullPath([string]$Path) {
   return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
 }
 
-$ExePath = Resolve-FullPath $ExePath
-$ResourcesDir = Resolve-FullPath $ResourcesDir
+$NsisSetupPath = Resolve-FullPath $NsisSetupPath
+$ModelsDir = Resolve-FullPath $ModelsDir
 $FinalZipPath = Resolve-FullPath $FinalZipPath
 
-if (-not (Test-Path -LiteralPath $ExePath)) {
-  throw "Missing exe: $ExePath"
+if (-not (Test-Path -LiteralPath $NsisSetupPath)) {
+  throw "Missing NSIS setup: $NsisSetupPath"
 }
-if (-not (Test-Path -LiteralPath $ResourcesDir)) {
-  throw "Missing resources: $ResourcesDir"
+$manifestSrc = Join-Path $ModelsDir "manifest.json"
+if (-not (Test-Path -LiteralPath $manifestSrc)) {
+  throw "Missing Plan B manifest: $manifestSrc"
+}
+$modelscopeSrc = Join-Path $ModelsDir "modelscope"
+if (-not (Test-Path -LiteralPath $modelscopeSrc)) {
+  throw "Missing Plan B modelscope/: $modelscopeSrc"
 }
 
 $onCi = ($env:GITHUB_ACTIONS -eq "true")
-# Prefer E:\ on self-hosted Windows (C: often <30GB free; CPU+models zip ~1.5GB + stage/probe peaks higher).
 if ([string]::IsNullOrWhiteSpace($StageDir)) {
   $StageDir = if ($onCi) {
-    if (Test-Path "E:\") { "E:\rp" } else { "C:\rp" }
+    if (Test-Path "E:\") { "E:\rp-offline" } else { "C:\rp-offline" }
   } else {
-    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable"
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-offline"
   }
 }
 if ([string]::IsNullOrWhiteSpace($AsciiZipPath)) {
   $AsciiZipPath = if ($onCi) {
-    if (Test-Path "E:\") { "E:\rp-build.zip" } else { "C:\rp-build.zip" }
+    if (Test-Path "E:\") { "E:\rp-offline-build.zip" } else { "C:\rp-offline-build.zip" }
   } else {
-    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-build.zip"
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-offline-build.zip"
   }
 }
 if ([string]::IsNullOrWhiteSpace($ProbeDir)) {
   $ProbeDir = if ($onCi) {
-    if (Test-Path "E:\") { "E:\rp-probe" } else { "C:\rp-probe" }
+    if (Test-Path "E:\") { "E:\rp-offline-probe" } else { "C:\rp-offline-probe" }
   } else {
-    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-probe"
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-offline-probe"
   }
 }
 
@@ -78,7 +78,6 @@ $StageDir = Resolve-FullPath $StageDir
 $AsciiZipPath = Resolve-FullPath $AsciiZipPath
 $ProbeDir = Resolve-FullPath $ProbeDir
 
-# Guard: tar -f targets must be ASCII-only (no chars above 0x7F).
 foreach ($p in @($AsciiZipPath, $StageDir, $ProbeDir)) {
   foreach ($ch in $p.ToCharArray()) {
     if ([int]$ch -gt 0x7F) {
@@ -87,7 +86,7 @@ foreach ($p in @($AsciiZipPath, $StageDir, $ProbeDir)) {
   }
 }
 
-Write-Host "portable pack: stage=$StageDir asciiZip=$AsciiZipPath final=$FinalZipPath"
+Write-Host "offline pack: stage=$StageDir asciiZip=$AsciiZipPath final=$FinalZipPath"
 
 if (Test-Path -LiteralPath $StageDir) { Remove-Item -LiteralPath $StageDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
@@ -96,12 +95,14 @@ if (-not [string]::IsNullOrWhiteSpace($asciiParent) -and -not (Test-Path -Litera
   New-Item -ItemType Directory -Force -Path $asciiParent | Out-Null
 }
 
-Copy-Item -LiteralPath $ExePath -Destination (Join-Path $StageDir "rushi-desktop.exe")
-Copy-Item -LiteralPath $ResourcesDir -Destination (Join-Path $StageDir "resources") -Recurse
+$setupLeaf = Split-Path -Leaf $NsisSetupPath
+Copy-Item -LiteralPath $NsisSetupPath -Destination (Join-Path $StageDir $setupLeaf)
+$stageModels = Join-Path $StageDir "resources\bundled-asr-models"
+New-Item -ItemType Directory -Force -Path $stageModels | Out-Null
+Copy-Item -LiteralPath (Join-Path $ModelsDir "*") -Destination $stageModels -Recurse -Force
 
 if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
 
-# Compress-Archive OOMs on sidecar+models; tar streams on Win10+.
 Push-Location -LiteralPath $StageDir
 try {
   Invoke-RushiNativeChecked -FailMessage "tar zip failed (ascii=$AsciiZipPath)" -Command {
@@ -122,19 +123,19 @@ if (-not $SkipVerifyExtract) {
   Invoke-RushiNativeChecked -FailMessage "tar extract failed ascii=$AsciiZipPath" -Command {
     & tar -xf $AsciiZipPath -C $ProbeDir
   }
-  $sidecar = Join-Path $ProbeDir "resources\bundled-asr\rushi-asr-sidecar"
-  $manifest = Join-Path $ProbeDir "resources\bundled-asr-models\manifest.json"
-  $modelscope = Join-Path $ProbeDir "resources\bundled-asr-models\modelscope"
-  if (-not (Test-Path -LiteralPath $sidecar)) {
-    throw "portable zip missing CPU sidecar onedir: $sidecar"
+  $probeSetup = Join-Path $ProbeDir $setupLeaf
+  $probeManifest = Join-Path $ProbeDir "resources\bundled-asr-models\manifest.json"
+  $probeModelscope = Join-Path $ProbeDir "resources\bundled-asr-models\modelscope"
+  if (-not (Test-Path -LiteralPath $probeSetup)) {
+    throw "offline zip missing NSIS setup: $probeSetup"
   }
-  if (-not (Test-Path -LiteralPath $manifest)) {
-    throw "portable zip missing Plan B models manifest: $manifest"
+  if (-not (Test-Path -LiteralPath $probeManifest)) {
+    throw "offline zip missing Plan B models manifest: $probeManifest"
   }
-  if (-not (Test-Path -LiteralPath $modelscope)) {
-    throw "portable zip missing Plan B modelscope/: $modelscope"
+  if (-not (Test-Path -LiteralPath $probeModelscope)) {
+    throw "offline zip missing Plan B modelscope/: $probeModelscope"
   }
-  Write-Host "OK: ascii zip contains CPU sidecar + Plan B models."
+  Write-Host "OK: ascii zip contains NSIS setup + sibling Plan B models."
   Remove-Item -LiteralPath $ProbeDir -Recurse -Force
 }
 
@@ -143,11 +144,9 @@ if (-not [string]::IsNullOrWhiteSpace($finalParent) -and -not (Test-Path -Litera
   New-Item -ItemType Directory -Force -Path $finalParent | Out-Null
 }
 if (Test-Path -LiteralPath $FinalZipPath) { Remove-Item -LiteralPath $FinalZipPath -Force }
-# Cross-volume Move-Item copies then deletes — fine for C:\ → D:\ on GHA.
 Move-Item -LiteralPath $AsciiZipPath -Destination $FinalZipPath
-Write-Host "OK: wrote portable zip $FinalZipPath ($((Get-Item -LiteralPath $FinalZipPath).Length) bytes)"
+Write-Host "OK: wrote offline zip $FinalZipPath ($((Get-Item -LiteralPath $FinalZipPath).Length) bytes)"
 
-# Free staging tree (CPU+models copy) before CDN / CUDA — peak disk matters on GHA.
 if (Test-Path -LiteralPath $StageDir) {
   Remove-Item -LiteralPath $StageDir -Recurse -Force
   Write-Host "Cleaned stage dir $StageDir"

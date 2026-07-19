@@ -102,7 +102,7 @@ export async function ensureBundledAsrModelsSeededForPrepare(options?: {
         ok: false,
         noBundle: true,
         message:
-          "安装包内未找到内置语音模型。请使用含 bundled-asr-models 的 Release 安装包，或重新安装。",
+          "未找到内置语音模型。请下载官网「离线安装包」zip 并完整解压后再安装；或联网后使用环境页一键准备。",
       };
     }
     if (result.status === "seeded") {

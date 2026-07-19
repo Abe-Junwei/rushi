@@ -25,7 +25,7 @@
 
 **发行 / 工程雷达（并行）**
 
-- **Win release 资产** 🟡 ← **现在** — v0.1.8 tag：**macOS + Windows**（**无 Linux 桌面包**）；Release CI `tauri-windows` + portable zip
+- **Win release 资产** 🟡 ← **现在** — **macOS + Windows**（**无 Linux 桌面包**）；Release CI `tauri-windows`：瘦 NSIS + `*_离线安装包.zip`（便携版已退役）
 - **CLN-066 Release parity L3** 🟡 — L2 机器 ✅；[`release-parity-evidence-2026-06-14.md`](./docs/execution/release-parity-evidence-2026-06-14.md) L3 UI 手测 ☐（建议用 **v0.1.1** DMG 重跑）
 
 **已闭合（2026-06-18～19）**
