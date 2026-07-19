@@ -319,35 +319,55 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: npm
+      # Skip setup-node/setup-python on self-hosted: they need admin/HKLM and leave broken toolcache.
+      - name: Use local Node (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $node = Get-Command node -EA SilentlyContinue
+          if (-not $node) { throw "node not on PATH (install Node 22+ LTS)" }
+          $major = [int]((node -v) -replace '^v','').Split('.')[0]
+          if ($major -lt 22) { throw "Need Node >= 22, got $(node -v)" }
+          Write-Host "Using $(node -v) / npm $(npm -v) at $($node.Source)"
 
-      # setup-python needs HKLM uninstall ACL; interactive self-hosted user often lacks it.
-      # Prefer the machine-installed Python 3.12 (put real install ahead of WindowsApps stub).
       - name: Use local Python 3.12 (self-hosted)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          $py = $null
+          function Test-UsablePython312([string]$Exe) {
+            if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $false }
+            # Reject incomplete actions/setup-python leftovers under the runner toolcache.
+            if ($Exe -match '[\\/]_work[\\/]_tool[\\/]') { return $false }
+            if ($Exe -match 'WindowsApps') { return $false }
+            $ver = & $Exe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+            if ($LASTEXITCODE -ne 0 -or $ver -notmatch '^3\.12') { return $false }
+            & $Exe -c "import pip" 2>$null | Out-Null
+            if ($LASTEXITCODE -ne 0) {
+              & $Exe -m ensurepip --upgrade 2>$null | Out-Null
+            }
+            & $Exe -c "import pip, venv" 2>$null | Out-Null
+            return ($LASTEXITCODE -eq 0)
+          }
           $candidates = @(
+            "C:\Program Files\Python312\python.exe",
             (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"),
             (Join-Path $env:USERPROFILE "AppData\Local\Programs\Python\Python312\python.exe")
           )
+          $pyOut = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
+          if ($LASTEXITCODE -eq 0 -and $pyOut) { $candidates += ([string]$pyOut).Trim() }
+          $py = $null
           foreach ($c in $candidates) {
-            if ($c -and (Test-Path -LiteralPath $c)) { $py = $c; break }
+            if (Test-UsablePython312 $c) { $py = $c; break }
           }
           if (-not $py) {
-            $out = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
-            if ($LASTEXITCODE -eq 0 -and $out) { $py = ([string]$out).Trim() }
-          }
-          if (-not $py -or -not (Test-Path -LiteralPath $py)) {
-            throw "Python 3.12 not found. Install to %LOCALAPPDATA%\Programs\Python\Python312"
-          }
-          $ver = & $py -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
-          if ($ver -notmatch '^3\.12') {
-            throw "Expected Python 3.12, got $ver at $py"
+            throw @"
+Usable Python 3.12 not found (need pip + venv; not runner _tool cache).
+Install from https://www.python.org/downloads/release/python-31210/
+  - check: Add python.exe to PATH
+  - check: Install for all users (optional) or Current user
+  - check: py launcher
+Then remove broken cache: Remove-Item -Recurse -Force E:\actions-runner\_work\_tool\Python -EA SilentlyContinue
+"@
           }
           $dir = Split-Path -Parent $py
           Add-Content -LiteralPath $env:GITHUB_PATH -Value $dir
@@ -355,6 +375,7 @@ jobs:
           if (Test-Path -LiteralPath $scripts) {
             Add-Content -LiteralPath $env:GITHUB_PATH -Value $scripts
           }
+          # Prefer real install over WindowsApps store stubs for bash `python3`.
           Write-Host "Using $py ($(& $py --version))"
 
       - run: npm ci
