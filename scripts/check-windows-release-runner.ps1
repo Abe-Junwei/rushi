@@ -78,6 +78,22 @@ function Test-CommandVersion {
   return $cmd
 }
 
+function Add-PathForCurrentStep {
+  param([Parameter(Mandatory)][string]$Path)
+  if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
+    return $false
+  }
+  $parts = @($env:PATH -split [IO.Path]::PathSeparator | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+  $alreadyPresent = $parts | Where-Object { $_.TrimEnd('\') -ieq $Path.TrimEnd('\') } | Select-Object -First 1
+  if (-not $alreadyPresent) {
+    $env:PATH = "$Path$([IO.Path]::PathSeparator)$env:PATH"
+  }
+  if ($ExportGithubPath -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_PATH)) {
+    Add-Content -LiteralPath $env:GITHUB_PATH -Value $Path
+  }
+  return $true
+}
+
 function Test-UsablePython312 {
   param([string]$Exe)
   if ([string]::IsNullOrWhiteSpace($Exe) -or -not (Test-Path -LiteralPath $Exe)) {
@@ -170,10 +186,25 @@ if ($python312) {
   Add-Row "python3.12" "missing" "Install CPython 3.12 to E:\Python312 or Program Files."
 }
 
-Test-CommandVersion -Name "git" -VersionCommand { & git --version } -Required | Out-Null
-Test-CommandVersion -Name "bash" -VersionCommand { & bash --version } -Required | Out-Null
+$gitCmd = Test-CommandVersion -Name "git" -VersionCommand { & git --version } -Required
+$bashCmd = Test-CommandVersion -Name "bash" -VersionCommand { & bash --version } -Required
 Test-CommandVersion -Name "tar" -VersionCommand { & tar --version } -Required | Out-Null
 Test-CommandVersion -Name "curl" -VersionCommand { & curl --version } -Required | Out-Null
+
+$gitUsrBinCandidates = @()
+foreach ($cmd in @($gitCmd, $bashCmd)) {
+  if ($cmd -and $cmd.Source) {
+    $toolDir = Split-Path -Parent $cmd.Source
+    $gitRoot = Split-Path -Parent $toolDir
+    $gitUsrBinCandidates += (Join-Path $gitRoot "usr\bin")
+  }
+}
+foreach ($candidate in $gitUsrBinCandidates | Select-Object -Unique) {
+  if ((Test-Path -LiteralPath (Join-Path $candidate "sha256sum.exe")) -and (Add-PathForCurrentStep $candidate)) {
+    Add-Row "git-usr-bin:path" "ok" "exported $candidate to PATH"
+    break
+  }
+}
 Test-CommandVersion -Name "sha256sum" -VersionCommand { & sha256sum --version } -Required | Out-Null
 
 $bashPython = Get-NativeText -Command {
