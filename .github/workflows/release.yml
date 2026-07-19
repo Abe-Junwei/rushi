@@ -349,12 +349,17 @@ jobs:
             return ($LASTEXITCODE -eq 0)
           }
           $candidates = @(
+            "E:\Python312\python.exe",
+            "E:\PythonVersions\cpython-3.12.10-windows-x86_64-none\python.exe",
+            "E:\PythonVersions\cpython-3.12-windows-x86_64-none\python.exe",
             "C:\Program Files\Python312\python.exe",
             (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"),
             (Join-Path $env:USERPROFILE "AppData\Local\Programs\Python\Python312\python.exe")
           )
-          $pyOut = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
-          if ($LASTEXITCODE -eq 0 -and $pyOut) { $candidates += ([string]$pyOut).Trim() }
+          foreach ($pySpec in @("-3.12", "-V:Astral/CPython3.12.10")) {
+            $pyOut = & py $pySpec -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $pyOut) { $candidates += ([string]$pyOut).Trim() }
+          }
           $py = $null
           foreach ($c in $candidates) {
             if (Test-UsablePython312 $c) { $py = $c; break }
