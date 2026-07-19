@@ -1,16 +1,23 @@
 import type { BundledAsrLaunchReport } from "../../tauri/projectApi";
 import type { AsrSetupReport, AsrSetupStepStatus, AsrSupervisorSnapshot } from "./asrSetupContract";
 
-const LAUNCH_ERROR_DETAIL: Record<string, string> = {
+const PORT_FOREIGN_DETAIL = "8741 端口被其他程序占用。";
+
+/** Shared launch / degrade error copy (keep in sync with Rust `launch_report_from_snapshot`). */
+export const LAUNCH_ERROR_DETAIL: Record<string, string> = {
   health_timeout:
     "已尝试启动安装包内的推理侧车，但在等待时间内未收到 /health 成功响应（若同时存在 CUDA 与 CPU 包，可能均已失败）。请确认本机 8741 端口未被其他 rushi-asr 占用；可设置 RUSHI_SKIP_BUNDLED_ASR=1 后手动启动 ASR，或使用「导出诊断包」查看更多信息。",
-  foreign_port: "8741 端口被其他程序占用。",
+  foreign_port: PORT_FOREIGN_DETAIL,
+  port_foreign: PORT_FOREIGN_DETAIL,
   spawn_failed: "无法启动内置侧车可执行文件。",
+  /** Mapped for completeness; lifecycle currently surfaces early exit as health_timeout. */
   child_exited: "侧车进程在就绪前退出。",
   health_lost: "侧车曾就绪但后续 /health 不可用。",
+  asr_warmup_failed: "侧车预热失败（不影响空闲回收后的再次启动）。",
 };
 
-function idleStoppedAfterSuccess(snap: AsrSupervisorSnapshot): boolean {
+/** Idle recycle: phase stopped, no error, had a known executable — not a fault. */
+export function idleStoppedAfterSuccess(snap: AsrSupervisorSnapshot): boolean {
   return (
     snap.phase === "stopped" &&
     !snap.lastErrorCode &&

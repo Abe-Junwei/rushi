@@ -23,6 +23,8 @@ type Props = {
   presentation: AsrEnvPresentation;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
+  /** Soft-wake idle sidecar then refresh (重试检测 / 恢复侧车). */
+  recoverSidecar?: () => Promise<void>;
 };
 
 function countReadyRows(rows: AsrEnvPresentation["statusRows"]): number {
@@ -32,14 +34,22 @@ function countReadyRows(rows: AsrEnvPresentation["statusRows"]): number {
 function StatusRowList({
   rows,
   health,
+  sidecarIdleSleeping,
+  onRecoverSidecar,
 }: {
   rows: AsrEnvPresentation["statusRows"];
   health: AsrEnvPresentation["health"];
+  sidecarIdleSleeping: boolean;
+  onRecoverSidecar?: () => void;
 }) {
   return (
     <div className="flex flex-col">
       {rows.map((row, index) => {
-        const actionSpec = resolveAsrStatusRowAction(row, health);
+        const actionSpec = resolveAsrStatusRowAction(row, {
+          health,
+          sidecarIdleSleeping,
+          onRecoverSidecar,
+        });
         return (
           <EnvLocalAsrStatusRow
             key={row.id}
@@ -63,11 +73,29 @@ function StatusRowList({
   );
 }
 
-export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth }: Props) {
+export function EnvLocalAsrStatusSection({
+  presentation,
+  busy,
+  refreshAsrHealth,
+  recoverSidecar,
+}: Props) {
   const readyCount = countReadyRows(presentation.statusRows);
   const totalCount = presentation.statusRows.length;
   const allRowsReady = readyCount === totalCount;
   const displayTone = busy ? "warn" : presentation.tone;
+  const sleeping = presentation.sidecarIdleSleeping === true;
+  const onRetryClick = () => {
+    if (sleeping && recoverSidecar) {
+      void recoverSidecar();
+      return;
+    }
+    void refreshAsrHealth();
+  };
+  const retryLabel = busy
+    ? "检测中…"
+    : sleeping || presentation.tone === "error"
+      ? "重试检测"
+      : "刷新状态";
 
   return (
     <section className="flex flex-col gap-4">
@@ -99,7 +127,12 @@ export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth 
                 <EnvCollapsibleMetaSummary>
                   环境明细 · {readyCount}/{totalCount} 就绪
                 </EnvCollapsibleMetaSummary>
-                <StatusRowList rows={presentation.statusRows} health={presentation.health} />
+                <StatusRowList
+                  rows={presentation.statusRows}
+                  health={presentation.health}
+                  sidecarIdleSleeping={sleeping}
+                  onRecoverSidecar={recoverSidecar ? () => void recoverSidecar() : undefined}
+                />
               </details>
             ) : null}
           </div>
@@ -108,18 +141,25 @@ export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth 
             className={[ENV_STATUS_REFRESH_BTN_BASE, ENV_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
             disabled={busy}
             aria-busy={busy || undefined}
-            onClick={() => void refreshAsrHealth()}
+            onClick={onRetryClick}
           >
             <RefreshCw
               className={[LUCIDE_ICON_SIZE_SM, busy ? "animate-spin" : ""].join(" ")}
               strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
               aria-hidden
             />
-            {busy ? "检测中…" : presentation.tone === "error" ? "重试检测" : "刷新状态"}
+            {retryLabel}
           </button>
         </div>
 
-        {!allRowsReady ? <StatusRowList rows={presentation.statusRows} health={presentation.health} /> : null}
+        {!allRowsReady ? (
+          <StatusRowList
+            rows={presentation.statusRows}
+            health={presentation.health}
+            sidecarIdleSleeping={sleeping}
+            onRecoverSidecar={recoverSidecar ? () => void recoverSidecar() : undefined}
+          />
+        ) : null}
       </div>
     </section>
   );

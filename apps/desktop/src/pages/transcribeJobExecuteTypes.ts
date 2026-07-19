@@ -45,6 +45,7 @@ export type TranscribeJobExecuteArgs = {
   closeGate: CloseGate;
   mutations: Mutations;
   localTranscribePreflight: LocalTranscribePreflight;
+  softWakeBeforeLocalTranscribe?: () => Promise<void>;
   transcribeSource: TranscribeSource;
   setTranscribeStartDialogOpen: (open: boolean) => void;
   clearScheduledAutoSave?: () => void;

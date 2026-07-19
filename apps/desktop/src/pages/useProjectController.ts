@@ -31,12 +31,14 @@ export function useProjectController() {
     runtimeInstallRunning,
     refreshAsrHealth,
     refreshAsrModelCacheInfo,
+    softWakeBeforeLocalTranscribe,
     localTranscribePreflight,
   } = useProjectAsrBridgeStack();
 
   const lifecycle = useProjectLifecycleController(
     localTranscribePreflight,
     asr.sttOnlineRuntimeEpoch,
+    softWakeBeforeLocalTranscribe,
   );
 
   useAsrModelUnloadOnFileSwitch({
@@ -89,6 +91,7 @@ export function useProjectController() {
       prepareModelCancelling: asr.prepareModelCancelling,
       prepareModelProgress: asr.prepareModelProgress,
       runtimeInstallRunning,
+      supervisor: asr.asrSupervisor,
     }),
     deferRefreshWhileTranscribing: () =>
       mergeArtifactBusyState({

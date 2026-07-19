@@ -1,9 +1,15 @@
-import { asrStatusFfmpegActionLabelDev, asrStatusFfmpegActionLabelManaged, packagedOrDev } from "../../services/packagedUserHints";
 import type { AsrEnvStatusRow } from "../../services/asr/asrEnvStatus";
 
 export type AsrStatusRowAction = {
   label: string;
   navigate: () => void;
+};
+
+export type AsrStatusRowActionContext = {
+  health: string;
+  /** Intentional idle recycle — prefer soft-wake over wizard/models. */
+  sidecarIdleSleeping?: boolean;
+  onRecoverSidecar?: () => void;
 };
 
 function scrollToEnvSection(targetId: string): void {
@@ -19,26 +25,62 @@ function openEnvSetupWizard(): void {
   scrollToEnvSection("env-asr-utilities");
 }
 
+function recoverOr(
+  ctx: AsrStatusRowActionContext,
+  fallback: AsrStatusRowAction,
+): AsrStatusRowAction {
+  if (ctx.onRecoverSidecar) {
+    return { label: "恢复侧车", navigate: () => ctx.onRecoverSidecar?.() };
+  }
+  return fallback;
+}
+
 export function resolveAsrStatusRowAction(
   row: AsrEnvStatusRow,
-  health: string,
+  healthOrCtx: string | AsrStatusRowActionContext,
 ): AsrStatusRowAction | null {
+  const ctx: AsrStatusRowActionContext =
+    typeof healthOrCtx === "string" ? { health: healthOrCtx } : healthOrCtx;
+  const { health, sidecarIdleSleeping } = ctx;
+
   if (row.ok && !row.warn) return null;
+
+  if (sidecarIdleSleeping) {
+    if (row.id === "env" || row.id === "ffmpeg" || row.id === "runtime" || row.id === "transcribe") {
+      return recoverOr(ctx, {
+        label: "打开安装向导",
+        navigate: () => openEnvSetupWizard(),
+      });
+    }
+    return null;
+  }
+
   switch (row.id) {
     case "env":
+      if (health === "error") {
+        return {
+          label: "打开安装向导",
+          navigate: () => scrollToEnvSection("env-asr-setup"),
+        };
+      }
       return {
-        label: health === "error" ? "查看安装向导" : "查看维护",
-        navigate: () =>
-          scrollToEnvSection(health === "error" ? "env-asr-setup" : "env-asr-utilities"),
+        label: "查看维护",
+        navigate: () => scrollToEnvSection("env-asr-utilities"),
       };
     case "ffmpeg":
       return {
-        label: packagedOrDev(asrStatusFfmpegActionLabelDev, asrStatusFfmpegActionLabelManaged),
+        label: "打开安装向导",
         navigate: () =>
           health === "error" ? scrollToEnvSection("env-asr-setup") : openEnvSetupWizard(),
       };
     case "runtime":
     case "transcribe":
+      if (health === "error") {
+        return recoverOr(ctx, {
+          label: "打开安装向导",
+          navigate: () => openEnvSetupWizard(),
+        });
+      }
       return { label: "前往模型", navigate: () => scrollToEnvSection("env-asr-models") };
     default:
       return null;

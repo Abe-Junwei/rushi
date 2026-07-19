@@ -4,6 +4,7 @@ import { useAsrSetupController } from "./useAsrSetupController";
 import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
 import { isLocalRuntimeInstallRunning } from "../services/localRuntime/localRuntimeContract";
 import { computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
+import { softWakeIdleSidecar } from "../services/asr/localAsrSidecarSoftWake";
 import type { StepsFromReportOptions } from "./asrSetupState";
 
 /** ASR bridge + setup + local transcribe preflight (extracted from useProjectController). */
@@ -51,12 +52,21 @@ export function useProjectAsrBridgeStack() {
     asrSetup.localRuntimeDiag?.install.phase,
   );
 
+  const softWakeBeforeLocalTranscribe = useCallback(async () => {
+    if (runtimeInstallRunning) return;
+    // Always consult supervisor inside softWake (no-op if not idle); do not gate on
+    // React presentation — it can lag behind try_start / health refresh.
+    await softWakeIdleSidecar();
+    await refreshAsrRuntimeInfo();
+  }, [refreshAsrRuntimeInfo, runtimeInstallRunning]);
+
   const localTranscribePreflight = useCallback(() => {
     if (runtimeInstallRunning) {
       return "本机 ASR 运行时安装中，暂不可转写。";
     }
-    return asr.asrPresentation.blockReason ?? getEnvironmentCapabilityBlockReason();
-  }, [asr.asrPresentation, runtimeInstallRunning]);
+    // Prefer coordinator snapshot after awaitEnvironmentCapabilityRefresh (sync), then UI presentation.
+    return getEnvironmentCapabilityBlockReason() ?? asr.asrPresentation.blockReason;
+  }, [asr.asrPresentation.blockReason, runtimeInstallRunning]);
 
   return {
     asr,
@@ -66,6 +76,7 @@ export function useProjectAsrBridgeStack() {
     refreshAsrModelCacheInfo,
     refreshAsrRuntimeInfo,
     refreshSetupDiagnoseRef,
+    softWakeBeforeLocalTranscribe,
     localTranscribePreflight,
   };
 }
@@ -97,6 +108,8 @@ export function projectAsrControllerFields(
     clearAsrModelCache: asr.clearAsrModelCache,
     clearOrphanWaveformPeaksCache: asr.clearOrphanWaveformPeaksCache,
     retryBundledAsrSidecar: asr.retryBundledAsrSidecar,
+    recoverIdleAsrSidecar: asr.recoverIdleAsrSidecar,
+    asrSupervisor: asr.asrSupervisor,
     refreshAsrHealth: asr.refreshAsrHealth,
     installFunasrDepsInteractive: asr.installFunasrDepsInteractive,
     copyFunasrManualCommands: asr.copyFunasrManualCommands,

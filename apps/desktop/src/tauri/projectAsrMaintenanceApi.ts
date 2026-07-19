@@ -109,6 +109,11 @@ export async function retryBundledAsrSidecar(): Promise<void> {
   return invoke<void>("retry_bundled_asr_sidecar");
 }
 
+/** Soft-wake after idle recycle (try_start; does not force-kill foreign port). */
+export async function tryStartBundledAsrSidecar(): Promise<void> {
+  return invoke<void>("try_start_bundled_asr_sidecar");
+}
+
 /** False when `RUSHI_SKIP_BUNDLED_ASR=1` (e.g. `npm run desktop:dev`); shell will not restart 8741. */
 export async function asrAppManagesBundledSidecar(): Promise<boolean> {
   return invoke<boolean>("asr_app_manages_bundled_sidecar");

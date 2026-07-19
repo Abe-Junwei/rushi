@@ -242,6 +242,7 @@ pub fn run() {
             project::waveform_peaks_cache_cmd::clear_waveform_peaks_for_file,
             project::install_cmd::install_funasr_deps_interactive,
             project::install_cmd::retry_bundled_asr_sidecar,
+            project::install_cmd::try_start_bundled_asr_sidecar,
             asr_sidecar::loopback::asr_loopback_request,
             asr_sidecar::asr_app_manages_bundled_sidecar,
             asr_sidecar::kill_loopback_asr_listeners_cmd,

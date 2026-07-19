@@ -41,6 +41,7 @@ type Deps = {
   closeGate: CloseGate;
   mutations: Mutations;
   localTranscribePreflight: LocalTranscribePreflight;
+  softWakeBeforeLocalTranscribe?: () => Promise<void>;
   sttOnlineRuntimeEpoch?: number;
   clearScheduledAutoSave?: () => void;
   onTranscribeSuccess?: (out: p1.RunTranscribeOutcome) => void;
@@ -61,6 +62,7 @@ export function useTranscribeJobController(deps: Deps) {
     closeGate,
     mutations,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     sttOnlineRuntimeEpoch = 0,
     clearScheduledAutoSave,
     onTranscribeSuccess,
@@ -94,6 +96,7 @@ export function useTranscribeJobController(deps: Deps) {
     closeGate,
     mutations,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     transcribeSource: preflight.transcribeSource,
     setTranscribeStartDialogOpen: preflight.setTranscribeStartDialogOpen,
     clearScheduledAutoSave,

@@ -47,6 +47,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     closeGate,
     mutations,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     transcribeSource,
     setTranscribeStartDialogOpen,
     clearScheduledAutoSave,
@@ -126,6 +127,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
 
   const executeTranscribe = useCallback(async (opts?: ExecuteTranscribeOptions): Promise<ExecuteTranscribeResult> => {
     if (!opts?.batchChild) {
+      await softWakeBeforeLocalTranscribe?.();
       await awaitEnvironmentCapabilityRefresh();
     }
     const effectiveSource = resolveEffectiveTranscribeSource(transcribeSource);
@@ -239,6 +241,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     segmentPublish,
     getCurrentSegmentsSnapshot,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     clearScheduledAutoSave,
     runRefs,
     transcribeSource,

@@ -82,6 +82,7 @@ export {
   pickMediaBaseDir,
   pickMediaBaseDirPreview,
   retryBundledAsrSidecar,
+  tryStartBundledAsrSidecar,
   seedBundledAsrModelsIfNeeded,
   setLocalAsrHubModelPref,
   setLocalAsrRecognitionLanguagePref,

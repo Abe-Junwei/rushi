@@ -9,6 +9,11 @@ export type { LocalTranscribePreflight };
 export function useProjectLifecycleController(
   localTranscribePreflight: LocalTranscribePreflight = () => null,
   sttOnlineRuntimeEpoch = 0,
+  softWakeBeforeLocalTranscribe?: () => Promise<void>,
 ): ProjectLifecycleApi {
-  return useProjectLifecycleWiring(localTranscribePreflight, sttOnlineRuntimeEpoch);
+  return useProjectLifecycleWiring(
+    localTranscribePreflight,
+    sttOnlineRuntimeEpoch,
+    softWakeBeforeLocalTranscribe,
+  );
 }

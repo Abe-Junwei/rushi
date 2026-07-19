@@ -36,6 +36,7 @@ export type EnvironmentPanelProps = {
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
+  recoverIdleAsrSidecar?: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -68,6 +69,7 @@ export function EnvironmentPanel({
   prepareModelFailure,
   busy,
   refreshAsrHealth,
+  recoverIdleAsrSidecar,
   copyFunasrManualCommands,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -176,6 +178,7 @@ export function EnvironmentPanel({
                 prepareModelFailure={prepareModelFailure}
                 busy={busy}
                 refreshAsrHealth={refreshAsrHealth}
+                recoverIdleAsrSidecar={recoverIdleAsrSidecar}
                 copyFunasrManualCommands={copyFunasrManualCommands}
                 refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                 clearAsrModelCache={clearAsrModelCache}

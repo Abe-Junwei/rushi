@@ -118,6 +118,7 @@ export function ProjectPanel() {
             prepareModelFailure={c.prepareModelFailure}
             busy={c.busy}
             refreshAsrHealth={c.refreshAsrHealth}
+            recoverIdleAsrSidecar={c.recoverIdleAsrSidecar}
             copyFunasrManualCommands={c.copyFunasrManualCommands}
             refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
             clearAsrModelCache={c.clearAsrModelCache}

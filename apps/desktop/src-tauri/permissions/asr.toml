@@ -25,6 +25,7 @@ permissions = [
   "allow-clear-waveform-peaks-for-file",
   "allow-install-funasr-deps-interactive",
   "allow-retry-bundled-asr-sidecar",
+  "allow-try-start-bundled-asr-sidecar",
   "allow-asr-loopback-request",
   "allow-asr-app-manages-bundled-sidecar",
   "allow-kill-loopback-asr-listeners-cmd",

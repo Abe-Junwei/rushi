@@ -236,6 +236,48 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.bannerTitle).toBe("本机 ASR · 环境异常");
     expect(p.bannerDetail).toContain("127.0.0.1:8741");
     expect(p.blockReason).toContain("未就绪");
+    expect(p.sidecarIdleSleeping).toBe(false);
+  });
+
+  it("shows idle-sleep presentation when supervisor reports intentional stop", async () => {
+    const { DEFAULT_ASR_SUPERVISOR_SNAPSHOT } = await import("./asrSetupContract");
+    const p = await build({
+      asrHealth: "error",
+      asrHealthDetail: "本机 127.0.0.1:8741 无 rushi-asr 在监听",
+      asrCaps: null,
+      supervisor: {
+        ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+        phase: "stopped",
+        executableSource: "bundled_media",
+        lastErrorCode: null,
+      },
+    });
+    expect(p.sidecarIdleSleeping).toBe(true);
+    expect(p.tone).toBe("warn");
+    expect(p.chipLabel).toBe("ASR 已休眠");
+    expect(p.bannerTitle).toBe("本机 ASR · 已休眠");
+    expect(p.bannerDetail).toContain("15 分钟");
+    expect(p.blockReason).toContain("已休眠");
+    expect(p.statusRows.find((r) => r.id === "env")?.text).toBe("已休眠");
+    expect(p.statusRows.find((r) => r.id === "ffmpeg")?.text).toBe("待侧车恢复后检测");
+  });
+
+  it("keeps fault presentation when stopped with lastErrorCode", async () => {
+    const { DEFAULT_ASR_SUPERVISOR_SNAPSHOT } = await import("./asrSetupContract");
+    const p = await build({
+      asrHealth: "error",
+      asrHealthDetail: "连接失败",
+      asrCaps: null,
+      supervisor: {
+        ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+        phase: "stopped",
+        executableSource: "bundled_media",
+        lastErrorCode: "health_lost",
+      },
+    });
+    expect(p.sidecarIdleSleeping).toBe(false);
+    expect(p.tone).toBe("error");
+    expect(p.bannerTitle).toBe("本机 ASR · 环境异常");
   });
 
   it("shows D8 model_memory row only when weights are loaded in RAM", async () => {

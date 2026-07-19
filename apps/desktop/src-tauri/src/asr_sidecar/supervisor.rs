@@ -126,10 +126,11 @@ pub fn launch_report_from_snapshot(snap: &SupervisorSnapshot) -> BundledAsrLaunc
              或使用「导出诊断包」查看更多信息。"
                 .to_string()
         }
-        "foreign_port" => "8741 端口被其他程序占用。".to_string(),
+        "foreign_port" | "port_foreign" => "8741 端口被其他程序占用。".to_string(),
         "spawn_failed" => "无法启动内置侧车可执行文件。".to_string(),
         "child_exited" => "侧车进程在就绪前退出。".to_string(),
         "health_lost" => "侧车曾就绪但后续 /health 不可用。".to_string(),
+        "asr_warmup_failed" => "侧车预热失败（不影响空闲回收后的再次启动）。".to_string(),
         other => other.to_string(),
     });
     BundledAsrLaunchReport {

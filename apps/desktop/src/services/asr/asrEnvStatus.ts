@@ -33,12 +33,21 @@ import {
   effectiveTranscribeReady,
   funasrDeviceBannerHint,
   mapBundledModelBusyRows,
+  mapIdleSleepStatusRows,
   mapPrepareModelBusyRows,
   mapPrepareModelCancelRows,
   mapRuntimeInstallBusyRows,
   toneFor,
   type AsrEnvStatusRow,
 } from "./asrEnvPresentationRows";
+import type { AsrSupervisorSnapshot } from "./asrSetupContract";
+import { idleStoppedAfterSuccess } from "./asrSupervisorPresentation";
+
+export const ASR_IDLE_SLEEP_BANNER_DETAIL =
+  "空闲约 15 分钟后已自动停止侧车以节省内存。点「重试检测」或开始转写会重新拉起；也可点「重试内置侧车」。";
+
+export const ASR_IDLE_SLEEP_BLOCK_REASON =
+  "本机 ASR 已休眠：点「重试检测」或开始转写即可恢复，无需重装。";
 
 type AsrEnvTone = "ok" | "warn" | "error" | "idle";
 
@@ -70,6 +79,8 @@ export type AsrEnvPresentation = {
   cachePathMismatchDetail: string | null;
   modelsOnDiskButSidecarBlind: boolean;
   modelsOnDiskButSidecarBlindDetail: string | null;
+  /** True when health is down but supervisor reports intentional idle recycle. */
+  sidecarIdleSleeping: boolean;
 };
 
 export type BuildAsrEnvPresentationInput = {
@@ -87,6 +98,7 @@ export type BuildAsrEnvPresentationInput = {
   prepareModelProgress?: number;
   runtimeInstallRunning?: boolean;
   modelMemoryState?: ModelMemoryState;
+  supervisor?: AsrSupervisorSnapshot | null;
 };
 
 function bannerDetailFor(input: {
@@ -302,23 +314,32 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
       ? connectedGuidanceFor({ asrCaps: input.asrCaps, sidecarMatchesSelection })
       : null;
 
-  const chipLabel = chipLabelFor({
-    asrHealth: input.asrHealth,
-    transcribeReady,
-    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-  });
-  const tone = toneFor({
-    asrHealth: input.asrHealth,
-    transcribeReady,
-    envOk,
-    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-  });
+  const sidecarIdleSleeping =
+    input.asrHealth === "error" &&
+    input.supervisor != null &&
+    idleStoppedAfterSuccess(input.supervisor);
+
+  const chipLabel = sidecarIdleSleeping
+    ? "ASR 已休眠"
+    : chipLabelFor({
+        asrHealth: input.asrHealth,
+        transcribeReady,
+        sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+      });
+  const tone = sidecarIdleSleeping
+    ? "warn"
+    : toneFor({
+        asrHealth: input.asrHealth,
+        transcribeReady,
+        envOk,
+        sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+      });
   const presentationTranscribeReady = effectiveTranscribeReady({
     transcribeReady,
     sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
   });
 
-  const statusRows = buildAsrEnvStatusRows({
+  const statusRowsRaw = buildAsrEnvStatusRows({
     envOk,
     ffmpegOk,
     runtimeReady,
@@ -327,14 +348,17 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     asrCaps: input.asrCaps,
     modelMemoryState: input.modelMemoryState ?? "disk",
   });
+  const statusRows = sidecarIdleSleeping ? mapIdleSleepStatusRows(statusRowsRaw) : statusRowsRaw;
 
-  const blockReason = blockReasonFor({
-    asrHealth: input.asrHealth,
-    asrCaps: input.asrCaps,
-    transcribeReady,
-    sidecarMatchesSelection,
-    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-  });
+  const blockReason = sidecarIdleSleeping
+    ? ASR_IDLE_SLEEP_BLOCK_REASON
+    : blockReasonFor({
+        asrHealth: input.asrHealth,
+        asrCaps: input.asrCaps,
+        transcribeReady,
+        sidecarMatchesSelection,
+        sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+      });
 
   return applyPrepareModelOverlay(
       {
@@ -351,25 +375,34 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
         ffmpegChipOk: ffmpegOk,
         ffmpegChipTitle: "FFmpeg 是否可用",
         statusRows,
-        bannerTitle: bannerTitleFor({
-          asrHealth: input.asrHealth,
-          transcribeReady,
-          sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-        }),
-        bannerDetail: bannerDetailFor({
-          asrHealth: input.asrHealth,
-          asrHealthDetail: input.asrHealthDetail,
-          transcribeReady: presentationTranscribeReady,
-          runtimeReady,
-          ffmpegOk,
-          connectedGuidance,
-          funasrDevice: input.asrCaps?.funasr_device,
-          funasrDeviceSource: input.asrCaps?.funasr_device_source,
-        }),
+        bannerTitle: sidecarIdleSleeping
+          ? "本机 ASR · 已休眠"
+          : bannerTitleFor({
+              asrHealth: input.asrHealth,
+              transcribeReady,
+              sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+            }),
+        bannerDetail: sidecarIdleSleeping
+          ? ASR_IDLE_SLEEP_BANNER_DETAIL
+          : bannerDetailFor({
+              asrHealth: input.asrHealth,
+              asrHealthDetail: input.asrHealthDetail,
+              transcribeReady: presentationTranscribeReady,
+              runtimeReady,
+              ffmpegOk,
+              connectedGuidance,
+              funasrDevice: input.asrCaps?.funasr_device,
+              funasrDeviceSource: input.asrCaps?.funasr_device_source,
+            }),
         blockReason,
-        errorDetail: input.asrHealth === "error" ? input.asrHealthDetail.trim() || null : null,
-        errorBannerMessage:
-          input.asrHealth === "error" && blockReason
+        errorDetail: sidecarIdleSleeping
+          ? null
+          : input.asrHealth === "error"
+            ? input.asrHealthDetail.trim() || null
+            : null,
+        errorBannerMessage: sidecarIdleSleeping
+          ? ASR_IDLE_SLEEP_BLOCK_REASON
+          : input.asrHealth === "error" && blockReason
             ? blockReason
             : "无法连接本机 ASR，请检查服务是否在运行。",
         connectedGuidance,
@@ -385,6 +418,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
         modelsOnDiskButSidecarBlindDetail: modelsOnDiskButSidecarBlind
           ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
           : null,
+        sidecarIdleSleeping,
       },
       input,
     );

@@ -20,6 +20,7 @@ export type AsrPresentationOverlay = Pick<
   | "selectedHubModelId"
   | "catalogStatus"
   | "sidecarAsyncTranscribeCapable"
+  | "supervisor"
 >;
 
 export function buildEnvironmentCapabilityPresentation(input: {
@@ -54,5 +55,6 @@ export function buildEnvironmentCapabilityPresentation(input: {
     prepareModelCancelling: asrOverlay?.prepareModelCancelling,
     prepareModelProgress: asrOverlay?.prepareModelProgress,
     runtimeInstallRunning: asrOverlay?.runtimeInstallRunning,
+    supervisor: asrOverlay?.supervisor,
   });
 }

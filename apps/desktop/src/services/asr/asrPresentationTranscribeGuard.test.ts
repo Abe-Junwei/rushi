@@ -28,6 +28,7 @@ function presentation(chipOk: boolean): AsrEnvPresentation {
     cachePathMismatchDetail: null,
     modelsOnDiskButSidecarBlind: false,
     modelsOnDiskButSidecarBlindDetail: null,
+    sidecarIdleSleeping: false,
   };
 }
 

@@ -76,3 +76,14 @@ pub async fn retry_bundled_asr_sidecar(
         .await
         .map_err(|e| e.to_string())?
 }
+
+/// Soft-wake after idle recycle: start bundled sidecar if port free / adoptable (no force kill).
+#[tauri::command]
+pub async fn try_start_bundled_asr_sidecar(app: tauri::AppHandle) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        asr_sidecar::try_start_bundled(&app);
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}

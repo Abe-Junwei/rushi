@@ -76,6 +76,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "clear_waveform_peaks_for_file",
     "install_funasr_deps_interactive",
     "retry_bundled_asr_sidecar",
+    "try_start_bundled_asr_sidecar",
     "asr_loopback_request",
     "asr_app_manages_bundled_sidecar",
     "kill_loopback_asr_listeners_cmd",

@@ -39,6 +39,7 @@ type Deps = {
   executeTranscribeForBatch: (opts: ExecuteTranscribeOptions) => Promise<ExecuteTranscribeResult>;
   cancelTranscribe: () => void | Promise<void>;
   localTranscribePreflight: LocalTranscribePreflight;
+  softWakeBeforeLocalTranscribe?: () => Promise<void>;
   transcribeSource: "local" | "online";
   setError: (msg: string) => void;
   refreshProjectHub: (projectId: string) => Promise<void>;
@@ -99,6 +100,7 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
       return;
     }
     if (deps.transcribeSource === "local") {
+      await deps.softWakeBeforeLocalTranscribe?.();
       const block = deps.localTranscribePreflight();
       if (block) {
         deps.setError(block);

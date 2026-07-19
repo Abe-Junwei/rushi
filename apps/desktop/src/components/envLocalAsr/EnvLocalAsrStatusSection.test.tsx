@@ -38,6 +38,7 @@ function makePresentation(overrides: Partial<AsrEnvPresentation> = {}): AsrEnvPr
     cachePathMismatchDetail: null,
     modelsOnDiskButSidecarBlind: false,
     modelsOnDiskButSidecarBlindDetail: null,
+    sidecarIdleSleeping: false,
     ...overrides,
   };
 }

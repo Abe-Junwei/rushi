@@ -9,6 +9,9 @@ import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLoca
 import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { deriveModelMemoryState } from "../services/asr/asrModelMemoryState";
 import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
+import { softWakeIdleSidecar } from "../services/asr/localAsrSidecarSoftWake";
+import type { AsrSupervisorSnapshot } from "../services/asr/asrSetupContract";
+import { asrSupervisorSnapshot } from "../tauri/asrSetupApi";
 import { toast } from "../services/ui/toast";
 import {
   useAsrHealthPoll,
@@ -49,6 +52,10 @@ export interface AsrBridgeApi {
   bundledCopyPresentationSync: PrepareModelApi["bundledCopyPresentationSync"];
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   retryBundledAsrSidecar: () => Promise<void>;
+  /** Soft-wake idle-stopped sidecar then refresh diagnostics. */
+  recoverIdleAsrSidecar: () => Promise<void>;
+  /** Latest supervisor FSM snapshot (idle-stop vs fault). */
+  asrSupervisor: AsrSupervisorSnapshot | null;
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   bumpSttOnlineRuntimeChanged: () => void;
@@ -70,7 +77,20 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   const tauriRuntime = isTauriRuntime();
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
   const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
+  const [supervisorSnap, setSupervisorSnap] = useState<AsrSupervisorSnapshot | null>(null);
   const refreshAsrRuntimeInfoRef = useRef<() => Promise<void>>(async () => {});
+
+  const refreshSupervisorSnapshot = useCallback(async () => {
+    if (!tauriRuntime) {
+      setSupervisorSnap(null);
+      return;
+    }
+    try {
+      setSupervisorSnap(await asrSupervisorSnapshot());
+    } catch {
+      /* ignore — presentation falls back to health-only */
+    }
+  }, [tauriRuntime]);
 
   useEffect(() => {
     const bump = () => setSttRuntimeRevision((n) => n + 1);
@@ -88,9 +108,17 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     asrHealthDetail,
     bundledAsrDiag,
     asrCaps,
-    refreshAsrHealth,
+    refreshAsrHealth: refreshAsrHealthInner,
     refreshBundledAsrDiag,
   } = useAsrHealthPoll({ tauriRuntime, catalogHooksRef });
+
+  const refreshAsrHealth = useCallback(
+    async (options?: AsrHealthRefreshOptions) => {
+      await refreshAsrHealthInner(options);
+      await refreshSupervisorSnapshot();
+    },
+    [refreshAsrHealthInner, refreshSupervisorSnapshot],
+  );
 
   const cacheCtrl = useAsrModelCacheController({
     tauriRuntime,
@@ -114,9 +142,19 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       },
       runtimeOptions,
     );
-  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshSetupDiagnoseRef]);
+    await refreshSupervisorSnapshot();
+  }, [
+    cacheCtrl.refreshAsrModelCacheInfo,
+    refreshAsrHealth,
+    refreshSetupDiagnoseRef,
+    refreshSupervisorSnapshot,
+  ]);
    
   refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;
+
+  useEffect(() => {
+    void refreshSupervisorSnapshot();
+  }, [refreshSupervisorSnapshot, asrHealth]);
 
   const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);
   catalogHooksRef.current = {
@@ -173,6 +211,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
         prepareModelCancelling: modelCtrl.prepareModelCancelling,
         prepareModelProgress: modelCtrl.prepareModelProgress,
         modelMemoryState,
+        supervisor: supervisorSnap,
       }),
     [
       asrHealth,
@@ -187,6 +226,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       modelCtrl.prepareModelCancelling,
       modelCtrl.prepareModelProgress,
       modelMemoryState,
+      supervisorSnap,
     ],
   );
 
@@ -208,6 +248,22 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     refreshBundledAsrDiag,
     modelCtrl.prepareModelBusy,
     modelCtrl.prepareModelCancelling,
+  ]);
+
+  const recoverIdleAsrSidecar = useCallback(async () => {
+    if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
+      toast.warning("内置模型正在准备中，请稍候后再恢复侧车。");
+      return;
+    }
+    const result = await softWakeIdleSidecar();
+    if (result.status === "failed") {
+      toast.warning(`恢复侧车失败：${result.message}`);
+    }
+    await refreshAsrRuntimeInfo();
+  }, [
+    modelCtrl.prepareModelBusy,
+    modelCtrl.prepareModelCancelling,
+    refreshAsrRuntimeInfo,
   ]);
 
   const clearAsrModelCache = useCallback(async () => {
@@ -274,6 +330,8 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     bundledCopyPresentationSync: modelCtrl.bundledCopyPresentationSync,
     localAsrModelCatalog,
     retryBundledAsrSidecar,
+    recoverIdleAsrSidecar,
+    asrSupervisor: supervisorSnap,
     installFunasrDepsInteractive,
     copyFunasrManualCommands,
     bumpSttOnlineRuntimeChanged,

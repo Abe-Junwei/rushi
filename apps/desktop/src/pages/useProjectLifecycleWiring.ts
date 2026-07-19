@@ -29,6 +29,7 @@ import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 export function useProjectLifecycleWiring(
   localTranscribePreflight: LocalTranscribePreflight = () => null,
   sttOnlineRuntimeEpoch = 0,
+  softWakeBeforeLocalTranscribe?: () => Promise<void>,
 ): ProjectLifecycleApi {
   const { busy, busyReason, beginBusy, endBusy } = useProjectBusyState();
   const { error, setError } = useProjectLifecycleErrorState();
@@ -122,6 +123,7 @@ export function useProjectLifecycleWiring(
     },
     mutations,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     sttOnlineRuntimeEpoch,
     clearScheduledAutoSave,
     onTranscribeSuccess: () => {
@@ -176,6 +178,7 @@ export function useProjectLifecycleWiring(
     executeTranscribeForBatch: transcribeJob.executeTranscribeForBatch,
     cancelTranscribe: transcribeJob.cancelTranscribe,
     localTranscribePreflight,
+    softWakeBeforeLocalTranscribe,
     transcribeSource: transcribeJob.transcribeSource,
     setError,
     refreshProjectHub: closeGate.refreshProjectHub,

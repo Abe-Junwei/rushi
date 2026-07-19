@@ -81,8 +81,9 @@ export const loopbackInvokeMissingCommandManaged =
 export const loopbackInvokeMissingCommandDev =
   "请完全退出应用并重新运行 npm run desktop:dev 以加载最新 Tauri 命令。";
 
-export const asrStatusFfmpegActionLabelManaged = "一键准备";
-export const asrStatusFfmpegActionLabelDev = "修复侧车";
+/** Navigate-only labels (wizard still runs the real prepare action). */
+export const asrStatusFfmpegActionLabelManaged = "打开安装向导";
+export const asrStatusFfmpegActionLabelDev = "打开安装向导";
 
 export const bundledModelsMissingTipsManaged = [
   "请确认使用 v0.1.8 Release DMG / Windows 安装包装载，且安装包体积约 1.4 GB。",

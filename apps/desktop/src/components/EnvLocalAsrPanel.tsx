@@ -33,6 +33,7 @@ type Props = {
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
+  recoverIdleAsrSidecar?: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -59,6 +60,7 @@ export function EnvLocalAsrPanel({
   prepareModelFailure,
   busy,
   refreshAsrHealth,
+  recoverIdleAsrSidecar,
   copyFunasrManualCommands,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -87,6 +89,7 @@ export function EnvLocalAsrPanel({
         presentation={asrPresentation}
         busy={busy}
         refreshAsrHealth={refreshAsrHealth}
+        recoverSidecar={recoverIdleAsrSidecar}
       />
 
       <EnvAsrCudaRecommendBanner
@@ -101,7 +104,11 @@ export function EnvLocalAsrPanel({
       {showProminentSetup ? (
         <section id="env-asr-setup" className={ENV_PANEL_SECTION_CLASS}>
           <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>
-            {asrPresentation.health === "error" ? "安装向导" : "一键准备"}
+            {asrPresentation.sidecarIdleSleeping
+              ? "安装向导"
+              : asrPresentation.health === "error"
+                ? "安装向导"
+                : "一键准备"}
           </h3>
           <LocalAsrSetupWizard
             setup={asrSetup}
