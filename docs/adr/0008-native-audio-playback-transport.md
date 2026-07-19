@@ -26,9 +26,9 @@ Research：[`wkwebview-native-audio-engine-research.md`](../execution/specs/wkwe
 4. 路径经 `resolve_audio_path_under_root`（或等价 scoped resolve）；禁止任意路径播放。
 5. **引擎 → 前端** 使用 `tauri::ipc::Channel<NativeAudioEvent>` 有序事件流（Ready/Playing/Paused/Seeked/TimeUpdate/Ended/Underrun/DeviceChanged/Error）；不再依赖 snapshot 轮询与 grace window。
 6. **时长真源** = 引擎 probe / Ready 事件；layout/peaks 时长仅为 hint。
-7. **第一版不做**：不变调变速、输出设备选择 UI、WebAudio 默认、HTML keepalive、私有 WKPreference。
+7. **保音高变速（2026-07-19）**：1.0x 仍走线性重采样；非 1.0x 经 `native_audio/tempo.rs`（SOLA/WSOLA）保音高；见 [`native-audio-pitch-preserving-rate-research.md`](../execution/specs/native-audio-pitch-preserving-rate-research.md)。**仍不做**：输出设备选择 UI、WebAudio 默认、HTML keepalive、私有 WKPreference、音乐级无伪影承诺。
 8. Legacy MediaElement 播放回退已移除；`rushi.p1.nativeAudioPlayback` pref 不再开关真源（读侧恒为开启）。
-9. **CPAL 0.18+**：依赖 CoreAudio 默认设备自动重路由与 `ErrorKind::DeviceChanged` / `StreamInvalidated`；失效流在引擎线程重建（decode producer 交接）。
+9. **CPAL 0.18+**：依赖 CoreAudio 默认设备自动重路由与 `ErrorKind::DeviceChanged` / `StreamInvalidated`；失效流在引擎线程重建（decode producer 交接；tempo 按新 `out_rate`/`channels` 重建）。
 
 ## 时钟契约
 

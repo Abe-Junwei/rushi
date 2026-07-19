@@ -20,6 +20,7 @@ use symphonia::core::units::Time;
 
 use super::clock::SharedClock;
 use super::events::EventEmitter;
+use super::tempo::{PitchPreservingTempo, TEMPO_RATE_EPSILON};
 use super::types::NativeAudioEvent;
 
 pub(crate) const PREBUFFER_MS: u64 = 120;
@@ -73,6 +74,30 @@ fn sanitize_pcm_sample(sample: f32) -> f32 {
         sample.clamp(-1.0, 1.0)
     } else {
         0.0
+    }
+}
+
+fn append_frame_with_output_channels(frame: &[f32], out_channels: usize, out: &mut Vec<f32>) {
+    let out_channels = out_channels.max(1);
+    if out_channels == 1 {
+        let mono = if frame.is_empty() {
+            0.0
+        } else {
+            frame.iter().sum::<f32>() / frame.len() as f32
+        };
+        out.push(sanitize_pcm_sample(mono));
+        return;
+    }
+
+    for ch in 0..out_channels {
+        let sample = if frame.is_empty() {
+            0.0
+        } else if frame.len() == 1 {
+            frame[0]
+        } else {
+            frame[ch.min(frame.len() - 1)]
+        };
+        out.push(sanitize_pcm_sample(sample));
     }
 }
 
@@ -176,6 +201,9 @@ pub(crate) fn decode_loop(
     let mut last_seek_seq = clock.seek_seq.load(Ordering::SeqCst);
     let mut src_phase: f64 = 0.0;
     let mut pending: Vec<f32> = Vec::new();
+    let mut tempo = PitchPreservingTempo::new(out_rate, out_channels, clock.rate());
+    let mut tempo_resampled = Vec::with_capacity(2048);
+    let mut was_pitch_preserving = false;
 
     let start = clock.current_time_sec();
     if start > 0.02 {
@@ -191,6 +219,9 @@ pub(crate) fn decode_loop(
             out_rate = clock.output_sample_rate.load(Ordering::Relaxed).max(1);
             out_channels = clock.output_channels.load(Ordering::Relaxed).max(1);
             prebuffer_samples = compute_prebuffer_samples(&clock, out_rate, out_channels);
+            // Channel/rate layout is baked into tempo grain sizes — recreate on handoff.
+            tempo = PitchPreservingTempo::new(out_rate, out_channels, clock.rate());
+            was_pitch_preserving = false;
         }
 
         let seek_seq = clock.seek_seq.load(Ordering::SeqCst);
@@ -198,6 +229,8 @@ pub(crate) fn decode_loop(
             last_seek_seq = seek_seq;
             pending.clear();
             src_phase = 0.0;
+            tempo.reset();
+            was_pitch_preserving = false;
             let t = clock.current_time_sec();
             if seek_format(&mut format, &mut decoder, track_id, t).is_err() {
                 thread::sleep(Duration::from_millis(5));
@@ -223,7 +256,7 @@ pub(crate) fn decode_loop(
         // Need >=2 source samples to interpolate. Keep the trailing leftover and
         // APPEND the next packet so a single carried-over sample can never stall
         // the loop (old `is_empty()` gate stopped fetching after one packet).
-        if pending.len() < 2 {
+        if pending.len() / (out_channels.max(1) as usize) < 2 {
             match format.next_packet() {
                 Ok(Some(packet)) => {
                     if packet.track_id != track_id {
@@ -238,12 +271,11 @@ pub(crate) fn decode_loop(
                             decoded.copy_to_vec_interleaved::<f32>(&mut interleaved);
                             let ch = decoded.spec().channels().count().max(1);
                             for frame in interleaved.chunks(ch) {
-                                let mono = if frame.is_empty() {
-                                    0.0
-                                } else {
-                                    frame.iter().sum::<f32>() / ch as f32
-                                };
-                                pending.push(sanitize_pcm_sample(mono));
+                                append_frame_with_output_channels(
+                                    frame,
+                                    out_channels as usize,
+                                    &mut pending,
+                                );
                             }
                         }
                         Err(SymError::DecodeError(_)) => continue,
@@ -287,10 +319,80 @@ pub(crate) fn decode_loop(
         }
 
         let rate = clock.rate() as f64;
-        let step = (src_rate as f64 / out_rate as f64) * rate;
+        let pitch_preserving = (rate as f32 - 1.0).abs() > TEMPO_RATE_EPSILON;
+        if pitch_preserving != was_pitch_preserving {
+            // Drop leftover grains when crossing the 1.0x linear ↔ tempo boundary.
+            tempo.reset();
+            was_pitch_preserving = pitch_preserving;
+        }
+        tempo.set_rate(rate as f32);
+        let step = (src_rate as f64 / out_rate as f64) * if pitch_preserving { 1.0 } else { rate };
         if step <= 0.0 {
             thread::sleep(Duration::from_millis(5));
             continue;
+        }
+
+        // Fast tempos shorten output vs 1.0x input — pull more source per wall tick
+        // so CPAL (still out_rate) does not chronically underrun.
+        let rate_boost = if pitch_preserving {
+            rate.clamp(1.0, 3.0)
+        } else {
+            1.0
+        };
+
+        if pitch_preserving {
+            let vacant_frames = prod.vacant_len() / out_channels as usize;
+            let target_output = (((vacant_frames as f64) * rate_boost).ceil() as usize)
+                .saturating_add(((1024.0 * rate_boost).ceil() as usize).max(1024))
+                .min(8192);
+            let batch_frames = ((2048.0 * rate_boost).ceil() as usize).clamp(2048, 6144);
+            while tempo.available_output() < target_output {
+                if clock.drain_pending.load(Ordering::Acquire)
+                    || clock.seek_seq.load(Ordering::Relaxed) != last_seek_seq
+                {
+                    break;
+                }
+                let channels = out_channels as usize;
+                let idx = src_phase.floor() as usize;
+                let pending_frames = pending.len() / channels;
+                if idx + 1 >= pending_frames {
+                    if idx < pending_frames {
+                        pending.drain(..idx * channels);
+                        src_phase -= idx as f64;
+                    } else {
+                        pending.clear();
+                        src_phase = 0.0;
+                    }
+                    break;
+                }
+                tempo_resampled.clear();
+                while tempo_resampled.len() < batch_frames * channels {
+                    let idx = src_phase.floor() as usize;
+                    let pending_frames = pending.len() / channels;
+                    if idx + 1 >= pending_frames {
+                        break;
+                    }
+                    let frac = src_phase - idx as f64;
+                    let base = idx * channels;
+                    let next_base = (idx + 1) * channels;
+                    for ch in 0..channels {
+                        let a = pending[base + ch];
+                        let b = pending[next_base + ch];
+                        tempo_resampled.push(sanitize_pcm_sample(a + (b - a) * frac as f32));
+                    }
+                    src_phase += step;
+                    let drop_n = src_phase.floor() as usize;
+                    if drop_n > 2048 && drop_n < pending_frames {
+                        pending.drain(..drop_n * channels);
+                        src_phase -= drop_n as f64;
+                    }
+                }
+                if tempo_resampled.is_empty() {
+                    break;
+                }
+                tempo.push_input(&tempo_resampled);
+                tempo.fill_output(target_output);
+            }
         }
 
         while prod.vacant_len() >= out_channels as usize {
@@ -299,10 +401,34 @@ pub(crate) fn decode_loop(
             {
                 break;
             }
+            if pitch_preserving {
+                if tempo.available_output() < out_channels as usize {
+                    break;
+                }
+                let mut pushed = 0u64;
+                for _ in 0..out_channels {
+                    let Some(sample) = tempo.pop_sample() else {
+                        break;
+                    };
+                    if prod.try_push(sample).is_err() {
+                        break;
+                    }
+                    pushed += 1;
+                }
+                if pushed > 0 {
+                    let queued = clock.queued_samples.fetch_add(pushed, Ordering::Relaxed) + pushed;
+                    if queued >= prebuffer_samples {
+                        clock.buffer_ready.store(true, Ordering::SeqCst);
+                    }
+                }
+                continue;
+            }
+            let channels = out_channels as usize;
             let idx = src_phase.floor() as usize;
-            if idx + 1 >= pending.len() {
-                if idx < pending.len() {
-                    pending.drain(..idx);
+            let pending_frames = pending.len() / channels;
+            if idx + 1 >= pending_frames {
+                if idx < pending_frames {
+                    pending.drain(..idx * channels);
                     src_phase -= idx as f64;
                 } else {
                     pending.clear();
@@ -311,11 +437,13 @@ pub(crate) fn decode_loop(
                 break;
             }
             let frac = src_phase - idx as f64;
-            let a = pending[idx];
-            let b = pending[idx + 1];
-            let sample = sanitize_pcm_sample(a + (b - a) * frac as f32);
             let mut pushed = 0u64;
-            for _ in 0..out_channels {
+            let base = idx * channels;
+            let next_base = (idx + 1) * channels;
+            for ch in 0..channels {
+                let a = pending[base + ch];
+                let b = pending[next_base + ch];
+                let sample = sanitize_pcm_sample(a + (b - a) * frac as f32);
                 if prod.try_push(sample).is_err() {
                     break;
                 }
@@ -329,19 +457,28 @@ pub(crate) fn decode_loop(
             }
             src_phase += step;
             let drop_n = src_phase.floor() as usize;
-            if drop_n > 2048 && drop_n < pending.len() {
-                pending.drain(..drop_n);
+            if drop_n > 2048 && drop_n < pending_frames {
+                pending.drain(..drop_n * channels);
                 src_phase -= drop_n as f64;
             }
         }
 
-        if pending.len() > 48_000 * 2 {
-            let keep = 48_000;
-            let drain = pending.len() - keep;
-            pending.drain(..drain);
-            src_phase = (src_phase - drain as f64).max(0.0);
+        let channels = out_channels.max(1) as usize;
+        let pending_frames = pending.len() / channels;
+        if pending_frames > 48_000 * 2 {
+            let keep_frames = 48_000;
+            let drain_frames = pending_frames - keep_frames;
+            pending.drain(..drain_frames * channels);
+            src_phase = (src_phase - drain_frames as f64).max(0.0);
         }
 
-        thread::sleep(Duration::from_millis(1));
+        // When tempo still owes the ring buffer and we need more demux packets,
+        // skip the pacing sleep so fast rates can catch up within the same wall budget.
+        let starved_tempo = pitch_preserving
+            && tempo.available_output() < out_channels as usize * 128
+            && prod.vacant_len() >= out_channels as usize * 256;
+        if !starved_tempo {
+            thread::sleep(Duration::from_millis(1));
+        }
     }
 }

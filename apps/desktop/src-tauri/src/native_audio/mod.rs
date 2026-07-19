@@ -8,6 +8,7 @@ mod decode;
 mod engine;
 mod events;
 mod output;
+mod tempo;
 mod types;
 
 #[cfg(test)]
