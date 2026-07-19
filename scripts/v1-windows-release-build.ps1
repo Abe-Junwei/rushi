@@ -131,8 +131,11 @@ try {
       }
     }
     $signScript = (Resolve-Path (Join-Path $Root "scripts\sign-windows-tauri-artifact.ps1")).Path.Replace("\", "/")
-    $signCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File `"$signScript`" `"%1`""
     $signConfig = Join-Path $env:TEMP "rushi-tauri-windows-signing-$PID.json"
+    $signCommand = @{
+      cmd = "pwsh"
+      args = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $signScript, "%1")
+    }
     @{ bundle = @{ windows = @{ signCommand = $signCommand } } } |
       ConvertTo-Json -Depth 5 |
       Set-Content -LiteralPath $signConfig -Encoding utf8
