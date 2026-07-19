@@ -47,6 +47,18 @@ else
   echo "[prepare-stitch-upload] skip optional: apps/desktop/stitch-brand-logo-reference.png (add 书法「如」截图后重跑)"
 fi
 
+# rushi.app marketing site (Stitch)
+if [[ -f "$ROOT_DIR/docs/execution/specs/rushi-app-marketing-site-stitch-brief.md" ]]; then
+  copy_file "docs/execution/specs/rushi-app-marketing-site-stitch-brief.md" "40-rushi-app-marketing-site-stitch-brief.md"
+else
+  echo "[prepare-stitch-upload] skip optional: rushi-app-marketing-site-stitch-brief.md"
+fi
+if [[ -f "$ROOT_DIR/apps/desktop/stitch-marketing-site-layout.html" ]]; then
+  copy_file "apps/desktop/stitch-marketing-site-layout.html" "41-stitch-marketing-site-layout.html"
+else
+  echo "[prepare-stitch-upload] skip optional: stitch-marketing-site-layout.html"
+fi
+
 # Fix relative links after copying docs from apps/desktop/docs into docs/stitch-upload.
 sed -i '' 's#(../src/components/ProjectPanel.tsx)#(../../apps/desktop/src/components/ProjectPanel.tsx)#g' "$TARGET_DIR/03-stitch-welcome-page-spec.md"
 sed -i '' 's#(../tailwind.config.js)#(../../apps/desktop/tailwind.config.js)#g' "$TARGET_DIR/03-stitch-welcome-page-spec.md"

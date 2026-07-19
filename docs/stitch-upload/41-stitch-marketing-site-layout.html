@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rushi · rushi.app 官网线框（Stitch 对照）</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Serif+SC:wght@500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --notion-bg: #ffffff;
+      --notion-sidebar: #f7f7f5;
+      --notion-divider: #e3e2e0;
+      --notion-text: #37352f;
+      --notion-text-muted: #6b6b6b;
+      --saffron: #c58a43;
+      --saffron-mid: #85530f;
+      --font-sans: Inter, system-ui, sans-serif;
+      --font-serif: "Noto Serif SC", serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      color: var(--notion-text);
+      background: #ececea;
+      -webkit-font-smoothing: antialiased;
+    }
+    .meta {
+      padding: 20px 32px 8px;
+      font-size: 12px;
+      color: var(--notion-text-muted);
+      line-height: 1.5;
+      max-width: 960px;
+    }
+    .meta strong { color: var(--notion-text); }
+    .meta code {
+      font-size: 11px;
+      background: var(--notion-sidebar);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+    .frames {
+      display: flex;
+      flex-direction: column;
+      gap: 40px;
+      padding: 16px 32px 64px;
+    }
+    .frame {
+      background: var(--notion-bg);
+      border: 1px solid var(--notion-divider);
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 1440px;
+    }
+    .frame-label {
+      padding: 10px 16px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--notion-text-muted);
+      background: var(--notion-sidebar);
+      border-bottom: 1px solid var(--notion-divider);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      padding: 0 40px;
+      border-bottom: 1px solid var(--notion-divider);
+    }
+    .brand {
+      font-family: var(--font-serif);
+      font-size: 20px;
+      font-weight: 600;
+    }
+    .nav-links {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 13px;
+      color: var(--notion-text-muted);
+    }
+    .nav-cta {
+      color: var(--saffron);
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: 1fr 1.15fr;
+      gap: 40px;
+      padding: 56px 40px 48px;
+      min-height: 520px;
+      align-items: center;
+    }
+    .hero-brand {
+      font-family: var(--font-serif);
+      font-size: 40px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+      line-height: 1.15;
+    }
+    .hero-headline {
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 12px;
+      letter-spacing: -0.01em;
+    }
+    .hero-support {
+      font-size: 15px;
+      color: var(--notion-text-muted);
+      margin: 0 0 28px;
+      line-height: 1.55;
+      max-width: 28em;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn-primary {
+      appearance: none;
+      border: none;
+      background: var(--saffron);
+      color: #fff;
+      font: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      height: 40px;
+      padding: 0 20px;
+      border-radius: 4px;
+      cursor: default;
+    }
+    .btn-secondary {
+      appearance: none;
+      border: 1px solid var(--notion-divider);
+      background: var(--notion-sidebar);
+      color: var(--notion-text);
+      font: inherit;
+      font-size: 14px;
+      font-weight: 500;
+      height: 40px;
+      padding: 0 20px;
+      border-radius: 4px;
+      cursor: default;
+    }
+    .hero-note {
+      margin-top: 16px;
+      font-size: 12px;
+      color: var(--notion-text-muted);
+    }
+    .product-shot {
+      border: 1px solid var(--notion-divider);
+      border-radius: 6px;
+      background: var(--notion-sidebar);
+      min-height: 320px;
+      display: grid;
+      grid-template-rows: 36px 1fr;
+      overflow: hidden;
+    }
+    .shot-chrome {
+      background: #fff;
+      border-bottom: 1px solid var(--notion-divider);
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--notion-text-muted);
+      gap: 8px;
+    }
+    .shot-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: var(--notion-divider);
+    }
+    .shot-body {
+      display: grid;
+      grid-template-rows: 38% 1fr;
+    }
+    .shot-wave {
+      background: #fff;
+      border-bottom: 1px solid var(--notion-divider);
+      position: relative;
+      overflow: hidden;
+    }
+    .shot-wave::before {
+      content: "";
+      position: absolute;
+      inset: 20% 8%;
+      background: repeating-linear-gradient(
+        90deg,
+        #c4c4c8 0 2px,
+        transparent 2px 6px
+      );
+      opacity: 0.7;
+      mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+    }
+    .shot-wave::after {
+      content: "";
+      position: absolute;
+      top: 12%;
+      bottom: 12%;
+      left: 42%;
+      width: 2px;
+      background: var(--saffron);
+    }
+    .shot-list {
+      background: #fff;
+      padding: 12px 14px;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .seg {
+      border: 1px solid var(--notion-divider);
+      border-radius: 4px;
+      padding: 8px 10px;
+      background: #fff;
+    }
+    .seg.active {
+      background: color-mix(in srgb, var(--saffron) 10%, #fff);
+      border-color: color-mix(in srgb, var(--saffron) 35%, var(--notion-divider));
+    }
+    .seg-meta {
+      font-size: 10px;
+      color: var(--notion-text-muted);
+      margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
+    }
+    .section {
+      padding: 48px 40px;
+      border-top: 1px solid var(--notion-divider);
+    }
+    .section h2 {
+      font-size: 18px;
+      margin: 0 0 8px;
+    }
+    .section p.lead {
+      margin: 0 0 28px;
+      color: var(--notion-text-muted);
+      font-size: 14px;
+    }
+    .tri {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+    .tri h3 {
+      font-size: 14px;
+      margin: 0 0 8px;
+    }
+    .tri p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--notion-text-muted);
+      line-height: 1.5;
+    }
+    .privacy-band {
+      background: var(--notion-sidebar);
+      padding: 40px;
+      border-top: 1px solid var(--notion-divider);
+      text-align: center;
+    }
+    .privacy-band p {
+      margin: 0;
+      font-size: 15px;
+      max-width: 36em;
+      margin-inline: auto;
+      line-height: 1.55;
+    }
+    .footer {
+      padding: 24px 40px;
+      border-top: 1px solid var(--notion-divider);
+      font-size: 12px;
+      color: var(--notion-text-muted);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      justify-content: space-between;
+    }
+    .mobile-frame {
+      max-width: 390px;
+    }
+    .mobile-frame .hero {
+      grid-template-columns: 1fr;
+      padding: 32px 20px;
+      min-height: auto;
+      gap: 28px;
+    }
+    .mobile-frame .hero-brand { font-size: 32px; }
+    .mobile-frame .hero-headline { font-size: 18px; }
+    .mobile-frame .nav { padding: 0 16px; }
+    .mobile-frame .nav-links { gap: 12px; font-size: 12px; }
+    .mobile-frame .tri { grid-template-columns: 1fr; gap: 20px; }
+    .mobile-frame .section { padding: 32px 20px; }
+    .mobile-frame .privacy-band { padding: 28px 20px; }
+    .annot {
+      margin: 8px 40px 24px;
+      font-size: 11px;
+      color: var(--notion-text-muted);
+      border-left: 3px solid var(--saffron);
+      padding-left: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="meta">
+    <strong>Stitch 对照线框</strong> — rushi.app 产品官网（非正式视觉终稿）。<br />
+    需求稿：<code>docs/execution/specs/rushi-app-marketing-site-stitch-brief.md</code> ·
+    视觉真源：仓库根 <code>DESIGN.md</code>（Notion Zen + saffron）。<br />
+    上传：<code>bash scripts/prepare-stitch-upload.sh</code> → <code>docs/stitch-upload/</code>
+  </div>
+
+  <div class="frames">
+    <!-- Desktop home -->
+    <div class="frame">
+      <div class="frame-label">www-home-desktop · 1440 构图示意</div>
+      <header class="nav">
+        <div class="brand">如是我闻</div>
+        <div class="nav-links">
+          <span>功能</span>
+          <span>下载</span>
+          <span>隐私</span>
+          <a class="nav-cta" href="#dl">获取应用</a>
+        </div>
+      </header>
+
+      <section class="hero">
+        <div>
+          <p class="hero-brand">如是我闻</p>
+          <h1 class="hero-headline">本地中文课录音，转写与校对</h1>
+          <p class="hero-support">波形对齐语段，本机完成转写；导出 TXT / SRT / DOCX。</p>
+          <div class="cta-row" id="dl">
+            <button type="button" class="btn-primary">下载 macOS</button>
+            <button type="button" class="btn-secondary">下载 Windows</button>
+          </div>
+          <p class="hero-note">发版于 updates.rushi.app · 无 Linux 桌面包</p>
+        </div>
+        <div class="product-shot" aria-label="产品界面示意：波形 + 语段列表">
+          <div class="shot-chrome">
+            <span class="shot-dot"></span><span class="shot-dot"></span><span class="shot-dot"></span>
+            <span>Editor · 波形 + 语段</span>
+          </div>
+          <div class="shot-body">
+            <div class="shot-wave"></div>
+            <div class="shot-list">
+              <div class="seg active">
+                <div class="seg-meta">00:12.4 – 00:28.1 · 语段</div>
+                本地转写结果在此校对，与波形时间对齐。
+              </div>
+              <div class="seg">
+                <div class="seg-meta">00:28.1 – 00:41.0</div>
+                支持拆分、合并与导出交付格式。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <p class="annot">首屏预算：品牌 + headline + 支撑句 + CTA + 一张产品主视觉。勿加统计条 / promo chip。</p>
+
+      <section class="section">
+        <h2>为课录音校对而做</h2>
+        <p class="lead">一节一事 · 三分栏仅示结构，Stitch 中控制留白与字阶。</p>
+        <div class="tri">
+          <div>
+            <h3>本机转写</h3>
+            <p>FunASR 等本机模型；有 NVIDIA 时可在应用内下载 GPU 加速组件。</p>
+          </div>
+          <div>
+            <h3>波形校对</h3>
+            <p>语段与时间轴绑定；拆分、合并、冻结，听写同一工作区。</p>
+          </div>
+          <div>
+            <h3>交付导出</h3>
+            <p>TXT / SRT / DOCX；场次元信息可写入文档。</p>
+          </div>
+        </div>
+      </section>
+
+      <div class="privacy-band">
+        <p>录音与转写默认在你的电脑上完成，不为云转写上传音频。</p>
+      </div>
+
+      <footer class="footer">
+        <span>© 沂南灵创技术服务中心 · rushi.app</span>
+        <span>隐私 · 下载 · updates.rushi.app</span>
+      </footer>
+    </div>
+
+    <!-- Mobile home -->
+    <div class="frame mobile-frame">
+      <div class="frame-label">www-home-mobile · 390 构图示意</div>
+      <header class="nav">
+        <div class="brand" style="font-size: 18px">如是我闻</div>
+        <div class="nav-links">
+          <span>下载</span>
+        </div>
+      </header>
+      <section class="hero">
+        <div>
+          <p class="hero-brand">如是我闻</p>
+          <h1 class="hero-headline">本地中文课录音，转写与校对</h1>
+          <p class="hero-support">波形对齐语段，本机完成转写。</p>
+          <div class="cta-row">
+            <button type="button" class="btn-primary">下载 macOS</button>
+            <button type="button" class="btn-secondary">下载 Windows</button>
+          </div>
+        </div>
+        <div class="product-shot" style="min-height: 240px">
+          <div class="shot-chrome"><span>Editor</span></div>
+          <div class="shot-body">
+            <div class="shot-wave"></div>
+            <div class="shot-list">
+              <div class="seg active">
+                <div class="seg-meta">语段</div>
+                主视觉在移动端可改为纵向堆叠。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="tri">
+          <div><h3>本机转写</h3><p>默认本地，可选 GPU 组件。</p></div>
+          <div><h3>波形校对</h3><p>语段与时间对齐。</p></div>
+          <div><h3>交付导出</h3><p>TXT / SRT / DOCX。</p></div>
+        </div>
+      </section>
+      <div class="privacy-band">
+        <p>不为云转写上传音频。</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
