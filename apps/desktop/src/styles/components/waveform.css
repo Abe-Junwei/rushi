@@ -314,7 +314,7 @@
 }
 
 .editor-workbench-toolbar .waveform-playback-rate-menu-global {
-  width: 3.25rem;
+  width: 3.75rem;
 }
 
 .waveform-playback-cluster {
@@ -437,7 +437,7 @@
 }
 
 .waveform-playback-rate-menu-global {
-  width: 3.25rem;
+  width: 3.75rem;
 }
 
 .waveform-playback-rate-menu-open {
@@ -446,6 +446,7 @@
 
 .waveform-playback-rate-trigger {
   box-sizing: border-box;
+  position: relative;
   display: inline-flex;
   width: 100%;
   height: 30px;
@@ -461,6 +462,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--notion-text-muted);
   cursor: pointer;
+  overflow: hidden;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease;
 }
 
 .waveform-playback-rate-menu-segment .waveform-playback-rate-trigger {
@@ -504,6 +510,25 @@
 .waveform-playback-rate-trigger:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.waveform-playback-rate-trigger-rate-pending {
+  color: var(--workbench-toggle-active-text);
+  background: color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--accent-action) 42%, var(--notion-border));
+}
+
+.waveform-playback-rate-trigger-rate-pending::after {
+  position: absolute;
+  right: 6px;
+  bottom: 3px;
+  left: 6px;
+  height: 1px;
+  border-radius: 9999px;
+  background: var(--accent-action);
+  content: "";
+  transform-origin: left center;
+  animation: waveform-rate-pending-sweep 360ms ease-out both;
 }
 
 .waveform-playback-rate-trigger-label {
@@ -1211,6 +1236,21 @@
   color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
+}
+
+@keyframes waveform-rate-pending-sweep {
+  0% {
+    opacity: 0.35;
+    transform: scaleX(0);
+  }
+  70% {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
 }
 
 .waveform-nav-mode-btn.waveform-nav-mode-btn-active {

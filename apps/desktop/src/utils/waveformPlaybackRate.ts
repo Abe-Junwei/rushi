@@ -1,5 +1,5 @@
 /** 固定播放速度档位（从低到高）。 */
-export const WAVEFORM_PLAYBACK_RATE_PRESETS = [0.25, 0.5, 1, 1.25, 1.5, 2, 3] as const;
+export const WAVEFORM_PLAYBACK_RATE_PRESETS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3] as const;
 
 /** 锚点 1.0 之上（更快）。 */
 export const WAVEFORM_PLAYBACK_RATE_FASTER_PRESETS = WAVEFORM_PLAYBACK_RATE_PRESETS.filter(

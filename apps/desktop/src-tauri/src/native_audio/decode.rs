@@ -20,7 +20,8 @@ use symphonia::core::units::Time;
 
 use super::clock::SharedClock;
 use super::events::EventEmitter;
-use super::tempo::{PitchPreservingTempo, TEMPO_RATE_EPSILON};
+use super::tempo::TEMPO_RATE_EPSILON;
+use super::tempo_processor::TempoProcessor;
 use super::types::NativeAudioEvent;
 
 pub(crate) const PREBUFFER_MS: u64 = 120;
@@ -202,7 +203,7 @@ pub(crate) fn decode_loop(
     let mut last_rate_seq = clock.rate_seq.load(Ordering::SeqCst);
     let mut src_phase: f64 = 0.0;
     let mut pending: Vec<f32> = Vec::new();
-    let mut tempo = PitchPreservingTempo::new(out_rate, out_channels, clock.rate());
+    let mut tempo = TempoProcessor::new(out_rate, out_channels, clock.rate());
     let mut tempo_resampled = Vec::with_capacity(2048);
     let mut was_pitch_preserving = false;
 
@@ -221,7 +222,7 @@ pub(crate) fn decode_loop(
             out_channels = clock.output_channels.load(Ordering::Relaxed).max(1);
             prebuffer_samples = compute_prebuffer_samples(&clock, out_rate, out_channels);
             // Channel/rate layout is baked into tempo grain sizes — recreate on handoff.
-            tempo = PitchPreservingTempo::new(out_rate, out_channels, clock.rate());
+            tempo = TempoProcessor::new(out_rate, out_channels, clock.rate());
             was_pitch_preserving = false;
             last_rate_seq = clock.rate_seq.load(Ordering::SeqCst);
         }

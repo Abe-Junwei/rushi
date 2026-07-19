@@ -65,3 +65,4 @@
 | 2026-07-19 | 初版：选择纯 Rust WSOLA/SOLA 路线，避免 native 库打包风险。 |
 | 2026-07-19 | P1：tempo 层改为多声道 frame 同步处理；解码侧不再强制 downmix mono。 |
 | 2026-07-19 | 加固：设备重建重建 tempo；1.0x 边界 reset；快进按 rate 提高拉取目标并跳过饿缓冲 sleep。 |
+| 2026-07-19 | 后续方案：慢速嘶哑若仍不可接受，进入 [Signalsmith Stretch 调研](./native-audio-signalsmith-stretch-research.md) spike。 |

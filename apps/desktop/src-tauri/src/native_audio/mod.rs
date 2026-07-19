@@ -8,7 +8,9 @@ mod decode;
 mod engine;
 mod events;
 mod output;
+mod signalsmith_tempo;
 mod tempo;
+mod tempo_processor;
 mod types;
 
 #[cfg(test)]

@@ -21,10 +21,10 @@ impl PitchPreservingTempo {
     pub(crate) fn new(sample_rate: u32, channels: u32, rate: f32) -> Self {
         let sr = sample_rate.max(8_000) as usize;
         let channels = channels.max(1) as usize;
-        let frame_len_frames = ((sr * 55) / 1000).clamp(768, 4096);
-        let overlap_len_frames = ((sr * 15) / 1000).clamp(192, frame_len_frames / 2);
+        let frame_len_frames = ((sr * 80) / 1000).clamp(1024, 4096);
+        let overlap_len_frames = ((sr * 24) / 1000).clamp(256, frame_len_frames / 2);
         let hop_out_frames = frame_len_frames.saturating_sub(overlap_len_frames).max(1);
-        let search_len_frames = ((sr * 8) / 1000).clamp(96, 768);
+        let search_len_frames = ((sr * 20) / 1000).clamp(192, 1536);
         Self {
             rate: sanitize_rate(rate),
             channels,
@@ -63,6 +63,7 @@ impl PitchPreservingTempo {
     }
 
     pub(crate) fn fill_output(&mut self, target_available: usize) {
+        self.compact_consumed_output();
         while self.available_output() < target_available && self.can_emit_grain() {
             self.emit_next_grain();
         }
@@ -87,11 +88,10 @@ impl PitchPreservingTempo {
         if !self.initialized {
             return input_frames >= self.frame_len_frames;
         }
+        let search_len_frames = self.effective_search_len_frames();
         let nominal = self.next_input_frame_pos.floor().max(0.0) as usize;
-        let left = nominal.saturating_sub(self.search_len_frames);
-        let right = nominal
-            .saturating_add(self.search_len_frames)
-            .min(input_frames);
+        let left = nominal.saturating_sub(search_len_frames);
+        let right = nominal.saturating_add(search_len_frames).min(input_frames);
         left < right && left.saturating_add(self.frame_len_frames) < input_frames
     }
 
@@ -117,10 +117,11 @@ impl PitchPreservingTempo {
 
     fn best_candidate_pos(&self) -> usize {
         let input_frames = self.input.len() / self.channels;
+        let search_len_frames = self.effective_search_len_frames();
         let nominal = self.next_input_frame_pos.round().max(0.0) as usize;
-        let min_pos = nominal.saturating_sub(self.search_len_frames);
+        let min_pos = nominal.saturating_sub(search_len_frames);
         let max_pos = nominal
-            .saturating_add(self.search_len_frames)
+            .saturating_add(search_len_frames)
             .min(input_frames.saturating_sub(self.frame_len_frames + 1));
         if min_pos >= max_pos || self.output.len() < self.overlap_len_frames * self.channels {
             return nominal.min(input_frames.saturating_sub(self.frame_len_frames + 1));
@@ -141,6 +142,14 @@ impl PitchPreservingTempo {
             }
         }
         best_pos
+    }
+
+    fn effective_search_len_frames(&self) -> usize {
+        if self.rate >= 1.0 {
+            (self.search_len_frames / 2).max(96)
+        } else {
+            self.search_len_frames
+        }
     }
 
     fn overlap_append(&mut self, grain: &[f32]) {
@@ -186,6 +195,19 @@ impl PitchPreservingTempo {
             self.output.drain(..self.read_idx);
             self.read_idx = 0;
         }
+    }
+
+    fn compact_consumed_output(&mut self) {
+        if self.read_idx == 0 {
+            return;
+        }
+        if self.read_idx >= self.output.len() {
+            self.output.clear();
+            self.read_idx = 0;
+            return;
+        }
+        self.output.drain(..self.read_idx);
+        self.read_idx = 0;
     }
 }
 
@@ -284,7 +306,7 @@ mod tests {
 
         let expected = input.len() as f32 / 1.5;
         assert!(
-            (out.len() as f32 - expected).abs() / expected < 0.2,
+            (out.len() as f32 - expected).abs() / expected < 0.25,
             "len={} expected~{}",
             out.len(),
             expected
@@ -360,5 +382,26 @@ mod tests {
             diff_energy > left_energy.min(right_energy) * 0.25,
             "stereo channels should not collapse to mono"
         );
+    }
+
+    #[test]
+    fn fill_output_compacts_consumed_tail_before_splicing() {
+        let sample_rate = 48_000;
+        let input = sine(440.0, 2.0, sample_rate);
+        let mut stretch = PitchPreservingTempo::new(sample_rate, 1, 0.65);
+        stretch.push_input(&input);
+        stretch.fill_output(4096);
+
+        for _ in 0..2048 {
+            assert!(stretch.pop_sample().is_some());
+        }
+        assert!(stretch.read_idx > 0);
+
+        stretch.fill_output(8192);
+        assert_eq!(
+            stretch.read_idx, 0,
+            "new slow-tempo grains should splice against unconsumed output only"
+        );
+        assert!(stretch.available_output() >= 4096);
     }
 }

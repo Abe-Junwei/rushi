@@ -9,9 +9,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
-import {
-  IconChevronDown as ChevronDown,
-} from "@tabler/icons-react";
+import { IconChevronDown as ChevronDown } from "@tabler/icons-react";
 import { CspLayout } from "./CspLayout";
 import { LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
@@ -22,6 +20,8 @@ import {
   WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS,
   type WaveformPlaybackRatePreset,
 } from "../utils/waveformPlaybackRate";
+
+const RATE_PENDING_FEEDBACK_MS = 360;
 
 export type WaveformPlaybackRateMenuProps = {
   disabled: boolean;
@@ -160,6 +160,7 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const [open, setOpen] = useState(false);
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [pendingRate, setPendingRate] = useState<WaveformPlaybackRatePreset | null>(null);
   const activeRate = snapWaveformPlaybackRate(playbackRate);
   const label = formatWaveformPlaybackRateLabel(activeRate);
   const rateStateActive = activeRate !== 1;
@@ -170,11 +171,18 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
 
   const pick = useCallback(
     (rate: WaveformPlaybackRatePreset) => {
+      setPendingRate(rate);
       onPlaybackRateChange(rate);
       close();
     },
     [close, onPlaybackRateChange],
   );
+
+  useEffect(() => {
+    if (pendingRate == null) return;
+    const timer = window.setTimeout(() => setPendingRate(null), RATE_PENDING_FEEDBACK_MS);
+    return () => window.clearTimeout(timer);
+  }, [pendingRate]);
 
   const syncAnchorRect = useCallback(() => {
     const rect = triggerRef.current?.getBoundingClientRect();
@@ -257,8 +265,11 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
           type="button"
           className={`waveform-playback-rate-trigger${
             rateStateActive ? " waveform-playback-rate-trigger-state-active" : ""
-          }${menuEngaged ? " workbench-action-btn-engaged" : ""}`}
+          }${menuEngaged ? " workbench-action-btn-engaged" : ""}${
+            pendingRate != null ? " waveform-playback-rate-trigger-rate-pending" : ""
+          }`}
           disabled={disabled}
+          aria-busy={pendingRate != null ? true : undefined}
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={open ? listboxId : undefined}

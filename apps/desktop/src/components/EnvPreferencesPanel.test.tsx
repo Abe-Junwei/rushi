@@ -76,6 +76,7 @@ describe("EnvPreferencesPanel", () => {
     render(<EnvPreferencesPanel />);
     fireEvent.click(screen.getByRole("combobox", { name: "默认播放速度" }));
     const listbox = screen.getByRole("listbox", { name: "默认播放速度" });
+    expect(within(listbox).getByRole("option", { name: "0.75x" })).toBeTruthy();
     fireEvent.click(within(listbox).getByRole("option", { name: "1.5x" }));
     expect(localStorage.getItem("rushi.p1.waveformGlobalPlaybackRate")).toBe("1.5");
   });

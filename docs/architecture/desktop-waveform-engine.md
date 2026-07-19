@@ -241,7 +241,7 @@
 - peaks 生成失败不阻断 UI（无波形区错误条）；WS decode 仍可播放与显示波形。
 - Symphonia 探测/解码失败时，peaks 路径尝试 **ffmpeg remux → 临时 WAV → 再生成**（`waveform_peaks_ffmpeg.rs`；超时按时长/体积推导）。
 - **导入 / 打开播放**：[`audio_container_normalize.rs`](../../apps/desktop/src-tauri/src/project/audio_container_normalize.rs) 先 Symphonia 探测，失败则廉价修 PCM WAV 头，再失败则 ffmpeg remux（**保留声道**；peaks 路径仍强制 mono）写回项目音频真源（见 [`audio-import-container-normalize-research.md`](../execution/specs/audio-import-container-normalize-research.md)）。`native_audio_load` 在 `spawn_blocking` 中跑 normalize，避免堵 UI。
-- **变速保音高（2026-07-19 P0/P1）**：1.0x 仍走低延迟线性重采样；非 1.0x 经 [`native_audio/tempo.rs`](../../apps/desktop/src-tauri/src/native_audio/tempo.rs) 的 SOLA/WSOLA 风格 tempo 层，避免把 `rate` 直接乘进采样步进导致人声升降调。P1 起 tempo 层按多声道 frame 同步匹配与 overlap，解码侧不再强制 downmix mono。设备流重建时按新 `out_rate`/`channels` 重建 tempo；进出保音高模式 reset；快进按 `rate` 提高拉取目标以防 underrun。
+- **变速保音高（2026-07-19 P0/P1/P2）**：1.0x 仍走低延迟线性重采样；非 1.0x 经 vendored Signalsmith Stretch（[`signalsmith_tempo.rs`](../../apps/desktop/src-tauri/src/native_audio/signalsmith_tempo.rs) + C ABI wrapper）保音高，避免把 `rate` 直接乘进采样步进导致人声升降调。轻量 SOLA/WSOLA [`tempo.rs`](../../apps/desktop/src-tauri/src/native_audio/tempo.rs) 保留为对照测试基线。设备流重建时按新 `out_rate`/`channels` 重建 tempo；进出保音高模式 reset；切速经 `rate_seq` 清旧 ring PCM；快进按 `rate` 提高拉取目标以防 underrun。
 - `peaksMediaDurationMismatch` 仍用于 `useWaveformPeaks` 触发一次 best-effort regenerate（仅当已有 `.dat` 级别）。
 
 ## 时长真源
