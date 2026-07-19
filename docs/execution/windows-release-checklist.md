@@ -57,7 +57,7 @@
 
 ## 5. 远程优先（Win = self-hosted）；离线/仍失败再本地上传
 
-1. 发版前确认 GitHub → Actions → Runners：`pc-office-win-release` **Idle/Online**（本机 `E:\actions-runner` 的 `run.cmd` 或服务在跑）。
+1. 发版前确认 GitHub → Actions → Runners：`pc-office-win-release` **Idle/Online**（Windows 服务 `actions.runner.Abe-Junwei-rushi.pc-office-win-release`，延迟自动启动；工具链在 **Machine** PATH：`E:\Python312` / Node / Git；`TEMP`=`E:\Temp`）。
 2. tag push 或 `workflow_dispatch` 后盯 Actions：`release.yml` → `tauri-windows`（stage Plan B → NSIS → portable）。
 3. **成功**：CDN 验收 §4；不必再手搓本地打包。  
    - **安装 CDN**（便携版/DMG/NSIS）：单侧成功即可上传。  
