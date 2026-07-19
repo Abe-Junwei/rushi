@@ -28,9 +28,8 @@ try {
   if ($inUse) {
     throw "smoke: port $Port already in use"
   }
-} catch [Microsoft.PowerShell.Commands.GetNetTCPConnectionCommand], [System.Management.Automation.CommandNotFoundException] {
-  # Some service accounts lack nettcpip cmdlets; smoke start will fail clearly if bind fails.
 } catch {
+  # Service accounts may lack Get-NetTCPConnection; bind failure still fails via /health timeout.
   if ("$($_.Exception.Message)" -match 'already in use') { throw }
 }
 
@@ -65,8 +64,15 @@ try {
     throw "smoke: /health did not become ready (see $log and $logErr)"
   }
 
+  $py = @(
+    $env:RUSHI_HOST_PYTHON,
+    "E:\Python312\python.exe",
+    (Get-Command python -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source)
+  ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+  if (-not $py) { throw "smoke: Python 3.12 not found (set RUSHI_HOST_PYTHON or install E:\Python312)" }
+
   Invoke-RushiNativeChecked -FailMessage "smoke: health json assertions failed" -Command {
-    & python - @"
+    & $py - @"
 import json
 import sys
 with open(r"$healthJson", encoding="utf-8") as f:
@@ -87,7 +93,7 @@ print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpe
 
   Invoke-WebRequest -Uri "http://127.0.0.1:$Port/" -UseBasicParsing -OutFile $rootJson -TimeoutSec 5 | Out-Null
   Invoke-RushiNativeChecked -FailMessage "smoke: root json assertions failed" -Command {
-    & python - @"
+    & $py - @"
 import json
 import sys
 with open(r"$rootJson", encoding="utf-8") as f:

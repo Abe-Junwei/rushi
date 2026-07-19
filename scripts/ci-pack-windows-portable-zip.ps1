@@ -5,7 +5,8 @@
 # Chinese product filename for CDN / artifacts. .NET APIs (Move-Item,
 # Get-FileHash, Test-Path -LiteralPath) handle Unicode; tar.exe does not.
 #
-# Staging: on GitHub Actions use a short root (C:\rp) to avoid MAX_PATH when
+# Staging: on GitHub Actions use a short ASCII root (E:\rp when present, else C:\rp)
+# to avoid MAX_PATH when
 # packing modelscope trees under D:\a\rushi\rushi\...
 #
 # Usage (repo root or any cwd; paths may be absolute or relative):
@@ -48,14 +49,27 @@ if (-not (Test-Path -LiteralPath $ResourcesDir)) {
 }
 
 $onCi = ($env:GITHUB_ACTIONS -eq "true")
+# Prefer E:\ on self-hosted Windows (C: often <30GB free; CPU+models zip ~1.5GB + stage/probe peaks higher).
 if ([string]::IsNullOrWhiteSpace($StageDir)) {
-  $StageDir = if ($onCi) { "C:\rp" } else { Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable" }
+  $StageDir = if ($onCi) {
+    if (Test-Path "E:\") { "E:\rp" } else { "C:\rp" }
+  } else {
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable"
+  }
 }
 if ([string]::IsNullOrWhiteSpace($AsciiZipPath)) {
-  $AsciiZipPath = if ($onCi) { "C:\rp-build.zip" } else { Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-build.zip" }
+  $AsciiZipPath = if ($onCi) {
+    if (Test-Path "E:\") { "E:\rp-build.zip" } else { "C:\rp-build.zip" }
+  } else {
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-build.zip"
+  }
 }
 if ([string]::IsNullOrWhiteSpace($ProbeDir)) {
-  $ProbeDir = if ($onCi) { "C:\rp-probe" } else { Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-probe" }
+  $ProbeDir = if ($onCi) {
+    if (Test-Path "E:\") { "E:\rp-probe" } else { "C:\rp-probe" }
+  } else {
+    Join-Path (Split-Path -Parent $FinalZipPath) "dist\windows-portable-probe"
+  }
 }
 
 $StageDir = Resolve-FullPath $StageDir

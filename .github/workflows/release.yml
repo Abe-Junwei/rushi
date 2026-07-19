@@ -457,6 +457,17 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri
 
+      # Mirror local release:win — stale CUDA onedir is gitignored and can survive between runs.
+      - name: Remove leftover CUDA onedir before CPU NSIS tree
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $cuda = "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda"
+          if (Test-Path -LiteralPath $cuda) {
+            Write-Host "Removing leftover CUDA onedir before NSIS (CDN opt-in only): $cuda"
+            Remove-Item -LiteralPath $cuda -Recurse -Force
+          }
+
       - name: Build Windows FunASR sidecar (CPU only for NSIS)
         shell: pwsh
         run: |
