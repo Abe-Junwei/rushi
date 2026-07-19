@@ -13,7 +13,9 @@ TMPVENV="$ASR/.venv-sidecar-build"
 write_sidecar_build_stamp() {
   local sidecar_dir="$1"
   local sha ts
-  sha="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  # shellcheck source=/dev/null
+  source "$ROOT/scripts/rushi-resolve-git-sha.sh"
+  sha="$(rushi_resolve_git_sha "$ROOT")"
   ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   cat >"$sidecar_dir/sidecar-build-stamp.txt" <<EOF
 git_sha=${sha}

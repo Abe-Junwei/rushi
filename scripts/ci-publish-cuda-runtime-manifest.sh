@@ -62,8 +62,12 @@ if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
 fi
 
 CDN_BASE="${CDN_BASE%/}"
+# Primary URL stays ASCII (download clients + aws-friendly). Product Chinese zip is a mirror.
+# Manual/CI CDN must upload BOTH keys with identical bytes.
 ARTIFACT_NAME="rushi-asr-sidecar-cuda-windows-x64.zip"
 ARTIFACT_URL="${CDN_BASE}/${TAG}/${ARTIFACT_NAME}"
+PRODUCT_ZIP_NAME="$(basename "$ZIP")"
+PRODUCT_ZIP_URL="${CDN_BASE}/${TAG}/${PRODUCT_ZIP_NAME}"
 COMPONENT_VERSION="${COMPONENT_VERSION:-${TAG#v}}"
 MIN_SHELL_VERSION="${MIN_SHELL_VERSION:-${TAG#v}}"
 
@@ -116,7 +120,7 @@ payload = {
     },
     "exe_relpath": "rushi-asr-sidecar-cuda/rushi-asr-sidecar-cuda.exe",
     "min_shell_version": "${MIN_SHELL_VERSION}",
-    "mirror_urls": []
+    "mirror_urls": ["${PRODUCT_ZIP_URL}"]
   }]
 }
 

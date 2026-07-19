@@ -79,12 +79,17 @@ stop_sidecar_on_8741() {
 }
 
 ensure_venv() {
-  if VENV_PY="$(resolve_venv_py 2>/dev/null)"; then
+  if VENV_PY="$(resolve_venv_py 2>/dev/null)" && "$VENV_PY" -c "import sys" 2>/dev/null; then
     return 0
   fi
-  echo "==> Creating services/asr/.venv (first run)…"
+  if [[ -n "${VENV_PY:-}" ]]; then
+    echo "==> ASR venv is broken (base Python missing) — recreating…"
+  else
+    echo "==> Creating services/asr/.venv (first run)…"
+  fi
   bash "$ROOT/scripts/bootstrap-asr-venv.sh"
   VENV_PY="$(resolve_venv_py)"
+  "$VENV_PY" -c "import sys" >/dev/null
 }
 
 ensure_funasr() {

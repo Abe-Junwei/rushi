@@ -18,6 +18,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 . (Join-Path $Root "scripts\rushi-win-release-artifact-names.ps1")
+. (Join-Path $Root "scripts\rushi-resolve-git-sha.ps1")
 $AppVersion = Get-RushiWinAppVersion
 $PortableZipName = Get-RushiWinPortableZipName $AppVersion
 $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
@@ -28,8 +29,9 @@ function Invoke-Npm {
   # Do not name the param $Args — that shadows PowerShell's automatic $Args and
   # leaves the splat empty (npm prints help and exits non-zero).
   param([Parameter(Mandatory)][string[]] $NpmArgs)
-  & npm @NpmArgs
-  if ($LASTEXITCODE -ne 0) { throw "npm $($NpmArgs -join ' ') failed with exit $LASTEXITCODE" }
+  Invoke-RushiNativeChecked -FailMessage "npm $($NpmArgs -join ' ') failed" -Command {
+    & npm @NpmArgs
+  }
 }
 
 if ($env:RUSHI_SKIP_RELEASE_PREFLIGHT -eq "1") {
@@ -38,8 +40,9 @@ if ($env:RUSHI_SKIP_RELEASE_PREFLIGHT -eq "1") {
   Write-Host "== Windows release preflight =="
   Invoke-Npm @("run", "typecheck")
   Invoke-Npm @("run", "test", "-w", "@rushi/desktop")
-  & node scripts/check-architecture-guard.mjs
-  if ($LASTEXITCODE -ne 0) { throw "architecture guard failed" }
+  Invoke-RushiNativeChecked -FailMessage "architecture guard failed" -Command {
+    & node scripts/check-architecture-guard.mjs
+  }
 }
 
 $cpuExe = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar\rushi-asr-sidecar.exe"
@@ -61,28 +64,35 @@ if (Test-Path -LiteralPath $cudaDir) {
 $modelsDir = Join-Path $Root "apps\desktop\src-tauri\resources\bundled-asr-models"
 Write-Host "== stage Plan B models BEFORE NSIS (required for installer + portable) =="
 Invoke-Npm @("run", "asr:stage-bundled-models")
-& bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
-if ($LASTEXITCODE -ne 0) { throw "bundled-asr-models preflight failed" }
+Invoke-RushiNativeChecked -FailMessage "bundled-asr-models preflight failed" -Command {
+  & bash (Join-Path $Root "scripts\preflight-bundled-asr-models.sh") $modelsDir
+}
 
 if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
   Write-Host "== sign CPU sidecar (optional) =="
-  & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
+  Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar failed" -Command {
+    & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
+  }
 } else {
   Write-Host "SKIP: RUSHI_SKIP_SIDECAR_SIGN=1"
 }
 
 Write-Host "== sidecar health smoke =="
-& pwsh (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1")
-if ($LASTEXITCODE -ne 0) { throw "sidecar health smoke failed" }
+Invoke-RushiNativeChecked -FailMessage "sidecar health smoke failed" -Command {
+  & pwsh (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1")
+}
 
 Write-Host "== prune sidecar for makensis MAX_PATH =="
-& pwsh (Join-Path $Root "scripts\prune-windows-sidecar-for-nsis.ps1") -Onedir @(
-  "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar"
-)
-if ($LASTEXITCODE -ne 0) { throw "prune-windows-sidecar-for-nsis failed" }
+Invoke-RushiNativeChecked -FailMessage "prune-windows-sidecar-for-nsis failed" -Command {
+  & pwsh (Join-Path $Root "scripts\prune-windows-sidecar-for-nsis.ps1") -Onedir @(
+    "apps\desktop\src-tauri\resources\bundled-asr\rushi-asr-sidecar"
+  )
+}
 
 Write-Host "== measure bundle size spike (CPU + models before NSIS) =="
-& pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels
+Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size failed" -Command {
+  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels
+}
 
 if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
@@ -98,21 +108,27 @@ try {
 $TauriRoot = Join-Path $Root "apps\desktop\src-tauri"
 $BundleRoot = Join-Path $TauriRoot "target\release\bundle"
 Write-Host "== normalize NSIS installer name (Chinese product+version) =="
-& bash (Join-Path $Root "scripts/ci-normalize-windows-nsis-name.sh") --bundle-root (Join-Path $Root "apps/desktop/src-tauri/target/release/bundle") --version $AppVersion
+Invoke-RushiNativeChecked -FailMessage "ci-normalize-windows-nsis-name failed" -Command {
+  & bash (Join-Path $Root "scripts/ci-normalize-windows-nsis-name.sh") --bundle-root (Join-Path $Root "apps/desktop/src-tauri/target/release/bundle") --version $AppVersion
+}
 
 $NsisSetup = Join-Path $BundleRoot "nsis\$NsisSetupName"
 if (Test-Path -LiteralPath $NsisSetup) {
-  & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels -NsisPath $NsisSetup
+  Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size (nsis) failed" -Command {
+    & pwsh (Join-Path $Root "scripts\ci-measure-windows-bundle-size.ps1") -RequirePlanBModels -NsisPath $NsisSetup
+  }
 }
 
 Write-Host "== portable zip (CPU sidecar + Plan B models; ASCII tar → Chinese rename) =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
 $Zip = Join-Path $Root $PortableZipName
-& pwsh (Join-Path $Root "scripts\ci-pack-windows-portable-zip.ps1") `
-  -ExePath $Exe `
-  -ResourcesDir (Join-Path $TauriRoot "resources") `
-  -FinalZipPath $Zip `
-  -WriteSha256
+Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-portable-zip failed" -Command {
+  & pwsh (Join-Path $Root "scripts\ci-pack-windows-portable-zip.ps1") `
+    -ExePath $Exe `
+    -ResourcesDir (Join-Path $TauriRoot "resources") `
+    -FinalZipPath $Zip `
+    -WriteSha256
+}
 
 if (Test-Path -LiteralPath $NsisSetup) {
   $nsisSha = "$NsisSetup.sha256"
@@ -126,13 +142,17 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
   $cudaExe = Join-Path $cudaDir "rushi-asr-sidecar-cuda.exe"
   if (-not (Test-Path -LiteralPath $cudaExe)) { throw "Missing CUDA sidecar: $cudaExe" }
   if ($env:RUSHI_SKIP_SIDECAR_SIGN -ne "1") {
-    & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
+    Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cuda) failed" -Command {
+      & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
+    }
   }
   $cudaZip = Join-Path $Root "dist\cuda-cdn\$CudaZipName"
-  & pwsh (Join-Path $Root "scripts\ci-pack-windows-cuda-zip.ps1") `
-    -CudaOnedir $cudaDir `
-    -FinalZipPath $cudaZip `
-    -WriteSha256
+  Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-cuda-zip failed" -Command {
+    & pwsh (Join-Path $Root "scripts\ci-pack-windows-cuda-zip.ps1") `
+      -CudaOnedir $cudaDir `
+      -FinalZipPath $cudaZip `
+      -WriteSha256
+  }
   Write-Host "CUDA CDN zip: $cudaZip"
 } else {
   Write-Host "SKIP: RUSHI_SKIP_CUDA_CDN=1"

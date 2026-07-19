@@ -4,6 +4,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+. (Join-Path $PSScriptRoot "rushi-resolve-git-sha.ps1")
 $Exe = (Resolve-Path $Exe).Path
 $Port = if ($env:RUSHI_SMOKE_ASR_PORT) { [int]$env:RUSHI_SMOKE_ASR_PORT } else { 18741 }
 $WorkDir = Split-Path -Parent $Exe
@@ -58,7 +59,8 @@ try {
     throw "smoke: /health did not become ready (see $log and $logErr)"
   }
 
-  python - @"
+  Invoke-RushiNativeChecked -FailMessage "smoke: health json assertions failed" -Command {
+    & python - @"
 import json
 import sys
 with open(r"$healthJson", encoding="utf-8") as f:
@@ -75,9 +77,11 @@ if "funasr_loaded_model_id" not in body:
     sys.exit(f"missing funasr_loaded_model_id: {body!r}")
 print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpeg_ok"))
 "@
+  }
 
   Invoke-WebRequest -Uri "http://127.0.0.1:$Port/" -UseBasicParsing -OutFile $rootJson -TimeoutSec 5 | Out-Null
-  python - @"
+  Invoke-RushiNativeChecked -FailMessage "smoke: root json assertions failed" -Command {
+    & python - @"
 import json
 import sys
 with open(r"$rootJson", encoding="utf-8") as f:
@@ -91,6 +95,7 @@ if "warmup" not in warmup_model:
     sys.exit(f"missing warmup_model on root: {body!r}")
 print("smoke root OK: catalog + warmup endpoints present")
 "@
+  }
 
   $warmupJson = Join-Path $env:TEMP "rushi-sidecar-smoke-warmup.json"
   try {

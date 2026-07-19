@@ -319,34 +319,56 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Self-hosted checkout path is often owned by a different Windows user than the runner
+      # service account → git "dubious ownership". Stamp + any git metadata must not fail closed
+      # (see scripts/rushi-resolve-git-sha.ps1); still mark workspace safe for intentional git use.
+      - name: Trust workspace for git (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          $safe = Invoke-RushiNativeSoft -Command {
+            & git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+          }
+          if ($safe.ExitCode -ne 0) {
+            Write-Warning "git safe.directory failed ($($safe.ExitCode)); stamp helpers fall back to GITHUB_SHA / unknown"
+          }
+
       # Skip setup-node/setup-python on self-hosted: they need admin/HKLM and leave broken toolcache.
       - name: Use local Node (self-hosted)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
           $node = Get-Command node -EA SilentlyContinue
           if (-not $node) { throw "node not on PATH (install Node 22+ LTS)" }
-          $major = [int]((node -v) -replace '^v','').Split('.')[0]
-          if ($major -lt 22) { throw "Need Node >= 22, got $(node -v)" }
-          Write-Host "Using $(node -v) / npm $(npm -v) at $($node.Source)"
+          $nodeVer = Invoke-RushiNativeChecked -PassThru -FailMessage "node -v failed" -Command { & node -v }
+          $npmVer = Invoke-RushiNativeChecked -PassThru -FailMessage "npm -v failed" -Command { & npm -v }
+          $major = [int](("$nodeVer") -replace '^v','').Split('.')[0]
+          if ($major -lt 22) { throw "Need Node >= 22, got $nodeVer" }
+          Write-Host "Using $nodeVer / npm $npmVer at $($node.Source)"
 
       - name: Use local Python 3.12 (self-hosted)
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
           function Test-UsablePython312([string]$Exe) {
             if (-not $Exe -or -not (Test-Path -LiteralPath $Exe)) { return $false }
             # Reject incomplete actions/setup-python leftovers under the runner toolcache.
             if ($Exe -match '[\\/]_work[\\/]_tool[\\/]') { return $false }
             if ($Exe -match 'WindowsApps') { return $false }
-            $ver = & $Exe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
-            if ($LASTEXITCODE -ne 0 -or $ver -notmatch '^3\.12') { return $false }
-            & $Exe -c "import pip" 2>$null | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-              & $Exe -m ensurepip --upgrade 2>$null | Out-Null
+            # Soft probes: failing candidates must not abort the whole step under Stop.
+            $ver = Invoke-RushiNativeSoft -Command {
+              & $Exe -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
             }
-            & $Exe -c "import pip, venv" 2>$null | Out-Null
-            return ($LASTEXITCODE -eq 0)
+            if ($ver.ExitCode -ne 0 -or ("$($ver.Output)").Trim() -notmatch '^3\.12') { return $false }
+            $pip = Invoke-RushiNativeSoft -Command { & $Exe -c "import pip" 2>$null | Out-Null }
+            if ($pip.ExitCode -ne 0) {
+              Invoke-RushiNativeSoft -Command { & $Exe -m ensurepip --upgrade 2>$null | Out-Null } | Out-Null
+            }
+            $ok = Invoke-RushiNativeSoft -Command { & $Exe -c "import pip, venv" 2>$null | Out-Null }
+            return ($ok.ExitCode -eq 0)
           }
           $candidates = @(
             "E:\Python312\python.exe",
@@ -357,8 +379,10 @@ jobs:
             (Join-Path $env:USERPROFILE "AppData\Local\Programs\Python\Python312\python.exe")
           )
           foreach ($pySpec in @("-3.12", "-V:Astral/CPython3.12.10")) {
-            $pyOut = & py $pySpec -c "import sys; print(sys.executable)" 2>$null
-            if ($LASTEXITCODE -eq 0 -and $pyOut) { $candidates += ([string]$pyOut).Trim() }
+            $pyOut = Invoke-RushiNativeSoft -Command {
+              & py $pySpec -c "import sys; print(sys.executable)" 2>$null
+            }
+            if ($pyOut.ExitCode -eq 0 -and $pyOut.Output) { $candidates += ([string]$pyOut.Output).Trim() }
           }
           $py = $null
           foreach ($c in $candidates) {
@@ -374,9 +398,15 @@ jobs:
             Add-Content -LiteralPath $env:GITHUB_PATH -Value $scripts
           }
           # Prefer real install over WindowsApps store stubs for bash `python3`.
-          Write-Host "Using $py ($(& $py --version))"
+          $pyVer = Invoke-RushiNativeChecked -PassThru -FailMessage "python --version failed" -Command { & $py --version }
+          Write-Host "Using $py ($pyVer)"
 
-      - run: npm ci
+      - name: npm ci
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "npm ci failed" -Command { & npm ci }
 
       - name: Ensure Windows npm native bindings
         shell: bash
@@ -428,7 +458,13 @@ jobs:
           workspaces: apps/desktop/src-tauri
 
       - name: Build Windows FunASR sidecar (CPU only for NSIS)
-        run: npm run asr:build-sidecar-windows-cpu
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "asr:build-sidecar-windows-cpu failed" -Command {
+            & npm run asr:build-sidecar-windows-cpu
+          }
         timeout-minutes: 120
 
       - name: Verify bundled CPU sidecar artifacts
@@ -475,7 +511,12 @@ jobs:
           SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
           SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
           RELEASE_BUILD: "1"
-        run: pwsh scripts/sign-windows-sidecar.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cpu) failed" -Command {
+            & pwsh scripts/sign-windows-sidecar.ps1
+          }
 
       - name: Warn if CPU sidecar Authenticode failed
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.win_sidecar_sign.outcome != 'success'
@@ -487,14 +528,24 @@ jobs:
 
       - name: Post-build sidecar health smoke
         shell: pwsh
-        run: pwsh scripts/smoke-asr-sidecar-health.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "sidecar health smoke failed" -Command {
+            & pwsh scripts/smoke-asr-sidecar-health.ps1
+          }
         timeout-minutes: 10
 
       - name: Prune sidecar deep license trees (makensis MAX_PATH)
         # torch *.dist-info/licenses/.../third_party/... exceeds ~260 chars under
         # apps/desktop/src-tauri/resources/bundled-asr/... and aborts makensis.
         shell: pwsh
-        run: pwsh scripts/prune-windows-sidecar-for-nsis.ps1 -Onedir apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "prune-windows-sidecar-for-nsis failed" -Command {
+            & pwsh scripts/prune-windows-sidecar-for-nsis.ps1 -Onedir apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar
+          }
 
       # Plan B models BEFORE NSIS so installer + portable both ship default Paraformer.
       - name: Bootstrap ASR venv (Plan B models for NSIS + portable)
@@ -534,15 +585,26 @@ jobs:
 
       - name: Measure Windows bundle size spike (CPU + models before NSIS)
         shell: pwsh
-        run: pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size failed" -Command {
+            & pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels
+          }
 
       - name: Tauri build (NSIS installer + updater artifacts)
         working-directory: apps/desktop
+        shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: https://updates.rushi.app/runtime/rushi-runtime-manifest.json
-        run: npm run tauri -- build --bundles nsis
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "tauri build nsis failed" -Command {
+            & npm run tauri -- build --bundles nsis
+          }
         # Larger with Plan B models; allow headroom over CPU-only builds.
         timeout-minutes: 120
 
@@ -557,6 +619,8 @@ jobs:
       - name: Measure NSIS artifact size
         shell: pwsh
         run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
           $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/${{ env.WIN_NSIS_SETUP }}"
           if (-not (Test-Path -LiteralPath $nsis)) {
             $alt = Get-ChildItem "apps/desktop/src-tauri/target/release/bundle/nsis" -Filter *.exe -ErrorAction SilentlyContinue |
@@ -564,7 +628,9 @@ jobs:
               Select-Object -First 1
             if ($alt) { $nsis = $alt.FullName }
           }
-          pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels -NsisPath $nsis
+          Invoke-RushiNativeChecked -FailMessage "ci-measure-windows-bundle-size (nsis) failed" -Command {
+            & pwsh scripts/ci-measure-windows-bundle-size.ps1 -RequirePlanBModels -NsisPath $nsis
+          }
         continue-on-error: false
 
       # Authenticode (optional) before portable zip so the green zip can ship a signed exe.
@@ -591,6 +657,7 @@ jobs:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
           $certPath = Join-Path $env:TEMP "windows-cert.pfx"
           [IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
           $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue |
@@ -604,9 +671,12 @@ jobs:
             Write-Host "::warning::Missing $exe — skip Authenticode."
             exit 1
           }
-          & $signtool.FullName sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "::warning::signtool failed for $exe (exit $LASTEXITCODE) — portable continues unsigned."
+          try {
+            Invoke-RushiNativeChecked -FailMessage "signtool failed for $exe" -Command {
+              & $signtool.FullName sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
+            }
+          } catch {
+            Write-Host "::warning::$($_.Exception.Message) — portable continues unsigned."
             exit 1
           }
           Write-Host "Signed $exe (portable zip only; NSIS .sig left intact)"
@@ -617,14 +687,17 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
           # ASCII tar create/extract → Chinese rename (see scripts/ci-pack-windows-portable-zip.ps1).
           # Do NOT tar -xf the Chinese final name — Windows tar.exe mangles Unicode -f paths.
           $zipFinal = Join-Path (Get-Location) $env:WIN_PORTABLE_ZIP
-          pwsh scripts/ci-pack-windows-portable-zip.ps1 `
-            -ExePath "apps/desktop/src-tauri/target/release/rushi-desktop.exe" `
-            -ResourcesDir "apps/desktop/src-tauri/resources" `
-            -FinalZipPath $zipFinal `
-            -WriteSha256
+          Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-portable-zip failed" -Command {
+            & pwsh scripts/ci-pack-windows-portable-zip.ps1 `
+              -ExePath "apps/desktop/src-tauri/target/release/rushi-desktop.exe" `
+              -ResourcesDir "apps/desktop/src-tauri/resources" `
+              -FinalZipPath $zipFinal `
+              -WriteSha256
+          }
           $nsis = "apps/desktop/src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
           if (-not (Test-Path -LiteralPath $nsis)) {
             throw "Missing $nsis for checksum"
@@ -730,7 +803,13 @@ jobs:
       # CUDA is best-effort: never fail the job after portable/NSIS are on CDN.
       - name: Build Windows CUDA sidecar (CDN opt-in, after NSIS)
         id: cuda_build
-        run: npm run asr:build-sidecar-windows-cuda
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "asr:build-sidecar-windows-cuda failed" -Command {
+            & npm run asr:build-sidecar-windows-cuda
+          }
         timeout-minutes: 120
         continue-on-error: true
 
@@ -743,7 +822,12 @@ jobs:
           SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
           SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
           RELEASE_BUILD: "1"
-        run: pwsh scripts/sign-windows-sidecar.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cuda) failed" -Command {
+            & pwsh scripts/sign-windows-sidecar.ps1
+          }
         continue-on-error: true
 
       - name: Package CUDA sidecar zip + checksum
@@ -752,10 +836,13 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          pwsh scripts/ci-pack-windows-cuda-zip.ps1 `
-            -CudaOnedir "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" `
-            -FinalZipPath (Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)") `
-            -WriteSha256
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-cuda-zip failed" -Command {
+            & pwsh scripts/ci-pack-windows-cuda-zip.ps1 `
+              -CudaOnedir "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" `
+              -FinalZipPath (Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)") `
+              -WriteSha256
+          }
           "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
         continue-on-error: true
 

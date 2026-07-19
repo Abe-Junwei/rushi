@@ -127,7 +127,17 @@ jobs:
           cache: npm
 
       - name: Install npm dependencies (workspaces)
+        if: runner.os != 'Windows'
         run: npm ci
+
+      # Windows GHA default shell is pwsh + Stop; npm/cargo stderr must not abort.
+      - name: Install npm dependencies (workspaces)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "npm ci failed" -Command { & npm ci }
 
       - name: Ensure Windows npm native bindings
         if: runner.os == 'Windows'
@@ -143,14 +153,39 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libasound2-dev
 
       - name: Cargo test (sidecar + transcribe guards)
+        if: runner.os != 'Windows'
         working-directory: apps/desktop/src-tauri
         run: cargo test --lib
 
+      - name: Cargo test (sidecar + transcribe guards)
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop/src-tauri
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "cargo test --lib failed" -Command { & cargo test --lib }
+
       - name: Cargo clippy + fmt check
+        if: runner.os != 'Windows'
         working-directory: apps/desktop/src-tauri
         run: |
           cargo clippy --all-targets -- -D warnings
           cargo fmt --check
+
+      - name: Cargo clippy + fmt check
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop/src-tauri
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "cargo clippy failed" -Command {
+            & cargo clippy --all-targets -- -D warnings
+          }
+          Invoke-RushiNativeChecked -FailMessage "cargo fmt --check failed" -Command {
+            & cargo fmt --check
+          }
 
   asr:
     runs-on: ubuntu-latest

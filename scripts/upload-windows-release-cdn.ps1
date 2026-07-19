@@ -18,6 +18,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 Set-Location $Root
 . (Join-Path $Root "scripts\rushi-win-release-artifact-names.ps1")
+. (Join-Path $Root "scripts\rushi-resolve-git-sha.ps1")
 
 # npm run release:win:upload -- --tag v1.0.1  → unbound args
 if ([string]::IsNullOrWhiteSpace($Tag)) {
@@ -55,14 +56,18 @@ Write-Host "NSIS:     $NsisSetupName"
 
 function Invoke-BashUpload {
   param([Parameter(Mandatory)][string[]]$BashArgs)
-  & bash @BashArgs
-  if ($LASTEXITCODE -ne 0) { throw "bash $($BashArgs -join ' ') failed ($LASTEXITCODE)" }
+  # bash/aws often write progress to stderr; only non-zero exit is failure.
+  Invoke-RushiNativeChecked -FailMessage "bash $($BashArgs -join ' ') failed" -Command {
+    & bash @BashArgs
+  }
 }
 
 # Prefer Git Bash aws; bootstrap via project helper if needed.
 if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
   Write-Host "aws CLI not on PATH — trying scripts/ci-pip-venv-install.sh awscli"
-  & bash -lc "source scripts/ci-pip-venv-install.sh awscli"
+  Invoke-RushiNativeChecked -FailMessage "ci-pip-venv-install awscli failed" -Command {
+    & bash -lc "source scripts/ci-pip-venv-install.sh awscli"
+  }
 }
 
 if (-not $SkipPortableNsis) {

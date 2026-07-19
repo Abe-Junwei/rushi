@@ -18,7 +18,9 @@ APP="${RUSHI_RELEASE_APP:-${ROOT}/apps/desktop/src-tauri/target/release/bundle/m
 SAMPLE="${ROOT}/fixtures/eval/samples/clear.wav"
 APP_DATA="$(bash "${ROOT}/scripts/resolve-app-data-root.sh")"
 EVIDENCE="${ROOT}/docs/execution/specs/v0.1.8-section9-memory-hand-test-evidence.md"
-SHA="$(git rev-parse --short HEAD)"
+# shellcheck source=/dev/null
+source "${ROOT}/scripts/rushi-resolve-git-sha.sh"
+SHA="$(rushi_resolve_git_sha "${ROOT}")"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 

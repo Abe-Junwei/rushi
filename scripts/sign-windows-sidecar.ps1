@@ -13,6 +13,7 @@
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+. (Join-Path $Root "scripts\rushi-resolve-git-sha.ps1")
 $ReleaseBuild = $env:RELEASE_BUILD -eq "1"
 
 if (-not $env:SIGNTOOL -or -not $env:SIGN_PFX) {
@@ -33,7 +34,10 @@ if ($ReleaseBuild -and [string]::IsNullOrWhiteSpace($env:SIGN_PASS)) {
 function Invoke-SignFile {
   param([Parameter(Mandatory)][string] $FilePath)
   Write-Host "Signing $FilePath"
-  & $env:SIGNTOOL sign /fd SHA256 /f $env:SIGN_PFX /p $env:SIGN_PASS /tr http://timestamp.digicert.com /td SHA256 $FilePath
+  # signtool writes progress to stderr; under $ErrorActionPreference=Stop that must not abort.
+  Invoke-RushiNativeChecked -FailMessage "signtool failed for $FilePath" -Command {
+    & $env:SIGNTOOL sign /fd SHA256 /f $env:SIGN_PFX /p $env:SIGN_PASS /tr http://timestamp.digicert.com /td SHA256 $FilePath
+  }
 }
 
 $SidecarDirs = @(

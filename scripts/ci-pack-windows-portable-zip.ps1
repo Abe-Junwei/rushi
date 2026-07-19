@@ -26,6 +26,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptRoot "rushi-resolve-git-sha.ps1")
 
 function Resolve-FullPath([string]$Path) {
   if ([System.IO.Path]::IsPathRooted($Path)) {
@@ -86,9 +88,8 @@ if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPa
 # Compress-Archive OOMs on sidecar+models; tar streams on Win10+.
 Push-Location -LiteralPath $StageDir
 try {
-  & tar -a -c -f $AsciiZipPath .
-  if ($LASTEXITCODE -ne 0) {
-    throw "tar zip failed with exit $LASTEXITCODE (ascii=$AsciiZipPath)"
+  Invoke-RushiNativeChecked -FailMessage "tar zip failed (ascii=$AsciiZipPath)" -Command {
+    & tar -a -c -f $AsciiZipPath .
   }
 } finally {
   Pop-Location
@@ -102,9 +103,8 @@ Write-Host "OK: ascii zip $AsciiZipPath ($((Get-Item -LiteralPath $AsciiZipPath)
 if (-not $SkipVerifyExtract) {
   if (Test-Path -LiteralPath $ProbeDir) { Remove-Item -LiteralPath $ProbeDir -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $ProbeDir | Out-Null
-  & tar -xf $AsciiZipPath -C $ProbeDir
-  if ($LASTEXITCODE -ne 0) {
-    throw "tar extract failed ($LASTEXITCODE) ascii=$AsciiZipPath"
+  Invoke-RushiNativeChecked -FailMessage "tar extract failed ascii=$AsciiZipPath" -Command {
+    & tar -xf $AsciiZipPath -C $ProbeDir
   }
   $sidecar = Join-Path $ProbeDir "resources\bundled-asr\rushi-asr-sidecar"
   $manifest = Join-Path $ProbeDir "resources\bundled-asr-models\manifest.json"

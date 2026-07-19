@@ -232,6 +232,26 @@ case "$MODE" in
     if [ -f "${CUDA_ZIP}.sha256" ]; then
       upload_file "${CUDA_ZIP}.sha256" "${TAG}/${base}.sha256" "text/plain"
     fi
+    # Runtime manifest primary URL uses ASCII alias; upload same bytes under that key.
+    CUDA_ASCII_NAME="rushi-asr-sidecar-cuda-windows-x64.zip"
+    if [ "$base" != "$CUDA_ASCII_NAME" ]; then
+      CUDA_DIR="$(dirname "$CUDA_ZIP")"
+      CUDA_ASCII_LOCAL="${CUDA_DIR}/${CUDA_ASCII_NAME}"
+      if [ ! -f "$CUDA_ASCII_LOCAL" ]; then
+        # Prefer hardlink; fall back to cp for cross-device paths.
+        ln "$CUDA_ZIP" "$CUDA_ASCII_LOCAL" 2>/dev/null || cp "$CUDA_ZIP" "$CUDA_ASCII_LOCAL"
+      fi
+      upload_file "$CUDA_ASCII_LOCAL" "${TAG}/${CUDA_ASCII_NAME}" "application/zip"
+      if [ -f "${CUDA_ASCII_LOCAL}.sha256" ]; then
+        upload_file "${CUDA_ASCII_LOCAL}.sha256" "${TAG}/${CUDA_ASCII_NAME}.sha256" "text/plain"
+      elif [ -f "${CUDA_ZIP}.sha256" ]; then
+        # Rewrite checksum line to ASCII basename for clients that verify by filename.
+        hash_line="$(tr -s '[:space:]' ' ' <"${CUDA_ZIP}.sha256" | cut -d' ' -f1)"
+        printf '%s  %s\n' "$hash_line" "$CUDA_ASCII_NAME" >"${CUDA_ASCII_LOCAL}.sha256"
+        upload_file "${CUDA_ASCII_LOCAL}.sha256" "${TAG}/${CUDA_ASCII_NAME}.sha256" "text/plain"
+      fi
+      echo "CDN Windows CUDA ASCII alias: ${CDN_BASE}/${TAG}/${CUDA_ASCII_NAME}"
+    fi
     if [ -n "$RUNTIME_MANIFEST" ]; then
       if [ ! -f "$RUNTIME_MANIFEST" ]; then
         echo "Missing runtime manifest: $RUNTIME_MANIFEST" >&2

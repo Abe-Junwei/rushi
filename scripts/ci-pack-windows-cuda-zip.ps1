@@ -10,6 +10,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+. (Join-Path $ScriptRoot "rushi-resolve-git-sha.ps1")
 
 function Resolve-FullPath([string]$Path) {
   if ([System.IO.Path]::IsPathRooted($Path)) {
@@ -46,7 +48,23 @@ if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPa
 if (Test-Path -LiteralPath $FinalZipPath) { Remove-Item -LiteralPath $FinalZipPath -Force }
 
 # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
-Compress-Archive -Path $CudaOnedir -DestinationPath $AsciiZipPath
+# Compress-Archive OOMs on ~4GB CUDA onedir; tar streams like portable packer.
+$cudaParent = Split-Path -Parent $CudaOnedir
+$cudaLeaf = Split-Path -Leaf $CudaOnedir
+if ($cudaLeaf -ne "rushi-asr-sidecar-cuda") {
+  throw "CUDA onedir leaf must be rushi-asr-sidecar-cuda (got: $cudaLeaf)"
+}
+Push-Location -LiteralPath $cudaParent
+try {
+  Invoke-RushiNativeChecked -FailMessage "tar zip failed (ascii=$AsciiZipPath)" -Command {
+    & tar -a -c -f $AsciiZipPath $cudaLeaf
+  }
+} finally {
+  Pop-Location
+}
+if (-not (Test-Path -LiteralPath $AsciiZipPath)) {
+  throw "ASCII zip missing after tar: $AsciiZipPath"
+}
 Move-Item -LiteralPath $AsciiZipPath -Destination $FinalZipPath
 
 if ($WriteSha256) {

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { checkPwshNativeSafety } from './check-pwsh-native-safety.mjs';
 
 const ROOT = process.cwd();
 const errors = [];
@@ -1066,6 +1067,11 @@ checkPerfGateEnvGuard();
 checkTranscriptEditorCoreSelectionWriteGuard();
 checkTranscriptEditorCoreRetiredSoTGuard();
 checkTranscriptEditorCoreMetaWriteGuard();
+{
+  const pwsh = checkPwshNativeSafety();
+  errors.push(...pwsh.errors);
+  warnings.push(...pwsh.warnings);
+}
 
 function checkTranscriptEditorCoreSelectionWriteGuard() {
   // Acceptance: only core selection/structure paths may dispatch multi-select effects.

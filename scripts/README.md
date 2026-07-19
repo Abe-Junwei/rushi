@@ -42,7 +42,8 @@
 
 | 命令 | 用途 |
 |------|------|
-| `node scripts/check-architecture-guard.mjs` | 架构守卫（提交前与 CI 同级） |
+| `node scripts/check-architecture-guard.mjs` | 架构守卫（提交前与 CI 同级；含 pwsh native safety） |
+| `node scripts/check-pwsh-native-safety.mjs` | PowerShell Stop + 原生命令须走 `rushi-resolve-git-sha.ps1` helpers |
 | `bash scripts/prepare-stitch-upload.sh` | Stitch 上传包刷新 |
 | `bash scripts/v1-release-installed-smoke.sh` | 已安装 `.app` 冒烟（见 `docs/execution/v1-release-installed-smoke-evidence.md`）；本地 adhoc 会自动 deep 重签 |
 
@@ -71,7 +72,8 @@
 | `bootstrap-asr-venv.sh` | 引导 ASR venv |
 | `fetch-ffmpeg-sidecar.sh` | 拉取侧车 ffmpeg |
 | `install-funasr-for-desktop.sh` | 桌面 FunASR 安装 |
-| `build-asr-sidecar-windows.ps1` | Windows 侧车构建 |
+| `build-asr-sidecar-windows.ps1` | Windows 侧车构建（pip/pyinstaller/stamp 经 `Invoke-RushiNativeChecked`） |
+| `rushi-resolve-git-sha.ps1` / `.sh` | stamp SHA + `Invoke-RushiNativeChecked` / Soft（stderr≠失败） |
 | `smoke-asr-sidecar-health.ps1` | Windows 侧车健康 |
 | `resolve-asr-models-root.sh` / `resolve-app-data-root.sh` | 路径解析辅助 |
 

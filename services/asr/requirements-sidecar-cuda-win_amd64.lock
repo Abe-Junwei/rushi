@@ -83,7 +83,8 @@ safetensors==0.8.0
 scikit-learn==1.9.0
 scipy==1.18.0
 sentencepiece==0.2.2
-setuptools==83.0.0
+# torch 2.11+cu126 requires setuptools<82 (2026-07 CI/local).
+setuptools==81.0.0
 shellingham==1.5.4
 six==1.17.0
 soundfile==0.14.0

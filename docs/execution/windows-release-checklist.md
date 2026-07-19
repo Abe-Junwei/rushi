@@ -15,6 +15,19 @@
 - NSIS 中文安装包（OTA）：与 portable **同内容边界**（侧车+模型；无 CUDA）。未签名时下载页应引导「更多信息 → 仍要运行」。
 - CUDA 为 CDN 可选组件（见 [`win-nsis-cpu-cuda-cdn-opt-in-research.md`](./specs/win-nsis-cpu-cuda-cdn-opt-in-research.md)）。
 - **发版顺序（硬）**：① **先走远程** `release.yml`（tag push / Actions）；`tauri-windows` 跑 **self-hosted**（label `rushi-release`，本机 `E:\actions-runner`，须 Online）。② self-hosted 离线或仍 OOM 时，再本机 `npm run release:win` + `npm run release:win:upload`。其它 CI 失败（含 **makensis MAX_PATH**）先修 workflow 重跑。
+
+- **CI / PowerShell 原生命令（易忽略）**：`$ErrorActionPreference=Stop`（及 PS 7.3+ `PSNativeCommandUseErrorActionPreference`）会把 **stderr≠失败** 打成 **NativeCommandError**。真源 helper：`scripts/rushi-resolve-git-sha.ps1`（`Get-RushiGitShaShort` / `Invoke-RushiNativeChecked` / `Invoke-RushiNativeSoft`）与 `.sh`。机器守卫：`scripts/check-pwsh-native-safety.mjs`（挂入 `check-architecture-guard.mjs`）。
+  - **覆盖矩阵（须全绿才算收口）**：
+    | 面 | 路径 |
+    |---|---|
+    | stamp | `build-asr-sidecar-windows.ps1` / `build-asr-sidecar-unix.sh` → helper；禁止 git ownership fail closed |
+    | 侧车构建 | pip / pyinstaller / post-smoke / prune 全 Checked；npm 入口用 `pwsh`（非 Windows PowerShell 5.1） |
+    | smoke | `smoke-asr-sidecar-health.ps1` 内 `python -` 断言 Checked |
+    | 发版本地 | `v1-windows-release-build` / `upload-windows-release-cdn` / `sign-windows-sidecar` / portable·CUDA `tar` |
+    | 测试本地 | `run-asr-pytest` / `run-desktop-e2e-*` |
+    | CI `tauri-windows` | `safe.directory` Soft；Node/Python Soft；`npm ci` / sidecar / tauri / pack / signtool / CUDA Checked |
+    | CI `desktop-rust`（windows-latest） | `npm ci` + `cargo test/clippy/fmt` Checked |
+    | 纯 .NET（豁免 helper） | `ci-measure-windows-bundle-size.ps1` / `prune-windows-sidecar-for-nsis.ps1` / `rushi-win-release-artifact-names.ps1` |
 - **makensis MAX_PATH**：侧车内 `torch-*.dist-info/licenses/third_party/...` 过深会 abort；CI/本地在 NSIS 前跑 `scripts/prune-windows-sidecar-for-nsis.ps1`（删 runtime 不需要的 licenses 树）。
 - **portable zip**：真源 `scripts/ci-pack-windows-portable-zip.ps1`（CI + `npm run release:win` 共用）。硬规则：
   1. CI 短路径暂存 `C:\rp`（避免 `D:\a\rushi\rushi\...` + modelscope **MAX_PATH**）；
