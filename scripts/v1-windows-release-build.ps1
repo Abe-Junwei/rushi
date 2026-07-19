@@ -24,6 +24,9 @@ $CudaZipName = Get-RushiWinCudaZipName $AppVersion
 $WinReleaseDir = Get-RushiWinReleaseArtifactDir
 $CudaArtifactDir = Get-RushiWinCudaArtifactDir
 New-Item -ItemType Directory -Force -Path $WinReleaseDir, $CudaArtifactDir | Out-Null
+Invoke-RushiNativeChecked -FailMessage "release version consistency check failed" -Command {
+  & node scripts/check-release-version-consistency.mjs
+}
 Write-Host "Artifact names: offline=$OfflineZipName nsis=$NsisSetupName"
 Write-Host "Artifact dir: $WinReleaseDir (override RUSHI_WIN_ARTIFACT_DIR)"
 
@@ -38,6 +41,9 @@ if ($env:RUSHI_SKIP_RELEASE_PREFLIGHT -eq "1") {
   Write-Host "SKIP: Windows release preflight (RUSHI_SKIP_RELEASE_PREFLIGHT=1)"
 } else {
   Write-Host "== Windows release preflight =="
+  Invoke-RushiNativeChecked -FailMessage "Windows release runner readiness failed" -Command {
+    & pwsh scripts/check-windows-release-runner.ps1
+  }
   Invoke-Npm @("run", "typecheck")
   Invoke-Npm @("run", "test", "-w", "@rushi/desktop")
   Invoke-RushiNativeChecked -FailMessage "architecture guard failed" -Command {
@@ -108,11 +114,37 @@ if (-not $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) {
   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
 }
 Write-Host "== Tauri build NSIS (CPU sidecar only) - manifest URL=$($env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL) =="
+$staleNormalizedNsis = Join-Path $Root "apps\desktop\src-tauri\target\release\bundle\nsis\$NsisSetupName"
+foreach ($stale in @($staleNormalizedNsis, "$staleNormalizedNsis.sig", "$staleNormalizedNsis.sha256")) {
+  if (Test-Path -LiteralPath $stale) {
+    Remove-Item -LiteralPath $stale -Force
+    Write-Host "Removed stale same-version NSIS output: $stale"
+  }
+}
 Push-Location (Join-Path $Root "apps\desktop")
 try {
-  Invoke-Npm @("run", "tauri", "--", "build", "--bundles", "nsis")
+  $tauriArgs = @("run", "tauri", "--", "build", "--bundles", "nsis")
+  if (-not [string]::IsNullOrWhiteSpace($env:SIGNTOOL) -or -not [string]::IsNullOrWhiteSpace($env:SIGN_PFX)) {
+    foreach ($name in @("SIGNTOOL", "SIGN_PFX", "SIGN_PASS")) {
+      if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
+        throw "Local Tauri Authenticode signing is partially configured; missing $name."
+      }
+    }
+    $signScript = (Resolve-Path (Join-Path $Root "scripts\sign-windows-tauri-artifact.ps1")).Path.Replace("\", "/")
+    $signCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File `"$signScript`" `"%1`""
+    $signConfig = Join-Path $env:TEMP "rushi-tauri-windows-signing-$PID.json"
+    @{ bundle = @{ windows = @{ signCommand = $signCommand } } } |
+      ConvertTo-Json -Depth 5 |
+      Set-Content -LiteralPath $signConfig -Encoding utf8
+    $tauriArgs += @("--config", $signConfig)
+    Write-Host "Tauri Authenticode signCommand enabled."
+  }
+  Invoke-Npm $tauriArgs
 } finally {
   Pop-Location
+  if ($signConfig -and (Test-Path -LiteralPath $signConfig)) {
+    Remove-Item -LiteralPath $signConfig -Force
+  }
 }
 
 $TauriRoot = Join-Path $Root "apps\desktop\src-tauri"

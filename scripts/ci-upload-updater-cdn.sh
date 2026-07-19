@@ -158,22 +158,34 @@ case "$MODE" in
     APP_VER="$(rushi_win_app_version)"
     OFFLINE_NAME="$(rushi_win_offline_installer_zip_name "$APP_VER")"
     NSIS_NAME="$(rushi_win_nsis_setup_name "$APP_VER")"
+    OFFLINE_SOURCE=""
+    OFFLINE_SHA=""
+    if [ -f "${ROOT}/windows-offline-x64.zip" ]; then
+      OFFLINE_SOURCE="${ROOT}/windows-offline-x64.zip"
+      OFFLINE_SHA="${ROOT}/windows-offline-x64.zip.sha256"
+    elif [ -f "${ROOT}/${OFFLINE_NAME}" ]; then
+      OFFLINE_SOURCE="${ROOT}/${OFFLINE_NAME}"
+      OFFLINE_SHA="${ROOT}/${OFFLINE_NAME}.sha256"
+    fi
+    NSIS_SOURCE="${BUNDLE_ROOT}/nsis/${NSIS_NAME}"
+    NSIS_SHA="${NSIS_SOURCE}.sha256"
+    for required in "$OFFLINE_SOURCE" "$OFFLINE_SHA" "$NSIS_SOURCE" "$NSIS_SHA"; do
+      if [ -z "$required" ] || [ ! -f "$required" ]; then
+        echo "Missing required Windows core release file: ${required:-offline zip}" >&2
+        echo "Refusing a partial CDN upload." >&2
+        exit 1
+      fi
+    done
     uploaded=0
     # Prefer ASCII local alias (CI writes windows-offline-x64.zip); S3 key stays Chinese.
     if [ -f "${ROOT}/windows-offline-x64.zip" ]; then
       upload_file "${ROOT}/windows-offline-x64.zip" "${TAG}/${OFFLINE_NAME}" "application/zip"
       uploaded=1
-      if [ -f "${ROOT}/windows-offline-x64.zip.sha256" ]; then
-        upload_file "${ROOT}/windows-offline-x64.zip.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
-      elif [ -f "${ROOT}/${OFFLINE_NAME}.sha256" ]; then
-        upload_file "${ROOT}/${OFFLINE_NAME}.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
-      fi
+      upload_file "$OFFLINE_SHA" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
     elif [ -f "${ROOT}/${OFFLINE_NAME}" ]; then
       upload_file "${ROOT}/${OFFLINE_NAME}" "${TAG}/${OFFLINE_NAME}" "application/zip"
       uploaded=1
-      if [ -f "${ROOT}/${OFFLINE_NAME}.sha256" ]; then
-        upload_file "${ROOT}/${OFFLINE_NAME}.sha256" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
-      fi
+      upload_file "$OFFLINE_SHA" "${TAG}/${OFFLINE_NAME}.sha256" "text/plain"
     fi
     shopt -s nullglob
     if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}" ]; then
@@ -183,9 +195,7 @@ case "$MODE" in
       upload_file "$NSIS_ASCII" "${TAG}/${NSIS_NAME}" "application/vnd.microsoft.portable-executable"
       rm -f "$NSIS_ASCII"
       uploaded=1
-      if [ -f "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" ]; then
-        upload_file "${BUNDLE_ROOT}/nsis/${NSIS_NAME}.sha256" "${TAG}/${NSIS_NAME}.sha256" "text/plain"
-      fi
+      upload_file "$NSIS_SHA" "${TAG}/${NSIS_NAME}.sha256" "text/plain"
     else
       nsis_files=("${BUNDLE_ROOT}/nsis/"*.exe)
       for exe in "${nsis_files[@]}"; do

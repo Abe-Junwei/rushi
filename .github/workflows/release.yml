@@ -67,6 +67,14 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify release version consistency
+        run: |
+          TAG_ARG=""
+          if [ "${{ github.event_name }}" = "push" ] && [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            TAG_ARG="--tag=${{ github.ref_name }}"
+          fi
+          node scripts/check-release-version-consistency.mjs $TAG_ARG
+
       - run: npm ci
 
       - name: Workflow context
@@ -311,11 +319,16 @@ jobs:
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
 
-  tauri-windows:
+  windows-core-release:
     if: ${{ !cancelled() }}
     # pc-office-win-release: self-hosted, Windows, X64, rushi-release (E:\actions-runner).
     # Keep run.cmd / svc running or this job queues forever.
     runs-on: [self-hosted, Windows, X64, rushi-release]
+    outputs:
+      version: ${{ steps.win_names.outputs.version }}
+      offline: ${{ steps.win_names.outputs.offline }}
+      nsis: ${{ steps.win_names.outputs.nsis }}
+      cuda: ${{ steps.win_names.outputs.cuda }}
     steps:
       - uses: actions/checkout@v7
 
@@ -333,6 +346,14 @@ jobs:
           if ($safe.ExitCode -ne 0) {
             Write-Warning "git safe.directory failed ($($safe.ExitCode)); stamp helpers fall back to GITHUB_SHA / unknown"
           }
+
+      - name: Windows release runner readiness
+        shell: pwsh
+        env:
+          WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          WINDOWS_SIGN_PFX_PATH: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          WINDOWS_SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+        run: pwsh scripts/check-windows-release-runner.ps1 -ExportGithubPath
 
       # Skip setup-node/setup-python on self-hosted: they need admin/HKLM and leave broken toolcache.
       - name: Use local Node (self-hosted)
@@ -443,6 +464,16 @@ jobs:
           echo "Offline: $OFFLINE"
           echo "NSIS:    $NSIS"
 
+      - name: Verify release version consistency
+        shell: pwsh
+        run: |
+          $tagArg = @()
+          if ("${{ github.event_name }}" -eq "push" -and "${{ github.ref }}" -like "refs/tags/v*") {
+            $tagArg = @("--tag=${{ github.ref_name }}")
+          }
+          & node scripts/check-release-version-consistency.mjs @tagArg
+          if ($LASTEXITCODE -ne 0) { throw "release version consistency check failed" }
+
       - name: Workflow context
         run: |
           echo "Commit: ${{ github.sha }}"
@@ -515,7 +546,6 @@ jobs:
       - name: Authenticode sign CPU sidecar (release tag)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true'
         id: win_sidecar_sign
-        continue-on-error: true
         shell: pwsh
         env:
           SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
@@ -528,10 +558,6 @@ jobs:
           Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cpu) failed" -Command {
             & pwsh scripts/sign-windows-sidecar.ps1
           }
-
-      - name: Warn if CPU sidecar Authenticode failed
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.win_sidecar_sign.outcome != 'success'
-        run: echo "::warning::CPU sidecar Authenticode failed — continuing unsigned (core NSIS/offline zip still builds)."
 
       - name: Skip Windows sidecar signing (no secrets)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled != 'true'
@@ -609,11 +635,32 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: https://updates.rushi.app/runtime/rushi-runtime-manifest.json
+          SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
         run: |
           $ErrorActionPreference = "Stop"
           . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          $stale = "src-tauri/target/release/bundle/nsis/$($env:WIN_NSIS_SETUP)"
+          foreach ($path in @($stale, "$stale.sig", "$stale.sha256")) {
+            if (Test-Path -LiteralPath $path) {
+              Remove-Item -LiteralPath $path -Force
+              Write-Host "Removed stale same-version NSIS output: $path"
+            }
+          }
+          $tauriConfigArgs = @()
+          if ("${{ steps.win_sign.outputs.enabled }}" -eq "true") {
+            $signScript = (Resolve-Path "$env:GITHUB_WORKSPACE/scripts/sign-windows-tauri-artifact.ps1").Path.Replace("\", "/")
+            $signCommand = "pwsh -NoProfile -ExecutionPolicy Bypass -File `"$signScript`" `"%1`""
+            $signConfig = Join-Path $env:RUNNER_TEMP "rushi-tauri-windows-signing.json"
+            @{ bundle = @{ windows = @{ signCommand = $signCommand } } } |
+              ConvertTo-Json -Depth 5 |
+              Set-Content -LiteralPath $signConfig -Encoding utf8
+            $tauriConfigArgs = @("--config", $signConfig)
+            Write-Host "Tauri Authenticode signCommand enabled."
+          }
           Invoke-RushiNativeChecked -FailMessage "tauri build nsis failed" -Command {
-            & npm run tauri -- build --bundles nsis
+            & npm run tauri -- build --bundles nsis @tauriConfigArgs
           }
         timeout-minutes: 90
 
@@ -642,7 +689,7 @@ jobs:
           }
         continue-on-error: false
 
-      # Do NOT Authenticode-sign the NSIS setup here — that would invalidate the Tauri updater .sig.
+      # Authenticode is applied inside Tauri via signCommand, before Tauri writes the updater .sig.
       # Stage Plan B AFTER NSIS; offline zip ships setup + sibling models (Route 3).
       - name: Bootstrap ASR venv (Plan B models for offline zip)
         shell: bash
@@ -791,6 +838,7 @@ jobs:
       - name: Upload Windows OTA (.exe + .sig) to CDN
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outputs.ok == 'true'
         shell: bash
+        continue-on-error: true
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
@@ -805,122 +853,6 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
             --bucket "${R2_BUCKET:-rushi-updates}"
-
-      # CUDA is best-effort: never fail the job after offline/NSIS are on CDN.
-      - name: Build Windows CUDA sidecar (CDN opt-in, after NSIS)
-        id: cuda_build
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
-          Invoke-RushiNativeChecked -FailMessage "asr:build-sidecar-windows-cuda failed" -Command {
-            & npm run asr:build-sidecar-windows-cuda
-          }
-        timeout-minutes: 120
-        continue-on-error: true
-
-      - name: Authenticode sign CUDA sidecar (release tag)
-        id: cuda_sign
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.cuda_build.outcome == 'success'
-        shell: pwsh
-        env:
-          SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
-          SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
-          SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
-          RELEASE_BUILD: "1"
-        run: |
-          $ErrorActionPreference = "Stop"
-          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
-          Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cuda) failed" -Command {
-            & pwsh scripts/sign-windows-sidecar.ps1
-          }
-        continue-on-error: true
-
-      - name: Package CUDA sidecar zip + checksum
-        id: cuda_zip
-        if: steps.cuda_build.outcome == 'success'
-        shell: pwsh
-        run: |
-          $ErrorActionPreference = "Stop"
-          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
-          Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-cuda-zip failed" -Command {
-            & pwsh scripts/ci-pack-windows-cuda-zip.ps1 `
-              -CudaOnedir "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" `
-              -FinalZipPath (Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)") `
-              -WriteSha256
-          }
-          "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-        continue-on-error: true
-
-      - name: Publish CUDA runtime manifest
-        id: cuda_manifest
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
-        shell: bash
-        env:
-          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
-            echo "::error::Missing RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX for CUDA manifest signing."
-            exit 1
-          fi
-          source scripts/ci-pip-venv-install.sh cryptography
-          bash scripts/ci-publish-cuda-runtime-manifest.sh \
-            --tag "${{ github.ref_name }}" \
-            --zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
-
-      - name: Upload Windows CUDA to Cloudflare R2 CDN
-        id: cuda_cdn
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success' && steps.cuda_manifest.outcome == 'success'
-        shell: bash
-        env:
-          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
-          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
-        continue-on-error: true
-        run: |
-          set -euo pipefail
-          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
-            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
-            exit 1
-          fi
-          source scripts/ci-pip-venv-install.sh awscli
-          bash scripts/ci-upload-updater-cdn.sh \
-            --tag "${{ github.ref_name }}" \
-            --mode windows-cuda \
-            --cuda-zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
-            --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
-            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
-            --bucket "${R2_BUCKET:-rushi-updates}"
-
-      - name: Report CUDA opt-in outcome
-        if: always() && (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
-        shell: bash
-        run: |
-          set -euo pipefail
-          build="${{ steps.cuda_build.outcome }}"
-          zip="${{ steps.cuda_zip.outcome }}"
-          man="${{ steps.cuda_manifest.outcome }}"
-          cdn="${{ steps.cuda_cdn.outcome }}"
-          echo "CUDA outcomes: build=$build zip=$zip manifest=$man cdn=$cdn"
-          # CUDA is best-effort. Do not use ::error:: when skipped due to upstream core failure —
-          # that annotation drowned the real offline-zip failure in the Actions UI.
-          if [ "$build" = "skipped" ] || [ "$zip" = "skipped" ]; then
-            echo "::warning::CUDA opt-in skipped (often because an earlier core step failed, or CUDA build was not reached)."
-            exit 0
-          fi
-          if [ "$build" != "success" ] || [ "$zip" != "success" ]; then
-            echo "::warning::CUDA sidecar build/package failed — CDN opt-in zip missing. Check whether core offline/NSIS still published."
-            exit 0
-          fi
-          if [ "${{ github.event_name }}" = "push" ] && { [ "$man" != "success" ] || [ "$cdn" != "success" ]; }; then
-            echo "::warning::CUDA manifest/CDN upload failed — runtime GPU install may be unavailable."
-            exit 0
-          fi
-          echo "CUDA opt-in pipeline OK."
 
       - name: Report Windows core release status
         if: always() && (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')))
@@ -986,6 +918,7 @@ jobs:
       - name: Upload Windows OTA fragment artifacts
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_fragment.outputs.ok == 'true'
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: windows-ota-fragment
           path: |
@@ -994,9 +927,199 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  windows-cuda-opt-in:
+    needs: windows-core-release
+    if: ${{ !cancelled() && needs.windows-core-release.result == 'success' }}
+    continue-on-error: true
+    runs-on: [self-hosted, Windows, X64, rushi-release]
+    env:
+      WIN_CUDA_ZIP: ${{ needs.windows-core-release.outputs.cuda }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Trust workspace for git (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          $safe = Invoke-RushiNativeSoft -Command {
+            & git config --global --add safe.directory "$env:GITHUB_WORKSPACE"
+          }
+          if ($safe.ExitCode -ne 0) {
+            Write-Warning "git safe.directory failed ($($safe.ExitCode)); stamp helpers fall back to GITHUB_SHA / unknown"
+          }
+
+      - name: Windows release runner readiness
+        shell: pwsh
+        env:
+          WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          WINDOWS_SIGN_PFX_PATH: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          WINDOWS_SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+        run: pwsh scripts/check-windows-release-runner.ps1 -ExportGithubPath
+
+      - name: npm ci
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "npm ci failed" -Command { & npm ci }
+
+      - name: Ensure Windows npm native bindings
+        shell: bash
+        run: bash scripts/ci-ensure-windows-npm-native-bindings.sh
+
+      - name: Detect Windows signing secrets
+        id: win_sign
+        shell: bash
+        env:
+          WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          WINDOWS_SIGN_PFX_PATH: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          WINDOWS_SIGN_PFX_PASSWORD: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+        run: |
+          if [ -z "$WINDOWS_SIGNTOOL_PATH" ] || [ -z "$WINDOWS_SIGN_PFX_PATH" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "No Windows signing secrets — building unsigned CUDA sidecar."
+            exit 0
+          fi
+          if [ -z "${WINDOWS_SIGN_PFX_PASSWORD:-}" ]; then
+            echo "::error::WINDOWS_SIGNTOOL_PATH + WINDOWS_SIGN_PFX_PATH set but WINDOWS_SIGN_PFX_PASSWORD is empty."
+            exit 1
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build Windows CUDA sidecar (CDN opt-in)
+        id: cuda_build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "asr:build-sidecar-windows-cuda failed" -Command {
+            & npm run asr:build-sidecar-windows-cuda
+          }
+        timeout-minutes: 120
+        continue-on-error: true
+
+      - name: Authenticode sign CUDA sidecar (release tag)
+        id: cuda_sign
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.win_sign.outputs.enabled == 'true' && steps.cuda_build.outcome == 'success'
+        shell: pwsh
+        env:
+          SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+          RELEASE_BUILD: "1"
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "sign-windows-sidecar (cuda) failed" -Command {
+            & pwsh scripts/sign-windows-sidecar.ps1
+          }
+        continue-on-error: true
+
+      - name: Package CUDA sidecar zip + checksum
+        id: cuda_zip
+        if: steps.cuda_build.outcome == 'success' && (steps.win_sign.outputs.enabled != 'true' || steps.cuda_sign.outcome == 'success')
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          . "$env:GITHUB_WORKSPACE/scripts/rushi-resolve-git-sha.ps1"
+          Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-cuda-zip failed" -Command {
+            & pwsh scripts/ci-pack-windows-cuda-zip.ps1 `
+              -CudaOnedir "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda" `
+              -FinalZipPath (Join-Path (Get-Location) "dist/cuda-cdn/$($env:WIN_CUDA_ZIP)") `
+              -WriteSha256
+          }
+          "ok=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+        continue-on-error: true
+
+      - name: Publish CUDA runtime manifest
+        id: cuda_manifest
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success'
+        shell: bash
+        env:
+          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
+            echo "::error::Missing RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX for CUDA manifest signing."
+            exit 1
+          fi
+          source scripts/ci-pip-venv-install.sh cryptography
+          bash scripts/ci-publish-cuda-runtime-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
+
+      - name: Upload Windows CUDA to Cloudflare R2 CDN
+        id: cuda_cdn
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_zip.outcome == 'success' && steps.cuda_manifest.outcome == 'success'
+        shell: bash
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          if [ -z "${R2_ACCESS_KEY_ID:-}" ] || [ -z "${R2_SECRET_ACCESS_KEY:-}" ] || [ -z "${R2_ENDPOINT:-}" ]; then
+            echo "::error::Missing R2 secrets (R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_ENDPOINT)."
+            exit 1
+          fi
+          source scripts/ci-pip-venv-install.sh awscli
+          bash scripts/ci-upload-updater-cdn.sh \
+            --tag "${{ github.ref_name }}" \
+            --mode windows-cuda \
+            --cuda-zip "dist/cuda-cdn/${{ env.WIN_CUDA_ZIP }}" \
+            --runtime-manifest dist/runtime-manifest/rushi-runtime-manifest.json \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}" \
+            --bucket "${R2_BUCKET:-rushi-updates}"
+
+      - name: Verify published Windows CUDA manifest + artifact
+        id: cuda_verify
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && steps.cuda_cdn.outcome == 'success'
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          bash scripts/ci-verify-cuda-release.sh \
+            --tag "${{ github.ref_name }}" \
+            --cdn-base "${{ env.RUSHI_UPDATER_CDN_BASE }}"
+
+      - name: Report CUDA opt-in outcome
+        if: always() && (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="${{ steps.cuda_build.outcome }}"
+          zip="${{ steps.cuda_zip.outcome }}"
+          man="${{ steps.cuda_manifest.outcome }}"
+          cdn="${{ steps.cuda_cdn.outcome }}"
+          verify="${{ steps.cuda_verify.outcome }}"
+          echo "CUDA outcomes: build=$build zip=$zip manifest=$man cdn=$cdn verify=$verify"
+          if [ "$build" = "skipped" ] || [ "$zip" = "skipped" ]; then
+            echo "::warning::CUDA opt-in skipped."
+            exit 0
+          fi
+          if [ "$build" != "success" ] || [ "$zip" != "success" ]; then
+            echo "::warning::CUDA sidecar build/package failed — CDN opt-in zip missing. Core offline/NSIS is unaffected."
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "push" ] && { [ "$man" != "success" ] || [ "$cdn" != "success" ]; }; then
+            echo "::warning::CUDA manifest/CDN upload failed — runtime GPU install may be unavailable. Core offline/NSIS is unaffected."
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "push" ] && [ "$verify" != "success" ]; then
+            echo "::warning::CUDA CDN content verification failed — runtime GPU install must not be announced. Core offline/NSIS is unaffected."
+            exit 0
+          fi
+          echo "CUDA opt-in pipeline OK."
+
       - name: Upload Windows CUDA artifacts (optional)
         if: (github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))) && steps.cuda_zip.outcome == 'success'
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: windows-cuda-cdn
           path: |
@@ -1006,14 +1129,14 @@ jobs:
           retention-days: 14
 
   verify-cdn-release:
-    needs: [tauri-macos, tauri-windows]
+    needs: [tauri-macos, windows-core-release]
     # always() required: without it GHA skips this job when any `needs` job fails,
     # so the soft OTA / one-side-success path never runs.
     if: >-
       always() &&
       github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') &&
       !cancelled() &&
-      (needs.tauri-macos.result == 'success' || needs.tauri-windows.result == 'success')
+      (needs.tauri-macos.result == 'success' || needs.windows-core-release.result == 'success')
     # macOS only — no Linux release matrix; avoid ubuntu runners for this job.
     runs-on: macos-latest
     steps:
@@ -1036,12 +1159,6 @@ jobs:
         with:
           name: windows-ota-fragment
           path: artifacts/windows
-
-      - uses: actions/download-artifact@v7
-        continue-on-error: true
-        with:
-          name: windows-cuda-cdn
-          path: artifacts/windows-cuda
 
       - name: Merge and upload OTA manifest
         id: merge_manifest
@@ -1094,7 +1211,7 @@ jobs:
       - name: Verify OTA manifest + offline CDN
         env:
           RUSHI_VERIFY_REQUIRE_LATEST: ${{ steps.merge_manifest.outputs.uploaded }}
-          RUSHI_VERIFY_REQUIRE_OFFLINE: ${{ needs.tauri-windows.result == 'success' }}
+          RUSHI_VERIFY_REQUIRE_OFFLINE: ${{ needs.windows-core-release.result == 'success' }}
         run: |
           bash scripts/ci-verify-updater-manifest.sh \
             --tag "${{ github.ref_name }}" \

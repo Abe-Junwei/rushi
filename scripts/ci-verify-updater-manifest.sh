@@ -58,6 +58,40 @@ http_code() {
   curl -fsSIL "$fetch_url" | awk 'BEGIN{s=0} /^HTTP/{s=$2} END{print s}'
 }
 
+hash_command() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum
+  else
+    shasum -a 256
+  fi
+}
+
+verify_remote_checksum() {
+  local label="$1"
+  local asset_url="$2"
+  local checksum_url="$3"
+  local checksum_fetch asset_fetch expected actual
+  checksum_fetch="$(
+    python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=":/?#[]@!$&'"'"'()*+,;="))' "$checksum_url" 2>/dev/null \
+      || node -e 'console.log(encodeURI(process.argv[1]))' "$checksum_url"
+  )"
+  asset_fetch="$(
+    python3 -c 'import sys,urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=":/?#[]@!$&'"'"'()*+,;="))' "$asset_url" 2>/dev/null \
+      || node -e 'console.log(encodeURI(process.argv[1]))' "$asset_url"
+  )"
+  expected="$(curl -fsSL "$checksum_fetch" | awk 'NR==1 {print tolower($1)}')"
+  if [[ ! "$expected" =~ ^[0-9a-f]{64}$ ]]; then
+    echo "Invalid CDN checksum for ${label}: ${checksum_url}" >&2
+    exit 1
+  fi
+  actual="$(curl -fsSL "$asset_fetch" | hash_command | awk '{print tolower($1)}')"
+  if [ "$actual" != "$expected" ]; then
+    echo "CDN checksum mismatch for ${label}: expected ${expected}, got ${actual}" >&2
+    exit 1
+  fi
+  echo "CDN hash OK [${label}]: ${actual}"
+}
+
 # When merge uploaded no latest.json this run (no OTA fragments), skip hard latest checks.
 REQUIRE_LATEST="${RUSHI_VERIFY_REQUIRE_LATEST:-true}"
 JSON=""
@@ -126,6 +160,10 @@ else
   # After a successful latest.json upload, both platforms must be complete (OTA gate).
   verify_platform "darwin-aarch64" "app.tar.gz" 1
   verify_platform "windows-x86_64" "$WIN_NSIS_NAME" 1
+  verify_remote_checksum \
+    "windows-nsis" \
+    "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}" \
+    "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}.sha256"
 fi
 
 verify_url() {
@@ -154,13 +192,12 @@ if [ "$REQUIRE_OFFLINE" = "false" ]; then
 else
   verify_url "windows-offline" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}" 1
   verify_url "windows-offline.sha256" "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}.sha256" 1
+  verify_remote_checksum \
+    "windows-offline" \
+    "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}" \
+    "${CDN_BASE}/${TAG}/${WIN_OFFLINE_NAME}.sha256"
 fi
 verify_url "windows-nsis.sha256" "${CDN_BASE}/${TAG}/${WIN_NSIS_NAME}.sha256" 0
-
-# CUDA opt-in (soft — core release must not fail verify if CUDA job was skipped).
-WIN_CUDA_NAME="$(rushi_win_cuda_zip_name "$APP_VERSION")"
-verify_url "windows-cuda-zip" "${CDN_BASE}/${TAG}/${WIN_CUDA_NAME}" 0
-verify_url "runtime-manifest" "${CDN_BASE}/runtime/rushi-runtime-manifest.json" 0
 
 if [ -n "$MANIFEST_VERSION" ]; then
   echo "OTA CDN OK: version=${MANIFEST_VERSION}"

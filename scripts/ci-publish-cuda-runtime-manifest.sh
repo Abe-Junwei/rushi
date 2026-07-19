@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build + Ed25519-sign a runtime manifest that lists the Windows CUDA sidecar component.
-# Requires: python3, cryptography (pip), RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX (64 hex chars = 32-byte seed)
+# Requires: Python 3, cryptography (pip), RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX (64 hex chars = 32-byte seed)
 # Output: dist/runtime-manifest/rushi-runtime-manifest.json (+ publish-meta.json)
 #
 # Paths passed to Python must be relative (or Windows-native). Git Bash absolute paths
@@ -61,6 +61,22 @@ if [ -z "${RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX:-}" ]; then
   exit 1
 fi
 
+PYTHON_BIN="${PYTHON_BIN:-}"
+if [ -z "$PYTHON_BIN" ]; then
+  if command -v python >/dev/null 2>&1; then
+    PYTHON_BIN=python
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN=python3
+  else
+    echo "Python not found for CUDA runtime manifest generation" >&2
+    exit 1
+  fi
+fi
+if ! "$PYTHON_BIN" -c 'import sys; assert sys.version_info >= (3, 9)' 2>/dev/null; then
+  echo "Unusable Python for CUDA runtime manifest generation: $PYTHON_BIN" >&2
+  exit 1
+fi
+
 CDN_BASE="${CDN_BASE%/}"
 # Primary URL stays ASCII (download clients + aws-friendly). Product Chinese zip is a mirror.
 # Manual/CI CDN must upload BOTH keys with identical bytes.
@@ -78,7 +94,7 @@ META_JSON="${OUT_DIR}/publish-meta.json"
 
 # Hash + size via Python so we never depend on sha256sum/wc path quirks on Windows runners.
 eval "$(
-  python3 - "$ZIP" <<'PY'
+  "$PYTHON_BIN" - "$ZIP" <<'PY'
 import hashlib, os, sys
 path = sys.argv[1]
 h = hashlib.sha256()
@@ -97,7 +113,7 @@ PY
 PUBLISHED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
 export RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX
-python3 - <<PY
+"$PYTHON_BIN" - <<PY
 import base64, json, os
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 

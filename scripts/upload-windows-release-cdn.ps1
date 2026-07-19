@@ -41,6 +41,9 @@ foreach ($req in @("R2_ACCESS_KEY_ID", "R2_SECRET_ACCESS_KEY", "R2_ENDPOINT")) {
 }
 
 $AppVersion = Get-RushiWinAppVersion
+Invoke-RushiNativeChecked -FailMessage "release tag/version consistency check failed" -Command {
+  & node scripts/check-release-version-consistency.mjs "--tag=$Tag"
+}
 $OfflineZipName = Get-RushiWinOfflineInstallerZipName $AppVersion
 $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
 $CudaZipName = Get-RushiWinCudaZipName $AppVersion
@@ -83,13 +86,51 @@ if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
   }
 }
 
+$cudaReady = $false
+$cudaUploadRelative = "dist/cuda-cdn/$CudaZipName"
+$cudaUploadPath = Join-Path $Root ("dist\cuda-cdn\" + $CudaZipName)
+$runtimeManifestRelative = "dist/runtime-manifest/rushi-runtime-manifest.json"
+$runtimeManifest = Join-Path $Root "dist\runtime-manifest\rushi-runtime-manifest.json"
+if (-not $SkipCuda -and (Test-Path -LiteralPath $CudaZip)) {
+  if ([string]::IsNullOrWhiteSpace($env:RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX)) {
+    Write-Warning "Skip CUDA upload — RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX is required so the stable runtime manifest cannot remain stale."
+  } else {
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $cudaUploadPath) | Out-Null
+    foreach ($stale in @($cudaUploadPath, "$cudaUploadPath.sha256", $runtimeManifest)) {
+      if (Test-Path -LiteralPath $stale) { Remove-Item -LiteralPath $stale -Force }
+    }
+    try {
+      New-Item -ItemType HardLink -Path $cudaUploadPath -Target $CudaZip | Out-Null
+    } catch {
+      Copy-Item -LiteralPath $CudaZip -Destination $cudaUploadPath -Force
+    }
+    if (Test-Path -LiteralPath "$CudaZip.sha256") {
+      Copy-Item -LiteralPath "$CudaZip.sha256" -Destination "$cudaUploadPath.sha256" -Force
+    }
+    $manifestCommand = "source scripts/ci-pip-venv-install.sh cryptography && bash scripts/ci-publish-cuda-runtime-manifest.sh --tag '$Tag' --zip '$cudaUploadRelative' --cdn-base '$CdnBase'"
+    Invoke-RushiNativeChecked -FailMessage "CUDA runtime manifest generation failed" -Command {
+      & bash -lc $manifestCommand
+    }
+    if (-not (Test-Path -LiteralPath $runtimeManifest)) {
+      throw "CUDA runtime manifest missing after generation: $runtimeManifest"
+    }
+    $cudaReady = $true
+  }
+}
+
 $skipCore = $SkipOfflineNsis -or $SkipPortableNsis
 if (-not $skipCore) {
   if (-not (Test-Path -LiteralPath $OfflinePath)) {
     throw "Missing offline zip: $OfflinePath — run npm run release:win first."
   }
   if (-not (Test-Path -LiteralPath $NsisPath)) {
-    Write-Warning "NSIS missing at $NsisPath — uploading offline zip only if present."
+    throw "Missing NSIS setup: $NsisPath — refusing a partial core upload."
+  }
+  if (-not (Test-Path -LiteralPath "$OfflinePath.sha256")) {
+    throw "Missing offline checksum: $OfflinePath.sha256 — refusing a partial core upload."
+  }
+  if (-not (Test-Path -LiteralPath "$NsisPath.sha256")) {
+    throw "Missing NSIS checksum: $NsisPath.sha256 — refusing a partial core upload."
   }
   # ASCII alias for ci-upload-updater-cdn.sh (hardlink when same volume; else copy).
   $asciiZip = Join-Path $Root "windows-offline-x64.zip"
@@ -135,22 +176,19 @@ if (-not $SkipOta -and (Test-Path -LiteralPath "$NsisPath.sig")) {
   Write-Warning "Skip OTA upload — missing $NsisPath.sig (need TAURI_SIGNING_PRIVATE_KEY at build time)."
 }
 
-if (-not $SkipCuda -and (Test-Path -LiteralPath $CudaZip)) {
+if (-not $SkipCuda -and $cudaReady) {
   Write-Host "== Upload CUDA zip =="
-  $runtimeManifest = Join-Path $Root "dist\cuda-cdn\rushi-runtime-manifest.json"
   $cudaArgs = @(
     "scripts/ci-upload-updater-cdn.sh",
     "--tag", $Tag,
     "--mode", "windows-cuda",
-    "--cuda-zip", "dist/cuda-cdn/$CudaZipName",
+    "--cuda-zip", $cudaUploadRelative,
+    "--runtime-manifest", $runtimeManifestRelative,
     "--cdn-base", $CdnBase
   )
-  if (Test-Path -LiteralPath $runtimeManifest) {
-    $cudaArgs += @("--runtime-manifest", "dist/cuda-cdn/rushi-runtime-manifest.json")
-  }
   Invoke-BashUpload $cudaArgs
 } elseif (-not $SkipCuda) {
-  Write-Warning "Skip CUDA — missing $CudaZip"
+  Write-Warning "Skip CUDA — missing a publishable signed CUDA zip/manifest pair (zip source: $CudaZip)"
 }
 
 Write-Host ""

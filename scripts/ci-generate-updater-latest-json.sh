@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate a per-platform updater manifest fragment for R2 CDN (merged at release verify).
-# Requires: jq.
+# Requires: Node.js (already required by desktop release builds).
 set -euo pipefail
 
 usage() {
@@ -97,26 +97,21 @@ fi
 
 URL="${CDN_BASE}/${TAG}/${CDN_BUNDLE_NAME}"
 PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-SIGNATURE="$(tr -d '\n' < "$SIG_FILE")"
+SIGNATURE="$(tr -d '\r\n' < "$SIG_FILE")"
 
-jq -n \
-  --arg version "$VERSION" \
-  --arg notes "Release ${TAG}" \
-  --arg pub_date "$PUB_DATE" \
-  --arg platform "$PLATFORM" \
-  --arg url "$URL" \
-  --arg signature "$SIGNATURE" \
-  '{
-    version: $version,
-    notes: $notes,
-    pub_date: $pub_date,
-    platforms: {
-      ($platform): {
-        url: $url,
-        signature: $signature
-      }
-    }
-  }' > "$OUT"
+node - "$VERSION" "Release ${TAG}" "$PUB_DATE" "$PLATFORM" "$URL" "$SIGNATURE" "$OUT" <<'NODE'
+const fs = require('node:fs');
+const [version, notes, pubDate, platform, url, signature, out] = process.argv.slice(2);
+const payload = {
+  version,
+  notes,
+  pub_date: pubDate,
+  platforms: {
+    [platform]: { url, signature },
+  },
+};
+fs.writeFileSync(out, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+NODE
 
 echo "Wrote ${OUT}"
 echo "Platform: ${PLATFORM}"

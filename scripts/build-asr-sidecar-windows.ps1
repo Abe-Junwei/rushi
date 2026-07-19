@@ -57,7 +57,10 @@ function Ensure-FunasrOnedirData {
   $FunasrDir = Join-Path $InternalDir "funasr"
   if (Test-Path $FunasrDir) { Remove-Item -Recurse -Force $FunasrDir }
   New-Item -ItemType Directory -Force $FunasrDir | Out-Null
-  Copy-Item -Recurse (Join-Path $Site "*") $FunasrDir
+  # Prefer Get-ChildItem + -LiteralPath per item (never -LiteralPath with "*").
+  Get-ChildItem -LiteralPath $Site -Force | ForEach-Object {
+    Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $FunasrDir $_.Name) -Recurse -Force
+  }
   if (-not (Test-Path $Marker)) {
     throw "FATAL: funasr package data still missing at $Marker"
   }

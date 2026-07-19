@@ -42,7 +42,29 @@ jobs:
   verify-cdn-release:
     runs-on: macos-latest
     steps:
+      - name: Resolve source release commit
+        id: source_run
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const { data } = await github.rest.actions.getWorkflowRun({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: Number('${{ inputs.source_run_id }}'),
+            });
+            core.setOutput('head_sha', data.head_sha);
+            core.setOutput('head_branch', data.head_branch || '');
+
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.source_run.outputs.head_sha }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Verify repair tag matches source release version
+        run: node scripts/check-release-version-consistency.mjs "--tag=${{ inputs.tag }}"
 
       - name: Install awscli + jq
         env:
@@ -220,6 +242,7 @@ jobs:
             --fragment "$MAC_FRAGMENT" \
             --fragment "$WIN_FRAGMENT" \
             --out dist/updater/latest.json \
+            --require-platforms "darwin-aarch64,windows-x86_64" \
             --upload \
             --bucket "$R2_BUCKET"
 

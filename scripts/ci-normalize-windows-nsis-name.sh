@@ -44,23 +44,31 @@ NSIS_DIR="${BUNDLE_ROOT}/nsis"
 TARGET="${NSIS_DIR}/${TARGET_NAME}"
 
 shopt -s nullglob
-# Prefer already-normalized Chinese name; else any *-setup.exe; else any .exe that looks like NSIS.
-setup_files=("$NSIS_DIR"/"$TARGET_NAME")
-if [ ! -f "${setup_files[0]:-}" ]; then
-  setup_files=("$NSIS_DIR"/*-setup.exe)
-fi
-if [ ${#setup_files[@]} -eq 0 ] || [ ! -f "${setup_files[0]}" ]; then
+# Prefer a fresh Tauri-generated setup over a normalized target left by a same-version rerun.
+setup_files=("$NSIS_DIR"/*-setup.exe)
+if [ ${#setup_files[@]} -eq 0 ]; then
   setup_files=("$NSIS_DIR"/*.exe)
 fi
-# Exclude .sig companions mistaken as sources
+# Exclude the normalized target and temporary upload aliases from fresh-source candidates.
 filtered=()
 for f in "${setup_files[@]}"; do
   case "$f" in
-    *.sig) continue ;;
+    "$TARGET"|*/rushi-win-nsis-upload.exe|*.sig) continue ;;
     *) filtered+=("$f") ;;
   esac
 done
 setup_files=("${filtered[@]}")
+
+if [ ${#setup_files[@]} -gt 1 ]; then
+  echo "Ambiguous NSIS outputs under ${NSIS_DIR}; refusing to pick a stale installer:" >&2
+  printf '  %s\n' "${setup_files[@]}" >&2
+  exit 1
+fi
+
+if [ ${#setup_files[@]} -eq 0 ] && [ -f "$TARGET" ]; then
+  echo "NSIS installer already normalized and no fresh source exists: $(basename "$TARGET")"
+  exit 0
+fi
 
 if [ ${#setup_files[@]} -eq 0 ]; then
   echo "No NSIS setup .exe found under ${NSIS_DIR}" >&2
@@ -69,11 +77,7 @@ if [ ${#setup_files[@]} -eq 0 ]; then
 fi
 
 SOURCE="${setup_files[0]}"
-if [ "$(basename "$SOURCE")" = "$(basename "$TARGET")" ]; then
-  echo "NSIS installer already normalized: $(basename "$TARGET")"
-  exit 0
-fi
-
+rm -f "$TARGET" "${TARGET}.sig"
 mv "$SOURCE" "$TARGET"
 if [ -f "${SOURCE}.sig" ]; then
   mv "${SOURCE}.sig" "${TARGET}.sig"

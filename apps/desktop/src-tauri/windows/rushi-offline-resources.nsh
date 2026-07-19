@@ -3,8 +3,9 @@
 ;
 ; Routes:
 ;   - Offline zip (sibling resources present) → CopyFiles + deep check
-;   - OTA / silent upgrade (no sibling; temp $EXEDIR) → skip (do not Abort)
+;   - OTA / silent upgrade with existing installed models → skip
 ;   - Interactive bare setup.exe without sibling and without prior INSTDIR models → Abort
+;   - Silent first install without sibling models → Abort with non-zero installer status
 
 !macro NSIS_HOOK_POSTINSTALL
   DetailPrint "正在验证离线语音模型组件源..."
@@ -15,10 +16,12 @@
   IfFileExists "$INSTDIR\resources\bundled-asr-models\manifest.json" 0 l_no_instdir_models
   IfFileExists "$INSTDIR\resources\bundled-asr-models\modelscope\*.*" l_skip_models
   l_no_instdir_models:
-    ; Interactive first install without offline zip → fail closed.
-    ; Silent/OTA (Tauri updater) → continue; App Data seed may already exist.
-    IfSilent l_skip_models
+    ; Any first install without offline resources must fail closed, including /S.
+    ; OTA remains valid when an earlier Route 3 install already populated INSTDIR models.
+    IfSilent l_abort_missing
     MessageBox MB_OK|MB_ICONSTOP "【安装中止】未找到离线语音模型组件。$\r$\n$\r$\n原因：未完整解压「离线安装包.zip」，或单独运行了安装程序。$\r$\n$\r$\n解决办法：请将 zip【全部解压】到同一文件夹后，再运行同级安装包。"
+    l_abort_missing:
+    SetErrorLevel 2
     Abort
   l_skip_models:
     DetailPrint "跳过离线模型释放（OTA/静默升级，或安装目录已有模型）。"
