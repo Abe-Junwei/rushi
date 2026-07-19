@@ -324,9 +324,38 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
+      # setup-python needs HKLM uninstall ACL; interactive self-hosted user often lacks it.
+      # Prefer the machine-installed Python 3.12 (put real install ahead of WindowsApps stub).
+      - name: Use local Python 3.12 (self-hosted)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $py = $null
+          $candidates = @(
+            (Join-Path $env:LOCALAPPDATA "Programs\Python\Python312\python.exe"),
+            (Join-Path $env:USERPROFILE "AppData\Local\Programs\Python\Python312\python.exe")
+          )
+          foreach ($c in $candidates) {
+            if ($c -and (Test-Path -LiteralPath $c)) { $py = $c; break }
+          }
+          if (-not $py) {
+            $out = & py -3.12 -c "import sys; print(sys.executable)" 2>$null
+            if ($LASTEXITCODE -eq 0 -and $out) { $py = ([string]$out).Trim() }
+          }
+          if (-not $py -or -not (Test-Path -LiteralPath $py)) {
+            throw "Python 3.12 not found. Install to %LOCALAPPDATA%\Programs\Python\Python312"
+          }
+          $ver = & $py -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"
+          if ($ver -notmatch '^3\.12') {
+            throw "Expected Python 3.12, got $ver at $py"
+          }
+          $dir = Split-Path -Parent $py
+          Add-Content -LiteralPath $env:GITHUB_PATH -Value $dir
+          $scripts = Join-Path $dir "Scripts"
+          if (Test-Path -LiteralPath $scripts) {
+            Add-Content -LiteralPath $env:GITHUB_PATH -Value $scripts
+          }
+          Write-Host "Using $py ($(& $py --version))"
 
       - run: npm ci
 
