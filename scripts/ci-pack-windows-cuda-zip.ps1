@@ -1,6 +1,6 @@
 # Package Windows CUDA sidecar zip for CDN.
-# Prefer ASCII intermediate then rename — keeps zip tooling off Unicode -f paths
-# (defensive; Compress-Archive is .NET but upload scripts share the same final name).
+# Prefer ASCII intermediate then rename. Use ZipArchive directly so runner PATH
+# drift cannot swap in a non-ZIP-capable tar.exe.
 
 param(
   [Parameter(Mandatory = $true)][string]$CudaOnedir,
@@ -18,6 +18,34 @@ function Resolve-FullPath([string]$Path) {
     return [System.IO.Path]::GetFullPath($Path)
   }
   return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+}
+
+function New-ZipFromDirectory {
+  param(
+    [Parameter(Mandatory = $true)][string]$SourceDir,
+    [Parameter(Mandatory = $true)][string]$RootDir,
+    [Parameter(Mandatory = $true)][string]$ZipPath
+  )
+  Add-Type -AssemblyName System.IO.Compression
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $SourceDir = Resolve-FullPath $SourceDir
+  $RootDir = Resolve-FullPath $RootDir
+  $ZipPath = Resolve-FullPath $ZipPath
+  $zip = [System.IO.Compression.ZipFile]::Open($ZipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+  try {
+    $rootPrefix = $RootDir.TrimEnd('\') + '\'
+    Get-ChildItem -LiteralPath $SourceDir -File -Recurse -Force | ForEach-Object {
+      $entryName = $_.FullName.Substring($rootPrefix.Length).Replace('\', '/')
+      [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+        $zip,
+        $_.FullName,
+        $entryName,
+        [System.IO.Compression.CompressionLevel]::Optimal
+      ) | Out-Null
+    }
+  } finally {
+    $zip.Dispose()
+  }
 }
 
 $CudaOnedir = Resolve-FullPath $CudaOnedir
@@ -48,7 +76,6 @@ if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPa
 if (Test-Path -LiteralPath $FinalZipPath) { Remove-Item -LiteralPath $FinalZipPath -Force }
 
 # Zip root must be rushi-asr-sidecar-cuda/ for exe_relpath in manifest.
-# Compress-Archive OOMs on ~4GB CUDA onedir; tar streams like portable packer.
 $cudaParent = Split-Path -Parent $CudaOnedir
 $cudaLeaf = Split-Path -Leaf $CudaOnedir
 if ($cudaLeaf -ne "rushi-asr-sidecar-cuda") {
@@ -56,19 +83,7 @@ if ($cudaLeaf -ne "rushi-asr-sidecar-cuda") {
 }
 Push-Location -LiteralPath $cudaParent
 try {
-  $tarCreate = Invoke-RushiNativeSoft -Command {
-    & tar -a -c -f $AsciiZipPath $cudaLeaf
-  }
-  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
-    if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
-    Write-Warning "tar -a zip failed; retrying with tar --format zip"
-    $tarCreate = Invoke-RushiNativeSoft -Command {
-      & tar --format zip -c -f $AsciiZipPath $cudaLeaf
-    }
-  }
-  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
-    throw "tar zip failed (ascii=$AsciiZipPath, exit=$($tarCreate.ExitCode))"
-  }
+  New-ZipFromDirectory -SourceDir $CudaOnedir -RootDir $cudaParent -ZipPath $AsciiZipPath
 } finally {
   Pop-Location
 }

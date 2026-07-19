@@ -22,8 +22,8 @@
 #   RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX. Compile-time default:
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL=https://updates.rushi.app/runtime/rushi-runtime-manifest.json
 # Windows Git Bash: never pass /d/a/... absolutes into native node/python (cwd-relative only).
-# Windows tar.exe: NEVER pass Unicode paths to `tar -f` (bsdtar mangles to ????.zip).
-#   Portable/CUDA pack via scripts/ci-pack-windows-*-zip.ps1 — ASCII intermediate → verify → Chinese rename.
+# Windows zip: use scripts/ci-pack-windows-*-zip.ps1 — ASCII intermediate via
+#   .NET ZipArchive → verify → Chinese rename. Do not rely on PATH tar.exe.
 # R2 upload: local source path may be ASCII-staged; S3 key keeps Chinese product names.
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow

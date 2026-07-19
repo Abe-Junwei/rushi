@@ -21,7 +21,7 @@ Observed failed attempts before reset:
 Current known blockers before the next public tag:
 
 - Self-hosted Windows runner `pc-office-win-release` must reliably fetch from GitHub. Validate runner networking before any new tag push.
-- Windows ZIP packaging must be verified on the runner with the current fallback path (`tar -a`, then `tar --format zip`).
+- Windows ZIP packaging moved off PATH `tar.exe` after dry run `29689123196` failed readiness on a non-ZIP-capable tar. Verify the current `.NET ZipArchive` packer on the runner before any new tag push.
 - The next attempt should be a non-public validation first (`workflow_dispatch` or local `npm run release:win` without CDN publish), then one clean public tag only after Windows core passes.
 
 Recommended next release policy:

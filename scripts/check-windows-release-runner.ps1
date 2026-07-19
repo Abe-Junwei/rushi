@@ -101,6 +101,87 @@ function Test-Sha256sumAvailable {
   return $false
 }
 
+function Test-ZipTarCandidate {
+  param([Parameter(Mandatory)][string]$TarExe)
+  if (-not (Test-Path -LiteralPath $TarExe)) {
+    return $false
+  }
+  $probeRoot = Join-Path $env:TEMP "rushi-release-tar-probe-$PID-$([Guid]::NewGuid().ToString('N'))"
+  try {
+    $probeInput = Join-Path $probeRoot "input"
+    $probeZip = Join-Path $probeRoot "probe.zip"
+    New-Item -ItemType Directory -Force -Path $probeInput | Out-Null
+    Set-Content -LiteralPath (Join-Path $probeInput "probe.txt") -Encoding ascii -Value "rushi-release-tar-probe"
+    $create = Get-NativeText -Command { & $TarExe -a -c -f $probeZip -C $probeInput probe.txt 2>$null }
+    if ($create.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $probeZip)) {
+      if (Test-Path -LiteralPath $probeZip) { Remove-Item -LiteralPath $probeZip -Force }
+      $create = Get-NativeText -Command { & $TarExe --format zip -c -f $probeZip -C $probeInput probe.txt 2>$null }
+    }
+    if ($create.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $probeZip)) {
+      return $false
+    }
+    $list = Get-NativeText -Command { & $TarExe -tf $probeZip 2>$null }
+    $magic = [System.IO.File]::ReadAllBytes($probeZip)[0..1]
+    return ($list.ExitCode -eq 0 -and $list.Text -match 'probe\.txt' -and $magic[0] -eq 0x50 -and $magic[1] -eq 0x4B)
+  } catch {
+    return $false
+  } finally {
+    if (Test-Path -LiteralPath $probeRoot) {
+      Remove-Item -LiteralPath $probeRoot -Recurse -Force
+    }
+  }
+}
+
+function Resolve-ZipCapableTar {
+  param([object[]]$SeedCommands)
+  $candidates = New-Object System.Collections.Generic.List[string]
+  if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_ZIP_TAR)) {
+    $candidates.Add($env:RUSHI_ZIP_TAR) | Out-Null
+  }
+  foreach ($cmd in $SeedCommands) {
+    if ($cmd -and $cmd.Source) {
+      $toolDir = Split-Path -Parent $cmd.Source
+      $gitRoot = Split-Path -Parent $toolDir
+      $candidates.Add((Join-Path $gitRoot "usr\bin\tar.exe")) | Out-Null
+      $candidates.Add((Join-Path $toolDir "tar.exe")) | Out-Null
+    }
+  }
+  foreach ($path in @("E:\Git\usr\bin\tar.exe", "C:\Program Files\Git\usr\bin\tar.exe", "C:\Program Files (x86)\Git\usr\bin\tar.exe")) {
+    $candidates.Add($path) | Out-Null
+  }
+  $pathTar = Get-Command "tar" -ErrorAction SilentlyContinue
+  if ($pathTar -and $pathTar.Source) {
+    $candidates.Add($pathTar.Source) | Out-Null
+  }
+  foreach ($candidate in $candidates | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -Unique) {
+    if (Test-ZipTarCandidate $candidate) {
+      return [System.IO.Path]::GetFullPath($candidate)
+    }
+  }
+  return $null
+}
+
+function Test-DotnetZipAvailable {
+  $probeRoot = Join-Path $env:TEMP "rushi-release-dotnet-zip-probe-$PID-$([Guid]::NewGuid().ToString('N'))"
+  try {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    $probeInput = Join-Path $probeRoot "input"
+    $probeExtract = Join-Path $probeRoot "extract"
+    $probeZip = Join-Path $probeRoot "probe.zip"
+    New-Item -ItemType Directory -Force -Path $probeInput | Out-Null
+    Set-Content -LiteralPath (Join-Path $probeInput "probe.txt") -Encoding ascii -Value "rushi-release-dotnet-zip-probe"
+    [System.IO.Compression.ZipFile]::CreateFromDirectory($probeInput, $probeZip)
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($probeZip, $probeExtract)
+    return (Test-Path -LiteralPath (Join-Path $probeExtract "probe.txt"))
+  } catch {
+    return $false
+  } finally {
+    if (Test-Path -LiteralPath $probeRoot) {
+      Remove-Item -LiteralPath $probeRoot -Recurse -Force
+    }
+  }
+}
+
 function Add-PathForCurrentStep {
   param([Parameter(Mandatory)][string]$Path)
   if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path)) {
@@ -230,6 +311,27 @@ foreach ($candidate in $gitUsrBinCandidates | Select-Object -Unique) {
 }
 Test-Sha256sumAvailable | Out-Null
 
+$zipTar = Resolve-ZipCapableTar -SeedCommands @($gitCmd, $bashCmd)
+if ($zipTar) {
+  $env:RUSHI_ZIP_TAR = $zipTar
+  $zipTarDir = Split-Path -Parent $zipTar
+  Add-PathForCurrentStep $zipTarDir | Out-Null
+  if ($ExportGithubPath -and -not [string]::IsNullOrWhiteSpace($env:GITHUB_ENV)) {
+    Add-Content -LiteralPath $env:GITHUB_ENV -Value "RUSHI_ZIP_TAR=$zipTar"
+  }
+  Add-Row "tar:zip" "ok" "ZIP create/list round-trip passed via $zipTar"
+} else {
+  Add-Warning "No ZIP-capable tar.exe found; Windows packaging will use .NET ZipArchive."
+  Add-Row "tar:zip" "warn" "No ZIP-capable tar.exe found"
+}
+
+if (Test-DotnetZipAvailable) {
+  Add-Row "dotnet:zip" "ok" "ZipArchive create/extract round-trip passed"
+} else {
+  Add-Error ".NET ZipArchive cannot create/extract ZIP files; Windows release packaging requires ZipArchive."
+  Add-Row "dotnet:zip" "bad" "ZipArchive round-trip failed"
+}
+
 $bashPython = Get-NativeText -Command {
   & bash scripts/resolve-host-python312.sh
 }
@@ -238,44 +340,6 @@ if ($bashPython.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($bashPython.Text
   Add-Row "bash-python3.12" "bad" "Git Bash host Python resolution failed"
 } else {
   Add-Row "bash-python3.12" "ok" $bashPython.Text.Trim()
-}
-
-$tarProbeRoot = Join-Path $env:TEMP "rushi-release-tar-probe-$PID"
-try {
-  $tarProbeInput = Join-Path $tarProbeRoot "input"
-  $tarProbeZip = Join-Path $tarProbeRoot "probe.zip"
-  New-Item -ItemType Directory -Force -Path $tarProbeInput | Out-Null
-  Set-Content -LiteralPath (Join-Path $tarProbeInput "probe.txt") -Encoding ascii -Value "rushi-release-tar-probe"
-  $tarCreate = Get-NativeText -Command { & tar -a -c -f $tarProbeZip -C $tarProbeInput probe.txt }
-  $tarMode = "tar -a"
-  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $tarProbeZip)) {
-    if (Test-Path -LiteralPath $tarProbeZip) { Remove-Item -LiteralPath $tarProbeZip -Force }
-    $tarCreate = Get-NativeText -Command { & tar --format zip -c -f $tarProbeZip -C $tarProbeInput probe.txt }
-    $tarMode = "tar --format zip"
-  }
-  $tarList = if ($tarCreate.ExitCode -eq 0 -and (Test-Path -LiteralPath $tarProbeZip)) {
-    Get-NativeText -Command { & tar -tf $tarProbeZip }
-  } else {
-    [pscustomobject]@{ ExitCode = 1; Text = "" }
-  }
-  $magic = if (Test-Path -LiteralPath $tarProbeZip) {
-    [System.IO.File]::ReadAllBytes($tarProbeZip)[0..1]
-  } else {
-    @()
-  }
-  if ($tarCreate.ExitCode -ne 0 -or $tarList.ExitCode -ne 0 -or $tarList.Text -notmatch 'probe\.txt' -or $magic.Count -ne 2 -or $magic[0] -ne 0x50 -or $magic[1] -ne 0x4B) {
-    Add-Error "tar cannot create and read a real ZIP via -a or --format zip; Windows release packaging requires ZIP-capable bsdtar."
-    Add-Row "tar:zip" "bad" "ZIP round-trip failed"
-  } else {
-    Add-Row "tar:zip" "ok" "ZIP create/list round-trip passed via $tarMode"
-  }
-} catch {
-  Add-Error "tar ZIP capability probe failed: $($_.Exception.Message)"
-  Add-Row "tar:zip" "bad" $_.Exception.Message
-} finally {
-  if (Test-Path -LiteralPath $tarProbeRoot) {
-    Remove-Item -LiteralPath $tarProbeRoot -Recurse -Force
-  }
 }
 
 $signToolPath = if ($env:WINDOWS_SIGNTOOL_PATH) { $env:WINDOWS_SIGNTOOL_PATH } else { $env:SIGNTOOL }

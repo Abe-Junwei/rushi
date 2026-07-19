@@ -4,8 +4,8 @@
 #   <中文安装包.exe>
 #   resources/bundled-asr-models/...
 #
-# HARD RULE (Windows bsdtar / tar.exe): NEVER pass Unicode paths to `tar -f`.
-# ASCII intermediate zip → verify extract → Move-Item to Chinese final name.
+# HARD RULE: write an ASCII intermediate zip, then verify/extract and rename.
+# Do not rely on PATH tar.exe; runner PATH can point at non-ZIP-capable tar.
 #
 # Usage (repo root):
 #   pwsh scripts/ci-pack-windows-offline-installer-zip.ps1 `
@@ -33,6 +33,34 @@ function Resolve-FullPath([string]$Path) {
     return [System.IO.Path]::GetFullPath($Path)
   }
   return [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Path))
+}
+
+function New-ZipFromDirectory {
+  param(
+    [Parameter(Mandatory = $true)][string]$SourceDir,
+    [Parameter(Mandatory = $true)][string]$RootDir,
+    [Parameter(Mandatory = $true)][string]$ZipPath
+  )
+  Add-Type -AssemblyName System.IO.Compression
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  $SourceDir = Resolve-FullPath $SourceDir
+  $RootDir = Resolve-FullPath $RootDir
+  $ZipPath = Resolve-FullPath $ZipPath
+  $zip = [System.IO.Compression.ZipFile]::Open($ZipPath, [System.IO.Compression.ZipArchiveMode]::Create)
+  try {
+    $rootPrefix = $RootDir.TrimEnd('\') + '\'
+    Get-ChildItem -LiteralPath $SourceDir -File -Recurse -Force | ForEach-Object {
+      $entryName = $_.FullName.Substring($rootPrefix.Length).Replace('\', '/')
+      [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile(
+        $zip,
+        $_.FullName,
+        $entryName,
+        [System.IO.Compression.CompressionLevel]::Optimal
+      ) | Out-Null
+    }
+  } finally {
+    $zip.Dispose()
+  }
 }
 
 $NsisSetupPath = Resolve-FullPath $NsisSetupPath
@@ -111,19 +139,7 @@ if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPa
 
 Push-Location -LiteralPath $StageDir
 try {
-  $tarCreate = Invoke-RushiNativeSoft -Command {
-    & tar -a -c -f $AsciiZipPath .
-  }
-  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
-    if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
-    Write-Warning "tar -a zip failed; retrying with tar --format zip"
-    $tarCreate = Invoke-RushiNativeSoft -Command {
-      & tar --format zip -c -f $AsciiZipPath .
-    }
-  }
-  if ($tarCreate.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $AsciiZipPath)) {
-    throw "tar zip failed (ascii=$AsciiZipPath, exit=$($tarCreate.ExitCode))"
-  }
+  New-ZipFromDirectory -SourceDir $StageDir -RootDir $StageDir -ZipPath $AsciiZipPath
 } finally {
   Pop-Location
 }
@@ -136,9 +152,8 @@ Write-Host "OK: ascii zip $AsciiZipPath ($((Get-Item -LiteralPath $AsciiZipPath)
 if (-not $SkipVerifyExtract) {
   if (Test-Path -LiteralPath $ProbeDir) { Remove-Item -LiteralPath $ProbeDir -Recurse -Force }
   New-Item -ItemType Directory -Force -Path $ProbeDir | Out-Null
-  Invoke-RushiNativeChecked -FailMessage "tar extract failed ascii=$AsciiZipPath" -Command {
-    & tar -xf $AsciiZipPath -C $ProbeDir
-  }
+  Add-Type -AssemblyName System.IO.Compression.FileSystem
+  [System.IO.Compression.ZipFile]::ExtractToDirectory($AsciiZipPath, $ProbeDir)
   $probeSetup = Join-Path $ProbeDir $setupLeaf
   $probeManifest = Join-Path $ProbeDir "resources\bundled-asr-models\manifest.json"
   $probeModelscope = Join-Path $ProbeDir "resources\bundled-asr-models\modelscope"
