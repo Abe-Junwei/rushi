@@ -2,6 +2,35 @@
 
 > Current as of 2026-07-19. This is the operator entrypoint for Windows x64 releases. Older portable runbooks are historical evidence only.
 
+## 2026-07-19 release reset status
+
+Current public release status: **No-Go**.
+
+Release namespace reset target: restart public v1 line from `v1.0.0` after the Windows chain is validated.
+
+Historical failed/attempted tags `v1.0.0` through `v1.0.4` were treated as release-chain attempts and must be cleared before the next public attempt. Do not announce any of them unless a later CDN/signoff record explicitly says otherwise.
+
+Observed failed attempts before reset:
+
+- `v1.0.0`: draft GitHub Release existed before current reset.
+- `v1.0.1`: historical tag already existed before the current Route 3 + native audio fixes.
+- `v1.0.2`: tag push started release run `29687939378`; Windows failed before core artifacts, macOS/CDN did not complete.
+- `v1.0.3`: tag push started release run `29688359339`; Windows runner readiness still failed before core artifacts.
+- `v1.0.4`: tag push started release run `29688568896`; Windows checkout failed while fetching `refs/tags/v1.0.4` from GitHub after repeated network failures (`Recv failure: Connection was reset`, `Could not connect to server`, exit 128). macOS was cancelled and `verify-cdn-release` did not run.
+
+Current known blockers before the next public tag:
+
+- Self-hosted Windows runner `pc-office-win-release` must reliably fetch from GitHub. Validate runner networking before any new tag push.
+- Windows ZIP packaging must be verified on the runner with the current fallback path (`tar -a`, then `tar --format zip`).
+- The next attempt should be a non-public validation first (`workflow_dispatch` or local `npm run release:win` without CDN publish), then one clean public tag only after Windows core passes.
+
+Recommended next release policy:
+
+1. Keep `main` fixes, but do not push another release tag until Windows runner checkout and ZIP packaging are proven.
+2. Use workflow dispatch only as a dry run. Treat tag-only CDN/OTA steps as not validated by workflow dispatch.
+3. After Windows core passes in dry run, publish `v1.0.0` once from the validated source commit.
+4. Record the successful run URL and CDN evidence in this file or a dedicated evidence file before announcement.
+
 ## Distribution truth
 
 - Main download: `如是我闻_<version>_Windows_x64_离线安装包.zip`
