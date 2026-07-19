@@ -45,14 +45,26 @@ $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
 $CudaZipName = Get-RushiWinCudaZipName $AppVersion
 $BundleRoot = "apps/desktop/src-tauri/target/release/bundle"
 $NsisPath = Join-Path $Root "apps\desktop\src-tauri\target\release\bundle\nsis\$NsisSetupName"
-$PortablePath = Join-Path $Root $PortableZipName
-$CudaZip = Join-Path $Root "dist\cuda-cdn\$CudaZipName"
+$WinReleaseDir = Get-RushiWinReleaseArtifactDir
+$CudaArtifactDir = Get-RushiWinCudaArtifactDir
+# Prefer E:\rushi-artifacts (or RUSHI_WIN_ARTIFACT_DIR); fall back to legacy repo-root / dist/ paths.
+$PortablePath = Join-Path $WinReleaseDir $PortableZipName
+if (-not (Test-Path -LiteralPath $PortablePath)) {
+  $legacyPortable = Join-Path $Root $PortableZipName
+  if (Test-Path -LiteralPath $legacyPortable) { $PortablePath = $legacyPortable }
+}
+$CudaZip = Join-Path $CudaArtifactDir $CudaZipName
+if (-not (Test-Path -LiteralPath $CudaZip)) {
+  $legacyCuda = Join-Path $Root "dist\cuda-cdn\$CudaZipName"
+  if (Test-Path -LiteralPath $legacyCuda) { $CudaZip = $legacyCuda }
+}
 $CdnBase = if ($env:RUSHI_UPDATER_CDN_BASE) { $env:RUSHI_UPDATER_CDN_BASE } else { "https://updates.rushi.app" }
 
 Write-Host "== Manual Windows CDN upload =="
 Write-Host "Tag: $Tag"
-Write-Host "Portable: $PortableZipName"
+Write-Host "Portable: $PortablePath"
 Write-Host "NSIS:     $NsisSetupName"
+Write-Host "CUDA:     $CudaZip"
 
 function Invoke-BashUpload {
   param([Parameter(Mandatory)][string[]]$BashArgs)

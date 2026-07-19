@@ -7,6 +7,7 @@
 #   RUSHI_SKIP_SIDECAR_BUILD=1   # reuse existing CPU onedir (still prune + smoke)
 #   RUSHI_SKIP_SIDECAR_SIGN=1
 #   RUSHI_SKIP_CUDA_CDN=1          # skip post-NSIS CUDA zip (default: build CUDA for local CDN staging)
+#   RUSHI_WIN_ARTIFACT_DIR         # default E:\rushi-artifacts — portable/CUDA zips go here (never repo root)
 # Signing (optional): SIGNTOOL, SIGN_PFX, SIGN_PASS — see sign-windows-sidecar.ps1
 # Manifest URL (injected into release shell):
 #   $env:RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL = "https://updates.rushi.app/runtime/rushi-runtime-manifest.json"
@@ -23,7 +24,11 @@ $AppVersion = Get-RushiWinAppVersion
 $PortableZipName = Get-RushiWinPortableZipName $AppVersion
 $NsisSetupName = Get-RushiWinNsisSetupName $AppVersion
 $CudaZipName = Get-RushiWinCudaZipName $AppVersion
+$WinReleaseDir = Get-RushiWinReleaseArtifactDir
+$CudaArtifactDir = Get-RushiWinCudaArtifactDir
+New-Item -ItemType Directory -Force -Path $WinReleaseDir, $CudaArtifactDir | Out-Null
 Write-Host "Artifact names: portable=$PortableZipName nsis=$NsisSetupName"
+Write-Host "Artifact dir: $WinReleaseDir (override RUSHI_WIN_ARTIFACT_DIR)"
 
 function Invoke-Npm {
   # Do not name the param $Args — that shadows PowerShell's automatic $Args and
@@ -121,7 +126,7 @@ if (Test-Path -LiteralPath $NsisSetup) {
 
 Write-Host "== portable zip (CPU sidecar + Plan B models; ASCII tar → Chinese rename) =="
 $Exe = Join-Path $TauriRoot "target\release\rushi-desktop.exe"
-$Zip = Join-Path $Root $PortableZipName
+$Zip = Join-Path $WinReleaseDir $PortableZipName
 Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-portable-zip failed" -Command {
   & pwsh (Join-Path $Root "scripts\ci-pack-windows-portable-zip.ps1") `
     -ExePath $Exe `
@@ -146,7 +151,7 @@ if ($env:RUSHI_SKIP_CUDA_CDN -ne "1") {
       & pwsh (Join-Path $Root "scripts\sign-windows-sidecar.ps1")
     }
   }
-  $cudaZip = Join-Path $Root "dist\cuda-cdn\$CudaZipName"
+  $cudaZip = Join-Path $CudaArtifactDir $CudaZipName
   Invoke-RushiNativeChecked -FailMessage "ci-pack-windows-cuda-zip failed" -Command {
     & pwsh (Join-Path $Root "scripts\ci-pack-windows-cuda-zip.ps1") `
       -CudaOnedir $cudaDir `

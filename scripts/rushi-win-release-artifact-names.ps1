@@ -51,3 +51,22 @@ function Get-RushiWinCudaZipName {
   $role = -join @("CUDA", [char]0x4FA7, [char]0x8F66)
   return "$(Get-RushiWinProductName)_${v}_Windows_x64_${role}.zip"
 }
+
+# Local Windows release staging — outside the git repo (never write portable/CUDA zips into $RepoRoot).
+# Override: $env:RUSHI_WIN_ARTIFACT_DIR
+function Get-RushiWinArtifactDir {
+  if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_WIN_ARTIFACT_DIR)) {
+    return $env:RUSHI_WIN_ARTIFACT_DIR.TrimEnd("\", "/")
+  }
+  return "E:\rushi-artifacts"
+}
+
+function Get-RushiWinReleaseArtifactDir {
+  $root = Get-RushiWinArtifactDir
+  return (Join-Path $root "win-release")
+}
+
+function Get-RushiWinCudaArtifactDir {
+  $root = Get-RushiWinArtifactDir
+  return (Join-Path $root "cuda-cdn")
+}

@@ -89,4 +89,9 @@ $env:R2_ENDPOINT="https://....r2.cloudflarestorage.com"
 npm run release:win:upload -- --tag v1.0.1
 ```
 
+**本地产物目录（硬）**：便携版 / CUDA zip **禁止**写到仓库根。默认 `E:\rushi-artifacts\`（可用 `RUSHI_WIN_ARTIFACT_DIR` 覆盖）：
+- `win-release/` — 中文便携版 zip + `.sha256`
+- `cuda-cdn/` — CUDA 侧车 zip
+- `sidecar-venv-stale/` — 侧车构建删不掉的临时 venv（可整目录清空）
+
 产物文件名见 §分发策略；上传脚本 [`scripts/upload-windows-release-cdn.ps1`](../../scripts/upload-windows-release-cdn.ps1)。

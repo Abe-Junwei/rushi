@@ -76,9 +76,16 @@ if (Test-Path $TmpVenv) {
   try {
     Remove-Item -Recurse -Force $TmpVenv -ErrorAction Stop
   } catch {
-    $stale = "${TmpVenv}.stale-$(Get-Date -Format 'yyyyMMddHHmmss')"
-    Write-Warning "Could not delete $TmpVenv ($($_.Exception.Message)); renaming to $stale"
-    Rename-Item -LiteralPath $TmpVenv -NewName (Split-Path -Leaf $stale) -Force
+    # Locked files (AV / leftover python): park outside the git repo, not next to services/asr.
+    $staleRoot = "E:\rushi-artifacts\sidecar-venv-stale"
+    if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_WIN_ARTIFACT_DIR)) {
+      $staleRoot = Join-Path $env:RUSHI_WIN_ARTIFACT_DIR.TrimEnd("\", "/") "sidecar-venv-stale"
+    }
+    New-Item -ItemType Directory -Force -Path $staleRoot | Out-Null
+    $staleName = "$(Split-Path -Leaf $TmpVenv).stale-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    $stale = Join-Path $staleRoot $staleName
+    Write-Warning "Could not delete $TmpVenv ($($_.Exception.Message)); moving to $stale"
+    Move-Item -LiteralPath $TmpVenv -Destination $stale -Force
   }
 }
 Invoke-RushiNativeChecked -FailMessage "python -m venv failed" -Command {
