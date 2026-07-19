@@ -38,6 +38,7 @@ fixtures/p4-eval/samples/*.wav
 fixtures/sherpa-paraformer-*/
 fixtures/sherpa-qwen3-*/
 fixtures/sherpa-vad/
+fixtures/sherpa-punctuation-*/
 # Spike 评估 JSON 输出（手测生成，勿提交）
 docs/execution/spike-output/
 
@@ -77,4 +78,3 @@ services/asr/third_party/ffmpeg/linux-x64/
 # Local machine move helper / leftover pack checksums (do not commit)
 finish-move-from-c.bat
 *.sha256
-

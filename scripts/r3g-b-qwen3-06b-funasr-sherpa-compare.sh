@@ -16,8 +16,9 @@ ASR_VENV="$ROOT/services/asr/.venv/bin/python"
 QWEN_FUNASR="Qwen/Qwen3-ASR-0.6B"
 QWEN_ALIGNER="${RUSHI_FUNASR_FORCED_ALIGNER:-}"
 
-MODEL_DIR="${SHERPA_QWEN3_MODEL_DIR:-$ROOT/fixtures/sherpa-qwen3-asr-0.6B}"
+MODEL_DIR="${SHERPA_QWEN3_MODEL_DIR:-$ROOT/fixtures/sherpa-qwen3-asr-0.6B-int8-2026-03-25}"
 VAD_MODEL="${SHERPA_SILERO_VAD_MODEL:-$ROOT/fixtures/sherpa-vad/silero_vad.onnx}"
+PUNCT_MODEL="${SHERPA_PUNCTUATION_MODEL:-}"
 PIPELINE="${SHERPA_QWEN3_PIPELINE:-whole}"
 PROVIDER="${SHERPA_PROVIDER:-cpu}"
 LONG_SRC="${RUSHI_R3T_LONG_AUDIO:-$ROOT/fixtures/eval/samples/d3-tang32-zhikong-gaijiang.mp3}"
@@ -89,6 +90,9 @@ if [[ "$SKIP_SHERPA" -eq 0 ]]; then
   HOTWORDS="${RUSHI_QWEN3_COMPARE_HOTWORDS:-}"
   if [[ -n "$HOTWORDS" ]]; then
     SPIKE_ARGS+=(--hotwords "$HOTWORDS")
+  fi
+  if [[ -n "$PUNCT_MODEL" ]]; then
+    SPIKE_ARGS+=(--punct-model "$PUNCT_MODEL")
   fi
   cargo run --quiet --manifest-path "$SPIKE_MANIFEST" -- "${SPIKE_ARGS[@]}"
 else

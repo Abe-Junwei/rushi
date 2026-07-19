@@ -61,6 +61,7 @@
 |----------|------|
 | 时间轴 / 波形 | `useProjectWaveform.ts` + [`desktop-waveform-engine.md`](./docs/architecture/desktop-waveform-engine.md)（minimap 56px、语段 tap seek、layoutIntent 缩放栏） |
 | ASR 侧车 / 模型 | `services/asr/README.md` + `docs/architecture/asr-sidecar-funasr-policy.md` + **能力—UI 对齐** [`desktop-capability-ui-state-alignment.md`](./docs/architecture/desktop-capability-ui-state-alignment.md) |
+| **ASR 路线测评 / 是否重开模型路线** | **先读** [`asr-evaluation-routes.md`](./docs/architecture/asr-evaluation-routes.md)：Paraformer / Sherpa / Qwen3 / Nano / SenseVoice / SeACo 既有结论与重开条件 |
 | 在线 STT Provider | `docs/architecture/p1-stt-online-providers.md` |
 | 数据层 / SQLite | `src-tauri/src/db.rs` + ADR-0001 |
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |

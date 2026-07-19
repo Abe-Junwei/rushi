@@ -4,6 +4,7 @@ import pytest
 
 from rushi_asr.eval_metrics import (
     cer_chars,
+    content_cer_chars,
     levenshtein_chars,
     low_confidence_ratio,
     resolve_segmentation_mode,
@@ -27,6 +28,11 @@ def test_cer_substitution() -> None:
 
 def test_cer_ignores_whitespace() -> None:
     assert cer_chars("制 控\n", "制控") == 0.0
+
+
+def test_content_cer_ignores_unicode_punctuation() -> None:
+    assert content_cer_chars("你好，世界。", "你好世界") == 0.0
+    assert content_cer_chars("你好-world!", "你好world") == 0.0
 
 
 def test_term_hit_rate() -> None:

@@ -9,6 +9,8 @@ related: ["0003", "0006"]
 
 # ADR-0007：Sherpa Qwen3 默认引擎迁移
 
+> **当前读法（2026-07-19）**：本文仍为 `proposed + Defer`，不是 accepted 默认路线。R3s-A 金标 A/B 复测显示 Sherpa Qwen3 暂不进入产品主链路：外置标点拖后腿、热词有污染风险、CPU RTFx 未达默认门槛。后续 agent 先读 [`asr-evaluation-routes.md`](../architecture/asr-evaluation-routes.md)，再决定是否重开本 ADR。
+
 ## 上下文
 
 - [ADR-0003](./0003-asr-engine-funasr-first-sherpa-spike-gate.md) 锁定 **FunASR + LRC 先行**；附录 A 预期 Sherpa **轻量候选**，默认仍 Paraformer。

@@ -31,6 +31,7 @@
     "eval:run:hotwords-ab": "python3 scripts/eval-run.py --hotwords-ab --filter-id d3-tang32-zhikong-gaijiang --format csv",
     "eval:run:hotwords-on": "python3 scripts/eval-run.py --hotwords-mode on --filter-id d3-tang32-zhikong-gaijiang",
     "eval:run:long-form": "python3 scripts/eval-run.py --filter-id d3-tang32-zhikong-gaijiang --assert-min-segments",
+    "eval:run:sherpa": "python3 scripts/eval-sherpa-run.py",
     "asr:dev": "bash scripts/run-asr-dev.sh",
     "asr:test": "bash scripts/run-asr-pytest.sh",
     "desktop:test:e2e": "npm run test:e2e -w @rushi/desktop",

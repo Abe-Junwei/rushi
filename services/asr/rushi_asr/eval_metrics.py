@@ -3,11 +3,18 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 
 
 def normalize_cer_text(text: str) -> str:
     """Strip all whitespace for Chinese char-level CER (ref from docx, hyp from segment concat)."""
     return re.sub(r"\s+", "", text.strip())
+
+
+def normalize_cer_content_text(text: str) -> str:
+    """Strip whitespace and Unicode punctuation to score ASR content separately."""
+    compact = normalize_cer_text(text)
+    return "".join(ch for ch in compact if not unicodedata.category(ch).startswith("P"))
 
 
 def levenshtein_chars(a: str, b: str) -> int:
@@ -38,6 +45,15 @@ def cer_chars(reference: str, hypothesis: str) -> float:
     """
     ref = normalize_cer_text(reference)
     hyp = normalize_cer_text(hypothesis)
+    if not ref:
+        return 0.0 if not hyp else 1.0
+    return levenshtein_chars(ref, hyp) / len(ref)
+
+
+def content_cer_chars(reference: str, hypothesis: str) -> float:
+    """Character error rate after removing whitespace and Unicode punctuation."""
+    ref = normalize_cer_content_text(reference)
+    hyp = normalize_cer_content_text(hypothesis)
     if not ref:
         return 0.0 if not hyp else 1.0
     return levenshtein_chars(ref, hyp) / len(ref)

@@ -1,14 +1,42 @@
 mod p2_vad;
+mod punctuation;
 
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use serde::Serialize;
-use sherpa_onnx::{
-    OfflineQwen3ASRModelConfig, OfflineRecognizer, OfflineRecognizerConfig, Wave,
-};
+use sherpa_onnx::{OfflineQwen3ASRModelConfig, OfflineRecognizer, OfflineRecognizerConfig, Wave};
 
+pub use p2_vad::VadDecodeConfig;
 pub use p2_vad::{recognize_wav_vad, SpikeVadSegment};
+pub use punctuation::PunctuationRestorer;
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Qwen3DecodeConfig {
+    pub max_total_len: i32,
+    pub max_new_tokens: i32,
+}
+
+impl Default for Qwen3DecodeConfig {
+    fn default() -> Self {
+        Self {
+            max_total_len: 512,
+            max_new_tokens: 512,
+        }
+    }
+}
+
+impl Qwen3DecodeConfig {
+    pub fn validate(&self) -> SpikeResult<()> {
+        if self.max_total_len <= 0 {
+            return Err(err("max_total_len must be positive".to_string()));
+        }
+        if self.max_new_tokens <= 0 {
+            return Err(err("max_new_tokens must be positive".to_string()));
+        }
+        Ok(())
+    }
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct SpikeRecognizeResult {
@@ -22,10 +50,23 @@ pub struct SpikeRecognizeResult {
     pub duration_sec: f64,
     pub decode_ms: u64,
     pub rtf: f64,
+    pub raw_text: String,
     pub text: String,
     pub char_count: usize,
     pub token_count: usize,
     pub vad_segment_count: usize,
+    pub vad_audio_coverage_ratio: Option<f64>,
+    pub empty_result_segment_count: usize,
+    pub token_limit_segment_count: usize,
+    pub max_new_tokens: i32,
+    pub hotwords: Option<String>,
+    pub punctuation_model: Option<String>,
+    pub punctuation_ms: u64,
+    pub vad_threshold: Option<f32>,
+    pub vad_min_speech_sec: Option<f32>,
+    pub vad_min_silence_sec: Option<f32>,
+    pub vad_max_speech_sec: Option<f32>,
+    pub vad_padding_sec: Option<f32>,
     pub segments: Option<Vec<SpikeVadSegment>>,
 }
 
@@ -66,10 +107,7 @@ fn pick_onnx(dir: &Path, base: &str) -> Option<PathBuf> {
 }
 
 fn infer_model_id(model_dir: &Path) -> String {
-    let dir_name = model_dir
-        .file_name()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let dir_name = model_dir.file_name().and_then(|s| s.to_str()).unwrap_or("");
     if dir_name.contains("1.7") || dir_name.contains("1_7") {
         return "sherpa-onnx-qwen3-asr-1.7B-int8".to_string();
     }
@@ -106,21 +144,20 @@ pub fn resolve_qwen3_model_dir(model_dir: &Path) -> SpikeResult<ResolvedQwen3Mod
         ))
     })?;
 
-    let tokenizer = if model_dir.join("tokenizer.json").is_file()
-        || model_dir.join("vocab.json").is_file()
-    {
-        model_dir.to_path_buf()
-    } else {
-        let tok = model_dir.join("tokenizer");
-        if tok.is_dir() {
-            tok
+    let tokenizer =
+        if model_dir.join("tokenizer.json").is_file() || model_dir.join("vocab.json").is_file() {
+            model_dir.to_path_buf()
         } else {
-            return Err(err(format!(
-                "missing tokenizer dir or tokenizer.json in {}",
-                model_dir.display()
-            )));
-        }
-    };
+            let tok = model_dir.join("tokenizer");
+            if tok.is_dir() {
+                tok
+            } else {
+                return Err(err(format!(
+                    "missing tokenizer dir or tokenizer.json in {}",
+                    model_dir.display()
+                )));
+            }
+        };
 
     Ok(ResolvedQwen3Model {
         model_id: infer_model_id(model_dir),
@@ -147,15 +184,17 @@ pub fn build_qwen3_recognizer(
     provider: &str,
     num_threads: i32,
     hotwords: Option<&str>,
+    decode_config: &Qwen3DecodeConfig,
 ) -> SpikeResult<OfflineRecognizer> {
+    decode_config.validate()?;
     let mut config = OfflineRecognizerConfig::default();
     config.model_config.qwen3_asr = OfflineQwen3ASRModelConfig {
         conv_frontend: Some(resolved.conv_frontend.display().to_string()),
         encoder: Some(resolved.encoder.display().to_string()),
         decoder: Some(resolved.decoder.display().to_string()),
         tokenizer: Some(resolved.tokenizer.display().to_string()),
-        max_total_len: 512,
-        max_new_tokens: 128,
+        max_total_len: decode_config.max_total_len,
+        max_new_tokens: decode_config.max_new_tokens,
         temperature: 1e-6,
         top_p: 0.8,
         seed: 42,
@@ -175,6 +214,8 @@ pub fn recognize_wav(
     provider: &str,
     num_threads: i32,
     hotwords: Option<&str>,
+    decode_config: &Qwen3DecodeConfig,
+    punctuation_model: Option<&Path>,
 ) -> SpikeResult<SpikeRecognizeResult> {
     let resolved = resolve_qwen3_model_dir(model_dir)?;
     let wav_str = wav_path
@@ -190,7 +231,8 @@ pub fn recognize_wav(
     };
     warn_if_wav_unsuitable(sample_rate, duration_sec);
 
-    let recognizer = build_qwen3_recognizer(&resolved, provider, num_threads, hotwords)?;
+    let recognizer =
+        build_qwen3_recognizer(&resolved, provider, num_threads, hotwords, decode_config)?;
     let stream = recognizer.create_stream();
     stream.accept_waveform(sample_rate, samples);
 
@@ -207,7 +249,20 @@ pub fn recognize_wav(
     } else {
         0.0
     };
-    let char_count = result.text.chars().count();
+    let raw_text = result.text;
+    let mut punctuation_ms = 0;
+    let text = if let Some(model) = punctuation_model {
+        let punct = PunctuationRestorer::create(model, provider, num_threads)?;
+        let punct_started = Instant::now();
+        let output = punct.add(&raw_text)?;
+        punctuation_ms = punct_started.elapsed().as_millis() as u64;
+        output
+    } else {
+        raw_text.clone()
+    };
+    let char_count = text.chars().count();
+    let token_limit_segment_count =
+        usize::from(result.tokens.len() >= decode_config.max_new_tokens as usize);
 
     Ok(SpikeRecognizeResult {
         engine: "sherpa-onnx-qwen3-asr",
@@ -220,10 +275,23 @@ pub fn recognize_wav(
         duration_sec,
         decode_ms,
         rtf,
-        text: result.text,
+        raw_text,
+        text,
         char_count,
         token_count: result.tokens.len(),
         vad_segment_count: 0,
+        vad_audio_coverage_ratio: None,
+        empty_result_segment_count: 0,
+        token_limit_segment_count,
+        max_new_tokens: decode_config.max_new_tokens,
+        hotwords: hotwords.map(str::to_string),
+        punctuation_model: punctuation_model.map(|p| p.display().to_string()),
+        punctuation_ms,
+        vad_threshold: None,
+        vad_min_speech_sec: None,
+        vad_min_silence_sec: None,
+        vad_max_speech_sec: None,
+        vad_padding_sec: None,
         segments: None,
     })
 }
@@ -247,5 +315,22 @@ mod tests {
         let resolved = resolve_qwen3_model_dir(&model_dir).unwrap();
         assert_eq!(resolved.model_id, "sherpa-onnx-qwen3-asr-0.6B-int8");
         assert!(resolved.encoder.ends_with("encoder.int8.onnx"));
+    }
+
+    #[test]
+    fn decode_defaults_match_official_long_audio_example() {
+        let config = Qwen3DecodeConfig::default();
+        assert_eq!(config.max_total_len, 512);
+        assert_eq!(config.max_new_tokens, 512);
+        assert!(config.validate().is_ok());
+    }
+
+    #[test]
+    fn decode_config_rejects_non_positive_limits() {
+        let config = Qwen3DecodeConfig {
+            max_total_len: 512,
+            max_new_tokens: 0,
+        };
+        assert!(config.validate().is_err());
     }
 }

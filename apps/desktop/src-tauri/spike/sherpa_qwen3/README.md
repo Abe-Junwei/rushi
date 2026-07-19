@@ -1,21 +1,25 @@
-# Sherpa-ONNX Qwen3-ASR spike (R3g-B)
+# Sherpa-ONNX Chinese A pipeline spike
 
-Non-product harness to compare **Sherpa ONNX** vs **FunASR PyTorch** on the same SKU family (`Qwen3-ASR-0.6B`).
+Non-product harness for `Silero VAD -> Qwen3-ASR-0.6B INT8 -> CT-Transformer punctuation`, plus the older Sherpa/FunASR comparison.
 
 ## Prerequisites
 
-1. FunASR weights cached: `Qwen/Qwen3-ASR-0.6B` (ModelScope / Rushi models root).
-2. Sherpa ONNX pack (separate from PyTorch weights):
+Download the three official k2-fsa assets used by pipeline A:
 
 ```bash
-bash scripts/r3g-b-download-sherpa-qwen3-onnx.sh
+bash scripts/r3s-a-download-sherpa-models.sh
 ```
 
-3. Optional VAD for long-audio fair compare:
+For the older side-by-side comparison, also cache the FunASR `Qwen/Qwen3-ASR-0.6B` weights.
+
+## Gold-set evaluation
 
 ```bash
-bash scripts/r3h-3.5-download-sherpa-p2.sh   # silero_vad.onnx only if paraformer tar fails
+python3 scripts/eval-sherpa-run.py
+python3 scripts/eval-sherpa-run.py --hotwords-mode off --punctuation-mode off
 ```
+
+The evaluator requires A's Qwen3 + VAD assets, uses the manifest gold transcript, reports both content CER and punctuation CER, and writes JSON plus `.raw.txt` / `.punctuated.txt` outputs under `docs/execution/spike-output/`. Use `--hotwords-mode off` for a clean model baseline and `--punctuation-mode off` to keep Qwen3 raw punctuation without the external CT-Transformer punctuation pass.
 
 ## Compare
 
@@ -36,7 +40,9 @@ Outputs: `docs/execution/spike-output/qwen3-0.6b-YYYY-MM-DD/`.
 ## CLI only
 
 ```bash
-export SHERPA_QWEN3_MODEL_DIR=fixtures/sherpa-qwen3-asr-0.6B
+export SHERPA_QWEN3_MODEL_DIR=fixtures/sherpa-qwen3-asr-0.6B-int8-2026-03-25
+export SHERPA_SILERO_VAD_MODEL=fixtures/sherpa-vad/silero_vad.onnx
+export SHERPA_PUNCTUATION_MODEL=fixtures/sherpa-punctuation-zh-en/model.int8.onnx
 cargo run --manifest-path apps/desktop/src-tauri/spike/sherpa_qwen3/Cargo.toml -- \
-  --wav /path/to/16k.wav --pipeline whole --output /tmp/out.json
+  --wav /path/to/16k.wav --pipeline vad --hotwords "如是,专有名词" --output /tmp/out.json
 ```
