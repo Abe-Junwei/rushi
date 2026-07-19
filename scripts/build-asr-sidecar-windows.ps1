@@ -80,7 +80,16 @@ function Invoke-DownloadWithRetry {
     }
     try {
       Write-Host "Downloading $(Split-Path -Leaf $OutFile) ($attempt/$Attempts)"
-      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -TimeoutSec $TimeoutSec
+      $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
+      if ($curl) {
+        Invoke-RushiNativeChecked -FailMessage "curl download failed: $Uri" -Command {
+          & $curl.Source --fail --location --show-error --silent `
+            --connect-timeout 20 --max-time $TimeoutSec `
+            --output $OutFile $Uri
+        }
+      } else {
+        Invoke-WebRequest -Uri $Uri -OutFile $OutFile -TimeoutSec $TimeoutSec
+      }
       $item = Get-Item -LiteralPath $OutFile -ErrorAction Stop
       if ($item.Length -le 0) {
         throw "download produced an empty file"
