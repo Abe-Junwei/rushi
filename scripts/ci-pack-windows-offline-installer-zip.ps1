@@ -99,7 +99,13 @@ $setupLeaf = Split-Path -Leaf $NsisSetupPath
 Copy-Item -LiteralPath $NsisSetupPath -Destination (Join-Path $StageDir $setupLeaf)
 $stageModels = Join-Path $StageDir "resources\bundled-asr-models"
 New-Item -ItemType Directory -Force -Path $stageModels | Out-Null
-Copy-Item -LiteralPath (Join-Path $ModelsDir "*") -Destination $stageModels -Recurse -Force
+# Never use -LiteralPath with "*" — PowerShell treats the asterisk as a literal filename.
+if (-not (Test-Path -LiteralPath $ModelsDir)) {
+  throw "Missing Plan B models dir: $ModelsDir"
+}
+Get-ChildItem -LiteralPath $ModelsDir -Force | ForEach-Object {
+  Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $stageModels $_.Name) -Recurse -Force
+}
 
 if (Test-Path -LiteralPath $AsciiZipPath) { Remove-Item -LiteralPath $AsciiZipPath -Force }
 
