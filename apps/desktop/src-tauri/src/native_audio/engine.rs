@@ -602,9 +602,15 @@ fn engine_main(
             }
             Ok(EngineCmd::SetRate(rate)) => {
                 let r = rate.clamp(0.25, 3.0);
-                clock
-                    .rate_milli
-                    .store((r * 1000.0) as u32, Ordering::SeqCst);
+                let next_milli = (r * 1000.0).round() as u32;
+                let prev_milli = clock.rate_milli.swap(next_milli, Ordering::SeqCst);
+                if prev_milli != next_milli {
+                    clock.buffer_ready.store(false, Ordering::SeqCst);
+                    clock.queued_samples.store(0, Ordering::SeqCst);
+                    clock.drain_pending.store(true, Ordering::SeqCst);
+                    clock.drain_seq.fetch_add(1, Ordering::SeqCst);
+                    clock.rate_seq.fetch_add(1, Ordering::SeqCst);
+                }
             }
             Ok(EngineCmd::Stop) => {
                 clock.play_requested.store(false, Ordering::SeqCst);
