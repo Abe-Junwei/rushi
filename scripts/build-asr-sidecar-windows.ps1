@@ -66,14 +66,44 @@ function Ensure-FunasrOnedirData {
   }
 }
 
+function Invoke-DownloadWithRetry {
+  param(
+    [Parameter(Mandatory = $true)][string]$Uri,
+    [Parameter(Mandatory = $true)][string]$OutFile,
+    [int]$Attempts = 5,
+    [int]$TimeoutSec = 120
+  )
+
+  for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
+    if (Test-Path -LiteralPath $OutFile) {
+      Remove-Item -LiteralPath $OutFile -Force
+    }
+    try {
+      Write-Host "Downloading $(Split-Path -Leaf $OutFile) ($attempt/$Attempts)"
+      Invoke-WebRequest -Uri $Uri -OutFile $OutFile -TimeoutSec $TimeoutSec
+      $item = Get-Item -LiteralPath $OutFile -ErrorAction Stop
+      if ($item.Length -le 0) {
+        throw "download produced an empty file"
+      }
+      return
+    } catch {
+      Write-Warning "Download failed: $Uri ($($_.Exception.Message))"
+      if ($attempt -eq $Attempts) {
+        throw "Failed to download $Uri after $Attempts attempts"
+      }
+      Start-Sleep -Seconds ([Math]::Min(30, 5 * $attempt))
+    }
+  }
+}
+
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Error "python not on PATH (install Python 3.12+)"
 }
 
 New-Item -ItemType Directory -Force $FfDir | Out-Null
-Invoke-WebRequest -Uri "$Base/ffmpeg-win32-x64" -OutFile (Join-Path $FfDir "ffmpeg.exe")
-Invoke-WebRequest -Uri "$Base/ffprobe-win32-x64" -OutFile (Join-Path $FfDir "ffprobe.exe")
-Invoke-WebRequest -Uri "$Base/win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LICENSE.ffmpeg-static")
+Invoke-DownloadWithRetry -Uri "$Base/ffmpeg-win32-x64" -OutFile (Join-Path $FfDir "ffmpeg.exe")
+Invoke-DownloadWithRetry -Uri "$Base/ffprobe-win32-x64" -OutFile (Join-Path $FfDir "ffprobe.exe")
+Invoke-DownloadWithRetry -Uri "$Base/win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LICENSE.ffmpeg-static")
 
 if (Test-Path $TmpVenv) {
   try {
