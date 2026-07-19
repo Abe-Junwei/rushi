@@ -23,9 +23,15 @@ if (-not (Test-Path (Join-Path $Internal "ffprobe.exe"))) {
   throw "smoke: missing bundled ffprobe.exe under $Internal"
 }
 
-$inUse = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
-if ($inUse) {
-  throw "smoke: port $Port already in use"
+try {
+  $inUse = Get-NetTCPConnection -LocalPort $Port -ErrorAction SilentlyContinue
+  if ($inUse) {
+    throw "smoke: port $Port already in use"
+  }
+} catch [Microsoft.PowerShell.Commands.GetNetTCPConnectionCommand], [System.Management.Automation.CommandNotFoundException] {
+  # Some service accounts lack nettcpip cmdlets; smoke start will fail clearly if bind fails.
+} catch {
+  if ("$($_.Exception.Message)" -match 'already in use') { throw }
 }
 
 $log = Join-Path $env:TEMP "rushi-sidecar-smoke.log"

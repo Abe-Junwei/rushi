@@ -7,14 +7,24 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXE="${1:-$ROOT/apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar}"
-if [[ "$EXE" != /* ]]; then
+# Git Bash: Win32 paths (E:\... / E:/...) are not absolute Unix (`/*`); do not prepend $PWD.
+if command -v cygpath >/dev/null 2>&1; then
+  case "$EXE" in
+    [A-Za-z]:[\\/]* | \\\\*) EXE="$(cygpath -u "$EXE")" ;;
+  esac
+fi
+if [[ "$EXE" != /* && "$EXE" != [A-Za-z]:[\\/]* && "$EXE" != \\\\* ]]; then
   EXE="$PWD/$EXE"
+fi
+# Windows onedir ships *.exe; accept either.
+if [[ ! -e "$EXE" && -e "${EXE}.exe" ]]; then
+  EXE="${EXE}.exe"
 fi
 PORT="${RUSHI_SMOKE_ASR_PORT:-18741}"
 WORKDIR="$(dirname "$EXE")"
 INTERNAL="$WORKDIR/_internal"
 
-if [[ ! -x "$EXE" ]]; then
+if [[ ! -f "$EXE" && ! -x "$EXE" ]]; then
   echo "smoke: executable not found or not executable: $EXE" >&2
   exit 1
 fi

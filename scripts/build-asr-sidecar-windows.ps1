@@ -150,13 +150,14 @@ Invoke-RushiNativeChecked -FailMessage "pyinstaller failed" -Command {
 Ensure-FunasrOnedirData -InternalDir (Join-Path $Asr "dist\$PyInstallerName\_internal")
 
 $DistOnedir = Join-Path $Asr "dist\$PyInstallerName"
-$SmokeExe = Join-Path $DistOnedir $PyInstallerName
-if (Get-Command bash -ErrorAction SilentlyContinue) {
-  Invoke-RushiNativeChecked -FailMessage "post-build sidecar health smoke failed" -Command {
-    & bash "$Root/scripts/smoke-asr-sidecar-health.sh" $SmokeExe
-  }
-} else {
-  Write-Warning "bash not found; skipping post-build /health smoke (install Git Bash for release builds)"
+# Prefer .exe + PowerShell smoke on Windows. Passing a Win32 path into Git Bash
+# smoke-asr-sidecar-health.sh prepends $PWD (path is not `/*`) and fails "not found".
+$SmokeExe = Join-Path $DistOnedir "$PyInstallerName.exe"
+if (-not (Test-Path -LiteralPath $SmokeExe)) {
+  $SmokeExe = Join-Path $DistOnedir $PyInstallerName
+}
+Invoke-RushiNativeChecked -FailMessage "post-build sidecar health smoke failed" -Command {
+  & pwsh -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Root "scripts\smoke-asr-sidecar-health.ps1") -Exe $SmokeExe
 }
 
 if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
