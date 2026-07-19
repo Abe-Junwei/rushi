@@ -300,7 +300,7 @@ apps/desktop/src-tauri/icons/   # npm run tauri icon
 ### 12.1 本仓视觉真源
 
 - [`DESIGN.md`](../../../DESIGN.md) — Notion Zen、Minimalist-Editorial
-- [`apps/desktop/docs/stitch-welcome-page-spec.md`](../../../apps/desktop/docs/stitch-welcome-page-spec.md) — 顶栏 / 侧栏品牌文案
+- [`stitch-welcome-hub-layout.html`](../../../apps/desktop/stitch-welcome-hub-layout.html) — 欢迎 / Hub 顶栏品牌文案线框
 - 现实现：[`BrandLockup.tsx`](../../../apps/desktop/src/components/BrandLockup.tsx) · [`EnvAboutPanel.tsx`](../../../apps/desktop/src/components/EnvAboutPanel.tsx)
 
 ### 12.2 气质参考（学克制，不临摹）

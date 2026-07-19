@@ -65,7 +65,7 @@
 | 数据层 / SQLite | `src-tauri/src/db.rs` + ADR-0001 |
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
-| **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
+| **波形区 Stitch 精修** | [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) + [`desktop-waveform-engine.md`](./docs/architecture/desktop-waveform-engine.md) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
 | **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 ✅** · **P2 T-010 ✅** · **P3 Win 资产 / CLN-066** · §10.5 并行轨 |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
