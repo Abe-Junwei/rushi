@@ -365,14 +365,7 @@ jobs:
             if (Test-UsablePython312 $c) { $py = $c; break }
           }
           if (-not $py) {
-            throw @"
-Usable Python 3.12 not found (need pip + venv; not runner _tool cache).
-Install from https://www.python.org/downloads/release/python-31210/
-  - check: Add python.exe to PATH
-  - check: Install for all users (optional) or Current user
-  - check: py launcher
-Then remove broken cache: Remove-Item -Recurse -Force E:\actions-runner\_work\_tool\Python -EA SilentlyContinue
-"@
+            throw "Usable Python 3.12 not found (need pip+venv; not runner _tool cache). Install CPython 3.12 to E:\Python312 (uv) or Program Files, then clear E:\actions-runner\_work\_tool\Python if present."
           }
           $dir = Split-Path -Parent $py
           Add-Content -LiteralPath $env:GITHUB_PATH -Value $dir
