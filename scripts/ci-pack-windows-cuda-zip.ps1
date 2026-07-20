@@ -88,7 +88,7 @@ try {
   Pop-Location
 }
 if (-not (Test-Path -LiteralPath $AsciiZipPath)) {
-  throw "ASCII zip missing after tar: $AsciiZipPath"
+  throw "ASCII zip missing after pack: $AsciiZipPath"
 }
 Move-Item -LiteralPath $AsciiZipPath -Destination $FinalZipPath
 
