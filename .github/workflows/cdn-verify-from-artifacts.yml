@@ -44,7 +44,7 @@ jobs:
     steps:
       - name: Resolve source release commit
         id: source_run
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const { data } = await github.rest.actions.getWorkflowRun({
