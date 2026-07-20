@@ -35,6 +35,29 @@ switch ($Variant) {
 $Dest = Join-Path $Root $DestRel
 $Lock = Join-Path $Asr $LockName
 
+function Get-RushiWinArtifactRoot {
+  if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_WIN_ARTIFACT_DIR)) {
+    return $env:RUSHI_WIN_ARTIFACT_DIR.TrimEnd("\", "/")
+  }
+  if (Test-Path -LiteralPath "E:\") {
+    return "E:\rushi-artifacts"
+  }
+  return (Join-Path $Root "dist\rushi-artifacts")
+}
+
+# NETWORK SERVICE cannot use interactive user %LOCALAPPDATA%\pip\Cache — pin a shared disk cache.
+$artifactRoot = Get-RushiWinArtifactRoot
+if ([string]::IsNullOrWhiteSpace($env:PIP_CACHE_DIR)) {
+  $env:PIP_CACHE_DIR = Join-Path $artifactRoot "pip-cache"
+}
+New-Item -ItemType Directory -Force -Path $env:PIP_CACHE_DIR | Out-Null
+Write-Host "PIP_CACHE_DIR=$($env:PIP_CACHE_DIR)"
+
+# Durable venv keyed by lock hash — avoid re-downloading torch/funasr every release run.
+$lockHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Lock).Hash.Substring(0, 16).ToLowerInvariant()
+$TmpVenv = Join-Path $artifactRoot "sidecar-venv\$Variant\$lockHash"
+Write-Host "sidecar venv: $TmpVenv (lock=$LockName hash=$lockHash)"
+
 function Ensure-FunasrOnedirData {
   param(
     [Parameter(Mandatory = $true)]
@@ -169,24 +192,28 @@ Ensure-FfmpegAsset -RemoteName "ffmpeg-win32-x64" -OutFile (Join-Path $FfDir "ff
 Ensure-FfmpegAsset -RemoteName "ffprobe-win32-x64" -OutFile (Join-Path $FfDir "ffprobe.exe") -MinBytes 1048576
 Ensure-FfmpegAsset -RemoteName "win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LICENSE.ffmpeg-static") -MinBytes 100
 
-if (Test-Path $TmpVenv) {
+$venvPython = Join-Path $TmpVenv "Scripts\python.exe"
+$forceVenv = ($env:RUSHI_FORCE_SIDECAR_VENV -eq "1")
+if ($forceVenv -and (Test-Path -LiteralPath $TmpVenv)) {
+  Write-Host "RUSHI_FORCE_SIDECAR_VENV=1 — recreating durable venv"
   try {
-    Remove-Item -Recurse -Force $TmpVenv -ErrorAction Stop
+    Remove-Item -LiteralPath $TmpVenv -Recurse -Force -ErrorAction Stop
   } catch {
-    # Locked files (AV / leftover python): park outside the git repo, not next to services/asr.
-    $staleRoot = "E:\rushi-artifacts\sidecar-venv-stale"
-    if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_WIN_ARTIFACT_DIR)) {
-      $staleRoot = Join-Path $env:RUSHI_WIN_ARTIFACT_DIR.TrimEnd("\", "/") "sidecar-venv-stale"
-    }
+    $staleRoot = Join-Path $artifactRoot "sidecar-venv-stale"
     New-Item -ItemType Directory -Force -Path $staleRoot | Out-Null
-    $staleName = "$(Split-Path -Leaf $TmpVenv).stale-$(Get-Date -Format 'yyyyMMddHHmmss')"
+    $staleName = "$Variant-$lockHash.stale-$(Get-Date -Format 'yyyyMMddHHmmss')"
     $stale = Join-Path $staleRoot $staleName
     Write-Warning "Could not delete $TmpVenv ($($_.Exception.Message)); moving to $stale"
     Move-Item -LiteralPath $TmpVenv -Destination $stale -Force
   }
 }
-Invoke-RushiNativeChecked -FailMessage "python -m venv failed" -Command {
-  & python -m venv $TmpVenv
+if (-not (Test-Path -LiteralPath $venvPython)) {
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent $TmpVenv) | Out-Null
+  Invoke-RushiNativeChecked -FailMessage "python -m venv failed" -Command {
+    & python -m venv $TmpVenv
+  }
+} else {
+  Write-Host "OK: reuse durable sidecar venv $TmpVenv"
 }
 & (Join-Path $TmpVenv "Scripts\Activate.ps1")
 
