@@ -3471,7 +3471,7 @@ dependencies = [
  "hmac",
  "http",
  "keyring",
- "quick-xml 0.36.2",
+ "quick-xml 0.41.0",
  "r2d2",
  "r2d2_sqlite",
  "reqwest 0.12.28",
