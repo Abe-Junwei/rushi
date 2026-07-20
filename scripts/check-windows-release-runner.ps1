@@ -395,6 +395,46 @@ foreach ($diskRoot in $diskRoots | Where-Object { -not [string]::IsNullOrWhiteSp
   }
 }
 
+# Self-hosted office runners often need a local proxy (Clash / mihomo). The service
+# account is NETWORK SERVICE — it does NOT inherit the interactive user's HKCU proxy
+# or git http.proxy. Configure E:\actions-runner\.env (HTTP(S)_PROXY) and keep the
+# proxy process running in an interactive session (or as a service).
+$proxyUrl = $env:HTTPS_PROXY
+if ([string]::IsNullOrWhiteSpace($proxyUrl)) { $proxyUrl = $env:HTTP_PROXY }
+if ([string]::IsNullOrWhiteSpace($proxyUrl)) { $proxyUrl = $env:ALL_PROXY }
+if (-not [string]::IsNullOrWhiteSpace($proxyUrl)) {
+  Add-Row "proxy:env" "ok" "HTTPS/HTTP_PROXY=$proxyUrl"
+  if ($proxyUrl -match '127\.0\.0\.1:(?<p>\d+)|localhost:(?<p>\d+)') {
+    $proxyPort = [int]$Matches['p']
+    $listen = Get-NetTCPConnection -LocalPort $proxyPort -State Listen -ErrorAction SilentlyContinue
+    if ($listen) {
+      Add-Row "proxy:listen" "ok" "127.0.0.1:$proxyPort is listening"
+    } else {
+      Add-Error "Proxy env points at 127.0.0.1:$proxyPort but nothing is listening. Start Clash/Verge (mihomo) before release jobs."
+      Add-Row "proxy:listen" "bad" "port $proxyPort not listening"
+    }
+  }
+} else {
+  Add-Warning "No HTTP(S)_PROXY in runner env. Interactive users may use HKCU proxy (e.g. 127.0.0.1:7897) while NETWORK SERVICE goes direct and fails GitHub checkout/downloads."
+  Add-Row "proxy:env" "warn" "unset — set E:\actions-runner\.env then restart the runner service"
+}
+
+$ghProbeArgs = @(
+  "-sS", "-o", "NUL", "-w", "%{http_code}",
+  "--connect-timeout", "12", "--max-time", "25",
+  "https://api.github.com"
+)
+if (-not [string]::IsNullOrWhiteSpace($proxyUrl)) {
+  $ghProbeArgs = @("-x", $proxyUrl) + $ghProbeArgs
+}
+$ghProbe = & curl.exe @ghProbeArgs 2>$null
+if ("$ghProbe" -match '^20\d$') {
+  Add-Row "network:github" "ok" "api.github.com -> $ghProbe via $(if ($proxyUrl) { 'proxy' } else { 'direct' })"
+} else {
+  Add-Error "Cannot reach https://api.github.com (curl got '$ghProbe'). Fix runner proxy (.env HTTP(S)_PROXY=http://127.0.0.1:7897) and keep Clash running; then restart actions.runner service."
+  Add-Row "network:github" "bad" "api.github.com unreachable"
+}
+
 Write-Host ""
 $rows | Format-Table -AutoSize | Out-String | Write-Host
 

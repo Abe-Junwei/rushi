@@ -21,6 +21,7 @@ Observed failed attempts before reset:
 Current known blockers before the next public tag:
 
 - Self-hosted Windows runner `pc-office-win-release` must reliably fetch from GitHub. Validate runner networking before any new tag push.
+- **Root cause (2026-07-20)**：交互会话走 Clash Verge（`127.0.0.1:7897` + 用户 `git http.proxy`），但 runner 服务账号是 `NT AUTHORITY\NETWORK SERVICE`，**不继承** HKCU 代理 / 用户 gitconfig，直连 `github.com:443` 会 `Could not connect` / `Connection was reset`（`actions/checkout`、ffmpeg-static 大文件最常见）。修复：在 `E:\actions-runner\.env` 写 `HTTP(S)_PROXY=http://127.0.0.1:7897`，保持 mihomo 进程在 Session 1 运行，**重启** `actions.runner.*.pc-office-win-release` 服务；发版前 `check-windows-release-runner.ps1` 会探测 proxy listen + `api.github.com`。
 - Windows ZIP packaging moved off PATH `tar.exe` after dry run `29689123196` failed readiness on a non-ZIP-capable tar. Verify the current `.NET ZipArchive` packer on the runner before any new tag push.
 - The next attempt should be a non-public validation first (`workflow_dispatch` or local `npm run release:win` without CDN publish), then one clean public tag only after Windows core passes.
 
