@@ -102,7 +102,7 @@ jobs:
 
       - name: Download macOS release bundles
         if: ${{ inputs.unnest_only == false }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: macos-release-bundles
           path: artifacts/macos
@@ -112,7 +112,7 @@ jobs:
 
       - name: Download Windows release bundles
         if: ${{ inputs.unnest_only == false }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           name: windows-release-bundles
           path: artifacts/windows
@@ -122,7 +122,7 @@ jobs:
 
       - name: Download Windows offline installer zip
         if: ${{ inputs.unnest_only == false }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: windows-offline-x64
@@ -133,7 +133,7 @@ jobs:
 
       - name: Download Windows OTA fragment
         if: ${{ inputs.unnest_only == false }}
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         continue-on-error: true
         with:
           name: windows-ota-fragment
