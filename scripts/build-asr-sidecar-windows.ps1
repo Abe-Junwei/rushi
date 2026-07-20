@@ -66,33 +66,54 @@ function Ensure-FunasrOnedirData {
   }
 }
 
+function Get-FfmpegDurableCacheDir {
+  $root = "E:\rushi-artifacts"
+  if (-not [string]::IsNullOrWhiteSpace($env:RUSHI_WIN_ARTIFACT_DIR)) {
+    $root = $env:RUSHI_WIN_ARTIFACT_DIR.TrimEnd("\", "/")
+  }
+  return (Join-Path $root "ffmpeg-static\$Tag\win32-x64")
+}
+
+function Test-FfmpegCachedFile {
+  param(
+    [Parameter(Mandatory = $true)][string]$Path,
+    [Parameter(Mandatory = $true)][long]$MinBytes
+  )
+  if (-not (Test-Path -LiteralPath $Path)) { return $false }
+  $item = Get-Item -LiteralPath $Path -ErrorAction SilentlyContinue
+  return ($null -ne $item -and $item.Length -ge $MinBytes)
+}
+
 function Invoke-DownloadWithRetry {
   param(
     [Parameter(Mandatory = $true)][string]$Uri,
     [Parameter(Mandatory = $true)][string]$OutFile,
+    [long]$MinBytes = 1,
     [int]$Attempts = 5,
-    [int]$TimeoutSec = 120
+    # ~80MB ffmpeg/ffprobe over flaky GitHub: align with fetch-ffmpeg-sidecar.sh
+    [int]$TimeoutSec = 600
   )
 
   for ($attempt = 1; $attempt -le $Attempts; $attempt++) {
-    if (Test-Path -LiteralPath $OutFile) {
-      Remove-Item -LiteralPath $OutFile -Force
-    }
     try {
       Write-Host "Downloading $(Split-Path -Leaf $OutFile) ($attempt/$Attempts)"
       $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
       if ($curl) {
+        # Keep partials and resume; do not delete OutFile between attempts.
         Invoke-RushiNativeChecked -FailMessage "curl download failed: $Uri" -Command {
-          & $curl.Source --fail --location --show-error --silent `
-            --connect-timeout 20 --max-time $TimeoutSec `
-            --output $OutFile $Uri
+          & $curl.Source --fail --location --show-error --http1.1 `
+            --connect-timeout 30 --max-time $TimeoutSec `
+            --retry 3 --retry-delay 5 --retry-all-errors `
+            -C - --output $OutFile $Uri
         }
       } else {
+        if (Test-Path -LiteralPath $OutFile) {
+          Remove-Item -LiteralPath $OutFile -Force
+        }
         Invoke-WebRequest -Uri $Uri -OutFile $OutFile -TimeoutSec $TimeoutSec
       }
-      $item = Get-Item -LiteralPath $OutFile -ErrorAction Stop
-      if ($item.Length -le 0) {
-        throw "download produced an empty file"
+      if (-not (Test-FfmpegCachedFile -Path $OutFile -MinBytes $MinBytes)) {
+        throw "download produced a file smaller than $MinBytes bytes"
       }
       return
     } catch {
@@ -105,14 +126,48 @@ function Invoke-DownloadWithRetry {
   }
 }
 
+function Ensure-FfmpegAsset {
+  param(
+    [Parameter(Mandatory = $true)][string]$RemoteName,
+    [Parameter(Mandatory = $true)][string]$OutFile,
+    [Parameter(Mandatory = $true)][long]$MinBytes
+  )
+
+  $force = ($env:FORCE_FFMPEG_FETCH -eq "1")
+  if (-not $force -and (Test-FfmpegCachedFile -Path $OutFile -MinBytes $MinBytes)) {
+    Write-Host "OK: reuse cached $(Split-Path -Leaf $OutFile) ($((Get-Item -LiteralPath $OutFile).Length) bytes)"
+    return
+  }
+
+  $cacheDir = Get-FfmpegDurableCacheDir
+  $cacheFile = Join-Path $cacheDir (Split-Path -Leaf $OutFile)
+  if (-not $force -and (Test-FfmpegCachedFile -Path $cacheFile -MinBytes $MinBytes)) {
+    Write-Host "OK: copy durable ffmpeg cache -> $OutFile"
+    New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutFile) | Out-Null
+    Copy-Item -LiteralPath $cacheFile -Destination $OutFile -Force
+    return
+  }
+
+  Invoke-DownloadWithRetry -Uri "$Base/$RemoteName" -OutFile $OutFile -MinBytes $MinBytes
+
+  try {
+    New-Item -ItemType Directory -Force -Path $cacheDir | Out-Null
+    Copy-Item -LiteralPath $OutFile -Destination $cacheFile -Force
+    Write-Host "OK: seeded durable ffmpeg cache $cacheFile"
+  } catch {
+    Write-Warning "Could not seed durable ffmpeg cache ($($_.Exception.Message))"
+  }
+}
+
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Error "python not on PATH (install Python 3.12+)"
 }
 
 New-Item -ItemType Directory -Force $FfDir | Out-Null
-Invoke-DownloadWithRetry -Uri "$Base/ffmpeg-win32-x64" -OutFile (Join-Path $FfDir "ffmpeg.exe")
-Invoke-DownloadWithRetry -Uri "$Base/ffprobe-win32-x64" -OutFile (Join-Path $FfDir "ffprobe.exe")
-Invoke-DownloadWithRetry -Uri "$Base/win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LICENSE.ffmpeg-static")
+# Binaries ~80MB; LICENSE is small. Reuse workspace/durable cache to survive GitHub timeouts (curl 28).
+Ensure-FfmpegAsset -RemoteName "ffmpeg-win32-x64" -OutFile (Join-Path $FfDir "ffmpeg.exe") -MinBytes 1048576
+Ensure-FfmpegAsset -RemoteName "ffprobe-win32-x64" -OutFile (Join-Path $FfDir "ffprobe.exe") -MinBytes 1048576
+Ensure-FfmpegAsset -RemoteName "win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LICENSE.ffmpeg-static") -MinBytes 100
 
 if (Test-Path $TmpVenv) {
   try {
