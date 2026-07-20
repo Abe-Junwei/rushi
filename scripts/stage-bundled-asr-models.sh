@@ -7,7 +7,16 @@ cd "$ROOT"
 # shellcheck source=scripts/resolve-asr-models-root.sh
 source "${ROOT}/scripts/resolve-asr-models-root.sh"
 
+# Default: in-repo build cache (also used by actions/cache on hosted runners).
+# Self-hosted Windows: prefer durable disk cache so NETWORK SERVICE does not re-pull ModelScope.
 BUILD_CACHE="${ROOT}/dist/bundled-asr-models/.modelscope-cache"
+if [[ -n "${RUSHI_DURABLE_MODELSCOPE_CACHE:-}" ]]; then
+  BUILD_CACHE="${RUSHI_DURABLE_MODELSCOPE_CACHE}"
+elif [[ -d "/e/rushi-artifacts" ]]; then
+  BUILD_CACHE="/e/rushi-artifacts/modelscope-cache"
+elif [[ -d "E:/rushi-artifacts" ]]; then
+  BUILD_CACHE="E:/rushi-artifacts/modelscope-cache"
+fi
 STAGING="${ROOT}/dist/bundled-asr-models/staging"
 DEST="${ROOT}/apps/desktop/src-tauri/resources/bundled-asr-models"
 
@@ -34,6 +43,7 @@ VERSION="$(node -p "require('./apps/desktop/package.json').version")"
 echo "== stage bundled ASR models (Plan B) =="
 echo "    version=${VERSION}"
 echo "    dest=${DEST}"
+echo "    modelscope_cache=${BUILD_CACHE}"
 
 if ! ASR_VENV="$(bash "${ROOT}/scripts/resolve-asr-venv-python.sh" 2>/dev/null)"; then
   echo "==> bootstrapping services/asr/.venv"

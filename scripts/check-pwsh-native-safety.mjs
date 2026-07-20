@@ -21,6 +21,9 @@ const ALLOW_NO_NATIVE_HELPER = new Set([
   "rushi-win-release-artifact-names.ps1",
   "ci-measure-windows-bundle-size.ps1",
   "prune-windows-sidecar-for-nsis.ps1",
+  // Zip via System.IO.Compression only (no tar/npm).
+  "ci-pack-windows-offline-installer-zip.ps1",
+  "ci-pack-windows-cuda-zip.ps1",
 ]);
 
 const NATIVE_RE =
@@ -62,6 +65,45 @@ function stripPsLineComments(source) {
 }
 
 /**
+ * Blank out simple '...' / "..." string bodies so NATIVE_RE does not match
+ * words like `tar` inside throw messages.
+ * Does not attempt here-strings (@'...'@); those remain rare in release scripts.
+ * @param {string} source
+ */
+function blankPsStringLiterals(source) {
+  let out = "";
+  let inSingle = false;
+  let inDouble = false;
+  for (let i = 0; i < source.length; i++) {
+    const ch = source[i];
+    if (ch === "'" && !inDouble) {
+      inSingle = !inSingle;
+      out += ch;
+      continue;
+    }
+    if (ch === '"' && !inSingle) {
+      inDouble = !inDouble;
+      out += ch;
+      continue;
+    }
+    if ((inSingle || inDouble) && ch !== "\n") {
+      out += " ";
+      continue;
+    }
+    out += ch;
+  }
+  return out;
+}
+
+/**
+ * Code surface used for native-command detection (comments + strings blanked).
+ * @param {string} source
+ */
+function codeForNativeDetect(source) {
+  return blankPsStringLiterals(stripPsLineComments(source));
+}
+
+/**
  * @param {string} rel
  * @param {string} source
  * @param {string[]} errors
@@ -100,7 +142,7 @@ export function checkPwshNativeSafety() {
 
     if (ALLOW_NO_NATIVE_HELPER.has(name)) continue;
     if (!/\$ErrorActionPreference\s*=\s*['"]Stop['"]/.test(source)) continue;
-    if (!NATIVE_RE.test(source)) continue;
+    if (!NATIVE_RE.test(codeForNativeDetect(source))) continue;
 
     if (!/rushi-resolve-git-sha\.ps1/.test(source)) {
       errors.push(

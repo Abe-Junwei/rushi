@@ -109,7 +109,7 @@ $ProbeDir = Resolve-FullPath $ProbeDir
 foreach ($p in @($AsciiZipPath, $StageDir, $ProbeDir)) {
   foreach ($ch in $p.ToCharArray()) {
     if ([int]$ch -gt 0x7F) {
-      throw "Non-ASCII path not allowed for tar staging ($p). Use ASCII intermediate only."
+      throw "Non-ASCII path not allowed for zip staging ($p). Use ASCII intermediate only."
     }
   }
 }
@@ -145,7 +145,7 @@ try {
 }
 
 if (-not (Test-Path -LiteralPath $AsciiZipPath)) {
-  throw "ASCII zip missing after tar: $AsciiZipPath"
+  throw "ASCII zip missing after pack: $AsciiZipPath"
 }
 Write-Host "OK: ascii zip $AsciiZipPath ($((Get-Item -LiteralPath $AsciiZipPath).Length) bytes)"
 

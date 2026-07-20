@@ -324,6 +324,12 @@ jobs:
     # pc-office-win-release: self-hosted, Windows, X64, rushi-release (E:\actions-runner).
     # Keep run.cmd / svc running or this job queues forever.
     runs-on: [self-hosted, Windows, X64, rushi-release]
+    # Durable caches on E: — runner is NETWORK SERVICE and cannot use interactive user pip/npm dirs.
+    env:
+      RUSHI_WIN_ARTIFACT_DIR: E:\rushi-artifacts
+      PIP_CACHE_DIR: E:\rushi-artifacts\pip-cache
+      npm_config_cache: E:\rushi-artifacts\npm-cache
+      RUSHI_DURABLE_MODELSCOPE_CACHE: E:/rushi-artifacts/modelscope-cache
     outputs:
       version: ${{ steps.win_names.outputs.version }}
       offline: ${{ steps.win_names.outputs.offline }}
@@ -937,6 +943,9 @@ jobs:
     runs-on: [self-hosted, Windows, X64, rushi-release]
     env:
       WIN_CUDA_ZIP: ${{ needs.windows-core-release.outputs.cuda }}
+      RUSHI_WIN_ARTIFACT_DIR: E:\rushi-artifacts
+      PIP_CACHE_DIR: E:\rushi-artifacts\pip-cache
+      npm_config_cache: E:\rushi-artifacts\npm-cache
     steps:
       - uses: actions/checkout@v7
 

@@ -56,8 +56,13 @@ export {
   type TranscriptEditorCoreExtensionsOptions,
 } from "./transcriptEditorCoreExtensions";
 export {
+  CM_SEGMENT_IDX_ATTR,
+  resolveTranscriptGutterSegmentIdx,
+} from "./transcriptGutterSegmentIdx";
+export {
   createTranscriptMetaGutter,
   buildTranscriptMetaMarker,
+  handleTranscriptMetaGutterMousedown,
   computeTranscriptMetaGutterWidthPx,
   transcriptMetaGutterTheme,
   transcriptMetaGutterExtensions,
@@ -66,6 +71,9 @@ export {
 export {
   createTranscriptStageGutter,
   buildTranscriptStageMarker,
+  resolveTranscriptStageGutterSegmentIdx,
+  handleTranscriptStageGutterMousedown,
+  CM_SEGMENT_ANNOTATION_ATTR,
   transcriptStageGutterTheme,
   transcriptStageGutterExtensions,
   type TranscriptStageGutterOptions,

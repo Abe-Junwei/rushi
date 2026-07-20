@@ -3,6 +3,7 @@
 import { describe, expect, it, afterEach, vi } from "vitest";
 import { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
+import type { TransactionSpec } from "@codemirror/state";
 import {
   buildTranscriptEditorState,
   transcriptEditorCoreExtensions,
@@ -14,7 +15,10 @@ import {
   buildTranscriptMetaMarker,
   buildTranscriptStageMarker,
   computeTranscriptMetaGutterWidthPx,
+  handleTranscriptMetaGutterMousedown,
+  CM_SEGMENT_IDX_ATTR,
 } from "./index";
+import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
 import { formatTranscriptTimestamp } from "../../segmentRow/segmentRowFormatting";
 
 function makeSegments(n: number): SegmentDto[] {
@@ -51,6 +55,47 @@ describe("P4 meta gutter + reveal + stage", () => {
     const dom = marker0!.toDOM();
     expect(dom.querySelector(".cm-transcript-meta-stage")).toBeNull();
     expect(dom.className).toContain("cm-transcript-meta-marker--primary");
+    expect(dom.getAttribute(CM_SEGMENT_IDX_ATTR)).toBe("0");
+  });
+
+  it("meta gutter click uses stamped idx when CM6 lineFrom lands on preceding filter-collapsed run", () => {
+    const segs = makeSegments(4).map((s, i) => ({ ...s, frozen: i < 3 }));
+    let state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    state = state.update({
+      effects: setTranscriptFilterVisibleEffect.of(new Set([3])),
+    }).state;
+
+    const onSelectSegment = vi.fn();
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+    const marker = document.createElement("div");
+    marker.setAttribute(CM_SEGMENT_IDX_ATTR, "3");
+    const collapsedFirstFrom = state.doc.line(1).from;
+    const handled = handleTranscriptMetaGutterMousedown(
+      view,
+      collapsedFirstFrom,
+      {
+        button: 0,
+        metaKey: false,
+        ctrlKey: false,
+        shiftKey: false,
+        target: marker,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      } as unknown as MouseEvent,
+      { onSelectSegment },
+    );
+    expect(handled).toBe(true);
+    expect(onSelectSegment).toHaveBeenCalledWith(3, { toggle: false, shiftKey: false });
+    expect(primarySegmentIdx(state)).toBe(3);
   });
 
   it("builds trailing stage chip from meta.stage + finalizeVia", () => {
@@ -82,7 +127,7 @@ describe("P4 meta gutter + reveal + stage", () => {
     });
     const meta = state.field(segmentMetaField);
     expect(meta[0]?.hasAnnotation).toBe(true);
-    const stage = buildTranscriptStageMarker(meta[0]);
+    const stage = buildTranscriptStageMarker(meta[0], { segmentIdx: 0 });
     const dom = stage!.toDOM();
     const chip = dom.querySelector(".cm-transcript-stage-chip");
     const note = dom.querySelector(".cm-transcript-annotation-icon");
@@ -91,6 +136,8 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect((note as HTMLButtonElement).type).toBe("button");
     expect((note as HTMLButtonElement).tabIndex).toBe(-1);
     expect(note?.getAttribute("aria-label")).toBe("查看并编辑备注");
+    expect(note?.getAttribute("data-cm-segment-idx")).toBe("0");
+    expect(dom.getAttribute("data-cm-segment-idx")).toBe("0");
     expect(note?.querySelector("svg")).toBeTruthy();
     const children = [...dom.children];
     expect(children.indexOf(chip as Element)).toBeLessThan(children.indexOf(note as Element));
