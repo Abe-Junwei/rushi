@@ -1,5 +1,5 @@
 import { gutter, GutterMarker, EditorView } from "@codemirror/view";
-import type { Extension } from "@codemirror/state";
+import type { EditorState, Extension, TransactionSpec } from "@codemirror/state";
 import { formatTranscriptTimestamp } from "../../segmentRow/segmentRowFormatting";
 import { segmentMetaField, type SegmentMeta } from "./segmentMetaField";
 import {
@@ -15,6 +15,10 @@ import {
   isTranscriptSegmentVisible,
   transcriptFilterVisibilityChanged,
 } from "./filterLineVisibility";
+import {
+  CM_SEGMENT_IDX_ATTR,
+  resolveTranscriptGutterSegmentIdx,
+} from "./transcriptGutterSegmentIdx";
 
 export type TranscriptRowSelectionKind = "primary" | "in" | "playback" | null;
 
@@ -32,6 +36,8 @@ export class TranscriptMetaMarker extends GutterMarker {
     readonly isPlaybackFocus: boolean = false,
     /** Frozen primary uses a muted accent bar instead of saffron. */
     readonly frozen: boolean = false,
+    /** 0-based segment idx; spacer / unknown use -1. */
+    readonly segmentIdx: number = -1,
   ) {
     super();
   }
@@ -47,7 +53,8 @@ export class TranscriptMetaMarker extends GutterMarker {
       this.timeLabel === other.timeLabel &&
       this.selectionKind === other.selectionKind &&
       this.isPlaybackFocus === other.isPlaybackFocus &&
-      this.frozen === other.frozen
+      this.frozen === other.frozen &&
+      this.segmentIdx === other.segmentIdx
     );
   }
 
@@ -71,6 +78,9 @@ export class TranscriptMetaMarker extends GutterMarker {
       .filter(Boolean)
       .join(" ");
     el.title = `${this.indexLabel} ${this.timeLabel}`;
+    if (this.segmentIdx >= 0) {
+      el.setAttribute(CM_SEGMENT_IDX_ATTR, String(this.segmentIdx));
+    }
 
     // Frozen rows omit the left accent bar (selection is the soft callout wash only).
     if (this.selectionKind === "primary" && !this.frozen) {
@@ -97,6 +107,43 @@ export type TranscriptMetaGutterOptions = {
   onSelectSegment?: (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => void;
 };
 
+type MetaGutterMousedownView = {
+  state: EditorState;
+  dispatch: (tr: TransactionSpec) => void;
+};
+
+/**
+ * Pure meta-gutter mousedown body (exported for focused tests — same filter-collapse
+ * hit-test issue as stage gutter; see {@link resolveTranscriptGutterSegmentIdx}).
+ */
+export function handleTranscriptMetaGutterMousedown(
+  view: MetaGutterMousedownView,
+  lineFrom: number,
+  event: MouseEvent,
+  opts: TranscriptMetaGutterOptions,
+): boolean {
+  const idx = resolveTranscriptGutterSegmentIdx(view.state, lineFrom, event);
+  const multi = view.state.field(transcriptMultiSelectionField);
+  if (event.button !== 0) {
+    event.preventDefault();
+    if (
+      shouldApplyContextMenuSelection({
+        segmentIdx: idx,
+        isIndexInSelection: (i) => multi.selectedSet.has(i),
+        selectionCount: multi.selectedSet.size,
+      })
+    ) {
+      selectSegmentCommand(view, idx, { scrollIntoView: false });
+    }
+    return true;
+  }
+  const toggle = event.metaKey || event.ctrlKey;
+  const shiftKey = event.shiftKey;
+  selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
+  opts.onSelectSegment?.(idx, { toggle, shiftKey });
+  return true;
+}
+
 /** Pure marker builder (also used by tests). Left gutter = index + timestamp only. */
 export function buildTranscriptMetaMarker(
   meta: SegmentMeta | undefined,
@@ -116,6 +163,7 @@ export function buildTranscriptMetaMarker(
     selectionKind,
     opts.isPlaybackFocus === true,
     Boolean(meta.frozen),
+    idx,
   );
 }
 
@@ -180,27 +228,12 @@ export function createTranscriptMetaGutter(
     initialSpacer: () => new TranscriptMetaMarker("1.", "00:00:00", null),
     domEventHandlers: {
       mousedown(view, line, event) {
-        const mouse = event as MouseEvent;
-        const idx = view.state.doc.lineAt(line.from).number - 1;
-        const multi = view.state.field(transcriptMultiSelectionField);
-        if (mouse.button !== 0) {
-          mouse.preventDefault();
-          if (
-            shouldApplyContextMenuSelection({
-              segmentIdx: idx,
-              isIndexInSelection: (i) => multi.selectedSet.has(i),
-              selectionCount: multi.selectedSet.size,
-            })
-          ) {
-            selectSegmentCommand(view, idx, { scrollIntoView: false });
-          }
-          return true;
-        }
-        const toggle = mouse.metaKey || mouse.ctrlKey;
-        const shiftKey = mouse.shiftKey;
-        selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
-        opts.onSelectSegment?.(idx, { toggle, shiftKey });
-        return true;
+        return handleTranscriptMetaGutterMousedown(
+          view,
+          line.from,
+          event as MouseEvent,
+          opts,
+        );
       },
     },
   });

@@ -19,6 +19,14 @@ import {
   isTranscriptSegmentVisible,
   transcriptFilterVisibilityChanged,
 } from "./filterLineVisibility";
+import {
+  CM_SEGMENT_IDX_ATTR,
+  resolveTranscriptGutterSegmentIdx,
+} from "./transcriptGutterSegmentIdx";
+
+export { CM_SEGMENT_IDX_ATTR };
+/** @deprecated Prefer {@link resolveTranscriptGutterSegmentIdx}; kept for existing imports. */
+export const resolveTranscriptStageGutterSegmentIdx = resolveTranscriptGutterSegmentIdx;
 
 /**
  * Stage + annotation mark icons — one stroke system, always `currentColor`.
@@ -75,6 +83,8 @@ export class TranscriptStageMarker extends GutterMarker {
     readonly rowHover: boolean = false,
     /** Show document icon to the right of the stage chip when the segment has a note. */
     readonly hasAnnotation: boolean = false,
+    /** 0-based segment idx; spacer / unknown use -1. */
+    readonly segmentIdx: number = -1,
   ) {
     super();
   }
@@ -87,7 +97,8 @@ export class TranscriptStageMarker extends GutterMarker {
       this.selectionKind === other.selectionKind &&
       this.isPlaybackFocus === other.isPlaybackFocus &&
       this.rowHover === other.rowHover &&
-      this.hasAnnotation === other.hasAnnotation
+      this.hasAnnotation === other.hasAnnotation &&
+      this.segmentIdx === other.segmentIdx
     );
   }
 
@@ -110,6 +121,9 @@ export class TranscriptStageMarker extends GutterMarker {
     ]
       .filter(Boolean)
       .join(" ");
+    if (this.segmentIdx >= 0) {
+      wrap.setAttribute(CM_SEGMENT_IDX_ATTR, String(this.segmentIdx));
+    }
 
     const el = document.createElement("span");
     el.className = [
@@ -137,6 +151,9 @@ export class TranscriptStageMarker extends GutterMarker {
       note.type = "button";
       note.className = "cm-transcript-annotation-icon";
       note.setAttribute(CM_SEGMENT_ANNOTATION_ATTR, "1");
+      if (this.segmentIdx >= 0) {
+        note.setAttribute(CM_SEGMENT_IDX_ATTR, String(this.segmentIdx));
+      }
       note.tabIndex = -1;
       note.title = "查看并编辑备注";
       note.setAttribute("aria-label", "查看并编辑备注");
@@ -158,6 +175,7 @@ export function buildTranscriptStageMarker(
     selectionKind?: TranscriptRowSelectionKind;
     isPlaybackFocus?: boolean;
     rowHover?: boolean;
+    segmentIdx?: number;
   } = {},
 ): TranscriptStageMarker | null {
   if (!meta?.stage) return null;
@@ -171,6 +189,7 @@ export function buildTranscriptStageMarker(
     opts.isPlaybackFocus === true,
     opts.rowHover === true,
     Boolean(meta.hasAnnotation),
+    opts.segmentIdx ?? -1,
   );
 }
 
@@ -196,7 +215,7 @@ export function handleTranscriptStageGutterMousedown(
   opts: TranscriptStageGutterOptions,
 ): boolean {
   const target = event.target as HTMLElement | null;
-  const idx = view.state.doc.lineAt(lineFrom).number - 1;
+  const idx = resolveTranscriptGutterSegmentIdx(view.state, lineFrom, event);
   if (event.button === 0 && target?.closest(`[${CM_SEGMENT_ANNOTATION_ATTR}]`)) {
     event.preventDefault();
     event.stopPropagation();
@@ -262,6 +281,7 @@ export function createTranscriptStageGutter(
         selectionKind,
         isPlaybackFocus: playbackIdx != null && playbackIdx === idx,
         rowHover: hoverIdx === idx,
+        segmentIdx: idx,
       });
     },
     lineMarkerChange(update) {

@@ -4,7 +4,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { TransactionSpec } from "@codemirror/state";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { buildTranscriptEditorState, transcriptEditorCoreExtensions, primarySegmentIdx } from "./index";
-import { handleTranscriptStageGutterMousedown } from "./stageGutter";
+import {
+  CM_SEGMENT_IDX_ATTR,
+  handleTranscriptStageGutterMousedown,
+  resolveTranscriptStageGutterSegmentIdx,
+} from "./stageGutter";
+import { setTranscriptFilterVisibleEffect } from "./filterLineVisibility";
 
 function makeSegments(n: number): SegmentDto[] {
   return Array.from({ length: n }, (_, i) => ({
@@ -99,6 +104,7 @@ describe("stage gutter mousedown → onSelectSegment bridge", () => {
     const annotationIcon = document.createElement("button");
     annotationIcon.type = "button";
     annotationIcon.setAttribute("data-cm-segment-annotation", "1");
+    annotationIcon.setAttribute(CM_SEGMENT_IDX_ATTR, "2");
     const lineFrom = state.doc.line(3).from; // idx 2
     const handled = handleTranscriptStageGutterMousedown(
       view,
@@ -111,6 +117,71 @@ describe("stage gutter mousedown → onSelectSegment bridge", () => {
     expect(onOpenSegmentAnnotationDialog).toHaveBeenCalledWith(2);
     expect(onSelectSegment).not.toHaveBeenCalled();
     expect(primarySegmentIdx(state)).toBe(0);
+  });
+
+  it("annotation click uses stamped idx when CM6 lineFrom lands on preceding filter-collapsed run", () => {
+    // Frozen run 0..2 hidden; visible 3 has the note. CM6 often reports lineFrom of idx 0.
+    const segs = makeSegments(4).map((s, i) => ({
+      ...s,
+      frozen: i < 3,
+      annotation: i === 3 ? "可见备注" : null,
+    }));
+    let state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    state = state.update({
+      effects: setTranscriptFilterVisibleEffect.of(new Set([3])),
+    }).state;
+
+    const collapsedFirstFrom = state.doc.line(1).from; // idx 0 — first of frozen run
+    const annotationIcon = document.createElement("button");
+    annotationIcon.type = "button";
+    annotationIcon.setAttribute("data-cm-segment-annotation", "1");
+    annotationIcon.setAttribute(CM_SEGMENT_IDX_ATTR, "3");
+
+    expect(
+      resolveTranscriptStageGutterSegmentIdx(
+        state,
+        collapsedFirstFrom,
+        makeMouseEvent(0, annotationIcon),
+      ),
+    ).toBe(3);
+
+    const onOpenSegmentAnnotationDialog = vi.fn();
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+    handleTranscriptStageGutterMousedown(
+      view,
+      collapsedFirstFrom,
+      makeMouseEvent(0, annotationIcon),
+      { onOpenSegmentAnnotationDialog },
+    );
+    expect(onOpenSegmentAnnotationDialog).toHaveBeenCalledWith(3);
+  });
+
+  it("coerces filter-hidden lineFrom to the next visible segment when stamp is absent", () => {
+    const segs = makeSegments(5).map((s, i) => ({ ...s, frozen: i < 3 }));
+    let state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    state = state.update({
+      effects: setTranscriptFilterVisibleEffect.of(new Set([3, 4])),
+    }).state;
+
+    const collapsedFirstFrom = state.doc.line(1).from; // idx 0
+    expect(
+      resolveTranscriptStageGutterSegmentIdx(
+        state,
+        collapsedFirstFrom,
+        makeMouseEvent(0, document.createElement("div")),
+      ),
+    ).toBe(3);
   });
 
   it("right-click on annotation icon falls through to context-menu selection, not dialog", () => {
