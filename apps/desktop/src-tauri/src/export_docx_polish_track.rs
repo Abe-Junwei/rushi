@@ -6,6 +6,7 @@ mod diff;
 mod write;
 
 pub use diff::before_lines_from_joined;
+pub(crate) use write::polish_track_can_preserve_corrected_lines;
 pub use write::{
     append_polished_with_track_changes, inject_track_revisions_flag, POLISH_TRACK_AUTHOR,
 };

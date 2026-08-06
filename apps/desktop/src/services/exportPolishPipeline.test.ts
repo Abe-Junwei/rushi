@@ -1,10 +1,97 @@
 import { describe, expect, it } from "vitest";
 import {
-  clampExportPolishLinesToEligible,
+  applyPunctuationOnlyExportPolish,
+  exportPolishLinesPreserveTrustedContent,
   isPunctuationOnlyLineDiff,
   lineEligibleForExportTrack,
-  reconcileLlmPolishLines,
 } from "./exportPolishPipeline";
+
+describe("applyPunctuationOnlyExportPolish", () => {
+  it("accepts punctuation and whitespace changes", () => {
+    const result = applyPunctuationOnlyExportPolish(
+      ["你好世界", "甲 乙"],
+      ["你好，世界。", "甲\n乙！"],
+      true,
+      [],
+    );
+    expect(result).toEqual({
+      lines: ["你好，世界。", "甲\n乙！"],
+      revertedContentLines: 0,
+      revertedContentLineIndices: [],
+      contractFallback: false,
+      contractFallbackLineIndices: [],
+    });
+  });
+
+  it("reverts a long mid-line deletion", () => {
+    const trusted = "开场先说纪律。学校主要是留守儿童，人生前景需要认真对待。然后继续下一议题。";
+    const candidate = "开场先说纪律。然后继续下一议题。";
+    expect(applyPunctuationOnlyExportPolish([trusted], [candidate], true, []).lines).toEqual([
+      trusted,
+    ]);
+  });
+
+  it("reverts a short equal-length rewrite", () => {
+    expect(
+      applyPunctuationOnlyExportPolish(["留守儿童"], ["人生前景"], true, []),
+    ).toMatchObject({
+      lines: ["留守儿童"],
+      revertedContentLines: 1,
+      revertedContentLineIndices: [0],
+      contractFallback: false,
+    });
+  });
+
+  it("falls back all trusted lines when the id contract is invalid", () => {
+    expect(
+      applyPunctuationOnlyExportPolish(["甲", "乙"], ["甲。", "乙。"], false, []),
+    ).toEqual({
+      lines: ["甲", "乙"],
+      revertedContentLines: 0,
+      revertedContentLineIndices: [],
+      contractFallback: true,
+      contractFallbackLineIndices: [0, 1],
+    });
+  });
+
+  it("preserves valid-batch punctuation when another batch falls back", () => {
+    expect(
+      applyPunctuationOnlyExportPolish(
+        ["第一批", "第二批"],
+        ["第一批。", "第二批"],
+        false,
+        [1],
+      ),
+    ).toEqual({
+      lines: ["第一批。", "第二批"],
+      revertedContentLines: 0,
+      revertedContentLineIndices: [],
+      contractFallback: true,
+      contractFallbackLineIndices: [1],
+    });
+  });
+
+  it("falls back all trusted lines when the line count differs", () => {
+    expect(applyPunctuationOnlyExportPolish(["甲", "乙"], ["甲。"], true, []).lines).toEqual([
+      "甲",
+      "乙",
+    ]);
+  });
+
+  it("uses locally corrected text as the trusted baseline", () => {
+    expect(applyPunctuationOnlyExportPolish(["觉观"], ["觉观。"], true, []).lines).toEqual([
+      "觉观。",
+    ]);
+  });
+});
+
+describe("exportPolishLinesPreserveTrustedContent", () => {
+  it("accepts punctuation-only output and rejects any body change", () => {
+    expect(exportPolishLinesPreserveTrustedContent(["甲乙"], ["甲，乙。"])).toBe(true);
+    expect(exportPolishLinesPreserveTrustedContent(["甲乙"], ["甲丙。"])).toBe(false);
+    expect(exportPolishLinesPreserveTrustedContent(["甲", "乙"], ["甲。"])).toBe(false);
+  });
+});
 
 describe("lineEligibleForExportTrack", () => {
   it("allows punctuation-only", () => {
@@ -47,51 +134,6 @@ describe("lineEligibleForExportTrack", () => {
     const approxDist = mid.length;
     expect(approxDist / maxLen).toBeLessThanOrEqual(0.12);
     expect(lineEligibleForExportTrack(before, after)).toBe(false);
-    expect(clampExportPolishLinesToEligible([before], [after])).toEqual([before]);
-  });
-});
-
-describe("clampExportPolishLinesToEligible", () => {
-  it("keeps typo and punct fixes, reverts rewrites in final lines", () => {
-    const before = ["辛库", "你好", "嗯那个我们今天呢就来说一下"];
-    const after = ["辛苦", "你好。", "今天我们讨论这个问题。"];
-    expect(clampExportPolishLinesToEligible(before, after)).toEqual([
-      "辛苦",
-      "你好。",
-      "嗯那个我们今天呢就来说一下",
-    ]);
-  });
-
-  it("reverts scattered mid-paragraph deletions that would drop original sentences", () => {
-    const before = [
-      "开场先说纪律。我们把禅堂看得比殿堂还要重。虽然条件简陋，但对学修很投入。",
-      "第二段保持不变。",
-    ];
-    const after = [
-      "开场先说纪律。虽然条件简陋，但对学修很投入。",
-      "第二段保持不变。",
-    ];
-    expect(clampExportPolishLinesToEligible(before, after)).toEqual(before);
-  });
-});
-
-describe("reconcileLlmPolishLines", () => {
-  it("pads when llm has fewer lines", () => {
-    const before = Array.from({ length: 6 }, (_, i) => `语段${i}`);
-    const llm = before.slice(0, 5).map((t) => `${t}。`);
-    const { lines, stats } = reconcileLlmPolishLines(before, llm);
-    expect(lines).toHaveLength(6);
-    expect(lines[5]).toBe("语段5");
-    expect(stats.paddedLineIndices).toEqual([5]);
-  });
-
-  it("merges extra llm lines into last segment without dropping chars", () => {
-    const before = ["第一段", "第二\n段"];
-    const llm = ["第一段。", "第二", "段。"];
-    const { lines } = reconcileLlmPolishLines(before, llm);
-    expect(lines).toHaveLength(2);
-    expect(lines[0]).toBe("第一段。");
-    expect(lines[1]).toBe("第二段。");
   });
 });
 

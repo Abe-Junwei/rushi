@@ -177,6 +177,10 @@ export interface PostprocessExportPolishRequest {
 export interface PostprocessExportPolishResponse {
   /** 与语段一一对应，仅标点/空格（输入已为规则校正稿）。 */
   punctLines: string[];
+  /** 每一批都完整返回了唯一、连续且未越界的语段 ID。 */
+  contentContractValid: boolean;
+  /** 因模型 ID/结构契约异常而回退输入正文的全文语段下标。 */
+  contractFallbackLineIndices: number[];
   breakAfterLine: number[];
   provider: string;
   latency_ms: number;

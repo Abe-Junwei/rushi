@@ -58,6 +58,8 @@ pub struct PostprocessExportPolishRequest {
 #[serde(rename_all = "camelCase")]
 pub struct PostprocessExportPolishResponse {
     pub punct_lines: Vec<String>,
+    pub content_contract_valid: bool,
+    pub contract_fallback_line_indices: Vec<usize>,
     pub break_after_line: Vec<usize>,
     pub provider: String,
     pub latency_ms: u64,
@@ -208,15 +210,19 @@ pub async fn postprocess_export_polish(
     append_desktop_log_line(
         &state,
         &format!(
-            "INFO postprocess_export_polish_done provider={} lines={} breaks={} batches={batch_total} batch_latency_ms={batch_latencies:?} latency_ms={latency_ms}",
+            "INFO postprocess_export_polish_done provider={} lines={} breaks={} content_contract_valid={} contract_fallback_lines={} batches={batch_total} batch_latency_ms={batch_latencies:?} latency_ms={latency_ms}",
             llm_cfg.provider,
             parsed.punct_lines.len(),
             parsed.break_after_line.len(),
+            parsed.content_contract_valid,
+            parsed.contract_fallback_line_indices.len(),
         ),
     );
 
     Ok(PostprocessExportPolishResponse {
         punct_lines: parsed.punct_lines,
+        content_contract_valid: parsed.content_contract_valid,
+        contract_fallback_line_indices: parsed.contract_fallback_line_indices,
         break_after_line: parsed.break_after_line,
         provider: llm_cfg.provider,
         latency_ms,
@@ -493,14 +499,7 @@ async fn run_export_polish_batch_once(
             }
         },
     )?;
-    if parsed.punct_lines.is_empty() {
-        return Err("润色结果为空，请重试或取消勾选大模型润色。".to_string());
-    }
-    postprocess_export_polish::align_punct_lines_to_batch(
-        &mut parsed.punct_lines,
-        line_count,
-        batch_body,
-    );
+    postprocess_export_polish::fallback_invalid_batch_to_originals(&mut parsed, batch_body);
 
     Ok((parsed, t0.elapsed().as_millis() as u64))
 }

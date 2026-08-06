@@ -7,6 +7,7 @@ use docx_rs::*;
 
 use crate::export_docx_polish_track::{
     append_polished_with_track_changes, inject_track_revisions_flag,
+    polish_track_can_preserve_corrected_lines,
 };
 use crate::project::SegmentDto;
 
@@ -72,6 +73,7 @@ fn should_use_polish_track_changes(
         return false;
     }
     lines.len() == crate::export_docx_polish_track::before_lines_from_joined(before).len()
+        && polish_track_can_preserve_corrected_lines(before, lines, after)
 }
 
 #[allow(clippy::too_many_arguments)]

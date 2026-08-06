@@ -5,9 +5,6 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { lineWouldHaveWordTrackMarkup } from "./exportPolishTrackMarkup";
 import { graphemeCount as countGraphemes, splitGraphemes } from "./text/grapheme";
 
-/** LLM 多行合并到最后一语段时的最大字数（字素）。 */
-const MAX_MERGED_TAIL_GRAPHEMES = 8_000;
-
 /** 从语段得到与导出一致的逐行正文（非空）。 */
 export function segmentLinesFromSegments(segments: SegmentDto[]): string[] {
   return segments
@@ -15,7 +12,7 @@ export function segmentLinesFromSegments(segments: SegmentDto[]): string[] {
     .filter((t) => t.length > 0);
 }
 
-/** 稳定规则覆盖（LLM 之后；见 exportPolishFinalize）。 */
+/** 在调用 LLM 前生成可信正文（见 exportPolishFinalize）。 */
 export function applyRulesToSegmentLines(
   lines: string[],
   rules: CorrectionRuleRow[],
@@ -45,11 +42,6 @@ export function isPunctuationOnlyLineDiff(before: string, after: string): boolea
   return stripForPunctCompare(before) === stripForPunctCompare(after);
 }
 
-function linesRoughlyMatch(a: string, b: string): boolean {
-  if (a === b) return true;
-  return stripForPunctCompare(a) === stripForPunctCompare(b);
-}
-
 export type ReconcileLlmLinesStats = {
   llmCount: number;
   segmentCount: number;
@@ -58,96 +50,6 @@ export type ReconcileLlmLinesStats = {
   /** 最终行仍采用导出前原文的语段下标（对齐时补原行）。 */
   paddedLineIndices: number[];
 };
-
-/**
- * 原样采纳 LLM 润色结果，并按语段数对齐（允许 LLM 少/多行：合并或补原行）。
- */
-export function reconcileLlmPolishLines(
-  beforeLines: string[],
-  llmLines: string[],
-): { lines: string[]; stats: ReconcileLlmLinesStats } {
-  const segmentCount = beforeLines.length;
-  const llmCount = llmLines.length;
-  const stats: ReconcileLlmLinesStats = {
-    llmCount,
-    segmentCount,
-    paddedFromBefore: 0,
-    mergedSegmentPairs: 0,
-    paddedLineIndices: [],
-  };
-
-  if (segmentCount === 0) return { lines: [], stats };
-  if (llmCount === 0) {
-    return {
-      lines: [...beforeLines],
-      stats: {
-        ...stats,
-        paddedFromBefore: segmentCount,
-        paddedLineIndices: beforeLines.map((_, i) => i),
-      },
-    };
-  }
-  if (llmCount === segmentCount) {
-    return { lines: [...llmLines], stats };
-  }
-
-  if (llmCount > segmentCount) {
-    const head = llmLines.slice(0, segmentCount - 1);
-    let tail = llmLines.slice(segmentCount - 1).join("");
-    if (countGraphemes(tail) > MAX_MERGED_TAIL_GRAPHEMES) {
-      tail = splitGraphemes(tail).slice(0, MAX_MERGED_TAIL_GRAPHEMES).join("");
-    }
-    return { lines: [...head, tail], stats };
-  }
-
-  const out: string[] = [];
-  let bi = 0;
-  let li = 0;
-  while (bi < segmentCount) {
-    if (li >= llmCount) {
-      out.push(beforeLines[bi] ?? "");
-      stats.paddedFromBefore += 1;
-      stats.paddedLineIndices.push(bi);
-      bi += 1;
-      continue;
-    }
-    const b = beforeLines[bi] ?? "";
-    const l = llmLines[li] ?? "";
-    if (linesRoughlyMatch(b, l)) {
-      out.push(l);
-      bi += 1;
-      li += 1;
-      continue;
-    }
-    if (bi + 1 < segmentCount) {
-      const mergedBefore = b + (beforeLines[bi + 1] ?? "");
-      if (linesRoughlyMatch(mergedBefore, l)) {
-        out.push(l);
-        bi += 2;
-        li += 1;
-        stats.mergedSegmentPairs += 1;
-        continue;
-      }
-    }
-    if (segmentCount - bi > llmCount - li) {
-      out.push(b);
-      stats.paddedFromBefore += 1;
-      stats.paddedLineIndices.push(bi);
-      bi += 1;
-      continue;
-    }
-    out.push(l);
-    bi += 1;
-    li += 1;
-  }
-  while (out.length < segmentCount) {
-    const idx = out.length;
-    out.push(beforeLines[idx] ?? "");
-    stats.paddedFromBefore += 1;
-    stats.paddedLineIndices.push(idx);
-  }
-  return { lines: out.slice(0, segmentCount), stats };
-}
 
 function levenshteinGraphemes(a: string, b: string): number {
   const ag = splitGraphemes(a);
@@ -185,34 +87,89 @@ export function lineEligibleForExportTrack(before: string, after: string): boole
   if (countGraphemes(b) > countGraphemes(a) + MAX_NET_CONTENT_DELETE_GRAPHEMES) {
     return false;
   }
+  const bLen = countGraphemes(b);
   const dist = levenshteinGraphemes(b, a);
-  const maxLen = Math.max(countGraphemes(b), countGraphemes(a), 1);
+  const maxLen = Math.max(bLen, countGraphemes(a), 1);
   return dist <= 4 || dist / maxLen <= 0.12;
 }
 
+export type ExportPolishContentGateResult = {
+  lines: string[];
+  /** 因正文字符变化而回退可信正文的行数和下标。 */
+  revertedContentLines: number;
+  revertedContentLineIndices: number[];
+  /** ID/行数契约异常导致至少一批回退。 */
+  contractFallback: boolean;
+  contractFallbackLineIndices: number[];
+};
+
+function normalizeLineIndices(indices: number[], lineCount: number): number[] {
+  return [...new Set(indices)]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < lineCount)
+    .sort((a, b) => a - b);
+}
+
 /**
- * 定稿正文只保留「错别字 / 错误标点」级改动；超范围改写回退原文。
- * 本地 hygiene 与稳定纠错规则应在本函数之后应用。
+ * LLM 只拥有标点与空白权限。可信正文来自原语段 + 本地稳定纠错规则；
+ * 去标点后只要有一个正文字符不同，该行就回退，彻底阻断删句、摘要与改写。
  */
-export function clampExportPolishLinesToEligible(
-  beforeLines: string[],
-  afterLines: string[],
-): string[] {
-  const n = Math.min(beforeLines.length, afterLines.length);
-  const out: string[] = [];
-  for (let i = 0; i < n; i += 1) {
-    const before = beforeLines[i] ?? "";
-    const after = afterLines[i] ?? "";
-    if (before === after || lineEligibleForExportTrack(before, after)) {
-      out.push(after);
-    } else {
-      out.push(before);
+export function applyPunctuationOnlyExportPolish(
+  trustedLines: string[],
+  candidateLines: string[],
+  contentContractValid: boolean,
+  contractFallbackLineIndices: number[],
+): ExportPolishContentGateResult {
+  if (candidateLines.length !== trustedLines.length) {
+    const allIndices = trustedLines.map((_, index) => index);
+    return {
+      lines: [...trustedLines],
+      revertedContentLines: 0,
+      revertedContentLineIndices: [],
+      contractFallback: true,
+      contractFallbackLineIndices: allIndices,
+    };
+  }
+
+  let fallbackIndices = normalizeLineIndices(
+    contractFallbackLineIndices,
+    trustedLines.length,
+  );
+  // 兼容未返回细粒度下标的旧命令响应，仍然 fail-closed。
+  if (!contentContractValid && fallbackIndices.length === 0) {
+    fallbackIndices = trustedLines.map((_, index) => index);
+  }
+  const fallbackSet = new Set(fallbackIndices);
+  const revertedContentLineIndices: number[] = [];
+  const lines = trustedLines.map((trusted, index) => {
+    if (fallbackSet.has(index)) return trusted;
+    const candidate = candidateLines[index] ?? "";
+    if (stripForPunctCompare(candidate) === stripForPunctCompare(trusted)) {
+      return candidate;
     }
-  }
-  while (out.length < beforeLines.length) {
-    out.push(beforeLines[out.length] ?? "");
-  }
-  return out;
+    revertedContentLineIndices.push(index);
+    return trusted;
+  });
+  return {
+    lines,
+    revertedContentLines: revertedContentLineIndices.length,
+    revertedContentLineIndices,
+    contractFallback: fallbackIndices.length > 0,
+    contractFallbackLineIndices: fallbackIndices,
+  };
+}
+
+/** 最终硬不变量：行数一致，且每行去标点正文与可信正文逐字一致。 */
+export function exportPolishLinesPreserveTrustedContent(
+  trustedLines: string[],
+  finalLines: string[],
+): boolean {
+  return (
+    trustedLines.length === finalLines.length &&
+    trustedLines.every(
+      (trusted, index) =>
+        stripForPunctCompare(trusted) === stripForPunctCompare(finalLines[index] ?? ""),
+    )
+  );
 }
 
 export type ExportPolishLineChange = {

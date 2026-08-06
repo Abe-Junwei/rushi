@@ -177,10 +177,9 @@ fn accumulate_line_diffs_into_paragraphs(
     }
     let mut flat_pos = 0usize;
     for (li, (before, after)) in before_lines.iter().zip(corrected_lines.iter()).enumerate() {
-        let pieces = diff_pieces_for_export_track(before, after);
+        let mut pieces = diff_pieces_for_export_track(before, after);
         if pieces.is_empty() {
-            flat_pos = flat_pos.saturating_add(after.chars().count());
-            continue;
+            pieces.push(DiffPiece::Same(after.clone()));
         }
         let pi = char_para.get(flat_pos).copied().unwrap_or_else(|| {
             if para_count == 0 {
@@ -213,6 +212,43 @@ fn accumulate_line_diffs_into_paragraphs(
     buckets
 }
 
+fn final_text_from_diff_pieces(pieces: &[DiffPiece]) -> String {
+    let mut out = String::new();
+    for piece in pieces {
+        match piece {
+            DiffPiece::Same(text) | DiffPiece::Ins(text) => out.push_str(text),
+            DiffPiece::Del(_) => {}
+        }
+    }
+    out
+}
+
+fn buckets_preserve_corrected_lines(
+    buckets: &[Vec<DiffPiece>],
+    corrected_lines: &[String],
+) -> bool {
+    let actual: String = buckets
+        .iter()
+        .map(|bucket| final_text_from_diff_pieces(bucket))
+        .collect();
+    let expected: String = corrected_lines.iter().map(String::as_str).collect();
+    flatten_for_compare(&actual) == flatten_for_compare(&expected)
+}
+
+pub(crate) fn polish_track_can_preserve_corrected_lines(
+    before_joined: &str,
+    corrected_lines: &[String],
+    display_paragraphs: &[String],
+) -> bool {
+    let before_lines = before_lines_from_joined(before_joined);
+    if corrected_lines.len() != before_lines.len() || before_lines.is_empty() {
+        return false;
+    }
+    let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
+    let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
+    buckets_preserve_corrected_lines(&buckets, corrected_lines)
+}
+
 /// 修订轨：逐行对比；展示用 `display_paragraphs`。`corrected_lines` 行数须与 `before_joined` 拆行一致。
 #[allow(clippy::too_many_arguments)]
 pub fn append_polished_with_track_changes(
@@ -242,6 +278,16 @@ pub fn append_polished_with_track_changes(
     let date = polish_revision_date();
     let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
     let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
+    if !buckets_preserve_corrected_lines(&buckets, corrected_lines) {
+        return append_polished_paragraph_list(
+            doc,
+            annotation_comments,
+            &display,
+            paragraph_annotations,
+            spaced,
+            blocks,
+        );
+    }
 
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
@@ -469,48 +515,5 @@ pub fn inject_track_revisions_flag(bytes: &[u8]) -> Result<Vec<u8>, String> {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::super::diff::pieces_have_markup;
-    use super::*;
-
-    #[test]
-    fn line_diff_maps_to_paragraph_bucket() {
-        let before = vec!["你好世界".into()];
-        let after = vec!["你好，世界。".into()];
-        let paras = vec!["你好，世界。".into()];
-        let buckets = accumulate_line_diffs_into_paragraphs(&before, &after, &paras);
-        assert!(pieces_have_markup(&buckets[0]));
-    }
-
-    #[test]
-    fn patch_settings_injects_when_absent() {
-        let xml = br#"<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="ns"><w:zoom w:percent="100"/></w:settings>"#.to_vec();
-        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
-        let s = String::from_utf8(out).unwrap();
-        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
-        assert!(s.contains("w:revisionView"));
-        assert!(s.contains(r#"w:markup="true""#));
-        assert!(s.ends_with("</w:settings>"));
-    }
-
-    #[test]
-    fn patch_settings_flips_existing_false_flag() {
-        let xml =
-            br#"<w:settings xmlns:w="ns"><w:trackRevisions w:val="false"/></w:settings>"#.to_vec();
-        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
-        let s = String::from_utf8(out).unwrap();
-        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
-        assert!(!s.contains(r#"w:val="false""#));
-        assert_eq!(s.matches("trackRevisions").count(), 1);
-    }
-
-    #[test]
-    fn patch_settings_does_not_duplicate_existing_revision_view() {
-        let xml =
-            br#"<w:settings xmlns:w="ns"><w:revisionView w:markup="false"/></w:settings>"#.to_vec();
-        let out = patch_settings_track_and_markup(xml).expect("patch should succeed");
-        let s = String::from_utf8(out).unwrap();
-        assert_eq!(s.matches("w:revisionView").count(), 1);
-        assert!(s.contains(r#"<w:trackRevisions w:val="true"/>"#));
-    }
-}
+#[path = "export_docx_polish_track_write_tests.rs"]
+mod tests;

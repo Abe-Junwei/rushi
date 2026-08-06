@@ -1,9 +1,13 @@
-//! EXP-WORD：交付导出润色 — LLM 行级错字/标点 + 语义断段；稳定规则在 TS 侧最后覆盖。
+//! EXP-WORD：交付导出润色 — 可信正文上的 LLM 标点与语义断段。
+
+#[path = "postprocess_export_polish_prompt.rs"]
+mod prompt;
 
 use super::postprocess_segment_ops::{
     extract_balanced_json_array, extract_json_object_from_llm_content, strip_llm_reasoning_wrappers,
 };
 use serde::Deserialize;
+use serde_json::Value;
 
 pub const MAX_EXPORT_POLISH_INPUT_CHARS: usize = 120_000;
 /// 语段行间分隔（ASCII RS）；与 TS `EXPORT_POLISH_LINE_SEPARATOR` 一致。
@@ -19,8 +23,12 @@ pub const EXPORT_POLISH_RETRY_SPLIT_MIN_LINES: usize = 24;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportPolishParsed {
-    /// 与语段等长的润色行（错字/标点/空格，行数不变）。
+    /// 仅在 `content_contract_valid` 时来自 LLM；否则由命令层按批回退原文。
     pub punct_lines: Vec<String>,
+    /// LLM 是否完整返回了本批 `0..line_count` 的唯一 ID 集合。
+    pub content_contract_valid: bool,
+    /// 因 ID/结构契约异常而回退输入正文的语段下标。
+    pub contract_fallback_line_indices: Vec<usize>,
     /// 在哪些语段行下标之后插入 Word 自然段分界（含该行）。
     pub break_after_line: Vec<usize>,
 }
@@ -95,34 +103,34 @@ pub fn export_polish_error_is_retriable(err: &str) -> bool {
         || e.contains("无法解析的 json")
 }
 
-/// 将单批 LLM 返回行数对齐到输入语段行数；缺失行回退为原文，避免导出缺段。
-pub fn align_punct_lines_to_batch(
-    punct_lines: &mut Vec<String>,
-    expected: usize,
-    batch_body: &str,
-) {
-    if expected == 0 {
-        punct_lines.retain(|s| !s.trim().is_empty());
+/// 严格校验本批 ID 契约；任何缺失、重复、越界或空正文都使整批失效。
+fn lines_from_strict_items(items: &Value, expected: usize) -> Option<Vec<String>> {
+    let items = items.as_array()?;
+    if expected == 0 || items.len() != expected {
+        return None;
+    }
+    let mut slots = vec![None; expected];
+    for item in items {
+        let object = item.as_object()?;
+        let id = usize::try_from(object.get("id")?.as_u64()?).ok()?;
+        let text = object.get("text")?.as_str()?.trim();
+        if id >= expected || text.is_empty() || slots[id].is_some() {
+            return None;
+        }
+        slots[id] = Some(text.replace("\r\n", "\n"));
+    }
+    slots.into_iter().collect()
+}
+
+/// ID 契约异常时，不再按位置猜测；整批正文回退输入。
+pub fn fallback_invalid_batch_to_originals(parsed: &mut ExportPolishParsed, batch_body: &str) {
+    if parsed.content_contract_valid {
         return;
     }
-    let originals = lines_from_export_polish_body(batch_body);
-    while punct_lines.len() < expected {
-        let idx = punct_lines.len();
-        punct_lines.push(originals.get(idx).cloned().unwrap_or_default());
-    }
-    if punct_lines.len() > expected {
-        let tail: String = punct_lines.split_off(expected - 1).join("");
-        if let Some(last) = punct_lines.last_mut() {
-            last.push_str(&tail);
-        }
-    }
-    for i in 0..expected {
-        if punct_lines.get(i).is_some_and(|s| s.trim().is_empty()) {
-            if let Some(orig) = originals.get(i).filter(|s| !s.trim().is_empty()) {
-                punct_lines[i] = orig.clone();
-            }
-        }
-    }
+    parsed.punct_lines = lines_from_export_polish_body(batch_body);
+    parsed.contract_fallback_line_indices = (0..parsed.punct_lines.len()).collect();
+    // ID 已失去一一对应关系时，模型给出的断点也不能再映射到可信正文。
+    parsed.break_after_line.clear();
 }
 
 /// 合并各批润色结果；`break_after_line` 转为全文 0 起下标。
@@ -132,10 +140,20 @@ pub fn merge_export_polish_batches(
 ) -> ExportPolishParsed {
     let mut punct_lines = Vec::new();
     let mut break_after_line = Vec::new();
+    let mut contract_fallback_line_indices = Vec::new();
+    let mut content_contract_valid = true;
     let mut offset = 0usize;
     for (i, batch) in batches.iter().enumerate() {
         punct_lines.extend(batch.punct_lines.iter().cloned());
+        content_contract_valid &= batch.content_contract_valid;
         let batch_lines = batch_line_counts.get(i).copied().unwrap_or(0);
+        contract_fallback_line_indices.extend(
+            batch
+                .contract_fallback_line_indices
+                .iter()
+                .filter(|&&line| line < batch_lines)
+                .map(|&line| offset + line),
+        );
         let is_last = i + 1 == batches.len();
         for &b in &batch.break_after_line {
             if !is_last && batch_lines > 0 && b + 1 == batch_lines {
@@ -147,80 +165,30 @@ pub fn merge_export_polish_batches(
     }
     break_after_line.sort_unstable();
     break_after_line.dedup();
+    contract_fallback_line_indices.sort_unstable();
+    contract_fallback_line_indices.dedup();
     ExportPolishParsed {
         punct_lines,
+        content_contract_valid,
+        contract_fallback_line_indices,
         break_after_line,
     }
 }
 
 pub fn default_export_polish_system_prompt() -> &'static str {
-    "你是中文讲稿 ASR 纠错助手。lines 不得增删行。仅改正文明显错别字（含同音、形近误识别，需结合上下文语义推断，不要机械比对示例）与错误标点，两者同等重要，逐字逐句检查；禁止整句重写、同义替换、删口语词。另给 break_after_line。禁止 paragraphs 字段。只输出合法 JSON。"
+    prompt::default_export_polish_system_prompt()
 }
 
 pub fn default_export_polish_instructions_template() -> String {
-    r#"你是中文讲稿 ASR 纠错器。输入为 {line_count} 条语段（每行一条，不得增删行）。客户端只会对整句重写/大幅改写这类过大改动回退原文；逐字错别字与标点的修正会被完整保留，请结合上下文推理逐行仔细检查并大胆纠正。{batch_note}
-
-## 输出 JSON（仅此结构）
-{"lines":["行1",...,"行{line_count}"],"break_after_line":[0,3,7]}
-
-## lines（应尽量 {line_count} 行；若合并语段可少 1–2 行，客户端会自动对齐）
-对每一行仅允许（保持原意、人称与事实，禁止整句重写/润色用词；不要删口语词、不要改句式）：
-1. **明显错别字 / 同音或形近误识别**：结合上下文语义推断该字词是否符合语境，不要仅机械比对下列示例（示例：传讨→传统，辛库→辛苦，棵→颗，的/地/得，在/再）——只要读音相近、字形相近、或与上下文语义明显不符，都应视为候选错字并纠正。
-2. **错误标点（必须认真检查，优先于「保持原样」）**：
-   - 句末缺标点则补「。」「？」「！」；陈述/疑问/感叹语气用对应句末标点。
-   - 逗号「，」与顿号「、」误用：并列词语用顿号，分句用逗号。
-   - 英文标点混入中文句（`,` `.` `?` `!` `:` `;`）改为中文对应标点。
-   - 明显错用的引号、括号、冒号（未配对或语气不符）予以改正。
-   - 仅改正错误或缺失；不要为「更好读」而大量重排标点。
-无需改动的行请原样抄写。
-
-## break_after_line
-语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。按语义合并短句，但**单段建议不超过约 300 字**；过长请在话题/句群边界切开。分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{rule_hints}
-
-输入（{line_count} 行，语段之间以 Unicode RS「␞」分隔，语段内换行保留）：
-{body}"#
-        .to_string()
+    prompt::default_export_polish_instructions_template()
 }
 
 pub fn resolve_export_polish_system_prompt(system_override: Option<&str>) -> String {
-    system_override
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .unwrap_or_else(|| default_export_polish_system_prompt().to_string())
+    prompt::resolve_export_polish_system_prompt(system_override)
 }
 
 pub(crate) fn validate_export_polish_instructions_template(template: &str) -> Result<(), String> {
-    let template = template.trim();
-    if template.is_empty() {
-        return Ok(());
-    }
-    let missing: Vec<&str> = ["{line_count}", "{batch_note}", "{rule_hints}", "{body}"]
-        .into_iter()
-        .filter(|placeholder| !template.contains(placeholder))
-        .collect();
-    if missing.is_empty() {
-        Ok(())
-    } else {
-        Err(format!(
-            "导出润色 User 指令缺少占位符：{}。",
-            missing.join("、")
-        ))
-    }
-}
-
-fn apply_export_polish_template(
-    template: &str,
-    line_count: usize,
-    batch_note: &str,
-    rule_hints: &str,
-    body: &str,
-) -> String {
-    template
-        .replace("{line_count}", &line_count.to_string())
-        .replace("{batch_note}", batch_note)
-        .replace("{rule_hints}", rule_hints)
-        .replace("{body}", body)
+    prompt::validate_export_polish_instructions_template(template)
 }
 
 pub fn build_export_polish_prompt(
@@ -231,32 +199,14 @@ pub fn build_export_polish_prompt(
     batch: Option<(usize, usize)>,
     instructions_override: Option<&str>,
 ) -> String {
-    let batch_note = batch
-        .map(|(i, n)| {
-            format!(
-                "\n\n【分批 {i}/{n}】下列为全稿按顺序切分的连续片段；break_after_line **仅相对本段** 0 起行下标。若非语义自然段结尾，**不要**在本段最后一行后分段。"
-            )
-        })
-        .unwrap_or_default();
-    let mut hints = String::new();
-    if !glossary_hints.trim().is_empty() {
-        hints.push_str(&format!(
-            "\n\n项目专名/术语词表（如遇疑似同音、形近误写且与下列词条相符，请改为词条写法）：\n{}",
-            glossary_hints.trim()
-        ));
-    }
-    if !rule_hints.trim().is_empty() {
-        hints.push_str(&format!(
-            "\n\n项目稳定纠错规则（须在对应行落实，优先级高于你的推断）：\n{}",
-            rule_hints.trim()
-        ));
-    }
-    let template = instructions_override
-        .map(str::trim)
-        .filter(|s| !s.is_empty())
-        .map(str::to_string)
-        .unwrap_or_else(default_export_polish_instructions_template);
-    apply_export_polish_template(&template, line_count, &batch_note, &hints, body)
+    prompt::build_export_polish_prompt(
+        body,
+        line_count,
+        rule_hints,
+        glossary_hints,
+        batch,
+        instructions_override,
+    )
 }
 
 /// 由语段行 + 断段下标生成 Word 自然段（行内直接拼接，不插换行）。
@@ -292,12 +242,14 @@ pub fn paragraphs_from_break_after(lines: &[String], break_after: &[usize]) -> V
 
 #[derive(Debug, Deserialize)]
 struct ExportPolishPayload {
-    #[serde(default, alias = "punct_lines")]
-    lines: Vec<String>,
-    #[serde(default, rename = "break_after_line", alias = "breakAfterLine")]
-    break_after_line: Vec<usize>,
     #[serde(default)]
-    paragraphs: Vec<String>,
+    items: Value,
+    #[serde(default, alias = "punct_lines")]
+    lines: Value,
+    #[serde(default, rename = "break_after_line", alias = "breakAfterLine")]
+    break_after_line: Value,
+    #[serde(default)]
+    paragraphs: Value,
 }
 
 pub fn count_body_lines(body: &str) -> usize {
@@ -308,22 +260,46 @@ fn finish_export_polish_payload(
     v: ExportPolishPayload,
     expected_line_count: usize,
 ) -> Result<ExportPolishParsed, String> {
-    let punct_lines = if !v.lines.is_empty() {
-        normalize_lines(v.lines, expected_line_count)?
-    } else {
-        Vec::new()
-    };
-    let mut break_after_line = v.break_after_line;
-    if break_after_line.is_empty() && !v.paragraphs.is_empty() {
-        break_after_line = infer_break_after_from_paragraphs(expected_line_count, &v.paragraphs);
-    }
-    if punct_lines.is_empty() && expected_line_count > 0 {
-        return Err("模型未返回 lines（标点行）。请重试。".into());
+    let (punct_lines, content_contract_valid) =
+        match lines_from_strict_items(&v.items, expected_line_count) {
+            Some(lines) => (lines, true),
+            None if v.lines.is_array() => {
+                // 兼容旧自定义 prompt 的 JSON 形态，但正文 fail-closed；命令层按批回退输入。
+                (Vec::new(), false)
+            }
+            None => (Vec::new(), false),
+        };
+    let mut break_after_line = value_usize_array(&v.break_after_line);
+    if break_after_line.is_empty() {
+        if let Some(paragraphs) = value_string_array(&v.paragraphs) {
+            break_after_line = infer_break_after_from_paragraphs(expected_line_count, &paragraphs);
+        }
     }
     Ok(ExportPolishParsed {
         punct_lines,
+        content_contract_valid,
+        contract_fallback_line_indices: vec![],
         break_after_line,
     })
+}
+
+fn value_string_array(value: &Value) -> Option<Vec<String>> {
+    value.as_array().map(|rows| {
+        rows.iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect()
+    })
+}
+
+fn value_usize_array(value: &Value) -> Vec<usize> {
+    value
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_u64)
+        .filter_map(|n| usize::try_from(n).ok())
+        .collect()
 }
 
 fn try_parse_lines_json_array(s: &str) -> Option<Vec<String>> {
@@ -354,22 +330,22 @@ fn try_plain_lines_fallback(s: &str, expected: usize) -> Option<ExportPolishPars
         return None;
     }
     if expected == 0 {
-        return normalize_lines(lines, expected)
-            .ok()
-            .map(|punct_lines| ExportPolishParsed {
-                punct_lines,
-                break_after_line: vec![],
-            });
+        return Some(ExportPolishParsed {
+            punct_lines: lines,
+            content_contract_valid: false,
+            contract_fallback_line_indices: vec![],
+            break_after_line: vec![],
+        });
     }
     let slack = (expected / 20).max(5);
     let min_ok = expected.saturating_sub(slack);
     if lines.len() >= min_ok && lines.len() <= expected {
-        normalize_lines(lines, expected)
-            .ok()
-            .map(|punct_lines| ExportPolishParsed {
-                punct_lines,
-                break_after_line: vec![],
-            })
+        Some(ExportPolishParsed {
+            punct_lines: lines,
+            content_contract_valid: false,
+            contract_fallback_line_indices: vec![],
+            break_after_line: vec![],
+        })
     } else {
         None
     }
@@ -381,8 +357,19 @@ pub fn parse_export_polish_json(
 ) -> Result<ExportPolishParsed, String> {
     let stripped = strip_llm_reasoning_wrappers(raw);
 
-    if let Ok(v) = serde_json::from_str::<ExportPolishPayload>(stripped.trim()) {
-        return finish_export_polish_payload(v, expected_line_count);
+    if let Ok(value) = serde_json::from_str::<Value>(stripped.trim()) {
+        if value.is_object() {
+            if let Ok(v) = serde_json::from_value::<ExportPolishPayload>(value) {
+                return finish_export_polish_payload(v, expected_line_count);
+            }
+        } else if value.is_array() {
+            return Ok(ExportPolishParsed {
+                punct_lines: value_string_array(&value).unwrap_or_default(),
+                content_contract_valid: false,
+                contract_fallback_line_indices: vec![],
+                break_after_line: vec![],
+            });
+        }
     }
 
     if let Ok(json_str) = extract_json_object_from_llm_content(raw) {
@@ -390,16 +377,17 @@ pub fn parse_export_polish_json(
             Ok(v) => return finish_export_polish_payload(v, expected_line_count),
             Err(e) => {
                 return Err(format!(
-                    "模型未返回可解析的 JSON（需 lines + break_after_line）：{e}"
+                    "模型未返回可解析的 JSON（需 items + break_after_line）：{e}"
                 ));
             }
         }
     }
 
     if let Some(lines) = try_parse_lines_json_array(&stripped) {
-        let punct_lines = normalize_lines(lines, expected_line_count)?;
         return Ok(ExportPolishParsed {
-            punct_lines,
+            punct_lines: lines,
+            content_contract_valid: false,
+            contract_fallback_line_indices: vec![],
             break_after_line: vec![],
         });
     }
@@ -436,224 +424,6 @@ fn infer_break_after_from_paragraphs(line_count: usize, paragraphs: &[String]) -
     breaks
 }
 
-fn normalize_lines(rows: Vec<String>, expected: usize) -> Result<Vec<String>, String> {
-    let mut lines: Vec<String> = rows
-        .into_iter()
-        .map(|p| p.trim().replace("\r\n", "\n"))
-        .collect();
-    if lines.is_empty() && expected > 0 {
-        return Err("润色 lines 为空，请重试。".into());
-    }
-    if expected > 0 {
-        if lines.len() > expected {
-            let tail: String = lines.split_off(expected - 1).join("");
-            if let Some(last) = lines.last_mut() {
-                last.push_str(&tail);
-            }
-        }
-        while lines.len() < expected {
-            lines.push(String::new());
-        }
-    } else {
-        lines.retain(|p| !p.is_empty());
-        if lines.is_empty() {
-            return Err("润色 lines 为空，请重试。".into());
-        }
-    }
-    Ok(lines)
-}
-
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parse_break_and_lines() {
-        let raw = r#"{"lines":["你好","世界。"],"break_after_line":[0]}"#;
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines.len(), 2);
-        assert_eq!(out.break_after_line, vec![0]);
-        let paras = paragraphs_from_break_after(&out.punct_lines, &out.break_after_line);
-        assert_eq!(paras, vec!["你好", "世界。"]);
-    }
-
-    #[test]
-    fn parse_accepts_fenced_json_and_camel_case_breaks() {
-        let raw = "```json\n{\"lines\":[\"甲\",\"乙。\"],\"breakAfterLine\":[0]}\n```";
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines, vec!["甲", "乙。"]);
-        assert_eq!(out.break_after_line, vec![0]);
-    }
-
-    #[test]
-    fn parse_ignores_trailing_prose_after_json() {
-        let raw = r#"{"lines":["句一","句二。"],"break_after_line":[]}
-
-以上已完成润色。"#;
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines.len(), 2);
-    }
-
-    #[test]
-    fn parse_allows_fewer_lines_than_expected() {
-        let rows: Vec<String> = (0..175).map(|i| format!("行{i}")).collect();
-        let raw = format!(
-            r#"{{"lines":{},"break_after_line":[]}}"#,
-            serde_json::to_string(&rows).unwrap()
-        );
-        let out = parse_export_polish_json(&raw, 176).unwrap();
-        assert_eq!(out.punct_lines.len(), 176);
-        assert_eq!(out.punct_lines[175], "");
-    }
-
-    #[test]
-    fn export_polish_prompt_accepts_custom_template() {
-        let custom = "润色 {line_count} 行。{batch_note}{rule_hints}\n{body}";
-        let p = build_export_polish_prompt("a\nb", 2, "规则A", "", None, Some(custom));
-        assert!(p.contains("润色 2 行"));
-        assert!(p.contains("a\nb"));
-        assert!(p.contains("规则A"));
-    }
-
-    #[test]
-    fn export_polish_template_reports_missing_placeholders() {
-        let err = validate_export_polish_instructions_template("只润色 {body}").unwrap_err();
-        assert!(err.contains("{line_count}"));
-        assert!(err.contains("{batch_note}"));
-        assert!(err.contains("{rule_hints}"));
-    }
-
-    #[test]
-    fn prompt_mentions_break_after_only() {
-        let p = build_export_polish_prompt("a\nb", 2, "", "", None, None);
-        assert!(p.contains("break_after_line"));
-        assert!(p.contains("回退原文"));
-        assert!(p.contains("300"));
-        assert!(p.contains("错误标点"));
-        assert!(p.contains("顿号"));
-    }
-
-    #[test]
-    fn prompt_and_system_prompt_encourage_contextual_typo_reasoning() {
-        let p = build_export_polish_prompt("a\nb", 2, "", "", None, None);
-        assert!(p.contains("结合上下文语义推断"));
-        assert!(p.contains("不要仅机械比对下列示例"));
-        let sys = default_export_polish_system_prompt();
-        assert!(sys.contains("需结合上下文语义推断"));
-        assert!(sys.contains("两者同等重要"));
-    }
-
-    #[test]
-    fn prompt_injects_glossary_hints_independent_of_rule_hints() {
-        let p =
-            build_export_polish_prompt("a\nb", 2, "「错」→「对」", "术语甲\n术语乙", None, None);
-        assert!(p.contains("项目专名/术语词表"));
-        assert!(p.contains("术语甲\n术语乙"));
-        assert!(p.contains("项目稳定纠错规则"));
-        assert!(p.contains("「错」→「对」"));
-    }
-
-    #[test]
-    fn prompt_omits_glossary_section_when_empty() {
-        let p = build_export_polish_prompt("a\nb", 2, "「错」→「对」", "", None, None);
-        assert!(!p.contains("项目专名/术语词表"));
-        assert!(p.contains("项目稳定纠错规则"));
-    }
-
-    #[test]
-    fn parse_json_array_of_lines() {
-        let raw = r#"["句一","句二。"]"#;
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines, vec!["句一", "句二。"]);
-        assert!(out.break_after_line.is_empty());
-    }
-
-    #[test]
-    fn parse_plain_newline_lines_fallback() {
-        let raw = "句一\n句二。";
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines, vec!["句一", "句二。"]);
-    }
-
-    #[test]
-    fn parse_after_think_block() {
-        let raw = r#"推理中…
-{"lines":["甲","乙。"],"break_after_line":[0]}"#;
-        let out = parse_export_polish_json(raw, 2).unwrap();
-        assert_eq!(out.punct_lines, vec!["甲", "乙。"]);
-        assert_eq!(out.break_after_line, vec![0]);
-    }
-
-    #[test]
-    fn plan_batches_splits_over_threshold() {
-        let lines: Vec<String> = (0..150).map(|i| format!("行{i}")).collect();
-        let body = lines.join(&EXPORT_POLISH_LINE_SEPARATOR.to_string());
-        let batches = plan_export_polish_batch_bodies(&body);
-        assert_eq!(batches.len(), 2);
-        assert_eq!(count_body_lines(&batches[0]), 100);
-        assert_eq!(count_body_lines(&batches[1]), 50);
-    }
-
-    #[test]
-    fn split_batch_body_halves_lines() {
-        let body = format!(
-            "a{}b{}c{}d",
-            EXPORT_POLISH_LINE_SEPARATOR,
-            EXPORT_POLISH_LINE_SEPARATOR,
-            EXPORT_POLISH_LINE_SEPARATOR
-        );
-        let (left, right) = split_export_polish_batch_body(&body).unwrap();
-        assert_eq!(count_body_lines(&left), 2);
-        assert_eq!(count_body_lines(&right), 2);
-    }
-
-    #[test]
-    fn retriable_errors_cover_truncate_and_parse() {
-        assert!(export_polish_error_is_retriable(
-            "x 模型输出被截断（finish_reason=length，max_tokens=1024）"
-        ));
-        assert!(export_polish_error_is_retriable(
-            "模型未返回可解析的 JSON（需 lines + break_after_line）：eof"
-        ));
-        assert!(!export_polish_error_is_retriable("大模型润色请求已取消。"));
-        assert!(!export_polish_error_is_retriable("LLM 未配置。"));
-    }
-
-    #[test]
-    fn lines_from_body_preserves_in_segment_newlines() {
-        let body = format!("a{}b\nc", EXPORT_POLISH_LINE_SEPARATOR);
-        assert_eq!(lines_from_export_polish_body(&body), vec!["a", "b\nc"]);
-        assert_eq!(count_body_lines(&body), 2);
-    }
-
-    #[test]
-    fn align_punct_lines_fills_empty_from_originals() {
-        let batch = format!("甲{}乙", EXPORT_POLISH_LINE_SEPARATOR);
-        let mut lines = vec!["甲。".to_string(), String::new()];
-        align_punct_lines_to_batch(&mut lines, 2, &batch);
-        assert_eq!(lines, vec!["甲。".to_string(), "乙".to_string()]);
-    }
-
-    #[test]
-    fn plan_batches_single_under_threshold() {
-        let body = "a\nb\nc";
-        let batches = plan_export_polish_batch_bodies(body);
-        assert_eq!(batches.len(), 1);
-        assert_eq!(count_body_lines(&batches[0]), 3);
-    }
-
-    #[test]
-    fn merge_batches_offsets_breaks_and_skips_boundary() {
-        let b0 = ExportPolishParsed {
-            punct_lines: vec!["a".into(), "b".into()],
-            break_after_line: vec![0, 1],
-        };
-        let b1 = ExportPolishParsed {
-            punct_lines: vec!["c".into()],
-            break_after_line: vec![0],
-        };
-        let merged = merge_export_polish_batches(vec![b0, b1], &[2, 1]);
-        assert_eq!(merged.punct_lines, vec!["a", "b", "c"]);
-        assert_eq!(merged.break_after_line, vec![0, 2]);
-    }
-}
+#[path = "postprocess_export_polish_tests.rs"]
+mod tests;

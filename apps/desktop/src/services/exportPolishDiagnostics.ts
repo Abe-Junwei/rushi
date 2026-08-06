@@ -5,9 +5,12 @@ import {
   type ExportPolishLineChange,
 } from "./exportPolishPipeline";
 import { graphemeCount, splitGraphemes } from "./text/grapheme";
-import type { ExportRuleApplyStats } from "./exportPolishFinalize";
 
-type ExportPolishLlmLineOutcome = "unchanged" | "adopted_punct" | "adopted_typo";
+type ExportPolishLlmLineOutcome =
+  | "unchanged"
+  | "adopted_punct"
+  | "adopted_typo"
+  | "rejected";
 
 type ExportPolishLineDiagnostic = {
   lineIndex: number;
@@ -27,9 +30,14 @@ export type ExportPolishDiagnosticSummary = {
   acceptedSingleCharRules: number;
 };
 
-function classifyLlmLine(before: string, llm: string): ExportPolishLlmLineOutcome {
-  if (llm === before) return "unchanged";
-  if (isPunctuationOnlyLineDiff(before, llm)) return "adopted_punct";
+function classifyLlmLine(
+  trusted: string,
+  llm: string,
+  rejected: boolean,
+): ExportPolishLlmLineOutcome {
+  if (rejected) return "rejected";
+  if (llm === trusted) return "unchanged";
+  if (isPunctuationOnlyLineDiff(trusted, llm)) return "adopted_punct";
   return "adopted_typo";
 }
 
@@ -70,11 +78,10 @@ function llmHanEditRatioForLine(before: string, llm: string): number {
 
 export function buildExportPolishDiagnosticSummary(args: {
   beforeLines: string[];
+  trustedLines: string[];
   llmLines: string[];
-  llmMerged: string[];
-  finalLines: string[];
   lineChanges: ExportPolishLineChange[];
-  ruleStats: ExportRuleApplyStats;
+  rejectedLineIndices: number[];
   rules: CorrectionRuleRow[];
 }): ExportPolishDiagnosticSummary {
   const { acceptedSingleCharRules, singleCharRulesSkipped } = countSingleCharRulesInHints(
@@ -83,20 +90,22 @@ export function buildExportPolishDiagnosticSummary(args: {
   const lines: ExportPolishLineDiagnostic[] = [];
   let llmTypoLines = 0;
   let llmPunctLines = 0;
+  let llmRejectedLines = 0;
+  const rejectedLines = new Set(args.rejectedLineIndices);
   const n = args.beforeLines.length;
   for (let i = 0; i < n; i += 1) {
     const before = args.beforeLines[i] ?? "";
-    const llm = args.llmLines[i] ?? before;
-    const merged = args.llmMerged[i] ?? before;
-    const final = args.finalLines[i] ?? before;
-    const outcome = classifyLlmLine(before, llm);
+    const trusted = args.trustedLines[i] ?? before;
+    const llm = args.llmLines[i] ?? trusted;
+    const outcome = classifyLlmLine(trusted, llm, rejectedLines.has(i));
     if (outcome === "adopted_typo") llmTypoLines += 1;
     if (outcome === "adopted_punct") llmPunctLines += 1;
+    if (outcome === "rejected") llmRejectedLines += 1;
     lines.push({
       lineIndex: i,
       llmOutcome: outcome,
-      llmHanEditRatio: llmHanEditRatioForLine(before, llm),
-      ruleChanged: merged !== final,
+      llmHanEditRatio: llmHanEditRatioForLine(trusted, llm),
+      ruleChanged: before !== trusted,
     });
   }
 
@@ -111,7 +120,7 @@ export function buildExportPolishDiagnosticSummary(args: {
     lines,
     llmTypoLines,
     llmPunctLines,
-    llmRejectedLines: 0,
+    llmRejectedLines,
     typoInFinal,
     punctInFinal,
     singleCharRulesSkipped,
@@ -132,12 +141,14 @@ export function formatExportPolishDiagnosticHint(summary: ExportPolishDiagnostic
   if (summary.acceptedSingleCharRules > 0) {
     parts.push(`已启用 ${summary.acceptedSingleCharRules} 条纳入规则的单字替换`);
   }
+  if (summary.llmRejectedLines > 0) {
+    parts.push(`${summary.llmRejectedLines} 行模型结果未通过正文完整性门禁`);
+  }
   if (summary.llmTypoLines === 0 && summary.typoInFinal === 0 && summary.llmPunctLines > 0) {
     parts.push("模型仅改标点；明显错字请在记忆库纳入规则或检查 LLM 配置");
   }
   if (summary.llmPunctLines === 0 && summary.llmTypoLines === 0 && summary.typoInFinal === 0) {
-    parts.push("模型 lines 与语段未产生可展示修订，请检查 LLM 输出");
+    parts.push("模型 items 与语段未产生可展示修订，请检查 LLM 输出");
   }
   return parts.length > 0 ? parts.join("；") : null;
 }
-

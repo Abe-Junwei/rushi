@@ -14,10 +14,10 @@ import { correctionStableRulesList } from "../tauri/correctionApi";
 import { glossaryList } from "../tauri/glossaryApi";
 import {
   applyRulesToSegmentLines,
+  applyPunctuationOnlyExportPolish,
   buildExportPolishLineChanges,
-  clampExportPolishLinesToEligible,
+  exportPolishLinesPreserveTrustedContent,
   joinLinesForLlmBody,
-  reconcileLlmPolishLines,
   segmentLinesFromSegments,
   type ExportPolishLineChange,
   type ReconcileLlmLinesStats,
@@ -123,7 +123,10 @@ export async function fetchExportPolishResult(
   const [rules, glossaryTerms] = await Promise.all([correctionStableRulesList(), glossaryList()]);
   const ruleHints = buildExportPolishRuleHints(rules);
   const glossaryHints = buildExportPolishGlossaryHints(glossaryTerms);
-  const body = joinLinesForLlmBody(beforeLines);
+  // 本地规则是唯一可信的正文改写源；LLM 只在此基线上调整标点与分段。
+  const ruled = applyRulesToSegmentLines(beforeLines, rules);
+  const trustedLines = ruled.lines;
+  const body = joinLinesForLlmBody(trustedLines);
 
   const req: PostprocessExportPolishRequest = {
     task: "export_polish",
@@ -137,15 +140,32 @@ export async function fetchExportPolishResult(
   const out = await postprocessExportPolish(req);
 
   if (out.punctLines.length === 0) {
-    throw new Error("模型未返回 lines（标点行），请重试。");
+    throw new Error("模型未返回 items（标点项），请重试。");
   }
-  const { lines: llmMerged, stats: reconcileStats } = reconcileLlmPolishLines(
-    beforeLines,
+  const gated = applyPunctuationOnlyExportPolish(
+    trustedLines,
     out.punctLines,
+    out.contentContractValid,
+    out.contractFallbackLineIndices ?? [],
   );
-  const clamped = clampExportPolishLinesToEligible(beforeLines, llmMerged);
-  const ruled = applyRulesToSegmentLines(clamped, rules);
-  const finalLines = ruled.lines;
+  const invariantFallback = !exportPolishLinesPreserveTrustedContent(trustedLines, gated.lines);
+  const finalLines = invariantFallback ? [...trustedLines] : gated.lines;
+  const contractFallbackLineIndices = invariantFallback
+    ? trustedLines.map((_, index) => index)
+    : gated.contractFallbackLineIndices;
+  const revertedContentLineIndices = invariantFallback
+    ? []
+    : gated.revertedContentLineIndices;
+  const paddedLineIndices = [
+    ...new Set([...contractFallbackLineIndices, ...revertedContentLineIndices]),
+  ].sort((a, b) => a - b);
+  const reconcileStats: ReconcileLlmLinesStats = {
+    llmCount: out.punctLines.length,
+    segmentCount: trustedLines.length,
+    paddedFromBefore: paddedLineIndices.length,
+    mergedSegmentPairs: 0,
+    paddedLineIndices,
+  };
   const coalescedBreaks = coalesceExportParagraphBreaks(finalLines, out.breakAfterLine);
   const paragraphs = buildParagraphsFromBreaks(finalLines, coalescedBreaks);
   if (paragraphs.length === 0) {
@@ -155,22 +175,27 @@ export async function fetchExportPolishResult(
   const lineChanges = buildExportPolishLineChanges(beforeLines, finalLines);
   const diagnostic = buildExportPolishDiagnosticSummary({
     beforeLines,
+    trustedLines,
     llmLines: out.punctLines,
-    llmMerged,
-    finalLines,
     lineChanges,
-    ruleStats: ruled.stats,
+    rejectedLineIndices: paddedLineIndices,
     rules,
   });
   let diagnosticHint = formatExportPolishDiagnosticHint(diagnostic);
+  if (contractFallbackLineIndices.length > 0) {
+    const note = `${contractFallbackLineIndices.length} 行所在批次的模型 ID/结构异常，正文已安全回退`;
+    diagnosticHint = diagnosticHint ? `${diagnosticHint}；${note}` : note;
+  }
+  if (revertedContentLineIndices.length > 0) {
+    const note = `${revertedContentLineIndices.length} 行包含模型正文删改，已回退可信正文`;
+    diagnosticHint = diagnosticHint ? `${diagnosticHint}；${note}` : note;
+  }
+  if (invariantFallback) {
+    const note = "最终正文完整性断言未通过，整稿已回退可信正文";
+    diagnosticHint = diagnosticHint ? `${diagnosticHint}；${note}` : note;
+  }
   if (reconcileStats.llmCount !== reconcileStats.segmentCount) {
-    const alignNote = `模型返回 ${reconcileStats.llmCount} 行、语段 ${reconcileStats.segmentCount} 行，已自动对齐${
-      reconcileStats.mergedSegmentPairs > 0
-        ? `（合并 ${reconcileStats.mergedSegmentPairs} 处）`
-        : ""
-    }${
-      reconcileStats.paddedFromBefore > 0 ? `（${reconcileStats.paddedFromBefore} 行保留原文）` : ""
-    }`;
+    const alignNote = `模型返回 ${reconcileStats.llmCount} 项、语段 ${reconcileStats.segmentCount} 行，正文已整稿回退可信内容`;
     diagnosticHint = diagnosticHint ? `${diagnosticHint}；${alignNote}` : alignNote;
   }
 
