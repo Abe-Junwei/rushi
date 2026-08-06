@@ -156,7 +156,11 @@ fn filter_char_diff_hunks_for_export_track(pieces: Vec<DiffPiece>) -> Vec<DiffPi
                         push_ins_char(&mut out, ch);
                     }
                 } else if !ins.is_empty() {
+                    // 大段改写：正文用润色后文本（不进修订轨）。
                     push_same_str(&mut out, &ins);
+                } else if !del.is_empty() {
+                    // 不合格的纯删除不得静默丢掉原文（干净稿丢句防护）。
+                    push_same_str(&mut out, &del);
                 }
             }
         }
@@ -379,6 +383,29 @@ mod tests {
         assert!(
             markup_len * 100 <= before.chars().count().max(1) * 15,
             "markup too large ({markup_len}): {pieces:?}"
+        );
+    }
+
+    #[test]
+    fn export_track_keeps_ineligible_pure_deletion_as_same() {
+        // Large mid-line deletion → filter path; must not drop deleted text from body.
+        let before = "开场先说纪律。我们把禅堂看得比殿堂还要重。虽然条件简陋，但对学修很投入。";
+        let after = "开场先说纪律。虽然条件简陋，但对学修很投入。";
+        let pieces = diff_pieces_for_export_track(before, after);
+        let body: String = pieces
+            .iter()
+            .filter_map(|p| match p {
+                DiffPiece::Same(s) | DiffPiece::Ins(s) => Some(s.as_str()),
+                DiffPiece::Del(_) => None,
+            })
+            .collect();
+        assert!(
+            body.contains("禅堂"),
+            "ineligible pure deletion must remain as Same in body: {pieces:?} body={body}"
+        );
+        assert!(
+            !pieces_have_markup(&pieces),
+            "large pure deletion should not become track markup: {pieces:?}"
         );
     }
 

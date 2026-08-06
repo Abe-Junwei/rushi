@@ -170,7 +170,11 @@ function filterCharDiffHunks(pieces: DiffPiece[]): DiffPiece[] {
       if (del) out.push({ kind: "del", text: del });
       if (ins) out.push({ kind: "ins", text: ins });
     } else if (ins) {
+      // 大段改写：正文用润色后文本（不进修订轨）。
       out.push({ kind: "same", text: ins });
+    } else if (del) {
+      // 不合格的纯删除不得静默丢掉原文（干净稿丢句防护）。
+      out.push({ kind: "same", text: del });
     }
   }
   return out;

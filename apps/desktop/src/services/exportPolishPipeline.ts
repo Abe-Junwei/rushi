@@ -171,6 +171,9 @@ function levenshteinGraphemes(a: string, b: string): number {
   return dp[n] ?? Math.max(m, n);
 }
 
+/** 去标点后允许的净删除字素数（错字级）；更大净删回退原文，防干净稿丢句。 */
+const MAX_NET_CONTENT_DELETE_GRAPHEMES = 2;
+
 /** 本语段改动是否应进入 Word 修订轨（仅错字/标点，不含大段改写）。 */
 export function lineEligibleForExportTrack(before: string, after: string): boolean {
   if (before === after) return false;
@@ -178,6 +181,10 @@ export function lineEligibleForExportTrack(before: string, after: string): boole
   const b = stripForPunctCompare(before);
   const a = stripForPunctCompare(after);
   if (b === a) return true;
+  // LLM 常在长行内删掉中间几句且总编辑距离仍 ≤12%；禁止净删超过 typo 量级。
+  if (countGraphemes(b) > countGraphemes(a) + MAX_NET_CONTENT_DELETE_GRAPHEMES) {
+    return false;
+  }
   const dist = levenshteinGraphemes(b, a);
   const maxLen = Math.max(countGraphemes(b), countGraphemes(a), 1);
   return dist <= 4 || dist / maxLen <= 0.12;
