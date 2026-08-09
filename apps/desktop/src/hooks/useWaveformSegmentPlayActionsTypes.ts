@@ -2,12 +2,15 @@ import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { ActiveSegmentPlaybackBound } from "../utils/segmentPlaybackBound";
 import type { PlaybackTransport } from "../services/waveform/transport";
+import type { SegmentPlayMode } from "../services/waveform/transport/transportTypes";
 
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
   loop?: boolean;
   /** 显式起播时刻（点击/双击）；钳在语段内。 */
   fromSec?: number;
+  /** 本段控件使用 scoped；Space/全局续播保留 resumeOrContinue。 */
+  mode?: SegmentPlayMode;
 };
 
 export type WaveformSegmentPlayActionsArgs = {

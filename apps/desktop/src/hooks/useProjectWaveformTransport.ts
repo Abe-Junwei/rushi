@@ -224,12 +224,16 @@ export function useProjectWaveformTransport(args: {
   );
 
   const playSegmentAtIndex = useCallback(
-    async (idx: number, playOpts?: { loop?: boolean; fromSec?: number }) => {
+    async (
+      idx: number,
+      playOpts?: import("./useWaveformSegmentPlayActionsTypes").PlaySegmentAtIndexOptions,
+    ) => {
       await dispatchTransport({
         kind: "playSegment",
         idx,
         fromSec: playOpts?.fromSec,
         loop: playOpts?.loop,
+        mode: playOpts?.mode,
       });
     },
     [dispatchTransport],

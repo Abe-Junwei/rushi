@@ -39,7 +39,7 @@ export function buildProjectWaveformPublicApi(input: {
   >;
   playSegmentAtIndex: (
     idx: number,
-    playOpts?: { loop?: boolean; fromSec?: number },
+    playOpts?: import("./useWaveformSegmentPlayActionsTypes").PlaySegmentAtIndexOptions,
   ) => Promise<void>;
   handleToggleSelectedWaveformPlay: () => Promise<void>;
   dispatchTransport: (intent: import("../services/waveform/transport").TransportIntent) => Promise<void>;

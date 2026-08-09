@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import {
   resolveMediaPlaybackHost,
-  resolveSegmentPlayFrom,
+  resolveSegmentPlayFromForMode,
   type SegmentPlayFromResolution,
 } from "../services/waveform/transport";
 import {
@@ -160,12 +160,15 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
       });
       pausedResumeAnchorRef.current = null;
       autoStoppedSegmentIdxRef.current = null;
-      const playFrom = resolveSegmentPlayFrom({
-        segment: seg,
-        fromSec: resumeFromSec,
-        displaySec: resolvePlayheadSec(),
-        authoritySec: getAuthorityPlayheadTimeSec?.(),
-      });
+      const playFrom = resolveSegmentPlayFromForMode(
+        {
+          segment: seg,
+          fromSec: resumeFromSec,
+          displaySec: resolvePlayheadSec(),
+          authoritySec: getAuthorityPlayheadTimeSec?.(),
+        },
+        options?.mode,
+      );
       await runPlaySegmentResolvedCb({
         idx,
         playFrom,

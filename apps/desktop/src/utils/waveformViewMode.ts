@@ -24,6 +24,8 @@ export type SegmentSelectAtOptions = {
   burst?: boolean;
   /** Caller focuses segment textarea; skip waveform shell focus (e.g. after drag-create). */
   preferSegmentTextFocus?: boolean;
+  /** Explicit scoped-play owns start; do not queue sticky listen-jump playback. */
+  suppressStickyListenJump?: boolean;
 };
 
 export function isListKeyboardBurstStep(

@@ -2,7 +2,7 @@ import type { TransportIntent } from "./transportTypes";
 import {
   resolveSeekTargetTime,
   resolveSelectTransportSeekTime,
-  resolveSegmentPlayFrom,
+  resolveSegmentPlayFromForMode,
   type ResolveSegmentPlayFromInput,
 } from "./resolveTransportTargetTime";
 
@@ -23,12 +23,12 @@ export type TransportDispatchDeps = {
   /** Apply Peaks-ordered seek (sync display → setTime → commit). */
   applySeek: (timeSec: number, opts?: { suppressFollow?: boolean }) => void | Promise<void>;
   /**
-   * Segment play with play-from already resolved by {@link resolveSegmentPlayFrom}.
+   * Segment play with play-from already resolved by the intent-aware resolver.
    * Hook owns bound arm / rate / generation.
    */
   runPlaySegment: (args: {
     idx: number;
-    playFrom: ReturnType<typeof resolveSegmentPlayFrom>;
+    playFrom: ReturnType<typeof resolveSegmentPlayFromForMode>;
     loop?: boolean;
   }) => Promise<void>;
   runToggleSegmentPlay: () => Promise<void>;
@@ -72,7 +72,7 @@ export async function dispatchTransportIntent(
         deps.resolveSegmentResumeFromSec?.(intent.idx, intent.fromSec) ?? intent.fromSec;
       const input = deps.resolvePlayFromInput(intent.idx, resumeFromSec);
       if (!input) return;
-      const playFrom = resolveSegmentPlayFrom(input);
+      const playFrom = resolveSegmentPlayFromForMode(input, intent.mode);
       await deps.runPlaySegment({
         idx: intent.idx,
         playFrom,

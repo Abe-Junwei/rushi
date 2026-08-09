@@ -305,6 +305,55 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalledWith();
   });
 
+  it("scoped play jumps from 3600s to the target and still stops at its end", async () => {
+    let playhead = 3600;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
+    });
+
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef: { current: ws },
+        isReady: true,
+        segments: [...segments],
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => {
+      await result.current.playSegmentAtIndex(0, { mode: "scoped" });
+    });
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(playing).toBe(true);
+
+    playhead = 15;
+    act(() => emit("audioprocess"));
+    playhead = 20;
+    await act(async () => {
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
+    });
+    expect(ws.pause).toHaveBeenCalled();
+    expect(playing).toBe(false);
+  });
+
   it("prefers explicit fromSec over authority", async () => {
     const ws = makeWs();
     const wsRef = { current: ws };

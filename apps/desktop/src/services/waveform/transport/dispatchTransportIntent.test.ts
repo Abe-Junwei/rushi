@@ -66,6 +66,27 @@ describe("dispatchTransportIntent", () => {
     });
   });
 
+  it("scoped playSegment seeks a distant earlier segment instead of continuing", async () => {
+    const runPlaySegment = vi.fn(async () => {});
+    await dispatchTransportIntent(
+      { kind: "playSegment", idx: 0, mode: "scoped" },
+      makeDeps({
+        runPlaySegment,
+        resolvePlayFromInput: (_idx, fromSec) => ({
+          segment: { start_sec: 10, end_sec: 20 },
+          displaySec: 3600,
+          authoritySec: 3600,
+          fromSec,
+        }),
+      }),
+    );
+    expect(runPlaySegment).toHaveBeenCalledWith({
+      idx: 0,
+      playFrom: { kind: "seek", timeSec: 10 },
+      loop: undefined,
+    });
+  });
+
   it("playSegment consumes sticky natural-end resume before resolving play-from", async () => {
     const runPlaySegment = vi.fn(async () => {});
     const resolveSegmentResumeFromSec = vi.fn((_idx: number, fromSec?: number) => {

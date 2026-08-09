@@ -143,9 +143,9 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             return;
           }
           if (c.selectedIdx !== idx) {
-            tx.selectSegmentFromList(idx);
+            tx.selectSegmentFromList(idx, { suppressStickyListenJump: true });
           }
-          void tx.playSegmentAtIndex(idx);
+          void tx.playSegmentAtIndex(idx, { mode: "scoped" });
         }}
         onToggleSegmentLoop={(idx) => {
           dispatchSegmentLoopButtonClick({

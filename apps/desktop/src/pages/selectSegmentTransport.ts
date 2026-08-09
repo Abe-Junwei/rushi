@@ -133,7 +133,7 @@ export function selectSegmentTransport(
   if (isListListenJump) {
     notifyPlaybackFollowSegmentSelect?.(idx);
   }
-  if (shouldSeek && isListListenJump) {
+  if (shouldSeek && isListListenJump && !opts?.suppressStickyListenJump) {
     beginGlobalPlayback?.(idx);
   }
   dispatchTranscriptEditorSelection(idx, {

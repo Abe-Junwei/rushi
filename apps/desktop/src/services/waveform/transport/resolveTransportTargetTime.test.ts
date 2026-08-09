@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   resolveSegmentPlayFrom,
+  resolveSegmentPlayFromForMode,
   resolveSeekTargetTime,
   resolveSelectTransportSeekTime,
 } from "./resolveTransportTargetTime";
@@ -116,6 +117,38 @@ describe("resolveSegmentPlayFrom", () => {
         authoritySec: 2,
       }),
     ).toEqual({ kind: "seek", timeSec: 10 });
+  });
+});
+
+describe("resolveSegmentPlayFromForMode", () => {
+  it("scoped play restarts a distant target while continue mode preserves gap-after", () => {
+    const input = {
+      segment: seg,
+      displaySec: 3600,
+      authoritySec: 3600,
+    };
+    expect(resolveSegmentPlayFromForMode(input, "scoped")).toEqual({
+      kind: "seek",
+      timeSec: 10,
+    });
+    expect(resolveSegmentPlayFromForMode(input, "resumeOrContinue")).toEqual({
+      kind: "resumeSkipSeek",
+    });
+  });
+
+  it("scoped play keeps explicit and in-segment resume positions", () => {
+    expect(
+      resolveSegmentPlayFromForMode(
+        { segment: seg, fromSec: 16, displaySec: 3600, authoritySec: 3600 },
+        "scoped",
+      ),
+    ).toEqual({ kind: "seek", timeSec: 16 });
+    expect(
+      resolveSegmentPlayFromForMode(
+        { segment: seg, displaySec: 15, authoritySec: 15 },
+        "scoped",
+      ),
+    ).toEqual({ kind: "resumeSkipSeek" });
   });
 });
 

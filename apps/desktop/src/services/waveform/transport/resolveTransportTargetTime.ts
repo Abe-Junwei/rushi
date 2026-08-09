@@ -1,6 +1,7 @@
 import {
   TRANSPORT_DISPLAY_LAG_RESUME_CAP_SEC,
   TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC,
+  type SegmentPlayMode,
   type SegmentPlayFromResolution,
 } from "./transportTypes";
 
@@ -100,6 +101,26 @@ export function resolveSegmentPlayFrom(
 
   // Before segment start (e.g. selected next segment while playhead still earlier).
   return { kind: "seek", timeSec: start };
+}
+
+/**
+ * Intent-aware segment play resolver.
+ *
+ * Explicit scoped controls own their target segment. When the visible playhead
+ * is outside it, restart from the segment head instead of inheriting the
+ * resume/continue resolver's deliberate gap-after behavior.
+ */
+export function resolveSegmentPlayFromForMode(
+  input: ResolveSegmentPlayFromInput,
+  mode: SegmentPlayMode = "resumeOrContinue",
+): SegmentPlayFromResolution {
+  if (mode !== "scoped" || (input.fromSec != null && Number.isFinite(input.fromSec))) {
+    return resolveSegmentPlayFrom(input);
+  }
+  const start = Math.min(input.segment.start_sec, input.segment.end_sec);
+  const end = Math.max(input.segment.start_sec, input.segment.end_sec);
+  const displayInside = input.displaySec >= start && input.displaySec < end;
+  return resolveSegmentPlayFrom(displayInside ? input : { ...input, fromSec: start });
 }
 
 export type ResolveSeekTargetInput = {

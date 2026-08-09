@@ -8,6 +8,7 @@ import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
+import type { SegmentSelectAtOptions } from "../utils/waveformViewMode";
 import { clearWaveformSegmentPreviewViewportSync } from "../services/waveform/waveformSegmentSelectPreviewSync";
 import { isGlobalPlaybackSession } from "../utils/playbackSession";
 import {
@@ -150,7 +151,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       ) {
         // Sticky segment session + listen-jump → open segment play for the new sentence.
         queueMicrotask(() => {
-          void timeline.wf.playSegmentAtIndex(idx);
+          void timeline.wf.playSegmentAtIndex(idx, { mode: "scoped" });
         });
         return;
       }
@@ -243,7 +244,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
   const selectSegmentFromList = useCallback(
-    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean; forceSeek?: boolean }) => {
+    (idx: number, opts?: SegmentSelectAtOptions) => {
       const source = opts
         ? "list"
         : nextListSelectSource(Date.now(), segmentListDrag.listSelectSourceStateRef.current);

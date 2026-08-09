@@ -2,11 +2,13 @@ export type {
   TransportIntent,
   TransportSource,
   SelectSegmentSeekPolicy,
+  SegmentPlayMode,
   SegmentPlayFromResolution,
 } from "./transportTypes";
 export { TRANSPORT_RAW_DISPLAY_RESUME_EPSILON_SEC } from "./transportTypes";
 export {
   resolveSegmentPlayFrom,
+  resolveSegmentPlayFromForMode,
   resolveSeekTargetTime,
   resolveSelectTransportSeekTime,
 } from "./resolveTransportTargetTime";

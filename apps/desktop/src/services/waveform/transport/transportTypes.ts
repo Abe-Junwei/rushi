@@ -17,6 +17,9 @@ export type TransportSource =
 
 export type SelectSegmentSeekPolicy = "segmentStart" | "none" | "pointerTime";
 
+/** Scoped UI play must target the segment; resume/continue preserves gap-after semantics. */
+export type SegmentPlayMode = "scoped" | "resumeOrContinue";
+
 export type TransportIntent =
   | {
       kind: "seek";
@@ -29,6 +32,7 @@ export type TransportIntent =
       idx: number;
       fromSec?: number;
       loop?: boolean;
+      mode?: SegmentPlayMode;
     }
   | { kind: "toggleSegmentPlay" }
   | { kind: "pause" }

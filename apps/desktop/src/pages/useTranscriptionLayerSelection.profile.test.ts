@@ -242,6 +242,34 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
   });
 
+  it("explicit segment play selection suppresses sticky listen-jump auto-play", () => {
+    const ctx = makeCtx(5);
+    const selectedIdxRef = { current: 0 };
+    ctx.selectedIdxRef = selectedIdxRef;
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const beginGlobalPlayback = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        segmentListRef: { current: null },
+        selectedIdxRef,
+        beginGlobalPlayback,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "list", { suppressStickyListenJump: true });
+    });
+
+    expect(beginGlobalPlayback).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+  });
+
   it("list shift/toggle does not seek or beginGlobalPlayback", () => {
     const ctx = makeCtx(5);
     const selectedIdxRef = { current: 0 };
