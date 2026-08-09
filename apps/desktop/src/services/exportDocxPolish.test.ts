@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   EXPORT_POLISH_LINE_SEPARATOR,
+  exportPolishSnapshotUids,
   joinSegmentTextsForExportPolish,
   splitExportPolishJoinedBody,
 } from "./exportDocxPolish.helpers";
@@ -8,6 +9,7 @@ import {
   exportModeRequiresLlmPolish,
   exportModeSupportsLlmPolish,
   exportWantsLlmPolish,
+  fetchExportLectureOptimizeResult,
   fetchExportPolishResult,
   resolveExportPolishBlockReason,
 } from "./exportDocxPolish";
@@ -66,11 +68,11 @@ describe("exportDocxPolish", () => {
     expect(exportModeSupportsLlmPolish("verbatim")).toBe(false);
   });
 
-  it("requires polish for clean", () => {
+  it("requires the matching LLM task for fidelity and lecture optimize", () => {
     expect(exportModeRequiresLlmPolish("clean")).toBe(true);
-    expect(exportModeRequiresLlmPolish("lecture")).toBe(false);
+    expect(exportModeRequiresLlmPolish("lecture")).toBe(true);
     expect(exportWantsLlmPolish("clean", false)).toBe(true);
-    expect(exportWantsLlmPolish("lecture", false)).toBe(false);
+    expect(exportWantsLlmPolish("lecture", false)).toBe(true);
     expect(exportWantsLlmPolish("lecture", true)).toBe(true);
   });
 
@@ -80,6 +82,19 @@ describe("exportDocxPolish", () => {
     );
     const joined = joinSegmentTextsForExportPolish([seg("a"), seg("b\nc")]);
     expect(splitExportPolishJoinedBody(joined)).toEqual(["a", "b\nc"]);
+  });
+
+  it("uses stable segment uids and deterministic snapshot fallbacks", () => {
+    const rows = [
+      { ...seg("a"), uid: "stable", idx: 7 },
+      { ...seg("b"), uid: "stable", idx: 8 },
+      { ...seg("c"), idx: 9 },
+    ];
+    expect(exportPolishSnapshotUids(rows)).toEqual([
+      "stable",
+      "export-snapshot:1:8",
+      "export-snapshot:2:9",
+    ]);
   });
 
   it("blocks empty", () => {
@@ -174,5 +189,120 @@ describe("exportDocxPolish", () => {
     expect(result.reconcileStats.paddedLineIndices).toEqual([1]);
     expect(result.diagnostic.llmPunctLines).toBe(1);
     expect(result.diagnostic.llmRejectedLines).toBe(1);
+  });
+
+  it("keeps lecture optimization rewrites and uses the dedicated task", async () => {
+    vi.mocked(tryBuildPostprocessRuntimeBridge).mockReturnValue({
+      provider: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "test-key",
+    });
+    vi.mocked(postprocessExportPolish).mockResolvedValue({
+      punctLines: ["今天讨论这个问题。", "这个问题很重要。"],
+      contentContractValid: true,
+      contractFallbackLineIndices: [],
+      breakAfterLine: [1],
+      provider: "DeepSeek",
+      latency_ms: 1,
+    });
+
+    const result = await fetchExportLectureOptimizeResult([
+      seg("嗯那个我们今天说这个问题"),
+      seg("这个这个问题很重要"),
+    ]);
+
+    expect(postprocessExportPolish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        task: "export_lecture_optimize",
+        lineCount: 2,
+        lineUids: ["export-snapshot:0:0", "export-snapshot:1:0"],
+      }),
+    );
+    expect(result.strategy).toBe("lecture_optimize");
+    expect(result.correctedLines).toEqual(["今天讨论这个问题。", "这个问题很重要。"]);
+  });
+
+  it("forces declared invalid lecture items back to their original text", async () => {
+    vi.mocked(tryBuildPostprocessRuntimeBridge).mockReturnValue({
+      provider: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "test-key",
+    });
+    vi.mocked(postprocessExportPolish).mockResolvedValue({
+      punctLines: ["第一批优化。", "不应采用的改写。"],
+      contentContractValid: false,
+      contractFallbackLineIndices: [1],
+      breakAfterLine: [],
+      provider: "DeepSeek",
+      latency_ms: 1,
+    });
+
+    const result = await fetchExportLectureOptimizeResult([seg("第一批"), seg("第二批原文")]);
+
+    expect(result.correctedLines).toEqual(["第一批优化。", "第二批原文"]);
+    expect(result.reconcileStats.paddedLineIndices).toEqual([1]);
+  });
+
+  it("reports rejected neighbor-context echoes", async () => {
+    vi.mocked(tryBuildPostprocessRuntimeBridge).mockReturnValue({
+      provider: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "test-key",
+    });
+    vi.mocked(postprocessExportPolish).mockResolvedValue({
+      punctLines: ["上一段完整内容。", "当前语段原文。"],
+      contentContractValid: true,
+      contractFallbackLineIndices: [1],
+      breakAfterLine: [],
+      protocolStats: {
+        omittedUnchanged: 0,
+        invalidEdits: 1,
+        unknownUids: 0,
+        duplicateUids: 0,
+        emptyEdits: 0,
+        malformedEdits: 0,
+        contextEchoEdits: 1,
+        invalidBreakUids: 0,
+        legacyResponse: false,
+        sparseResponse: true,
+        retriedEdits: 1,
+        recoveredEdits: 0,
+      },
+      provider: "DeepSeek",
+      latency_ms: 1,
+    });
+
+    const result = await fetchExportLectureOptimizeResult([
+      seg("上一段完整内容。"),
+      seg("当前语段原文。"),
+    ]);
+
+    expect(result.correctedLines).toEqual(["上一段完整内容。", "当前语段原文。"]);
+    expect(result.diagnosticHint).toContain("检测到 1 次邻段内容复述，已拦截");
+  });
+
+  it("falls back the whole lecture when invalid contract metadata has no usable indices", async () => {
+    vi.mocked(tryBuildPostprocessRuntimeBridge).mockReturnValue({
+      provider: "DeepSeek",
+      baseUrl: "https://api.deepseek.com",
+      model: "deepseek-chat",
+      apiKey: "test-key",
+    });
+    vi.mocked(postprocessExportPolish).mockResolvedValue({
+      punctLines: ["不可信改写一。", "不可信改写二。"],
+      contentContractValid: false,
+      contractFallbackLineIndices: [99],
+      breakAfterLine: [],
+      provider: "DeepSeek",
+      latency_ms: 1,
+    });
+
+    const result = await fetchExportLectureOptimizeResult([seg("原文一"), seg("原文二")]);
+
+    expect(result.correctedLines).toEqual(["原文一", "原文二"]);
+    expect(result.reconcileStats.paddedLineIndices).toEqual([0, 1]);
   });
 });

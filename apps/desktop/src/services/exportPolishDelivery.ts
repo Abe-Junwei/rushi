@@ -26,7 +26,7 @@ export type ExportPolishReadiness = {
   blockReason: string | null;
 };
 
-/** 勾选大模型润色时：仅检查 LLM/正文前置条件（导出时再请求模型，无需预览）。 */
+/** LLM 导出模式：仅检查 LLM/正文前置条件（导出时再请求模型，无需预览）。 */
 export function assessExportPolishReadiness(
   segments: SegmentDto[],
   mode: DocxExportMode,

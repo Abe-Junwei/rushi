@@ -16,6 +16,7 @@ function seg(text: string): SegmentDto {
 function mockResult(segments: SegmentDto[]): ExportPolishResult {
   const fp = fingerprintExportPolishSegments(segments);
   return {
+    strategy: "fidelity",
     paragraphs: ["A"],
     correctedLines: ["A"],
     lineChanges: [],

@@ -5,6 +5,7 @@ import {
   type PostprocessExportPolishRequest,
 } from "../tauri/postprocessApi";
 import { countUnicodeScalars } from "./exportDocxPolish.helpers";
+import { exportPolishSnapshotUids } from "./exportDocxPolish.helpers";
 import {
   isLocalLoopbackLlmConfig,
   llmConfigHint,
@@ -39,6 +40,23 @@ import { fingerprintExportPolishSegments } from "./exportPolishPreviewCache";
 const POLISH_MODES: DocxExportMode[] = ["lecture", "clean"];
 
 export type ExportPolishResult = {
+  strategy: "fidelity" | "lecture_optimize";
+  /** 本次实际请求使用的模型名，用作 Word 修订作者。 */
+  model?: string;
+  protocolStats?: {
+    omittedUnchanged: number;
+    invalidEdits: number;
+    unknownUids: number;
+    duplicateUids: number;
+    emptyEdits: number;
+    malformedEdits: number;
+    contextEchoEdits: number;
+    invalidBreakUids: number;
+    legacyResponse: boolean;
+    sparseResponse: boolean;
+    retriedEdits: number;
+    recoveredEdits: number;
+  };
   paragraphs: string[];
   correctedLines: string[];
   /** 导出前预览：有修订的语段行。 */
@@ -57,13 +75,13 @@ export function exportModeSupportsLlmPolish(mode: DocxExportMode): boolean {
   return POLISH_MODES.includes(mode);
 }
 
-/** 干净稿导出必须走大模型润色。 */
+/** 保真整理与讲稿优化都必须走对应的 LLM 任务。 */
 export function exportModeRequiresLlmPolish(mode: DocxExportMode): boolean {
-  return mode === "clean";
+  return mode === "clean" || mode === "lecture";
 }
 
-export function exportWantsLlmPolish(mode: DocxExportMode, llmPolish: boolean): boolean {
-  return exportModeRequiresLlmPolish(mode) || (llmPolish && exportModeSupportsLlmPolish(mode));
+export function exportWantsLlmPolish(mode: DocxExportMode, _llmPolish: boolean): boolean {
+  return exportModeRequiresLlmPolish(mode);
 }
 
 function resolveExportPolishBodyBlockReason(segments: SegmentDto[]): string | null {
@@ -201,6 +219,8 @@ export async function fetchExportPolishResult(
 
   const segmentsFingerprint = fingerprintExportPolishSegments(segments);
   const result: ExportPolishResult = {
+    strategy: "fidelity",
+    model: runtime.model.trim() || undefined,
     paragraphs,
     correctedLines: finalLines,
     lineChanges,
@@ -209,6 +229,99 @@ export async function fetchExportPolishResult(
     diagnosticHint,
     segmentsFingerprint,
     reconcileStats,
+  };
+  assertExportPolishParagraphsAlignLines(result);
+  return result;
+}
+
+/** 讲稿优化：稳定 uid 稀疏 edits，正文改写全部进入 Word 修订轨。 */
+export async function fetchExportLectureOptimizeResult(
+  segments: SegmentDto[],
+  options?: { requestId?: string },
+): Promise<ExportPolishResult> {
+  const block = resolveExportPolishBlockReason(segments);
+  if (block) throw new Error(block);
+  const runtime = tryBuildPostprocessRuntimeBridge();
+  if (!runtime) throw new Error("LLM 未配置。");
+
+  const beforeLines = segmentLinesFromSegments(segments);
+  const lineUids = exportPolishSnapshotUids(segments);
+  const [rules, glossaryTerms] = await Promise.all([correctionStableRulesList(), glossaryList()]);
+  const body = joinLinesForLlmBody(beforeLines);
+  const out = await postprocessExportPolish({
+    task: "export_lecture_optimize",
+    requestId: options?.requestId,
+    body,
+    lineCount: beforeLines.length,
+    lineUids,
+    runtime,
+    ruleHints: buildExportPolishRuleHints(rules).trim() || undefined,
+    glossaryHints: buildExportPolishGlossaryHints(glossaryTerms).trim() || undefined,
+  });
+
+  const structurallyValid =
+    out.punctLines.length === beforeLines.length && out.punctLines.every((line) => line.trim().length > 0);
+  const declaredFallbackIndices = [...new Set(out.contractFallbackLineIndices ?? [])]
+    .filter((index) => Number.isInteger(index) && index >= 0 && index < beforeLines.length)
+    .sort((a, b) => a - b);
+  const fallbackIndices =
+    !structurallyValid || (!out.contentContractValid && declaredFallbackIndices.length === 0)
+      ? beforeLines.map((_, index) => index)
+      : declaredFallbackIndices;
+  const fallbackSet = new Set(fallbackIndices);
+  const finalLines = structurallyValid
+    ? out.punctLines.map((line, index) => (fallbackSet.has(index) ? (beforeLines[index] ?? "") : line))
+    : [...beforeLines];
+  const breaks = coalesceExportParagraphBreaks(finalLines, out.breakAfterLine);
+  const paragraphs = buildParagraphsFromBreaks(finalLines, breaks);
+  if (paragraphs.length === 0) throw new Error("无法生成讲稿优化修订稿，请重试。");
+
+  const lineChanges = buildExportPolishLineChanges(beforeLines, finalLines);
+  const diagnostic = buildExportPolishDiagnosticSummary({
+    beforeLines,
+    trustedLines: beforeLines,
+    llmLines: out.punctLines,
+    lineChanges,
+    rejectedLineIndices: fallbackIndices,
+    rules: [],
+  });
+  const fallbackNote =
+    fallbackIndices.length > 0 ? `${fallbackIndices.length} 条 edit 无法安全采用，已保留对应原文` : null;
+  const protocolNotes: string[] = [];
+  if (out.protocolStats?.invalidEdits) {
+    protocolNotes.push(`模型返回 ${out.protocolStats.invalidEdits} 条无效 edit，已逐条隔离`);
+  }
+  if (out.protocolStats?.contextEchoEdits) {
+    protocolNotes.push(
+      `检测到 ${out.protocolStats.contextEchoEdits} 次邻段内容复述，已拦截`,
+    );
+  }
+  if (out.protocolStats?.retriedEdits) {
+    protocolNotes.push(
+      `${out.protocolStats.retriedEdits} 条已定点重试，${out.protocolStats.recoveredEdits} 条得到安全结果`,
+    );
+  }
+  if (out.protocolStats?.legacyResponse) {
+    protocolNotes.push("模型返回旧版完整 items，已通过兼容层安全转换");
+  }
+  const result: ExportPolishResult = {
+    strategy: "lecture_optimize",
+    model: runtime.model.trim() || undefined,
+    paragraphs,
+    correctedLines: finalLines,
+    lineChanges,
+    breakAfterLine: breaks,
+    diagnostic,
+    diagnosticHint: [fallbackNote, ...protocolNotes].filter(Boolean).join("；") || null,
+    protocolStats: out.protocolStats,
+    segmentsFingerprint: fingerprintExportPolishSegments(segments),
+    reconcileStats: {
+      llmCount: out.punctLines.length,
+      segmentCount: beforeLines.length,
+      paddedFromBefore: fallbackIndices.length,
+      mergedSegmentPairs: 0,
+      paddedLineIndices: fallbackIndices,
+    },
   };
   assertExportPolishParagraphsAlignLines(result);
   return result;

@@ -48,8 +48,8 @@ describe("safeExportBasename", () => {
 describe("docxExportBasename", () => {
   it("names docx as recording label plus mode suffix", () => {
     expect(docxExportBasename("访谈录音", "verbatim")).toBe("访谈录音-逐字稿.docx");
-    expect(docxExportBasename("访谈录音", "lecture")).toBe("访谈录音-讲稿.docx");
-    expect(docxExportBasename("访谈录音", "clean")).toBe("访谈录音-干净稿.docx");
+    expect(docxExportBasename("访谈录音", "lecture")).toBe("访谈录音-讲稿优化.docx");
+    expect(docxExportBasename("访谈录音", "clean")).toBe("访谈录音-LLM 保真整理.docx");
   });
 
   it("sanitizes illegal characters in the combined stem", () => {

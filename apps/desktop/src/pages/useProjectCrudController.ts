@@ -16,7 +16,7 @@ export type BusyReason =
   | "export"
   /** Word 交付导出（无大模型润色）。 */
   | "export_docx"
-  /** Word 交付导出且走大模型润色（干净稿必选 / 讲稿勾选）。 */
+  /** Word 交付导出且执行 LLM 保真整理或讲稿优化。 */
   | "export_polish"
   | "stage_b"
   | "batch_transcribe";

@@ -163,11 +163,13 @@ export async function postprocessStageBProofread(
 }
 
 export interface PostprocessExportPolishRequest {
-  task: "export_polish";
+  task: "export_polish" | "export_lecture_optimize";
   requestId?: string;
   body: string;
   /** 语段行数真源（与 body RS 分隔段数一致；语段内可含 \\n）。 */
   lineCount: number;
+  /** 讲稿优化导出快照稳定键；与正文行一一对应。 */
+  lineUids?: string[];
   runtime: PostprocessRuntimeBridge;
   ruleHints?: string;
   /** 词表 canonical 摘要，注入 prompt（可选）。 */
@@ -175,13 +177,27 @@ export interface PostprocessExportPolishRequest {
 }
 
 export interface PostprocessExportPolishResponse {
-  /** 与语段一一对应，仅标点/空格（输入已为规则校正稿）。 */
+  /** 客户端合并后的完整正文行：保真整理为标点结果，讲稿优化为稀疏 edits 覆盖原文后的结果。 */
   punctLines: string[];
-  /** 每一批都完整返回了唯一、连续且未越界的语段 ID。 */
+  /** 客户端已得到可安全映射的完整正文；稀疏遗漏本身不使其失效。 */
   contentContractValid: boolean;
   /** 因模型 ID/结构契约异常而回退输入正文的全文语段下标。 */
   contractFallbackLineIndices: number[];
   breakAfterLine: number[];
+  protocolStats?: {
+    omittedUnchanged: number;
+    invalidEdits: number;
+    unknownUids: number;
+    duplicateUids: number;
+    emptyEdits: number;
+    malformedEdits: number;
+    contextEchoEdits: number;
+    invalidBreakUids: number;
+    legacyResponse: boolean;
+    sparseResponse: boolean;
+    retriedEdits: number;
+    recoveredEdits: number;
+  };
   provider: string;
   latency_ms: number;
 }

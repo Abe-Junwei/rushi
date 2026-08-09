@@ -1,9 +1,8 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
-  exportModeRequiresLlmPolish,
   exportModeSupportsLlmPolish,
   exportWantsLlmPolish,
 } from "../services/exportDocxPolish";
@@ -62,27 +61,16 @@ export function DeliveryExportDialog({
   const [mode, setMode] = useState<DocxExportMode>("verbatim");
   const [includeAppendix, setIncludeAppendix] = useState(false);
   const [includeProjectMetadata, setIncludeProjectMetadata] = useState(false);
-  const [llmPolish, setLlmPolish] = useState(false);
-
-  const requiresPolish = exportModeRequiresLlmPolish(mode);
   const polishAvailable = exportModeSupportsLlmPolish(mode);
-  const effectiveLlmPolish = exportWantsLlmPolish(mode, llmPolish);
+  const effectiveLlmPolish = exportWantsLlmPolish(mode, true);
   const polishReadiness = assessExportPolishReadiness(
     segments,
     mode,
-    llmPolish,
+    effectiveLlmPolish,
     llmEnv.blockReason,
   );
   const exportBlockedByPolish =
     effectiveLlmPolish && !polishReadiness.canExport && !busy;
-
-  useEffect(() => {
-    if (requiresPolish && polishAvailable) {
-      setLlmPolish(true);
-      return;
-    }
-    if (!polishAvailable) setLlmPolish(false);
-  }, [polishAvailable, requiresPolish, mode]);
 
   if (!open) return null;
 
@@ -142,7 +130,7 @@ export function DeliveryExportDialog({
     >
       <FloatingPanelDialogScroll className="flex flex-col gap-3">
             <p className={PANEL_TYPOGRAPHY.dialogBody}>
-              导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。勾选大模型润色时，导出会直接生成终稿（无需预览）。
+              导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。讲稿优化会直接生成 Word 修订稿，可在 Word 中逐条接受或拒绝。
             </p>
             <DeliveryExportModeSection
               mode={mode}
@@ -157,47 +145,30 @@ export function DeliveryExportDialog({
             />
             {polishAvailable ? (
               <div className="space-y-2">
-                <label
-                  className={`flex items-start gap-2 ${PANEL_TYPOGRAPHY.dialogBody} ${
-                    requiresPolish || exportPolishBlockReason
-                      ? "cursor-not-allowed opacity-60"
-                      : "cursor-pointer"
-                  } text-notion-text`}
-                >
-                  <input
-                    type="checkbox"
-                    className="mt-0.5"
-                    checked={llmPolish || requiresPolish}
-                    disabled={busy || requiresPolish || Boolean(exportPolishBlockReason)}
-                    onChange={(e) => setLlmPolish(e.target.checked)}
-                  />
-                  <span>
-                    {requiresPolish ? "大模型润色（干净稿必选）" : "大模型润色（可选）"}
+                <div className={`flex items-start gap-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}>
+                  <span className="pl-1">
+                    {mode === "lecture" ? "讲稿优化修订" : "LLM 保真整理"}
                     <span className="block text-xs text-notion-text-muted">
-                      {requiresPolish
-                        ? "干净稿导出将自动经大模型整理错别字与标点，并按语义合段。"
-                        : "仅改正文错别字与错误标点（标点优先检查）；超范围改写回退原文。自然段按语义合并且约 ≤300 字。导出时直接生成终稿。"}
+                      {mode === "lecture"
+                        ? "模型建议会全部写入 Word 修订轨；拒绝某条修订可恢复对应原文，拒绝全部可恢复完整原稿。"
+                        : "只整理可信错字、标点和自然段；超范围改写会回退原文。"}
                     </span>
                     {exportPolishBlockReason ? (
                       <span className="block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
                     ) : null}
                   </span>
-                </label>
-                {(llmPolish || requiresPolish) ? (
-                  <div className="flex flex-wrap items-center gap-2 pl-6">
+                </div>
+                  <div className="flex flex-wrap items-center gap-2 pl-1">
                     <TopBarStatusIndicator
                       label={llmEnv.sourceLabel}
                       tone={llmEnv.tone}
-                      title={requiresPolish ? llmEnv.chipLabel : `${llmEnv.chipLabel} · 点击打开 LLM 配置`}
-                      {...(requiresPolish || !onOpenLlmSettings
-                        ? {}
-                        : { onClick: onOpenLlmSettings })}
+                      title={`${llmEnv.chipLabel} · 点击打开 LLM 配置`}
+                      {...(!onOpenLlmSettings ? {} : { onClick: onOpenLlmSettings })}
                     />
                     {!llmEnv.ok && llmEnv.blockReason && !exportPolishBlockReason ? (
                       <span className="text-xs text-zen-cinnabar">{llmEnv.blockReason}</span>
                     ) : null}
                   </div>
-                ) : null}
               </div>
             ) : null}
             <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>

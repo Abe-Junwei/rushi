@@ -153,8 +153,8 @@ describe("llmEnvStatus", () => {
   });
 
   it("llmPolishActiveMessage distinguishes local vs cloud", () => {
-    expect(llmPolishActiveMessage("local")).toBe("正在使用本机 LLM 润色…");
-    expect(llmPolishActiveMessage("cloud")).toBe("正在使用云端 LLM 润色…");
+    expect(llmPolishActiveMessage("local")).toBe("正在使用本机 LLM 处理…");
+    expect(llmPolishActiveMessage("cloud")).toBe("正在使用云端 LLM 处理…");
   });
 
   it("buildLlmEnvPresentation reflects local ollama readiness", () => {

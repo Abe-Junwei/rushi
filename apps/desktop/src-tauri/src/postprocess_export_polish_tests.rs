@@ -43,7 +43,8 @@ fn parse_rejects_missing_item_id() {
     );
     let out = parse_export_polish_json(&raw, 176).unwrap();
     assert!(!out.content_contract_valid);
-    assert!(out.punct_lines.is_empty());
+    assert_eq!(out.punct_lines.len(), 176);
+    assert_eq!(out.contract_fallback_line_indices, vec![175]);
 }
 
 #[test]
@@ -55,7 +56,8 @@ fn parse_rejects_duplicate_out_of_range_and_empty_items() {
     ] {
         let out = parse_export_polish_json(raw, 2).unwrap();
         assert!(!out.content_contract_valid);
-        assert!(out.punct_lines.is_empty());
+        assert_eq!(out.punct_lines.len(), 2);
+        assert!(!out.contract_fallback_line_indices.is_empty());
     }
 }
 
@@ -69,7 +71,8 @@ fn parse_treats_malformed_item_fields_as_invalid_contract() {
     ] {
         let out = parse_export_polish_json(raw, 2).unwrap();
         assert!(!out.content_contract_valid);
-        assert!(out.punct_lines.is_empty());
+        assert_eq!(out.punct_lines.len(), 2);
+        assert!(!out.contract_fallback_line_indices.is_empty());
     }
 }
 
@@ -142,6 +145,32 @@ fn prompt_omits_glossary_section_when_empty() {
 }
 
 #[test]
+fn lecture_optimize_prompt_allows_editing_but_forbids_segment_loss() {
+    let p = build_export_lecture_optimize_prompt(
+        "嗯那个我们今天说这个问题\u{001e}这个这个问题很重要",
+        &["u0".to_string(), "u1".to_string()],
+        "「绝关」→「觉观」",
+        "觉观",
+        Some((1, 2)),
+    );
+    assert!(p.contains("去除"));
+    assert!(p.contains("理顺"));
+    assert!(p.contains("不得摘要、扩写"));
+    assert!(p.contains("不得跨语段合并、拆分、换序或删除整个语段"));
+    assert!(p.contains("不得把前后 uid 的原句、近义改写或上下文补写到当前 uid"));
+    assert!(p.contains("未返回 uid 表示保持原文"));
+    assert!(p.contains(r#"{"uid":"u0","text":"嗯那个我们今天说这个问题"}"#));
+    assert!(p.contains(r#"{"uid":"u1","text":"这个这个问题很重要"}"#));
+    assert!(p.contains("break_after_uid"));
+
+    let sys = resolve_export_lecture_optimize_system_prompt();
+    assert!(sys.contains("未返回的 uid 表示原文不变"));
+    assert!(sys.contains("只在 edits 中返回确实需要修改的语段"));
+    assert!(sys.contains("禁止合并、换序、摘要"));
+    assert!(sys.contains("把相邻 uid 的原句/改写复制到本 uid"));
+}
+
+#[test]
 fn parse_json_array_of_lines() {
     let raw = r#"["句一","句二。"]"#;
     let out = parse_export_polish_json(raw, 2).unwrap();
@@ -206,8 +235,20 @@ fn retriable_errors_cover_truncate_and_parse() {
     assert!(export_polish_error_is_retriable(
         "模型未返回可解析的 JSON（需 items + break_after_line）：eof"
     ));
+    assert!(export_polish_error_is_retriable(
+        "模型输出未通过内容契约（本批应完整返回 100 个唯一 ID）。"
+    ));
     assert!(!export_polish_error_is_retriable("大模型润色请求已取消。"));
     assert!(!export_polish_error_is_retriable("LLM 未配置。"));
+}
+
+#[test]
+fn contract_retry_splits_only_the_top_level_batch() {
+    assert!(should_split_export_polish_retry(100, true));
+    assert!(!should_split_export_polish_retry(50, true));
+    assert!(!should_split_export_polish_retry(41, true));
+    assert!(should_split_export_polish_retry(50, false));
+    assert!(!should_split_export_polish_retry(12, false));
 }
 
 #[test]
@@ -225,10 +266,29 @@ fn invalid_contract_falls_back_the_whole_batch_to_originals() {
         content_contract_valid: false,
         contract_fallback_line_indices: vec![],
         break_after_line: vec![0],
+        protocol_stats: ExportPolishProtocolStats::default(),
     };
     fallback_invalid_batch_to_originals(&mut parsed, &batch);
     assert_eq!(parsed.punct_lines, vec!["甲".to_string(), "乙".to_string()]);
     assert_eq!(parsed.contract_fallback_line_indices, vec![0, 1]);
+    assert!(parsed.break_after_line.is_empty());
+}
+
+#[test]
+fn invalid_contract_falls_back_only_missing_ids_when_mapping_is_safe() {
+    let batch = format!(
+        "甲{}乙{}丙",
+        EXPORT_POLISH_LINE_SEPARATOR, EXPORT_POLISH_LINE_SEPARATOR
+    );
+    let mut parsed = parse_export_polish_json(
+        r#"{"items":[{"id":0,"text":"甲。"},{"id":2,"text":"丙。"}]}"#,
+        3,
+    )
+    .unwrap();
+    fallback_invalid_batch_to_originals(&mut parsed, &batch);
+    assert!(!parsed.content_contract_valid);
+    assert_eq!(parsed.punct_lines, vec!["甲。", "乙", "丙。"]);
+    assert_eq!(parsed.contract_fallback_line_indices, vec![1]);
     assert!(parsed.break_after_line.is_empty());
 }
 
@@ -247,16 +307,42 @@ fn merge_batches_offsets_breaks_and_skips_boundary() {
         content_contract_valid: true,
         contract_fallback_line_indices: vec![],
         break_after_line: vec![0, 1],
+        protocol_stats: ExportPolishProtocolStats::default(),
     };
     let b1 = ExportPolishParsed {
         punct_lines: vec!["c".into()],
         content_contract_valid: false,
         contract_fallback_line_indices: vec![0],
         break_after_line: vec![],
+        protocol_stats: ExportPolishProtocolStats::default(),
     };
     let merged = merge_export_polish_batches(vec![b0, b1], &[2, 1]);
     assert_eq!(merged.punct_lines, vec!["a", "b", "c"]);
     assert!(!merged.content_contract_valid);
     assert_eq!(merged.contract_fallback_line_indices, vec![2]);
     assert_eq!(merged.break_after_line, vec![0]);
+}
+
+#[test]
+fn merge_sparse_batches_keeps_explicit_uid_break_at_batch_boundary() {
+    let sparse = ExportPolishProtocolStats {
+        sparse_response: true,
+        ..ExportPolishProtocolStats::default()
+    };
+    let b0 = ExportPolishParsed {
+        punct_lines: vec!["a".into(), "b".into()],
+        content_contract_valid: true,
+        contract_fallback_line_indices: vec![],
+        break_after_line: vec![1],
+        protocol_stats: sparse.clone(),
+    };
+    let b1 = ExportPolishParsed {
+        punct_lines: vec!["c".into()],
+        content_contract_valid: true,
+        contract_fallback_line_indices: vec![],
+        break_after_line: vec![],
+        protocol_stats: sparse,
+    };
+    let merged = merge_export_polish_batches(vec![b0, b1], &[2, 1]);
+    assert_eq!(merged.break_after_line, vec![1]);
 }

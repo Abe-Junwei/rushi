@@ -137,12 +137,12 @@ export function busyOverlayCopy(
         return {
           title: "正在导出 Word",
           lead: formatExportPolishBatchLabel(progress.batch, progress.total),
-          detail: "大模型润色中",
+          detail: "LLM 处理中",
         };
       }
       return {
         title: "正在导出 Word",
-        lead: "大模型润色并写入文档",
+        lead: "LLM 处理并写入文档",
         detail: "处理可能需要数分钟",
       };
     }

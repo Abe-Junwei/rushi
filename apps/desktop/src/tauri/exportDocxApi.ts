@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { SegmentDto } from "./projectApi";
 
-/** 交付 Word 形态：逐字稿（段内时间轴）/ 讲稿（连写+文首文末时码）/ 干净稿（分段+文首文末时码）。 */
+/** 交付 Word 形态：逐字稿 / 讲稿优化 / LLM 保真整理。内部值沿用既有版式标识。 */
 export type DocxExportMode = "verbatim" | "lecture" | "clean";
 
 export type DocxExportOptions = {
@@ -17,7 +17,7 @@ export type DocxExportOptions = {
   polishCorrectedLines?: string[];
   /** 为 true 且有成对润色段落时，正文以 Track Changes 呈现并开启 `trackRevisions`。 */
     polishTrackChanges?: boolean;
-    /** 干净稿润色修订轨作者；默认 Rust 侧「如是我闻」。 */
+    /** LLM 导出修订轨作者；应传本次实际使用的模型名。 */
     polishTrackAuthor?: string;
   /**
    * 讲稿/干净稿：冻结打断时的连续块（仅多块时下发）；`unitCount` 为语段数或润色自然段数。

@@ -18,6 +18,7 @@ import { planDeliveryDocxExport } from "../services/exportDeliveryPlan";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import {
   exportWantsLlmPolish,
+  fetchExportLectureOptimizeResult,
   fetchExportPolishResult,
   resolveExportPolishBlockReason,
   type ExportPolishResult,
@@ -38,9 +39,9 @@ export type DeliveryDocxExportRequest = {
   includeRevisionAppendix: boolean;
   /** 封面抬头附带讲述人/时间/地点/主题/转录人（Hub「项目信息」）。 */
   includeProjectMetadata?: boolean;
-  /** 讲稿/干净稿：导出时 LLM 纠错（错别字、错误标点、语义分段）。 */
+  /** 内部兼容字段；保真整理和讲稿优化均由 mode 强制启用。 */
   llmPolish?: boolean;
-  /** 控制器在导出前拉取的润色结果（勾选润色时必填）。 */
+  /** 控制器在导出前拉取的 LLM 处理结果。 */
   polishResult?: ExportPolishResult | null;
 };
 
@@ -210,7 +211,10 @@ export function useExportController(deps: ExportDeps): ExportApi {
             return;
           }
           try {
-            polishResult = await fetchExportPolishResult(normalized);
+            polishResult =
+              request.mode === "lecture"
+                ? await fetchExportLectureOptimizeResult(normalized)
+                : await fetchExportPolishResult(normalized);
           } catch (e) {
             reportExportFailure("交付 DOCX", e);
             return;
@@ -300,7 +304,6 @@ export function useExportController(deps: ExportDeps): ExportApi {
       reportExportFailure,
       exportContextLabel,
       recordingFileName,
-      exportDefaultBasename,
       flushSegmentTextDrafts,
       beginBusy,
       endBusy,

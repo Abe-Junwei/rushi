@@ -3,6 +3,7 @@ use serde::Serialize;
 use super::lines_from_export_polish_body;
 
 const MANDATORY_SYSTEM_CONTRACT: &str = "items 的 id 必须完整、唯一地返回 0 到本批最后一项；text 只允许调整标点和空白，禁止改动、增删任何正文字符。最终只输出含 items 与 break_after_line 的合法 JSON，禁止 lines、paragraphs 字段。";
+const LECTURE_OPTIMIZE_SYSTEM_CONTRACT: &str = "客户端原文是唯一真源。只在 edits 中返回确实需要修改的语段；未返回的 uid 表示原文不变。每条 edit 必须使用输入中的稳定 uid 和非空 text，禁止合并、换序、摘要、添加事实、删除整个语段，或把相邻 uid 的原句/改写复制到本 uid。最终只输出含 edits 与 break_after_uid 的合法 JSON。";
 
 #[derive(Serialize)]
 struct PromptItem {
@@ -12,6 +13,10 @@ struct PromptItem {
 
 pub fn default_export_polish_system_prompt() -> &'static str {
     "你是中文讲稿标点与分段助手。items 的 id 必须完整、唯一地返回 0 到本批最后一项；text 只允许调整标点和空白，禁止改动、增删任何正文字符。最终只输出含 items 与 break_after_line 的合法 JSON，禁止 lines、paragraphs 字段。"
+}
+
+pub fn default_export_lecture_optimize_system_prompt() -> &'static str {
+    "你是中文讲稿编辑。保留原意、事实、观点和语段顺序，可去除口头赘词与无意义重复、修正明显语病、理顺口语语序并调整标点。只返回确实需要修改的稀疏 edits；未返回的 uid 保持原文。禁止摘要、扩写、合并、换序、删除整个语段，或把相邻 uid 的内容复述到本 uid。最终只输出含 edits 与 break_after_uid 的合法 JSON。"
 }
 
 pub fn default_export_polish_instructions_template() -> String {
@@ -87,6 +92,75 @@ fn mandatory_user_contract(line_count: usize) -> String {
     let last_id = line_count.saturating_sub(1);
     format!(
         "\n\n【客户端强制输出契约】无论上文如何描述，最终必须只输出 JSON：{{\"items\":[{{\"id\":0,\"text\":\"...\"}},...,{{\"id\":{last_id},\"text\":\"...\"}}],\"break_after_line\":[]}}。items 必须恰好 {line_count} 项；id 不得缺失、重复、改号或越界；text 只允许改标点和空白，正文字符必须逐字保留。"
+    )
+}
+
+fn lecture_optimize_user_contract() -> &'static str {
+    "\n\n【客户端强制输出契约】最终必须只输出 JSON：{\"edits\":[{\"uid\":\"输入中的稳定 uid\",\"text\":\"优化文本\"}],\"break_after_uid\":[\"输入中的稳定 uid\"]}。只在确实需要修改时返回 edit；未返回 uid 表示保持原文，不是失败。edits 可为空；uid 不得重复或使用输入外的值；text 必须非空且只能优化对应输入项，不得复制前后 uid 的原句或改写。break_after_uid 可为空，只表示在该 uid 之后另起自然段。"
+}
+
+pub fn build_export_lecture_optimize_prompt(
+    body: &str,
+    line_uids: &[String],
+    rule_hints: &str,
+    glossary_hints: &str,
+    batch: Option<(usize, usize)>,
+) -> String {
+    let batch_note = batch
+        .map(|(i, n)| {
+            format!("【分批 {i}/{n}】这是全稿按顺序切分的连续片段；不要在批边界补写上下文。")
+        })
+        .unwrap_or_default();
+    let mut hints = String::new();
+    if !glossary_hints.trim().is_empty() {
+        hints.push_str(&format!(
+            "\n\n项目专名/术语词表（用于避免误改专名，不得据此新增内容）：\n{}",
+            glossary_hints.trim()
+        ));
+    }
+    if !rule_hints.trim().is_empty() {
+        hints.push_str(&format!(
+            "\n\n稳定纠错规则（可用于修正对应错字，所有变化都会进入 Word 修订轨）：\n{}",
+            rule_hints.trim()
+        ));
+    }
+    #[derive(Serialize)]
+    struct LecturePromptItem<'a> {
+        uid: &'a str,
+        text: String,
+    }
+    let input_items: Vec<LecturePromptItem<'_>> = lines_from_export_polish_body(body)
+        .into_iter()
+        .zip(line_uids.iter())
+        .map(|(text, uid)| LecturePromptItem { uid, text })
+        .collect();
+    let input_json = serde_json::to_string(&input_items).unwrap_or_else(|_| "[]".to_string());
+    let prompt = format!(
+        r#"你是中文讲稿编辑。{batch_note}
+
+## 编辑范围
+- 可去除“嗯、啊、那个、就是说”等无实义口头赘词和结巴式重复。
+- 可修正明显语病、错别字和错误标点，并在不改变含义的前提下理顺本语段语序。
+- 必须保留原文事实、观点、数字、人名、专名和有效信息；不得摘要、扩写、拔高或改写立场。
+- 只为确实需要修改的输入 uid 返回 edit；未返回 uid 表示原文不变。
+- 每条 edit 必须独立对应一个输入 uid 和非空 text；不得跨语段合并、拆分、换序或删除整个语段。
+- 不得把前后 uid 的原句、近义改写或上下文补写到当前 uid；当前 edit 只能整理当前 text 已有的信息。
+
+## 输出 JSON
+只输出 {{"edits":[{{"uid":"输入 uid","text":"优化文本"}}],"break_after_uid":["输入 uid"]}}。
+`edits` 与 `break_after_uid` 都可为空。`break_after_uid` 只影响 Word 排版。{hints}
+
+输入 items：
+{input_json}"#
+    );
+    format!("{prompt}{}", lecture_optimize_user_contract())
+}
+
+pub fn resolve_export_lecture_optimize_system_prompt() -> String {
+    format!(
+        "{}\n\n【客户端强制契约】{}",
+        default_export_lecture_optimize_system_prompt(),
+        LECTURE_OPTIMIZE_SYSTEM_CONTRACT
     )
 }
 

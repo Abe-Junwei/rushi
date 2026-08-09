@@ -61,7 +61,7 @@ describe("busyOverlayCopy export", () => {
   it("polish export falls back to generic wording without batch progress", () => {
     const copy = busyOverlayCopy("export_polish", null);
     expect(copy.title).toBe("正在导出 Word");
-    expect(copy.lead).toBe("大模型润色并写入文档");
+    expect(copy.lead).toBe("LLM 处理并写入文档");
     expect(copy.detail).toMatch(/数分钟/);
     expect(copy.detail).not.toMatch(/预计/);
   });
@@ -71,14 +71,14 @@ describe("busyOverlayCopy export", () => {
       exportPolishProgress: { batch: 2, total: 5 },
     });
     expect(copy.lead).toBe("第 2/5 批");
-    expect(copy.detail).toBe("大模型润色中");
+    expect(copy.detail).toBe("LLM 处理中");
   });
 
   it("polish export ignores single-batch progress in lead", () => {
     const copy = busyOverlayCopy("export_polish", null, {
       exportPolishProgress: { batch: 1, total: 1 },
     });
-    expect(copy.lead).toBe("大模型润色并写入文档");
+    expect(copy.lead).toBe("LLM 处理并写入文档");
   });
 });
 

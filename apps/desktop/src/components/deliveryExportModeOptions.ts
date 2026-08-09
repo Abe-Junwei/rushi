@@ -7,14 +7,14 @@ export const DELIVERY_EXPORT_MODE_OPTIONS: { id: DocxExportMode; label: string; 
     hint: "每段带起止时间码，正文与时间行分开排版。",
   },
   {
-    id: "lecture",
-    label: "讲稿",
-    hint: "按语段自然段；各连续块左上/右下标起止时间，块间空行；文末写录音文件名。",
+    id: "clean",
+    label: "LLM 保真整理",
+    hint: "保留正文内容，只整理可信错字、标点和自然段，并附 Word 修订轨。",
   },
   {
-    id: "clean",
-    label: "干净稿",
-    hint: "版式同讲稿（段间空行）；导出时自动大模型润色整理。",
+    id: "lecture",
+    label: "讲稿优化",
+    hint: "去赘词、理语序并修正语病，直接导出可逐条接受或拒绝的 Word 修订稿。",
   },
 ];
 

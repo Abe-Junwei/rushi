@@ -167,5 +167,5 @@ export function llmPolishSourceDetailLabel(input: {
 }
 
 export function llmPolishActiveMessage(mode: LlmEnvMode): string {
-  return mode === "local" ? "正在使用本机 LLM 润色…" : "正在使用云端 LLM 润色…";
+  return mode === "local" ? "正在使用本机 LLM 处理…" : "正在使用云端 LLM 处理…";
 }

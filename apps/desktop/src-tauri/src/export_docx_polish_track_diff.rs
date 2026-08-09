@@ -186,6 +186,11 @@ pub(crate) fn diff_pieces_for_export_track(before: &str, after: &str) -> Vec<Dif
     filter_char_diff_hunks_for_export_track(diff_pieces_char(before, after))
 }
 
+/// 讲稿优化的所有正文变化都进入修订轨，确保每一处都可在 Word 中接受或拒绝。
+pub(crate) fn diff_pieces_for_lecture_optimize_track(before: &str, after: &str) -> Vec<DiffPiece> {
+    diff_pieces_char(before, after)
+}
+
 pub fn before_lines_from_joined(joined: &str) -> Vec<String> {
     if joined.contains(crate::postprocess_cmd::EXPORT_POLISH_LINE_SEPARATOR) {
         return crate::postprocess_cmd::lines_from_export_polish_body(joined);

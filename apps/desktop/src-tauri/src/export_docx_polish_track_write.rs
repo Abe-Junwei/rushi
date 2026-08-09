@@ -6,6 +6,7 @@ use docx_rs::*;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::name::QName;
 use quick_xml::{Reader, Writer};
+use sha2::{Digest, Sha256};
 use zip::read::ZipArchive;
 use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
@@ -18,16 +19,20 @@ use crate::export_docx::{
 };
 
 use super::diff::{
-    before_lines_from_joined, diff_pieces_for_export_track, pieces_have_markup, push_del_str,
-    push_ins_char, push_same_char, DiffPiece,
+    before_lines_from_joined, diff_pieces_for_export_track, diff_pieces_for_lecture_optimize_track,
+    pieces_have_markup, push_del_str, push_ins_char, push_same_char, DiffPiece,
 };
 
 pub const POLISH_TRACK_AUTHOR: &str = "如是我闻";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PolishTrackMode {
+    Fidelity,
+    LectureOptimize,
+}
+
 fn polish_revision_date() -> String {
-    chrono::Local::now()
-        .format("%Y-%m-%dT%H:%M:%S%:z")
-        .to_string()
+    chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
 fn track_body_run() -> Run {
@@ -36,6 +41,14 @@ fn track_body_run() -> Run {
 
 fn flatten_for_compare(s: &str) -> String {
     s.chars().filter(|c| *c != '\n' && *c != '\r').collect()
+}
+
+fn text_sha256(text: &str) -> [u8; 32] {
+    Sha256::digest(text.as_bytes()).into()
+}
+
+fn exact_text_and_hash_match(actual: &str, expected: &str) -> bool {
+    actual == expected && text_sha256(actual) == text_sha256(expected)
 }
 
 fn lines_paragraphs_chars_match(lines: &[String], paragraphs: &[String]) -> bool {
@@ -166,6 +179,7 @@ fn accumulate_line_diffs_into_paragraphs(
     before_lines: &[String],
     corrected_lines: &[String],
     display_paragraphs: &[String],
+    track_mode: PolishTrackMode,
 ) -> Vec<Vec<DiffPiece>> {
     let para_count = display_paragraphs.len().max(1);
     let mut buckets: Vec<Vec<DiffPiece>> = vec![Vec::new(); para_count];
@@ -177,7 +191,12 @@ fn accumulate_line_diffs_into_paragraphs(
     }
     let mut flat_pos = 0usize;
     for (li, (before, after)) in before_lines.iter().zip(corrected_lines.iter()).enumerate() {
-        let mut pieces = diff_pieces_for_export_track(before, after);
+        let mut pieces = match track_mode {
+            PolishTrackMode::Fidelity => diff_pieces_for_export_track(before, after),
+            PolishTrackMode::LectureOptimize => {
+                diff_pieces_for_lecture_optimize_track(before, after)
+            }
+        };
         if pieces.is_empty() {
             pieces.push(DiffPiece::Same(after.clone()));
         }
@@ -223,6 +242,17 @@ fn final_text_from_diff_pieces(pieces: &[DiffPiece]) -> String {
     out
 }
 
+fn original_text_from_diff_pieces(pieces: &[DiffPiece]) -> String {
+    let mut out = String::new();
+    for piece in pieces {
+        match piece {
+            DiffPiece::Same(text) | DiffPiece::Del(text) => out.push_str(text),
+            DiffPiece::Ins(_) => {}
+        }
+    }
+    out
+}
+
 fn buckets_preserve_corrected_lines(
     buckets: &[Vec<DiffPiece>],
     corrected_lines: &[String],
@@ -232,21 +262,37 @@ fn buckets_preserve_corrected_lines(
         .map(|bucket| final_text_from_diff_pieces(bucket))
         .collect();
     let expected: String = corrected_lines.iter().map(String::as_str).collect();
-    flatten_for_compare(&actual) == flatten_for_compare(&expected)
+    let actual = flatten_for_compare(&actual);
+    let expected = flatten_for_compare(&expected);
+    exact_text_and_hash_match(&actual, &expected)
 }
 
-pub(crate) fn polish_track_can_preserve_corrected_lines(
+fn buckets_preserve_original_lines(buckets: &[Vec<DiffPiece>], before_lines: &[String]) -> bool {
+    let actual: String = buckets
+        .iter()
+        .map(|bucket| original_text_from_diff_pieces(bucket))
+        .collect();
+    let expected: String = before_lines.iter().map(String::as_str).collect();
+    let actual = flatten_for_compare(&actual);
+    let expected = flatten_for_compare(&expected);
+    exact_text_and_hash_match(&actual, &expected)
+}
+
+pub(crate) fn polish_track_can_preserve_both_views(
     before_joined: &str,
     corrected_lines: &[String],
     display_paragraphs: &[String],
+    track_mode: PolishTrackMode,
 ) -> bool {
     let before_lines = before_lines_from_joined(before_joined);
     if corrected_lines.len() != before_lines.len() || before_lines.is_empty() {
         return false;
     }
     let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
-    let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
+    let buckets =
+        accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display, track_mode);
     buckets_preserve_corrected_lines(&buckets, corrected_lines)
+        && buckets_preserve_original_lines(&buckets, &before_lines)
 }
 
 /// 修订轨：逐行对比；展示用 `display_paragraphs`。`corrected_lines` 行数须与 `before_joined` 拆行一致。
@@ -261,6 +307,7 @@ pub fn append_polished_with_track_changes(
     spaced: bool,
     blocks: Option<&[DocxDeliveryTimeBlock]>,
     polish_track_author: &str,
+    track_mode: PolishTrackMode,
 ) -> Docx {
     let before_lines = before_lines_from_joined(before_joined);
     if corrected_lines.len() != before_lines.len() || before_lines.is_empty() {
@@ -277,8 +324,11 @@ pub fn append_polished_with_track_changes(
     let author = polish_track_author;
     let date = polish_revision_date();
     let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
-    let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
-    if !buckets_preserve_corrected_lines(&buckets, corrected_lines) {
+    let buckets =
+        accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display, track_mode);
+    if !buckets_preserve_corrected_lines(&buckets, corrected_lines)
+        || !buckets_preserve_original_lines(&buckets, &before_lines)
+    {
         return append_polished_paragraph_list(
             doc,
             annotation_comments,

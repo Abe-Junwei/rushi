@@ -35,6 +35,7 @@ const segments: SegmentDto[] = [
 
 function polishFor(rows: SegmentDto[]): ExportPolishResult {
   return {
+    strategy: "fidelity",
     paragraphs: ["第一句。"],
     correctedLines: ["第一句。"],
     lineChanges: [],
@@ -98,7 +99,7 @@ describe("planDeliveryDocxExport", () => {
     });
     expect(plan.ok).toBe(false);
     if (!plan.ok) {
-      expect(plan.error).toMatch(/润色结果/);
+      expect(plan.error).toMatch(/处理结果/);
     }
   });
 
@@ -117,17 +118,17 @@ describe("planDeliveryDocxExport", () => {
 
     expect(plan.ok).toBe(false);
     if (!plan.ok) {
-      expect(plan.error).toMatch(/润色结果/);
+      expect(plan.error).toMatch(/处理结果/);
     }
   });
 
-  it("lecture polish leaves polishTrackAuthor undefined", () => {
+  it("lecture polish uses the model name as polishTrackAuthor", () => {
     const plan = planDeliveryDocxExport({
       request: {
         mode: "lecture",
         includeRevisionAppendix: false,
         llmPolish: true,
-        polishResult: polishFor(segments),
+        polishResult: { ...polishFor(segments), strategy: "lecture_optimize" },
       },
       segments,
       editLogRows: [],
@@ -137,7 +138,26 @@ describe("planDeliveryDocxExport", () => {
 
     expect(plan.ok).toBe(true);
     if (plan.ok) {
-      expect(plan.docxOptions.polishTrackAuthor).toBeUndefined();
+      expect(plan.docxOptions.polishTrackAuthor).toBe("qwen2.5:7b");
+    }
+  });
+
+  it("rejects an LLM result produced for a different export mode", () => {
+    const plan = planDeliveryDocxExport({
+      request: {
+        mode: "lecture",
+        includeRevisionAppendix: false,
+        polishResult: polishFor(segments),
+      },
+      segments,
+      editLogRows: [],
+      currentFileId: "f1",
+      exportMetaLine: undefined,
+    });
+
+    expect(plan.ok).toBe(false);
+    if (!plan.ok) {
+      expect(plan.error).toMatch(/导出类型不一致/);
     }
   });
 });

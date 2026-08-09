@@ -7,7 +7,7 @@ use docx_rs::*;
 
 use crate::export_docx_polish_track::{
     append_polished_with_track_changes, inject_track_revisions_flag,
-    polish_track_can_preserve_corrected_lines,
+    polish_track_can_preserve_both_views, PolishTrackMode,
 };
 use crate::project::SegmentDto;
 
@@ -21,11 +21,9 @@ use super::export_docx_body::{
 
 use crate::export_docx_polish_track::POLISH_TRACK_AUTHOR;
 
-fn resolve_polish_track_author(export_mode: &str, override_author: Option<&str>) -> String {
-    if normalize_export_mode(export_mode) == "clean" {
-        if let Some(author) = override_author.map(str::trim).filter(|s| !s.is_empty()) {
-            return sanitize_polish_track_author(author);
-        }
+fn resolve_polish_track_author(_export_mode: &str, override_author: Option<&str>) -> String {
+    if let Some(author) = override_author.map(str::trim).filter(|s| !s.is_empty()) {
+        return sanitize_polish_track_author(author);
     }
     POLISH_TRACK_AUTHOR.to_string()
 }
@@ -49,6 +47,8 @@ fn layout_time_blocks(layout: &DocxExportLayout) -> Option<&[DocxDeliveryTimeBlo
 }
 
 fn should_use_polish_track_changes(
+    export_mode: &str,
+    segments: &[SegmentDto],
     polish_track_changes: bool,
     polished_paragraphs: Option<&[String]>,
     polish_before_joined: Option<&str>,
@@ -72,8 +72,21 @@ fn should_use_polish_track_changes(
     if !after.iter().any(|x| !x.trim().is_empty()) || before.is_empty() {
         return false;
     }
-    lines.len() == crate::export_docx_polish_track::before_lines_from_joined(before).len()
-        && polish_track_can_preserve_corrected_lines(before, lines, after)
+    let track_mode = if normalize_export_mode(export_mode) == "lecture" {
+        PolishTrackMode::LectureOptimize
+    } else {
+        PolishTrackMode::Fidelity
+    };
+    let before_lines = crate::export_docx_polish_track::before_lines_from_joined(before);
+    let segment_lines: Vec<String> = segments
+        .iter()
+        .map(|segment| segment.text.trim())
+        .filter(|text| !text.is_empty())
+        .map(str::to_string)
+        .collect();
+    before_lines == segment_lines
+        && lines.len() == before_lines.len()
+        && polish_track_can_preserve_both_views(before, lines, after, track_mode)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -115,6 +128,8 @@ pub(crate) fn build_docx_to_path(
         writer.flush().map_err(|e| format!("写入 DOCX 失败: {e}"))?;
         drop(writer);
         if should_use_polish_track_changes(
+            export_mode,
+            segments,
             polish_track_changes,
             polished_paragraphs,
             polish_before_joined,
@@ -165,6 +180,8 @@ pub(crate) fn build_docx_bytes(
         layout,
     )?;
     if should_use_polish_track_changes(
+        export_mode,
+        segments,
         polish_track_changes,
         polished_paragraphs,
         polish_before_joined,
@@ -197,6 +214,8 @@ fn build_docx_into_writer<W: Write + Seek>(
     let has_polished = polished_paragraphs.is_some_and(|p| p.iter().any(|x| !x.trim().is_empty()));
     let track_requested = polish_track_changes;
     let use_track = should_use_polish_track_changes(
+        export_mode,
+        segments,
         polish_track_changes,
         polished_paragraphs,
         polish_before_joined,
@@ -205,7 +224,7 @@ fn build_docx_into_writer<W: Write + Seek>(
 
     let mut effective_meta = export_meta_line.map(str::to_string);
     if track_requested && has_polished && !use_track {
-        let note = "（未写入 Word 修订轨：语段行数与润色前未对齐，正文为润色定稿。）";
+        let note = "（Word 修订轨完整性校验未通过，已安全导出原文，未写入优化结果。）";
         effective_meta = Some(match effective_meta {
             Some(m) if !m.trim().is_empty() => format!("{m}\n{note}"),
             _ => note.to_string(),
@@ -241,6 +260,11 @@ fn build_docx_into_writer<W: Write + Seek>(
     };
 
     let time_blocks = layout_time_blocks(layout);
+    let track_mode = if mode == "lecture" {
+        PolishTrackMode::LectureOptimize
+    } else {
+        PolishTrackMode::Fidelity
+    };
     doc = match mode {
         "lecture" => {
             if use_track {
@@ -257,16 +281,21 @@ fn build_docx_into_writer<W: Write + Seek>(
                     false,
                     time_blocks,
                     &polish_author,
+                    track_mode,
                 )
-            } else if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
-                append_polished_paragraph_list(
-                    doc,
-                    &mut annotation_comments,
-                    paras,
-                    polish_paragraph_annotations.as_deref(),
-                    false,
-                    time_blocks,
-                )
+            } else if !track_requested {
+                if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
+                    append_polished_paragraph_list(
+                        doc,
+                        &mut annotation_comments,
+                        paras,
+                        polish_paragraph_annotations.as_deref(),
+                        false,
+                        time_blocks,
+                    )
+                } else {
+                    append_lecture_segments(doc, &mut annotation_comments, segments, time_blocks)
+                }
             } else {
                 append_lecture_segments(doc, &mut annotation_comments, segments, time_blocks)
             }
@@ -286,16 +315,26 @@ fn build_docx_into_writer<W: Write + Seek>(
                     true,
                     time_blocks,
                     &polish_author,
+                    track_mode,
                 )
-            } else if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
-                append_polished_paragraph_list(
-                    doc,
-                    &mut annotation_comments,
-                    paras,
-                    polish_paragraph_annotations.as_deref(),
-                    true,
-                    time_blocks,
-                )
+            } else if !track_requested {
+                if let Some(paras) = polished_paragraphs.filter(|p| !p.is_empty()) {
+                    append_polished_paragraph_list(
+                        doc,
+                        &mut annotation_comments,
+                        paras,
+                        polish_paragraph_annotations.as_deref(),
+                        true,
+                        time_blocks,
+                    )
+                } else {
+                    append_clean_segments_with_blocks(
+                        doc,
+                        &mut annotation_comments,
+                        segments,
+                        time_blocks,
+                    )
+                }
             } else {
                 append_clean_segments_with_blocks(
                     doc,

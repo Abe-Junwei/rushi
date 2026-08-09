@@ -16,6 +16,23 @@ export function joinSegmentTextsForExportPolish(segments: SegmentDto[]): string 
     .join(EXPORT_POLISH_LINE_SEPARATOR);
 }
 
+/** 与非空导出语段一一对应的全局稳定键；缺 uid/重复 uid 时使用导出快照键。 */
+export function exportPolishSnapshotUids(segments: SegmentDto[]): string[] {
+  const rows = segments.filter((segment) => (segment.text ?? "").trim().length > 0);
+  const seen = new Set<string>();
+  return rows.map((segment, position) => {
+    const uid = segment.uid?.trim() ?? "";
+    if (uid && !seen.has(uid)) {
+      seen.add(uid);
+      return uid;
+    }
+    let snapshotUid = `export-snapshot:${position}:${segment.idx}`;
+    while (seen.has(snapshotUid)) snapshotUid = `${snapshotUid}:fallback`;
+    seen.add(snapshotUid);
+    return snapshotUid;
+  });
+}
+
 /** 与 Rust `lines_from_export_polish_body` 对齐。 */
 export function splitExportPolishJoinedBody(body: string): string[] {
   if (!body) return [];

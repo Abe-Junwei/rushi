@@ -1,12 +1,14 @@
 //! EXP-WORD：交付导出润色 — 可信正文上的 LLM 标点与语义断段。
 
+#[path = "postprocess_export_lecture_optimize.rs"]
+mod lecture_optimize;
 #[path = "postprocess_export_polish_prompt.rs"]
 mod prompt;
 
 use super::postprocess_segment_ops::{
     extract_balanced_json_array, extract_json_object_from_llm_content, strip_llm_reasoning_wrappers,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub const MAX_EXPORT_POLISH_INPUT_CHARS: usize = 120_000;
@@ -31,6 +33,40 @@ pub struct ExportPolishParsed {
     pub contract_fallback_line_indices: Vec<usize>,
     /// 在哪些语段行下标之后插入 Word 自然段分界（含该行）。
     pub break_after_line: Vec<usize>,
+    pub protocol_stats: ExportPolishProtocolStats,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPolishProtocolStats {
+    pub omitted_unchanged: usize,
+    pub invalid_edits: usize,
+    pub unknown_uids: usize,
+    pub duplicate_uids: usize,
+    pub empty_edits: usize,
+    pub malformed_edits: usize,
+    pub context_echo_edits: usize,
+    pub invalid_break_uids: usize,
+    pub legacy_response: bool,
+    pub sparse_response: bool,
+    pub retried_edits: usize,
+    pub recovered_edits: usize,
+}
+
+pub fn parse_export_lecture_optimize_json(
+    raw: &str,
+    input_uids: &[String],
+    input_lines: &[String],
+) -> Result<ExportPolishParsed, String> {
+    lecture_optimize::parse_export_lecture_optimize_json(raw, input_uids, input_lines)
+}
+
+pub fn export_lecture_edit_has_context_echo(
+    index: usize,
+    candidate: &str,
+    input_lines: &[String],
+) -> bool {
+    lecture_optimize::edit_has_neighbor_context_echo(index, candidate, input_lines)
 }
 
 pub fn lines_from_export_polish_body(body: &str) -> Vec<String> {
@@ -94,6 +130,7 @@ pub fn export_polish_error_is_retriable(err: &str) -> bool {
     let e = err.to_lowercase();
     e.contains("finish_reason=length")
         || e.contains("输出被截断")
+        || e.contains("内容契约")
         || e.contains("未返回可解析")
         || e.contains("未找到 json")
         || e.contains("模型未返回 lines")
@@ -103,23 +140,54 @@ pub fn export_polish_error_is_retriable(err: &str) -> bool {
         || e.contains("无法解析的 json")
 }
 
-/// 严格校验本批 ID 契约；任何缺失、重复、越界或空正文都使整批失效。
-fn lines_from_strict_items(items: &Value, expected: usize) -> Option<Vec<String>> {
+/// 契约异常只拆一层（100 -> 50 + 50），避免旧格式响应造成请求数指数增长。
+pub fn should_split_export_polish_retry(line_count: usize, contract_invalid: bool) -> bool {
+    line_count >= EXPORT_POLISH_RETRY_SPLIT_MIN_LINES
+        && (!contract_invalid || line_count >= EXPORT_POLISH_BATCH_MAX_LINES)
+}
+
+/// 按 ID 对齐 items；缺失、重复或空正文只标记对应行回退。
+fn lines_from_items_with_fallback(
+    items: &Value,
+    expected: usize,
+) -> Option<(Vec<String>, Vec<usize>)> {
     let items = items.as_array()?;
-    if expected == 0 || items.len() != expected {
+    if expected == 0 {
         return None;
     }
     let mut slots = vec![None; expected];
+    let mut invalid = vec![false; expected];
     for item in items {
-        let object = item.as_object()?;
-        let id = usize::try_from(object.get("id")?.as_u64()?).ok()?;
-        let text = object.get("text")?.as_str()?.trim();
-        if id >= expected || text.is_empty() || slots[id].is_some() {
-            return None;
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let Some(id) = object
+            .get("id")
+            .and_then(Value::as_u64)
+            .and_then(|id| usize::try_from(id).ok())
+            .filter(|&id| id < expected)
+        else {
+            continue;
+        };
+        let text = object
+            .get("text")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|text| !text.is_empty());
+        if invalid[id] || slots[id].is_some() || text.is_none() {
+            invalid[id] = true;
+            slots[id] = None;
+            continue;
         }
-        slots[id] = Some(text.replace("\r\n", "\n"));
+        slots[id] = text.map(|text| text.replace("\r\n", "\n"));
     }
-    slots.into_iter().collect()
+    let fallback_indices = slots
+        .iter()
+        .enumerate()
+        .filter_map(|(index, text)| (text.is_none() || invalid[index]).then_some(index))
+        .collect();
+    let lines = slots.into_iter().map(Option::unwrap_or_default).collect();
+    Some((lines, fallback_indices))
 }
 
 /// ID 契约异常时，不再按位置猜测；整批正文回退输入。
@@ -127,8 +195,21 @@ pub fn fallback_invalid_batch_to_originals(parsed: &mut ExportPolishParsed, batc
     if parsed.content_contract_valid {
         return;
     }
-    parsed.punct_lines = lines_from_export_polish_body(batch_body);
-    parsed.contract_fallback_line_indices = (0..parsed.punct_lines.len()).collect();
+    let originals = lines_from_export_polish_body(batch_body);
+    let can_reconcile = parsed.punct_lines.len() == originals.len()
+        && !parsed.contract_fallback_line_indices.is_empty()
+        && parsed
+            .contract_fallback_line_indices
+            .iter()
+            .all(|&index| index < originals.len());
+    if can_reconcile {
+        for &index in &parsed.contract_fallback_line_indices {
+            parsed.punct_lines[index] = originals[index].clone();
+        }
+    } else {
+        parsed.punct_lines = originals;
+        parsed.contract_fallback_line_indices = (0..parsed.punct_lines.len()).collect();
+    }
     // ID 已失去一一对应关系时，模型给出的断点也不能再映射到可信正文。
     parsed.break_after_line.clear();
 }
@@ -142,10 +223,23 @@ pub fn merge_export_polish_batches(
     let mut break_after_line = Vec::new();
     let mut contract_fallback_line_indices = Vec::new();
     let mut content_contract_valid = true;
+    let mut protocol_stats = ExportPolishProtocolStats::default();
     let mut offset = 0usize;
     for (i, batch) in batches.iter().enumerate() {
         punct_lines.extend(batch.punct_lines.iter().cloned());
         content_contract_valid &= batch.content_contract_valid;
+        protocol_stats.omitted_unchanged += batch.protocol_stats.omitted_unchanged;
+        protocol_stats.invalid_edits += batch.protocol_stats.invalid_edits;
+        protocol_stats.unknown_uids += batch.protocol_stats.unknown_uids;
+        protocol_stats.duplicate_uids += batch.protocol_stats.duplicate_uids;
+        protocol_stats.empty_edits += batch.protocol_stats.empty_edits;
+        protocol_stats.malformed_edits += batch.protocol_stats.malformed_edits;
+        protocol_stats.context_echo_edits += batch.protocol_stats.context_echo_edits;
+        protocol_stats.invalid_break_uids += batch.protocol_stats.invalid_break_uids;
+        protocol_stats.legacy_response |= batch.protocol_stats.legacy_response;
+        protocol_stats.sparse_response |= batch.protocol_stats.sparse_response;
+        protocol_stats.retried_edits += batch.protocol_stats.retried_edits;
+        protocol_stats.recovered_edits += batch.protocol_stats.recovered_edits;
         let batch_lines = batch_line_counts.get(i).copied().unwrap_or(0);
         contract_fallback_line_indices.extend(
             batch
@@ -156,7 +250,11 @@ pub fn merge_export_polish_batches(
         );
         let is_last = i + 1 == batches.len();
         for &b in &batch.break_after_line {
-            if !is_last && batch_lines > 0 && b + 1 == batch_lines {
+            if !batch.protocol_stats.sparse_response
+                && !is_last
+                && batch_lines > 0
+                && b + 1 == batch_lines
+            {
                 continue;
             }
             break_after_line.push(offset + b);
@@ -172,6 +270,7 @@ pub fn merge_export_polish_batches(
         content_contract_valid,
         contract_fallback_line_indices,
         break_after_line,
+        protocol_stats,
     }
 }
 
@@ -207,6 +306,20 @@ pub fn build_export_polish_prompt(
         batch,
         instructions_override,
     )
+}
+
+pub fn build_export_lecture_optimize_prompt(
+    body: &str,
+    line_uids: &[String],
+    rule_hints: &str,
+    glossary_hints: &str,
+    batch: Option<(usize, usize)>,
+) -> String {
+    prompt::build_export_lecture_optimize_prompt(body, line_uids, rule_hints, glossary_hints, batch)
+}
+
+pub fn resolve_export_lecture_optimize_system_prompt() -> String {
+    prompt::resolve_export_lecture_optimize_system_prompt()
 }
 
 /// 由语段行 + 断段下标生成 Word 自然段（行内直接拼接，不插换行）。
@@ -260,14 +373,17 @@ fn finish_export_polish_payload(
     v: ExportPolishPayload,
     expected_line_count: usize,
 ) -> Result<ExportPolishParsed, String> {
-    let (punct_lines, content_contract_valid) =
-        match lines_from_strict_items(&v.items, expected_line_count) {
-            Some(lines) => (lines, true),
+    let (punct_lines, contract_fallback_line_indices, content_contract_valid) =
+        match lines_from_items_with_fallback(&v.items, expected_line_count) {
+            Some((lines, fallback_indices)) => {
+                let valid = fallback_indices.is_empty();
+                (lines, fallback_indices, valid)
+            }
             None if v.lines.is_array() => {
                 // 兼容旧自定义 prompt 的 JSON 形态，但正文 fail-closed；命令层按批回退输入。
-                (Vec::new(), false)
+                (Vec::new(), Vec::new(), false)
             }
-            None => (Vec::new(), false),
+            None => (Vec::new(), Vec::new(), false),
         };
     let mut break_after_line = value_usize_array(&v.break_after_line);
     if break_after_line.is_empty() {
@@ -278,8 +394,9 @@ fn finish_export_polish_payload(
     Ok(ExportPolishParsed {
         punct_lines,
         content_contract_valid,
-        contract_fallback_line_indices: vec![],
+        contract_fallback_line_indices,
         break_after_line,
+        protocol_stats: ExportPolishProtocolStats::default(),
     })
 }
 
@@ -335,6 +452,7 @@ fn try_plain_lines_fallback(s: &str, expected: usize) -> Option<ExportPolishPars
             content_contract_valid: false,
             contract_fallback_line_indices: vec![],
             break_after_line: vec![],
+            protocol_stats: ExportPolishProtocolStats::default(),
         });
     }
     let slack = (expected / 20).max(5);
@@ -345,6 +463,7 @@ fn try_plain_lines_fallback(s: &str, expected: usize) -> Option<ExportPolishPars
             content_contract_valid: false,
             contract_fallback_line_indices: vec![],
             break_after_line: vec![],
+            protocol_stats: ExportPolishProtocolStats::default(),
         })
     } else {
         None
@@ -368,6 +487,7 @@ pub fn parse_export_polish_json(
                 content_contract_valid: false,
                 contract_fallback_line_indices: vec![],
                 break_after_line: vec![],
+                protocol_stats: ExportPolishProtocolStats::default(),
             });
         }
     }
@@ -389,6 +509,7 @@ pub fn parse_export_polish_json(
             content_contract_valid: false,
             contract_fallback_line_indices: vec![],
             break_after_line: vec![],
+            protocol_stats: ExportPolishProtocolStats::default(),
         });
     }
 

@@ -6,7 +6,6 @@ import {
   resolveExportPolishForDelivery,
   type ExportPolishResult,
 } from "./exportDocxPolish";
-import type { DocxExportMode } from "../tauri/exportDocxApi";
 import { readLlmRuntimeConfigFromStorage } from "./postprocess/postprocessRuntimeContract";
 import { joinSegmentTextsForExportPolish } from "./exportDocxPolish.helpers";
 import { assessExportPolishReadiness } from "./exportPolishDelivery";
@@ -42,10 +41,9 @@ export type DeliveryDocxExportPlan =
         | { kind: "export_llm_polish"; detail: ReturnType<typeof buildExportPolishEditLogDetail> };
     };
 
-/** 干净稿 Word 修订轨作者：当前 LLM 模型名。 */
-function resolveCleanDocxPolishTrackAuthor(mode: DocxExportMode): string | undefined {
-  if (mode !== "clean") return undefined;
-  const model = readLlmRuntimeConfigFromStorage().model.trim();
+/** Word 修订轨作者：优先使用本次实际请求的模型名。 */
+function resolveDocxPolishTrackAuthor(polish: ExportPolishResult): string | undefined {
+  const model = polish.model?.trim() || readLlmRuntimeConfigFromStorage().model.trim();
   return model || undefined;
 }
 
@@ -61,10 +59,11 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
 
   const wantsPolish = exportWantsLlmPolish(request.mode, Boolean(request.llmPolish));
   if (exportModeRequiresLlmPolish(request.mode) && !wantsPolish) {
-    return { ok: false, error: "干净稿导出须走大模型润色。" };
+    return { ok: false, error: "所选导出类型需要 LLM 处理。" };
   }
   let polishedParagraphs: string[] | undefined;
   let polishCorrectedLines: string[] | undefined;
+  let polishTrackAuthor: string | undefined;
   const polishBeforeJoined = wantsPolish
     ? joinSegmentTextsForExportPolish(segments)
     : undefined;
@@ -72,21 +71,30 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
   if (wantsPolish) {
     const readiness = assessExportPolishReadiness(segments, request.mode, true);
     if (!readiness.canExport) {
-      return { ok: false, error: readiness.blockReason ?? "大模型润色不可用。" };
+      return { ok: false, error: readiness.blockReason ?? "LLM 处理不可用。" };
     }
     if (!request.polishResult) {
-      return { ok: false, error: "缺少润色结果，请重试导出。" };
+      return { ok: false, error: "缺少 LLM 处理结果，请重试导出。" };
     }
     try {
       const polish = resolveExportPolishForDelivery(segments, request.polishResult);
+      const expectedStrategy = request.mode === "lecture" ? "lecture_optimize" : "fidelity";
+      if (polish.strategy !== expectedStrategy) {
+        return { ok: false, error: "整理结果与导出类型不一致，请重试导出。" };
+      }
       polishedParagraphs = polish.paragraphs;
+      polishTrackAuthor = resolveDocxPolishTrackAuthor(polish);
       polishCorrectedLines =
         polish.correctedLines.length > 0 ? polish.correctedLines : undefined;
       if (request.includeRevisionAppendix && polishedParagraphs.length > 0) {
         const polishLines = buildExportPolishRevisionLines(segmentTexts, polishedParagraphs);
         if (polishLines.length > 0) {
           if (appendixLines.length > 0) appendixLines.push("");
-          appendixLines.push("— 本次导出大模型润色 —");
+          appendixLines.push(
+            request.mode === "lecture"
+              ? "— 本次导出讲稿优化 —"
+              : "— 本次导出 LLM 保真整理 —",
+          );
           appendixLines.push(...polishLines);
         }
       }
@@ -119,7 +127,7 @@ export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): Deli
         polishedParagraphs != null && polishCorrectedLines != null ? true : undefined,
       polishTrackAuthor:
         polishedParagraphs != null && polishCorrectedLines != null
-          ? resolveCleanDocxPolishTrackAuthor(request.mode)
+          ? polishTrackAuthor
           : undefined,
     },
     recordEditLog,

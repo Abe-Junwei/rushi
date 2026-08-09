@@ -499,34 +499,36 @@ mod tests {
     }
 
     #[test]
-    fn clean_polish_track_uses_model_author_override() {
+    fn polish_track_uses_model_author_override_for_clean_and_lecture() {
         use std::io::{Cursor, Read};
         use zip::read::ZipArchive;
 
-        let bytes = build_docx_bytes(
-            "润色",
-            "clean",
-            &[seg("你好世界", false)],
-            None,
-            &[],
-            Some(&["你好，世界。".to_string()]),
-            Some("你好世界"),
-            Some(&["你好，世界。".to_string()]),
-            true,
-            Some("qwen2.5:7b"),
-            &default_layout(),
-        )
-        .unwrap();
-        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
-        let mut doc_xml = String::new();
-        archive
-            .by_name("word/document.xml")
-            .unwrap()
-            .read_to_string(&mut doc_xml)
+        for mode in ["clean", "lecture"] {
+            let bytes = build_docx_bytes(
+                "润色",
+                mode,
+                &[seg("你好世界", false)],
+                None,
+                &[],
+                Some(&["你好，世界。".to_string()]),
+                Some("你好世界"),
+                Some(&["你好，世界。".to_string()]),
+                true,
+                Some("qwen2.5:7b"),
+                &default_layout(),
+            )
             .unwrap();
-        assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
-        assert!(doc_xml.contains("qwen2.5:7b"));
-        assert!(!doc_xml.contains(crate::export_docx_polish_track::POLISH_TRACK_AUTHOR));
+            let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+            let mut doc_xml = String::new();
+            archive
+                .by_name("word/document.xml")
+                .unwrap()
+                .read_to_string(&mut doc_xml)
+                .unwrap();
+            assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
+            assert!(doc_xml.contains("qwen2.5:7b"));
+            assert!(!doc_xml.contains(crate::export_docx_polish_track::POLISH_TRACK_AUTHOR));
+        }
     }
 
     #[test]
@@ -557,6 +559,43 @@ mod tests {
             .unwrap();
         assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
         assert!(doc_xml.contains("你好"));
+    }
+
+    #[test]
+    fn failed_track_invariant_exports_original_instead_of_irreversible_optimization() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let bytes = build_docx_bytes(
+            "讲稿优化",
+            "lecture",
+            &[
+                seg("必须保留的第一段", false),
+                seg("必须保留的第二段", false),
+            ],
+            None,
+            &[],
+            Some(&["不可逆优化稿".to_string()]),
+            Some("必须保留的第一段"),
+            Some(&["不可逆优化稿".to_string()]),
+            true,
+            None,
+            &default_layout(),
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+
+        assert!(doc_xml.contains("必须保留的第一段"));
+        assert!(doc_xml.contains("必须保留的第二段"));
+        assert!(!doc_xml.contains("不可逆优化稿"));
+        assert!(!doc_xml.contains("w:ins") && !doc_xml.contains("w:del"));
+        assert!(doc_xml.contains("已安全导出原文"));
     }
 
     #[test]
