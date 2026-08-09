@@ -16,6 +16,7 @@
 | SenseVoiceSmall | **已弃用** | catalog 已迁移到 Paraformer 长音频；不再作为 Sherpa 或 FunASR Go 门控。 | [ADR-0003 附录 A](../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) |
 | SeACo Paraformer | **Defer** | 可跑通且 CER 略优，但 hotwords on/off 零 lift，不能作为热词增强 SKU。 | [SeACo results](../execution/specs/r3g-seaco-paraformer-hotword-spike-results.md) |
 | FireRedASR2 | **v1 不接入** | 非 FunASR 生态且 AED 60s 输入限制；仅保留技术雷达。 | [ADR-0003 与 FireRedASR2](../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) |
+| whisper.cpp ggml-large-v3 | **No-go** | D3 金标可多语段，但 content_cer≈0.56（antihall）且 wall≈6× Paraformer；默认/可选引擎均不上。 | [C1 results](../execution/specs/r3-whisper-cpp-sidecar-compare-results.md) |
 
 ## 最新 Sherpa Qwen3 A/B
 
@@ -56,6 +57,7 @@ LLM 式 ASR 的主要优势是多语言、方言、上下文、术语提示与 G
 | Sherpa Paraformer | 作为轻量模式重新评估时 | 使用完整 VAD+punc 管线、同 gold CER，而非只用 FunASR 交叉 CER |
 | SeACo Paraformer | 重新做热词专项时 | hotwords on/off 有可复现 lift，且不牺牲 CER / segmentation |
 | FireRedASR2 | v1 后第三引擎 research | 先解决输入时长、时间轴、体积、生态边界，不直接接产品 |
+| whisper.cpp ggml-large-v3 | 同金标 CER/wall 达标，或另建领域金标并书面接受权衡 | content_cer ≤ Paraformer×1.1 且 wall ≤2×；幻觉复读率受控 |
 
 ## 复现入口
 
