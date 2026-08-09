@@ -18,6 +18,7 @@ import {
   resolveLoopTogglePlayOptions,
   shouldPlayThisSegmentInsteadOfPause,
 } from "../services/waveform/segmentPlayBoundArm";
+import type { PlaySegmentAtIndexOptions } from "./useWaveformSegmentPlayActionsTypes";
 
 export function useWaveformSegmentPlayToggle(args: {
   wsRef: React.MutableRefObject<WaveSurfer | null>;
@@ -42,7 +43,7 @@ export function useWaveformSegmentPlayToggle(args: {
   syncDisplayPlayheadAfterSeekRef?: React.MutableRefObject<((timeSec: number) => void) | null>;
   playSegmentAtIndex: (
     idx: number,
-    options?: { loop?: boolean; fromSec?: number },
+    options?: PlaySegmentAtIndexOptions,
   ) => Promise<void>;
   playSelectedSegment: () => Promise<void>;
 }) {
@@ -106,7 +107,9 @@ export function useWaveformSegmentPlayToggle(args: {
         });
         await playSegmentAtIndex(
           idx,
-          stickyFromSec != null ? { fromSec: stickyFromSec } : undefined,
+          stickyFromSec != null
+            ? { fromSec: stickyFromSec, mode: "scoped" }
+            : { mode: "scoped" },
         );
         return;
       }

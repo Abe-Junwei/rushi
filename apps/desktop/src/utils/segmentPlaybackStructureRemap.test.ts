@@ -48,6 +48,17 @@ describe("resolveStructurePlaybackRemap", () => {
     expect(r.session).toEqual({ kind: "segment", idx: 1 });
   });
 
+  it("moves a paused anchor outside shortened bounds back to the segment start", () => {
+    const r = resolveStructurePlaybackRemap({
+      segments: [seg(10, 14, 0)],
+      playheadSec: 15,
+      hadAutoStopped: false,
+      hadPausedAnchor: true,
+    });
+    expect(r.idx).toBe(0);
+    expect(r.pausedAnchor).toEqual({ idx: 0, timeSec: 10 });
+  });
+
   it("keeps natural-end sticky when playhead is still at the new block end", () => {
     const r = resolveStructurePlaybackRemap({
       segments: parts,

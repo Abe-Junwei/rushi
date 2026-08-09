@@ -1,4 +1,7 @@
-import type { ActiveSegmentPlaybackBound } from "../../utils/segmentPlaybackBound";
+import {
+  isActiveSegmentPlaybackBound,
+  type ActiveSegmentPlaybackBound,
+} from "../../utils/segmentPlaybackBound";
 
 /** After a successful segment play start: arm end-bound or mark unbounded selected play. */
 export function resolveSegmentBoundArmAfterPlayStart(input: {
@@ -28,6 +31,30 @@ export function resolveSegmentBoundArmAfterPlayStart(input: {
       armed: clearOfEnd && !startingNearSegmentStart,
     },
     unboundedSelectedPlayGen: null,
+  };
+}
+
+/** Atomically replace an active scoped bound after committed segment geometry changes. */
+export function resolveSegmentBoundAfterStructureChange(input: {
+  bound: ActiveSegmentPlaybackBound | null;
+  generation: number;
+  remappedIdx: number;
+  selectedIdx: number;
+  selectedSegment?: { start_sec: number; end_sec: number };
+}): ActiveSegmentPlaybackBound | null {
+  if (
+    !input.selectedSegment ||
+    input.remappedIdx !== input.selectedIdx ||
+    !isActiveSegmentPlaybackBound(input.bound, input.generation)
+  ) {
+    return null;
+  }
+  return {
+    startSec: Math.min(input.selectedSegment.start_sec, input.selectedSegment.end_sec),
+    endSec: Math.max(input.selectedSegment.start_sec, input.selectedSegment.end_sec),
+    generation: input.generation + 1,
+    // A committed bounds change is authoritative, not a stale post-seek frame.
+    armed: true,
   };
 }
 

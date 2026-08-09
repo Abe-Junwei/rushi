@@ -56,6 +56,7 @@ export function transcriptionLayerWaveformShellRenderEqual(
   if (prev.seek !== next.seek) return false;
   if (prev.seekBlankToTime !== next.seekBlankToTime) return false;
   if (prev.playSegmentAtIndex !== next.playSegmentAtIndex) return false;
+  if (prev.pauseSelectedSegmentForBoundsEdit !== next.pauseSelectedSegmentForBoundsEdit) return false;
   if (prev.handleToggleSelectedWaveformLoop !== next.handleToggleSelectedWaveformLoop) return false;
   if (prev.handleToggleSelectedWaveformPlay !== next.handleToggleSelectedWaveformPlay) return false;
   if (prev.centerTierAtClientX !== next.centerTierAtClientX) return false;

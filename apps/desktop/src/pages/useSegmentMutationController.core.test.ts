@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import type { SegmentDto } from "../tauri/projectApi";
 import { makeSeg, useTestSegmentMutationController } from "./useSegmentMutationController.testHelpers";
 
 describe("useSegmentMutationController core", () => {
@@ -257,6 +258,27 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments[1]?.start_sec).toBe(1);
   });
 
+  it("updateSegmentBounds remaps playback with the committed bounds snapshot", () => {
+    const remap = vi.fn<(playheadSec: number, segments?: readonly SegmentDto[]) => void>();
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController(
+        [
+          makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" }),
+          makeSeg({ text: "b", start_sec: 1, end_sec: 2, uid: "b" }),
+        ],
+        false,
+        undefined,
+        { getPlayheadSec: () => 0.5, onStructurePlaybackRemap: remap },
+      ),
+    );
+
+    act(() => result.current.mutations.updateSegmentBounds(0, 0, 0.8, "commit"));
+
+    expect(remap).toHaveBeenCalledWith(0.5, expect.any(Array));
+    const snapshot = remap.mock.calls[0]?.[1];
+    expect(snapshot?.[0]?.end_sec).toBe(0.8);
+  });
+
   it("updateSegmentBounds reverts live preview when commit is below min span", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" })]),
@@ -291,6 +313,35 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments).toHaveLength(2);
     expect(result.current.segments[0]?.end_sec).toBe(1.98);
     expect(result.current.segments[1]?.uid).toBe("c");
+  });
+
+  it("updateSegmentBounds eat-delete remaps playback after index removal", () => {
+    const remap = vi.fn<(playheadSec: number, segments?: readonly SegmentDto[]) => void>();
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController(
+        [
+          makeSeg({ text: "a", start_sec: 0, end_sec: 1, uid: "a" }),
+          makeSeg({ text: "b", start_sec: 1, end_sec: 2, uid: "b" }),
+          makeSeg({ text: "c", start_sec: 2, end_sec: 3, uid: "c" }),
+        ],
+        false,
+        undefined,
+        { getPlayheadSec: () => 1.5, onStructurePlaybackRemap: remap },
+      ),
+    );
+
+    act(() => result.current.setSelectedIdx(1));
+    act(() =>
+      result.current.mutations.updateSegmentBounds(1, 0.02, 2, "commit", {
+        deleteIndices: [0],
+      }),
+    );
+
+    expect(remap).toHaveBeenCalledWith(1.5, expect.any(Array));
+    const snapshot = remap.mock.calls[0]?.[1];
+    expect(snapshot).toHaveLength(2);
+    expect(snapshot?.[0]?.uid).toBe("b");
+    expect(snapshot?.[0]?.idx).toBe(0);
   });
 
   it("updateSegmentBounds eat-delete undoes structure and selection in one step", () => {

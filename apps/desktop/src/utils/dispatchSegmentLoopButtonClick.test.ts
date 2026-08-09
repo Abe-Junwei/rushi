@@ -39,8 +39,8 @@ describe("dispatchSegmentLoopButtonClick", () => {
     });
 
     expect(preserveLoopForNextSegmentSelect).toHaveBeenCalledTimes(1);
-    expect(selectSegment).toHaveBeenCalledWith(4);
-    expect(playSegmentAtIndex).toHaveBeenCalledWith(4, { loop: true });
+    expect(selectSegment).toHaveBeenCalledWith(4, { suppressStickyListenJump: true });
+    expect(playSegmentAtIndex).toHaveBeenCalledWith(4, { loop: true, mode: "scoped" });
     expect(toggleSelectedLoop).not.toHaveBeenCalled();
   });
 });

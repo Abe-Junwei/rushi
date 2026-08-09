@@ -14,6 +14,7 @@ import {
 import { useWaveformSegmentPlaybackBoundSync } from "./useWaveformSegmentPlaybackBoundSync";
 import { useWaveformSegmentLoopReplay } from "./useWaveformSegmentLoopReplay";
 import { useWaveformSegmentPlaybackSession } from "./useWaveformSegmentPlaybackSession";
+import { resolveSegmentBoundAfterStructureChange } from "../services/waveform/segmentPlayBoundArm";
 
 export type { PlaySegmentAtIndexOptions };
 
@@ -223,7 +224,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     commitSeekUi,
   });
 
-  const { syncSelectedSegmentPlayingUi } = useWaveformSegmentPlaybackBoundSync({
+  const playbackBoundSync = useWaveformSegmentPlaybackBoundSync({
     wsRef,
     transportRef,
     transportEpoch,
@@ -248,6 +249,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     commitSeekUi,
     latestSegmentsRef,
   });
+  const { enforceSegmentPlaybackBound, syncSelectedSegmentPlayingUi } = playbackBoundSync;
 
   useWaveformSegmentLoopReplay({
     wsRef,
@@ -312,11 +314,35 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (result.session) {
         playbackSessionRef.current = result.session;
       }
-      // Playing: re-arm scoped bound to the containing segment (decision 4).
+      const selectedIdx = resolveEffectiveSelectedIdx();
+      const selected = latestSegmentsRef.current[selectedIdx];
+      const rebound = resolveSegmentBoundAfterStructureChange({
+        bound: segmentPlaybackBoundRef.current,
+        generation: playGenerationRef.current,
+        remappedIdx: result.idx,
+        selectedIdx,
+        selectedSegment: selected,
+      });
+      if (rebound) {
+        playGenerationRef.current = rebound.generation;
+        segmentPlaybackBoundRef.current = rebound;
+        unboundedSelectedPlayGenRef.current = null;
+        enforceSegmentPlaybackBound(playheadSec);
+      }
+      // Playing: sync chrome and any non-active-bound selection state.
       syncSelectedSegmentPlayingUi(playheadSec);
       return result.idx;
     },
-    [playbackSessionRef, syncSelectedSegmentPlayingUi],
+    [
+      enforceSegmentPlaybackBound,
+      latestSegmentsRef,
+      playbackSessionRef,
+      playGenerationRef,
+      resolveEffectiveSelectedIdx,
+      segmentPlaybackBoundRef,
+      syncSelectedSegmentPlayingUi,
+      unboundedSelectedPlayGenRef,
+    ],
   );
 
   return {

@@ -220,6 +220,11 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
                 selectedIndices={c.selectedIndices}
                 onClearMultiSelection={c.clearMultiSelection}
                 isMultiSegmentSelection={() => c.isMultiSegmentSelection}
+                onBeginBoundsEdit={() => {
+                  if (tx.isSelectedSegmentPlaying) {
+                    tx.pauseSelectedSegmentForBoundsEdit();
+                  }
+                }}
                 onFocusWaveformShell={tx.focusWaveformShell}
                 onBoundsCommit={(idx, startSec, endSec, options) => {
                   const clamped =
@@ -315,4 +320,3 @@ export const EditorWaveformPeaksStage = memo(function EditorWaveformPeaksStage({
     </CspLayout>
   );
 }, editorWaveformPanePropsEqual);
-

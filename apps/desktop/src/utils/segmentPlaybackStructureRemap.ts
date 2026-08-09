@@ -70,6 +70,16 @@ export type StructurePlaybackRemapResult = {
   session: { kind: "segment"; idx: number } | null;
 };
 
+function resolveRemappedPauseAnchorSec(
+  segment: SegmentDto | undefined,
+  playheadSec: number,
+): number {
+  if (!segment) return playheadSec;
+  const start = Math.min(segment.start_sec, segment.end_sec);
+  const end = Math.max(segment.start_sec, segment.end_sec);
+  return playheadSec >= start && playheadSec < end ? playheadSec : start;
+}
+
 /**
  * Remap sticky playback identity onto the segment that contains the playhead.
  * - Natural-end sticky survives only when playhead is still at the *containing*
@@ -91,6 +101,7 @@ export function resolveStructurePlaybackRemap(
     };
   }
   const t = Number.isFinite(input.playheadSec) ? input.playheadSec : 0;
+  const anchorSec = resolveRemappedPauseAnchorSec(input.segments[idx], t);
   if (input.hadAutoStopped) {
     const seg = input.segments[idx];
     const endSec = seg != null ? Math.max(seg.start_sec, seg.end_sec) : t;
@@ -107,7 +118,7 @@ export function resolveStructurePlaybackRemap(
     return {
       idx,
       autoStoppedIdx: null,
-      pausedAnchor: { idx, timeSec: t },
+      pausedAnchor: { idx, timeSec: anchorSec },
       session: { kind: "segment", idx },
     };
   }
@@ -115,7 +126,7 @@ export function resolveStructurePlaybackRemap(
     return {
       idx,
       autoStoppedIdx: null,
-      pausedAnchor: { idx, timeSec: t },
+      pausedAnchor: { idx, timeSec: anchorSec },
       session: { kind: "segment", idx },
     };
   }

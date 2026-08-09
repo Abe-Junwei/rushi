@@ -2,7 +2,7 @@
 
 import type { ReactElement } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { EditorWaveformPeaksStage } from "./EditorWaveformPeaksStage";
 import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 import { readCspLayoutRulesForElement } from "../../utils/cspElementLayout";
@@ -80,6 +80,7 @@ function createTranscriptionLayer() {
     playSegmentAtIndex: vi.fn(),
     seek: vi.fn(),
     seekBlankToTime: vi.fn(),
+    pauseSelectedSegmentForBoundsEdit: vi.fn(),
     handleToggleSelectedWaveformLoop: vi.fn(),
     handleToggleSelectedWaveformPlay: vi.fn(),
     seekFromTierClientX: vi.fn(),
@@ -217,5 +218,49 @@ describe("EditorWaveformPeaksStage", () => {
     const rules = readCspLayoutRulesForElement(overlay as HTMLElement) ?? "";
     expect(rules).toContain("left:");
     expect(rules).not.toContain("display: none");
+  });
+
+  it("stops scoped segment playback before a bounds drag begins", () => {
+    const controller = createController();
+    const tx = createTranscriptionLayer();
+    tx.isSelectedSegmentPlaying = true;
+
+    const { container } = render(
+      wrapPeaksStage(
+        <EditorWaveformPeaksStage
+          controller={controller as never}
+          tx={tx as never}
+          viewportWidthPx={800}
+          peaksPaneHeightPx={120}
+          peaksPaintedHeightPx={120}
+          segmentLayoutHeightPx={120}
+          waveformVerticalTransform={undefined}
+          waveSurferPreviewLayerClass="w-full"
+          waveformHeightPreviewActive={false}
+          stripDisabled={false}
+          tierScrollProps={{
+            tierScrollRef: { current: null },
+            tierScrollLive: {
+              scrollLeftRef: { current: 0 },
+              clientWidthRef: { current: 800 },
+            },
+            tierScrollLayout: {
+              scrollLeftPx: 0,
+              clientWidthPx: 800,
+            },
+          }}
+        />,
+        controller,
+      ),
+    );
+
+    const segment = container.querySelector<HTMLElement>('[data-segment-idx="0"]');
+    expect(segment).toBeInstanceOf(HTMLElement);
+    if (!segment) return;
+    segment.setPointerCapture = vi.fn();
+    fireEvent.pointerDown(segment, { button: 0, pointerId: 7, clientX: 0, clientY: 0 });
+
+    expect(tx.pauseSelectedSegmentForBoundsEdit).toHaveBeenCalledTimes(1);
+    expect(tx.handleToggleSelectedWaveformPlay).not.toHaveBeenCalled();
   });
 });

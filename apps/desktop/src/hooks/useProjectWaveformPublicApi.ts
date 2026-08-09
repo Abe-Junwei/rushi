@@ -92,6 +92,7 @@ export function buildProjectWaveformPublicApi(input: {
     isSegmentPlaybackSession: sp.isSegmentPlaybackSession,
     getPlaybackSession: sp.getPlaybackSession,
     remapPlaybackAfterStructureChange: sp.remapPlaybackAfterStructureChange,
+    pauseSelectedSegmentForBoundsEdit: sp.pauseMediaKeepingSession,
     handleToggleSelectedWaveformLoop: sp.handleToggleSelectedWaveformLoop,
     playSegmentAtIndex: input.playSegmentAtIndex,
     handleToggleSelectedWaveformPlay: input.handleToggleSelectedWaveformPlay,

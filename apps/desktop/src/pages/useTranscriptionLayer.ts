@@ -402,6 +402,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segmentLoopPlayback: wf.segmentLoopPlayback,
     isSelectedSegmentPlaying: wf.isSelectedSegmentPlaying,
     playheadChromeMode: wf.playheadChromeMode,
+    pauseSelectedSegmentForBoundsEdit: wf.pauseSelectedSegmentForBoundsEdit,
     handleToggleSelectedWaveformLoop: wf.handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,

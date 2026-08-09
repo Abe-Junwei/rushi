@@ -305,7 +305,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(ws.play).toHaveBeenCalledWith();
   });
 
-  it("scoped play jumps from 3600s to the target and still stops at its end", async () => {
+  it("waveform segment play jumps from 3600s to the target and stops at its end", async () => {
     let playhead = 3600;
     let playing = false;
     const { on, emit } = makeWsEventBag();
@@ -338,7 +338,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     );
 
     await act(async () => {
-      await result.current.playSegmentAtIndex(0, { mode: "scoped" });
+      await result.current.handleToggleSelectedWaveformPlay();
     });
     expect(ws.setTime).toHaveBeenCalledWith(10);
     expect(playing).toBe(true);
@@ -1461,7 +1461,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
     expect(playhead).toBe(20);
   });
 
-  it("does not replay from segment start after seek clears auto-stop replay intent", async () => {
+  it("waveform segment play stays scoped after a manual seek clears replay intent", async () => {
     let playhead = 10;
     let playing = false;
     const ws = makeWs({
@@ -1517,7 +1517,7 @@ describe("useWaveformSegmentPlaybackControls", () => {
       await result.current.handleToggleSelectedWaveformPlay();
     });
 
-    expect(ws.setTime).not.toHaveBeenCalledWith(10);
+    expect(ws.setTime).toHaveBeenCalledWith(10);
     expect(ws.play).toHaveBeenCalled();
     expect(playing).toBe(true);
   });
@@ -1603,6 +1603,174 @@ describe("useWaveformSegmentPlaybackControls", () => {
     // Stale single block would map t=7 → idx 0; post-split right half → idx 1.
     expect(remapped).toBe(1);
     expect(result.current.getPlaybackSession()).toEqual({ kind: "segment", idx: 1 });
+  });
+
+  it("replaces an active bound when a committed edit extends the segment end", async () => {
+    let playhead = 10;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
+    });
+    const initial = [{ ...segments[0], start_sec: 10, end_sec: 20 }];
+    const extended = [{ ...initial[0], end_sec: 30 }];
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef: { current: ws },
+        isReady: true,
+        segments: initial,
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => result.current.playSegmentAtIndex(0, { fromSec: 10 }));
+    playhead = 15;
+    act(() => emit("audioprocess"));
+    act(() => {
+      result.current.remapPlaybackAfterStructureChange(15, extended);
+    });
+
+    playhead = 20;
+    await act(async () => {
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
+    });
+    expect(playing).toBe(true);
+
+    playhead = 30;
+    await act(async () => {
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
+    });
+    expect(ws.pause).toHaveBeenCalledTimes(1);
+    expect(playing).toBe(false);
+  });
+
+  it("stops at the new end when a committed edit shrinks past the playhead", async () => {
+    let playhead = 10;
+    let playing = false;
+    const commitSeekUi = vi.fn((t: number) => {
+      playhead = t;
+    });
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
+    });
+    const initial = [{ ...segments[0], start_sec: 10, end_sec: 20 }];
+    const shortened = [{ ...initial[0], end_sec: 14 }];
+    const { result } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef: { current: ws },
+        isReady: true,
+        segments: initial,
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+        commitSeekUi,
+      }),
+    );
+
+    await act(async () => result.current.playSegmentAtIndex(0, { fromSec: 10 }));
+    playhead = 15;
+    act(() => emit("audioprocess"));
+    await act(async () => {
+      result.current.remapPlaybackAfterStructureChange(15, shortened);
+      await flushDeferredSegmentStop();
+    });
+
+    expect(ws.pause).toHaveBeenCalledTimes(1);
+    expect(commitSeekUi).toHaveBeenCalledWith(14);
+    expect(playing).toBe(false);
+  });
+
+  it("restarts within shortened bounds when the old pause anchor is now outside", async () => {
+    let playhead = 10;
+    let playing = false;
+    const { on, emit } = makeWsEventBag();
+    const ws = makeWs({
+      getCurrentTime: () => playhead,
+      isPlaying: () => playing,
+      setTime: vi.fn((t: number) => {
+        playhead = t;
+      }),
+      play: vi.fn(() => {
+        playing = true;
+        return Promise.resolve();
+      }),
+      pause: vi.fn(() => {
+        playing = false;
+      }),
+      on,
+    });
+    const initial = [{ ...segments[0], start_sec: 10, end_sec: 20 }];
+    const shortened = [{ ...initial[0], end_sec: 14 }];
+    let renderedSegments = initial;
+    const { result, rerender } = renderHook(() =>
+      useWaveformSegmentPlaybackControls({
+        wsRef: { current: ws },
+        isReady: true,
+        segments: renderedSegments,
+        selectedIdx: 0,
+        getGlobalPlaybackRate: () => 1,
+        getPlayheadTime: () => playhead,
+        getAuthorityPlayheadTimeSec: () => playhead,
+      }),
+    );
+
+    await act(async () => result.current.playSegmentAtIndex(0, { fromSec: 10 }));
+    playhead = 15;
+    act(() => emit("audioprocess"));
+    await act(async () => result.current.handleToggleSelectedWaveformPlay());
+    expect(playing).toBe(false);
+
+    act(() => {
+      result.current.remapPlaybackAfterStructureChange(15, shortened);
+    });
+    renderedSegments = shortened;
+    rerender();
+    (ws.setTime as ReturnType<typeof vi.fn>).mockClear();
+    (ws.pause as ReturnType<typeof vi.fn>).mockClear();
+    await act(async () => result.current.handleToggleSelectedWaveformPlay());
+
+    expect(ws.setTime).toHaveBeenCalledWith(10);
+    expect(playing).toBe(true);
+    playhead = 11;
+    act(() => emit("audioprocess"));
+    playhead = 14;
+    await act(async () => {
+      emit("audioprocess");
+      await flushDeferredSegmentStop();
+    });
+    expect(ws.pause).toHaveBeenCalledTimes(1);
+    expect(playing).toBe(false);
   });
 
   it("clearSegmentPlaybackBound preserves Stop chrome for seek-while-playing", async () => {

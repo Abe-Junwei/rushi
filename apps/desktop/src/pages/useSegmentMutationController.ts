@@ -245,6 +245,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         if (snapshot && snapshot !== prev) {
           segmentPublish.publishStructure(() => snapshot);
           dispatchTranscriptSyncMetaFromSegments(snapshot);
+          onStructurePlaybackRemap?.(getPlayheadSec?.() ?? 0, snapshot);
         }
       };
 
@@ -341,12 +342,14 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         segmentPublish.publishStructure(() => next);
         setSelectedIdx(mapped);
         onSelectionCollapsed?.(mapped);
+        onStructurePlaybackRemap?.(getPlayheadSec?.() ?? 0, next);
         return;
       }
 
       next = reindexSegments(next);
       segmentPublish.publishStructure(() => next);
       dispatchTranscriptSyncMetaFromSegments(next);
+      onStructurePlaybackRemap?.(getPlayheadSec?.() ?? 0, next);
     },
     [
       getCurrentSegmentsSnapshot,
@@ -355,6 +358,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       selectedIdxRef,
       setSelectedIdx,
       onSelectionCollapsed,
+      getPlayheadSec,
+      onStructurePlaybackRemap,
       setError,
     ],
   );

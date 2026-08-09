@@ -192,7 +192,7 @@ export function useWaveformSegmentPlayActions(args: WaveformSegmentPlayActionsAr
     const idx = resolveEffectiveSelectedIdx();
     const range = resolveSelectedPlaybackRange();
     if (!host || !isReady || idx < 0 || !range) return;
-    await playSegmentAtIndex(idx);
+    await playSegmentAtIndex(idx, { mode: "scoped" });
   }, [
     isReady,
     playSegmentAtIndex,

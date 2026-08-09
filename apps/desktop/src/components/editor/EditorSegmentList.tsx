@@ -152,7 +152,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             clickedIdx: idx,
             selectedIdx: c.selectedIdx,
             preserveLoopForNextSegmentSelect: tx.preserveLoopForNextSegmentSelect,
-            selectSegment: (i) => tx.selectSegmentFromList(i),
+            selectSegment: (i, options) => tx.selectSegmentFromList(i, options),
             playSegmentAtIndex: (i, options) => tx.playSegmentAtIndex(i, options),
             toggleSelectedLoop: () => tx.handleToggleSelectedWaveformLoop(),
           });
