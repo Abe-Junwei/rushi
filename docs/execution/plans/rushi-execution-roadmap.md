@@ -544,7 +544,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 |--------|-----|------|------|------|------|
 | **P0** | **R3e-C** | 长音频 preview + 停止转写 | — | — | §4.1.1 **⑥½** | ✅ 2026-05-31 |
 | **P0** | （主序内）**R3g-C / ACC-STT-UNIFY / ACC-EVAL-1** | Profile + 词表统一 + 专名回归 | 见 §4.1.1 | R3t-B ✅ | R3g-C ✅ / ACC ✅（在线 E2E ⏳） |
-| **P1** | **R3h-ASR-VER** | FunASR **≥1.3.3** lock（**v1 后升级**，不阻塞 ⑤″f） | 1–2d | — | 📋 |
+| **P1** | **R3h-ASR-VER** | FunASR sidecar 精确 pin 升级（**v1 后升级**，不阻塞 ⑤″f） | **3.5–5d**（含 D3 金标、完整 lock、macOS/Windows PyInstaller；原依赖 spike 1–2d） | [`research`](../specs/funasr-sidecar-dependency-upgrade-research-2026-08.md) · [`plan`](../specs/funasr-sidecar-dependency-upgrade-plan.md) | 🟡 规划完成；Slice A/B 待跑 |
 | **P1** | **R3g-B / ⑤″f-E Qwen3 spike** | 第三 SKU Go/No-go | 2–4d | — | ❌ **No-go** 2026-06-03 |
 | **P2** | **R3g-B-Align** | Qwen3 **ForcedAligner** 时间轴 | spike 2026-06-11 | ⑤″f-E No-go | ❌ **废弃** 2026-06-18 — CPU ~8× Paraformer；[results](../specs/r3g-b-align-forced-aligner-spike-results.md) · **不再做** |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95 / 首段 SLA | 3–5d spike | R3e-C DEV log | 📋 |
