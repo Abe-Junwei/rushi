@@ -1,6 +1,6 @@
 import type { SegmentDto } from "../tauri/projectTypes";
 import { resolveLiveSegmentText } from "./segmentTextNormalize";
-import { mergeTwoSegments } from "../pages/segmentListHelpers";
+import { mergeTwoSegments, type SpeakerMergeChoice } from "../pages/segmentListHelpers";
 import { selectPackableSegmentIndices } from "./waveformSegmentBounds";
 
 export type SegmentLassoOutcome = {
@@ -143,6 +143,7 @@ export function mergeSegmentRangeFold(
   segments: SegmentDto[],
   lo: number,
   hi: number,
+  speakerChoice?: SpeakerMergeChoice,
 ): SegmentDto {
   const first = segments[lo];
   if (first === undefined) {
@@ -152,7 +153,11 @@ export function mergeSegmentRangeFold(
   for (let i = lo + 1; i <= hi; i += 1) {
     const seg = segments[i];
     if (seg === undefined) continue;
-    merged = mergeTwoSegments(merged, { ...seg, text: resolveLiveSegmentText(seg, i) });
+    merged = mergeTwoSegments(
+      merged,
+      { ...seg, text: resolveLiveSegmentText(seg, i) },
+      speakerChoice,
+    );
   }
   return merged;
 }

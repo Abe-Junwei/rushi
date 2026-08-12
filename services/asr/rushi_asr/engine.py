@@ -6,7 +6,7 @@ import logging
 from pathlib import Path
 
 from rushi_asr import ffmpeg_audio
-from rushi_asr.schemas import TranscriptionError, TranscriptionResult, TranscriptionSegment
+from rushi_asr.schemas import DiarizationInfo, TranscriptionError, TranscriptionResult, TranscriptionSegment
 
 log = logging.getLogger(__name__)
 
@@ -23,6 +23,8 @@ def transcribe_upload(
     upload_path: Path,
     work_dir: Path,
     hotwords: str | None = None,
+    *,
+    diarization_requested: bool = False,
 ) -> TranscriptionResult:
     """
     Normalize `upload_path` to 16 kHz mono WAV under `work_dir`, then run ASR.
@@ -77,6 +79,7 @@ def transcribe_upload(
     segments: list[TranscriptionSegment] = []
     engine = "stub"
     segmentation_mode: str | None = None
+    diarization_meta: dict[str, object] = {}
     hw_norm = (hotwords or "").strip()
     if len(hw_norm) > HOTWORDS_MAX_CHARS:
         hw_norm = hw_norm[:HOTWORDS_MAX_CHARS]
@@ -90,9 +93,13 @@ def transcribe_upload(
             duration,
             hotwords=hw_norm or None,
             out_warnings=warnings,
+            diarization_requested=diarization_requested,
+            diarization_out=diarization_meta,
         )
     except RuntimeError as e:
         msg = str(e)
+        if diarization_requested:
+            raise RuntimeError(f"diarization_failed:{msg}") from e
         if msg == "funasr_model_not_configured":
             segments, engine = _stub_segments(duration)
         else:
@@ -100,6 +107,8 @@ def transcribe_upload(
             log.info("funasr skipped: %s", msg)
             segments, engine = _stub_segments(duration)
     except Exception as e:  # noqa: BLE001 — surface as warning + stub
+        if diarization_requested:
+            raise RuntimeError(f"diarization_failed:{e!s}") from e
         warnings.append(f"funasr_error:{e!s}")
         log.exception("funasr failed")
         segments, engine = _stub_segments(duration)
@@ -121,4 +130,9 @@ def transcribe_upload(
         duration_sec=duration,
         warnings=warnings,
         segmentation_mode=segmentation_mode,
+        diarization=(
+            DiarizationInfo(**diarization_meta)
+            if diarization_requested and diarization_meta
+            else DiarizationInfo()
+        ),
     )

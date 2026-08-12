@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable
 
-from rushi_asr.schemas import TranscriptionError, TranscriptionResult, TranscriptionSegment
+from rushi_asr.schemas import DiarizationInfo, TranscriptionError, TranscriptionResult, TranscriptionSegment
 from rushi_asr.transcribe_windows import TranscribeCancelledError
 
 log = logging.getLogger(__name__)
@@ -36,6 +36,7 @@ class _JobRecord:
     duration_sec: float | None = None
     error: TranscriptionError | None = None
     cancel_requested: bool = False
+    diarization: DiarizationInfo = field(default_factory=DiarizationInfo)
     thread: threading.Thread | None = None
 
 
@@ -58,7 +59,13 @@ def _append_window_segments(
         job.phase = "transcribing"
 
 
-def _run_job(job_id: str, upload_path: Path, work_dir: Path, hotwords: str | None) -> None:
+def _run_job(
+    job_id: str,
+    upload_path: Path,
+    work_dir: Path,
+    hotwords: str | None,
+    diarization_requested: bool,
+) -> None:
     job = _jobs[job_id]
     try:
         with _lock:
@@ -73,21 +80,26 @@ def _run_job(job_id: str, upload_path: Path, work_dir: Path, hotwords: str | Non
             should_cancel=lambda: _should_cancel(job),
             on_phase=lambda phase, message: _set_phase(job, phase, message),
             on_windows_planned=lambda n: _set_window_count(job, n),
+            diarization_requested=diarization_requested,
         )
         with _lock:
             job.engine = result.engine
             job.segmentation_mode = result.segmentation_mode
             job.duration_sec = result.duration_sec
             job.warnings = list(result.warnings)
+            job.diarization = result.diarization
             if result.error is not None:
                 job.error = result.error
                 job.phase = "error"
                 job.message = result.error.message
                 return
             # Final segments may differ from accumulated if non-windowed single shot
-            if len(result.segments) != len(job.segments):
+            if result.diarization.status == "final" or len(result.segments) != len(job.segments):
                 job.segments = list(result.segments)
-                job.pending_delta = list(result.segments)
+                # Preview deltas deliberately omit provisional speaker labels.
+                # The desktop finalize command consumes the terminal `segments`.
+                if result.diarization.status != "final":
+                    job.pending_delta = list(result.segments)
             job.phase = "done"
             job.message = "ok"
     except TranscribeCancelledError:
@@ -148,6 +160,7 @@ def _transcribe_with_progress(
     should_cancel: Callable[[], bool],
     on_phase: Callable[[str, str], None],
     on_windows_planned: Callable[[int], None] | None = None,
+    diarization_requested: bool = False,
 ) -> TranscriptionResult:
     """Mirror ``engine.transcribe_upload`` but report window progress."""
     from rushi_asr import engine, ffmpeg_audio
@@ -206,14 +219,24 @@ def _transcribe_with_progress(
     segments: list[TranscriptionSegment] = []
     engine_label = "stub"
     segmentation_mode: str | None = None
+    diarization_meta: dict[str, object] = {}
 
     try:
         from rushi_asr import funasr_engine
+        from rushi_asr.transcribe_windows import (
+            async_window_sec,
+            diarization_window_sec,
+            plan_windows,
+            transcribe_by_windows,
+        )
 
-        if should_transcribe_by_windows_async(duration):
-            from rushi_asr.transcribe_windows import async_window_sec, plan_windows, transcribe_by_windows
-
-            slice_sec = async_window_sec()
+        diarization_needs_windows = bool(
+            diarization_requested
+            and duration is not None
+            and duration >= diarization_window_sec()
+        )
+        if should_transcribe_by_windows_async(duration) or diarization_needs_windows:
+            slice_sec = diarization_window_sec() if diarization_requested else async_window_sec()
             if duration is not None and on_windows_planned is not None:
                 planned = plan_windows(float(duration), slice_sec)
                 if planned:
@@ -225,7 +248,9 @@ def _transcribe_with_progress(
                 out_warnings=warnings,
                 on_window_done=on_window_done,
                 should_cancel=should_cancel,
-                slice_sec=async_window_sec(),
+                slice_sec=slice_sec,
+                diarization_requested=diarization_requested,
+                diarization_out=diarization_meta,
             )
             segments = segs
         else:
@@ -238,6 +263,8 @@ def _transcribe_with_progress(
                 duration,
                 hotwords=hw_norm or None,
                 out_warnings=warnings,
+                diarization_requested=diarization_requested,
+                diarization_out=diarization_meta,
             )
             segments = segs
             on_window_done(1, 1, list(segs))
@@ -245,12 +272,16 @@ def _transcribe_with_progress(
         raise
     except RuntimeError as e:
         msg = str(e)
+        if diarization_requested:
+            raise RuntimeError(f"diarization_failed:{msg}") from e
         if msg == "funasr_model_not_configured":
             segments, engine_label = engine._stub_segments(duration)  # noqa: SLF001
         else:
             warnings.append(f"funasr_skipped:{msg}")
             segments, engine_label = engine._stub_segments(duration)  # noqa: SLF001
     except Exception as e:  # noqa: BLE001
+        if diarization_requested:
+            raise RuntimeError(f"diarization_failed:{e!s}") from e
         warnings.append(f"funasr_error:{e!s}")
         segments, engine_label = engine._stub_segments(duration)  # noqa: SLF001
 
@@ -268,6 +299,11 @@ def _transcribe_with_progress(
         duration_sec=duration,
         warnings=warnings,
         segmentation_mode=segmentation_mode,
+        diarization=(
+            DiarizationInfo(**diarization_meta)
+            if diarization_requested and diarization_meta
+            else DiarizationInfo()
+        ),
     )
 
 
@@ -281,6 +317,8 @@ def start_transcribe_async(
     upload_path: Path,
     work_dir: Path,
     hotwords: str | None,
+    *,
+    diarization_requested: bool = False,
 ) -> dict[str, Any]:
     """Spawn background transcribe; poll ``transcribe_status`` until terminal phase."""
     _prune_terminal_jobs()
@@ -293,7 +331,7 @@ def start_transcribe_async(
 
     t = threading.Thread(
         target=_run_job,
-        args=(job_id, upload_path, work_dir, hotwords),
+        args=(job_id, upload_path, work_dir, hotwords, diarization_requested),
         name=f"rushi-transcribe-{job_id[:8]}",
         daemon=True,
     )
@@ -322,6 +360,7 @@ def transcribe_status(job_id: str) -> dict[str, Any]:
             "segmentation_mode": job.segmentation_mode,
             "duration_sec": job.duration_sec,
             "error": job.error.model_dump() if job.error else None,
+            "diarization": job.diarization.model_dump(),
         }
         if job.phase == "done":
             body["segments"] = [s.model_dump() for s in job.segments]

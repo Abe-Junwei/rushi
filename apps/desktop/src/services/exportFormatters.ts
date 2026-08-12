@@ -7,7 +7,13 @@ export interface ExportSegment {
   text: string;
   /** 语段备注；非空时以内联 `（…）` 追加在正文后。 */
   annotation?: string | null;
+  speaker_id?: string | null;
 }
+
+export type SpeakerExportOptions = {
+  includeSpeakerLabels?: boolean;
+  resolveSpeakerLabel?: (speakerId: string) => string | null;
+};
 
 function pad(n: number, w: number): string {
   return String(Math.floor(n)).padStart(w, "0");
@@ -41,21 +47,45 @@ export function formatSrtTime(seconds: number): string {
 }
 
 /** Plain text: one segment per line (no timestamps). */
-export function formatTxt(segments: ExportSegment[]): string {
+export function formatSpeakerPrefixedText(
+  segment: ExportSegment,
+  options: SpeakerExportOptions = {},
+): string {
+  const text = formatSegmentTextWithAnnotation(segment.text, segment.annotation);
+  if (!options.includeSpeakerLabels || !segment.speaker_id) return text;
+  const label = options.resolveSpeakerLabel?.(segment.speaker_id)?.trim();
+  return label ? `${label}：${text}` : text;
+}
+
+export function formatTxt(
+  segments: ExportSegment[],
+  options: SpeakerExportOptions = {},
+): string {
+  let previousSpeakerId: string | null = null;
   return segments
-    .map((s) => formatSegmentTextWithAnnotation(s.text, s.annotation))
+    .map((s) => {
+      const shouldPrefix = s.speaker_id != null && s.speaker_id !== previousSpeakerId;
+      previousSpeakerId = s.speaker_id ?? null;
+      return formatSpeakerPrefixedText(s, {
+        ...options,
+        includeSpeakerLabels: Boolean(options.includeSpeakerLabels && shouldPrefix),
+      });
+    })
     .join("\n");
 }
 
 /** SubRip: index + timestamps + blank line between cues. */
-export function formatSrt(segments: ExportSegment[]): string {
+export function formatSrt(
+  segments: ExportSegment[],
+  options: SpeakerExportOptions = {},
+): string {
   const parts: string[] = [];
   for (let i = 0; i < segments.length; i++) {
     const s = segments[i];
     const n = i + 1;
     const start = formatSrtTime(s.start_sec);
     const end = formatSrtTime(s.end_sec);
-    const cueText = formatSegmentTextWithAnnotation(s.text, s.annotation)
+    const cueText = formatSpeakerPrefixedText(s, options)
       .replace(/\r\n/g, "\n")
       .trimEnd();
     parts.push(`${n}\n${start} --> ${end}\n${cueText}\n`);

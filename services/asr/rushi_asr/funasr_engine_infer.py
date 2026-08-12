@@ -17,6 +17,12 @@ from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
 from rushi_asr.inference_queue import get_inference_queue, reset_inference_queue_after_timeout
 from rushi_asr.schemas import TranscriptionSegment
 from rushi_asr.segmentation import segment_funasr_generate_result
+from rushi_asr.speaker_diarization import (
+    SpeakerWindowResult,
+    finalize_speaker_windows,
+    speaker_centers_from_result,
+)
+from rushi_asr.model_prepare_cache import speaker_model_cached_guess
 
 log = logging.getLogger(__name__)
 
@@ -64,6 +70,9 @@ def transcribe_with_funasr(
     _duration_sec: float | None,
     hotwords: str | None = None,
     out_warnings: list[str] | None = None,
+    *,
+    diarization_requested: bool = False,
+    diarization_out: dict[str, Any] | None = None,
 ) -> tuple[list[TranscriptionSegment], str, str | None]:
     """
     Returns (segments, engine_label, segmentation_mode). Raises RuntimeError on hard failures.
@@ -79,8 +88,17 @@ def transcribe_with_funasr(
             float(_duration_sec),
             hotwords=hw,
             out_warnings=out_warnings,
+            diarization_requested=diarization_requested,
+            diarization_out=diarization_out,
         )
-    return generate_and_parse_funasr(wav_path, _duration_sec, hw, out_warnings)
+    return generate_and_parse_funasr(
+        wav_path,
+        _duration_sec,
+        hw,
+        out_warnings,
+        diarization_requested=diarization_requested,
+        diarization_out=diarization_out,
+    )
 
 
 def generate_and_parse_funasr(
@@ -88,6 +106,11 @@ def generate_and_parse_funasr(
     _duration_sec: float | None,
     hotwords: str | None = None,
     out_warnings: list[str] | None = None,
+    *,
+    diarization_requested: bool = False,
+    diarization_out: dict[str, Any] | None = None,
+    window_index: int | None = None,
+    speaker_windows_out: list[SpeakerWindowResult] | None = None,
 ) -> tuple[list[TranscriptionSegment], str, str | None]:
     """Run one FunASR generate + R3t-A segmentation parse (single WAV file)."""
     engine = _engine()
@@ -96,8 +119,14 @@ def generate_and_parse_funasr(
         raise RuntimeError("funasr_model_not_configured")
     if not engine.required_models_cached_guess(model_id):
         raise RuntimeError("funasr_models_not_ready")
+    if diarization_requested and not speaker_model_cached_guess():
+        raise RuntimeError("funasr_spk_model_not_ready")
 
-    model = engine._get_model(model_id)
+    model = (
+        engine._get_model(model_id, diarization_requested=True)
+        if diarization_requested
+        else engine._get_model(model_id)
+    )
     raw_lang = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
     rushi_lang = engine.effective_funasr_language()
     if rushi_lang != raw_lang and out_warnings is not None:
@@ -112,6 +141,19 @@ def generate_and_parse_funasr(
             out_warnings.append(msg)
 
     generate_kwargs = engine.funasr_generate_kwargs(model_id, language, hw, _duration_sec)
+    if diarization_requested:
+        generate_kwargs["return_spk_center"] = True
+        preset_raw = os.environ.get("RUSHI_FUNASR_PRESET_SPK_NUM", "").strip()
+        if preset_raw:
+            try:
+                preset = int(preset_raw)
+            except ValueError:
+                _warn(f"funasr_preset_spk_num_invalid:{preset_raw!r}")
+            else:
+                if 1 <= preset <= 32:
+                    generate_kwargs["preset_spk_num"] = preset
+                else:
+                    _warn(f"funasr_preset_spk_num_out_of_range:{preset}")
     needs_punc = recognizer_needs_punc_pipeline(model_id)
     long_audio = _duration_sec is not None and _duration_sec >= LONG_AUDIO_SEC
 
@@ -197,10 +239,32 @@ def generate_and_parse_funasr(
     engine_label = f"funasr+{model_id}"
 
     segs, mode = segment_funasr_generate_result(r0, _duration_sec, model_id, out_warnings)
+
+    def _finalize_speakers(
+        parsed: list[TranscriptionSegment],
+        result_row: dict[str, Any] = r0,
+    ) -> list[TranscriptionSegment]:
+        if not diarization_requested:
+            return parsed
+        local_window = SpeakerWindowResult(
+            window_index=window_index or 1,
+            segments=parsed,
+            centers=speaker_centers_from_result(result_row),
+        )
+        if window_index is not None and speaker_windows_out is not None:
+            speaker_windows_out.append(local_window)
+            return parsed
+        finalized, info = finalize_speaker_windows([local_window])
+        if diarization_out is not None:
+            diarization_out.update(info.model_dump())
+        if out_warnings is not None:
+            out_warnings.extend(info.warnings)
+        return finalized
+
     if segs:
         if mode != "sentence_info" and long_audio:
             _warn(f"segmentation_mode:{mode}")
-        return segs, engine_label, mode
+        return _finalize_speakers(segs), engine_label, mode
 
     if (
         long_audio
@@ -219,7 +283,7 @@ def generate_and_parse_funasr(
                 if segs2:
                     _warn("funasr_long_audio_retry_segments")
                     _warn(f"segmentation_mode:{mode2}")
-                    return segs2, engine_label, mode2
+                    return _finalize_speakers(segs2, res2[0]), engine_label, mode2
         except TypeError:
             _warn("funasr_long_audio_retry_unsupported")
 

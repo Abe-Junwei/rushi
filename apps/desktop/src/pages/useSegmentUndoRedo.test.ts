@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
 import { useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -47,5 +47,19 @@ describe("useSegmentUndoRedo", () => {
 
     expect(result.current.segments).toEqual([seg("world")]);
     expect(result.current.segmentsRef.current).toEqual([seg("world")]);
+  });
+
+  it("orders external roster actions with segment history", () => {
+    const undo = vi.fn();
+    const redo = vi.fn();
+    const { result } = renderHook(() => {
+      const segmentsRef = useRef<SegmentDto[]>([seg("hello")]);
+      return useSegmentUndoRedo(() => {}, () => segmentsRef.current);
+    });
+    act(() => result.current.pushExternalAction({ undo, redo }));
+    act(() => result.current.undo());
+    expect(undo).toHaveBeenCalledOnce();
+    act(() => result.current.redo());
+    expect(redo).toHaveBeenCalledOnce();
   });
 });

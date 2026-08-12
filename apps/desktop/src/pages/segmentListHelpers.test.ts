@@ -176,6 +176,26 @@ describe("segmentListHelpers", () => {
     expect(pair?.right.annotation).toBeNull();
   });
 
+  it("preserves speaker on split and requires a choice for conflicting merge", () => {
+    const pair = buildSplitPair(
+      seg({ uid: "a", start_sec: 0, end_sec: 10, text: "parent", speaker_id: "spk-a" }),
+      5,
+    );
+    expect(pair?.left.speaker_id).toBe("spk-a");
+    expect(pair?.right.speaker_id).toBe("spk-a");
+    const left = seg({ uid: "a", start_sec: 0, end_sec: 1, text: "a", speaker_id: "spk-a" });
+    const right = seg({ uid: "b", start_sec: 1, end_sec: 2, text: "b", speaker_id: "spk-b" });
+    expect(() => mergeTwoSegments(left, right)).toThrow("speaker_merge_choice_required");
+    expect(mergeTwoSegments(left, right, "right").speaker_id).toBe("spk-b");
+    expect(mergeTwoSegments(left, right, "unassigned").speaker_id).toBeNull();
+  });
+
+  it("speaker changes participate in dirty equality", () => {
+    const a = [seg({ start_sec: 0, end_sec: 1, text: "x", speaker_id: "spk-a" })];
+    const b = [{ ...a[0], speaker_id: "spk-b" }];
+    expect(segmentsEqualForPersist(a, b)).toBe(false);
+  });
+
   it("splitSegmentTextByTimeRatio divides text by time proportion", () => {
     expect(splitSegmentTextByTimeRatio("abcdef", 5, 0, 10)).toEqual({ left: "abc", right: "def" });
     expect(splitSegmentTextByTimeRatio("hello world", 1, 0, 2)).toEqual({

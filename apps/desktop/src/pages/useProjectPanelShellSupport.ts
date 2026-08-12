@@ -66,8 +66,8 @@ export function useProjectPanelExportShell(args: {
   deliveryModeOpen: boolean;
   isIndexInSelection: (idx: number) => boolean;
   selectionCount: number;
-  exportTxt: () => Promise<void>;
-  exportSrt: () => Promise<void>;
+  exportTxt: (includeSpeakerLabels?: boolean) => Promise<void>;
+  exportSrt: (includeSpeakerLabels?: boolean) => Promise<void>;
   openDeliveryMode: () => void;
   setTranscribeFailureDiag: (value: null) => void;
   setError: (value: string) => void;
@@ -102,14 +102,14 @@ export function useProjectPanelExportShell(args: {
   }, []);
 
   const onExportSelect = useCallback(
-    (key: string) => {
+    (key: string, includeSpeakerLabels = true) => {
       setExportKey("");
       switch (key) {
         case "txt":
-          void args.exportTxt();
+          void args.exportTxt(includeSpeakerLabels);
           break;
         case "srt":
-          void args.exportSrt();
+          void args.exportSrt(includeSpeakerLabels);
           break;
         case "docx_delivery":
           setDeliveryExportOpen(true);

@@ -4,6 +4,7 @@ pub(crate) mod files;
 pub(crate) mod glossary;
 pub(crate) mod projects;
 pub(crate) mod segments;
+pub(crate) mod speakers;
 
 use rusqlite::Connection;
 
@@ -14,6 +15,7 @@ pub(super) fn run_incremental(conn: &Connection) -> rusqlite::Result<()> {
     segments::migrate_segments_text_stage(conn)?;
     segments::migrate_segments_annotation(conn)?;
     segments::migrate_segments_frozen(conn)?;
+    speakers::migrate_speaker_diarization(conn)?;
     glossary::migrate_glossary_p2(conn)?;
     glossary::migrate_glossary_gly2(conn)?;
     glossary::migrate_glossary_gly3(conn)?;

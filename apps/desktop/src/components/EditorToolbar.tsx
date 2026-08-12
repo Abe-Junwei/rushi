@@ -24,7 +24,7 @@ const subtitleMenuItemMuted = `${menuItem} opacity-40`;
 interface EditorToolbarProps {
   controller: ProjectControllerApi;
   exportKey: string;
-  onExportSelect: (key: string) => void;
+  onExportSelect: (key: string, includeSpeakerLabels?: boolean) => void;
   projectName: string;
   currentFileName: string;
   onOpenEnvironment: () => void;
@@ -46,6 +46,7 @@ export const EditorToolbar = memo(function EditorToolbar({
   llmStatusRefreshSeq = 0,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
+  const [includeSpeakerLabels, setIncludeSpeakerLabels] = useState(true);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
   const exportMenuRef = useRef<HTMLDetailsElement | null>(null);
   useEffect(() => {
@@ -116,6 +117,7 @@ export const EditorToolbar = memo(function EditorToolbar({
     Boolean(c.currentFileId) && isTranscribeBusy(c.busy, c.busyReason);
   const subtitleImportHardBlocked = importBlocked && !transcribeSubtitleBlocked;
   const exportBlocked = c.busy;
+  const hasSpeakerLabels = c.segments.some((segment) => Boolean(segment.speaker_id));
   useEffect(() => {
     if (exportBlocked) exportMenuRef.current?.removeAttribute("open");
   }, [exportBlocked]);
@@ -259,8 +261,19 @@ export const EditorToolbar = memo(function EditorToolbar({
                 </span>
               </summary>
               <div className="dropdown-surface absolute right-0 top-full z-[100] mt-1 min-w-[12rem] py-1">
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("txt")}>导出 TXT</button>
-                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("srt")}>导出 SRT</button>
+                {hasSpeakerLabels ? (
+                  <label className="flex cursor-pointer items-center gap-2 border-b border-notion-divider px-3 py-2 text-body text-notion-text">
+                    <input
+                      type="checkbox"
+                      checked={includeSpeakerLabels}
+                      disabled={exportBlocked}
+                      onChange={(event) => setIncludeSpeakerLabels(event.currentTarget.checked)}
+                    />
+                    包含说话人标签
+                  </label>
+                ) : null}
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("txt", includeSpeakerLabels)}>导出 TXT</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("srt", includeSpeakerLabels)}>导出 SRT</button>
                 <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("delivery_mode")}>
                   定稿模式…
                 </button>

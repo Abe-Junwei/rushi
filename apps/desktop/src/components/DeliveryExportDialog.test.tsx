@@ -97,6 +97,6 @@ describe("DeliveryExportDialog", () => {
     expect(screen.getByText(/拒绝全部可恢复完整原稿/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "导出 DOCX…" }));
 
-    expect(onExport).toHaveBeenCalledWith("lecture", false, false, true);
+    expect(onExport).toHaveBeenCalledWith("lecture", false, false, true, false);
   });
 });

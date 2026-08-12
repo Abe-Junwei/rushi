@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   withAiRevisedStage,
@@ -24,6 +24,10 @@ import { createSegmentMergeDeleteActions } from "./segmentMutationMergeDelete";
 import { createSegmentInsertActions } from "./segmentMutationInsert";
 import { reindexSegments } from "./segmentListHelpers";
 import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
+import type { SpeakerMergeChoice } from "./segmentListHelpers";
+import type { ExternalHistoryAction } from "./useSegmentUndoRedo";
+import type { PendingSpeakerMerge } from "./segmentMutationMergeDelete";
+export type { PendingSpeakerMerge } from "./segmentMutationMergeDelete";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -31,9 +35,11 @@ function roundSec3(x: number): number {
 
 export interface SegmentMutationApi {
   pushUndo: () => void;
+  pushExternalHistoryAction: (action: ExternalHistoryAction) => void;
   undo: () => void;
   redo: () => void;
   updateSegmentText: (idx: number, text: string, options?: { fromLlm?: boolean }) => void;
+  reassignSegmentsSpeaker: (indices: readonly number[], speakerId: string | null) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (
     idx: number,
@@ -52,6 +58,9 @@ export interface SegmentMutationApi {
   mergeWithPrevAt: (idx: number) => void;
   mergeWithNextAt: (idx: number) => void;
   mergeSegmentRange: (lo: number, hi: number) => void;
+  pendingSpeakerMerge: PendingSpeakerMerge | null;
+  confirmSpeakerMerge: (choice: SpeakerMergeChoice) => void;
+  cancelSpeakerMerge: () => void;
   deleteSegmentAt: (idx: number) => void;
   deleteSegmentRange: (lo: number, hi: number) => void;
   deleteSegmentIndices: (indices: number[]) => void;
@@ -105,7 +114,14 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
   const undoRedo = useSegmentUndoRedo(segmentPublish.publishTextBulk, getCurrentSegmentsSnapshot);
 
-  const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
+  const {
+    pushUndo,
+    pushUndoForTextEdit,
+    pushExternalAction,
+    undo: undoStackPop,
+    redo: redoStackPop,
+  } = undoRedo;
+  const [pendingSpeakerMerge, setPendingSpeakerMerge] = useState<PendingSpeakerMerge | null>(null);
 
   const updateSegmentText = useCallback(
     (idx: number, text: string, options?: { fromLlm?: boolean }) => {
@@ -141,6 +157,24 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     });
   }, [getCurrentSegmentsSnapshot, updateSegmentText]);
 
+  const reassignSegmentsSpeaker = useCallback(
+    (indices: readonly number[], speakerId: string | null) => {
+      if (busy || indices.length === 0) return;
+      const selected = new Set(indices);
+      const prev = getCurrentSegmentsSnapshot();
+      if (!prev.some((segment, idx) => selected.has(idx) && (segment.speaker_id ?? null) !== speakerId)) {
+        return;
+      }
+      pushUndo();
+      const next = prev.map((segment, idx) =>
+        selected.has(idx) ? { ...segment, speaker_id: speakerId } : segment,
+      );
+      segmentPublish.publishStructure(() => next);
+      dispatchTranscriptSyncMetaFromSegments(next);
+    },
+    [busy, getCurrentSegmentsSnapshot, pushUndo, segmentPublish],
+  );
+
   const undo = useCallback(() => {
     if (busy) return;
     undoStackPop();
@@ -164,6 +198,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         onSelectionCollapsed,
         getPlayheadSec,
         onStructurePlaybackRemap,
+        requestSpeakerChoice: setPendingSpeakerMerge,
       }),
     [
       segmentPublish,
@@ -175,6 +210,18 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       getPlayheadSec,
       onStructurePlaybackRemap,
     ],
+  );
+
+  const confirmSpeakerMerge = useCallback(
+    (choice: SpeakerMergeChoice) => {
+      const pending = pendingSpeakerMerge;
+      setPendingSpeakerMerge(null);
+      if (!pending) return;
+      if (pending.kind === "prev") mergeDelete.mergeWithPrevAt(pending.idx, choice);
+      else if (pending.kind === "next") mergeDelete.mergeWithNextAt(pending.idx, choice);
+      else mergeDelete.mergeSegmentRange(pending.lo, pending.hi, choice);
+    },
+    [mergeDelete, pendingSpeakerMerge],
   );
 
   const insertActions = useMemo(
@@ -366,9 +413,11 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   return {
     pushUndo,
+    pushExternalHistoryAction: pushExternalAction,
     undo,
     redo,
     updateSegmentText,
+    reassignSegmentsSpeaker,
     updateSegmentTime,
     updateSegmentBounds,
     splitAtSelection: splits.splitAtSelection,
@@ -378,6 +427,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     mergeWithPrevAt: mergeDelete.mergeWithPrevAt,
     mergeWithNextAt: mergeDelete.mergeWithNextAt,
     mergeSegmentRange: mergeDelete.mergeSegmentRange,
+    pendingSpeakerMerge,
+    confirmSpeakerMerge,
+    cancelSpeakerMerge: () => setPendingSpeakerMerge(null),
     deleteSegmentAt: mergeDelete.deleteSegmentAt,
     deleteSegmentRange: mergeDelete.deleteSegmentRange,
     deleteSegmentIndices: mergeDelete.deleteSegmentIndices,

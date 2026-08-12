@@ -87,6 +87,7 @@ pub(crate) fn segments_fingerprint_from_db(
                 low_confidence: false,
                 detail: None,
                 kind: None,
+                speaker_id: None,
                 text_stage: String::new(),
                 finalize_via: None,
                 annotation: None,

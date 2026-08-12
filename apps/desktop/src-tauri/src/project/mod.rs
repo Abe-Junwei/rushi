@@ -46,6 +46,7 @@ pub mod run_transcribe_cmd;
 pub mod segment_cmd;
 mod segment_media_sanitize;
 mod segment_uid;
+pub mod speaker_cmd;
 pub mod stt_vocabulary;
 pub mod transcribe;
 pub mod transcribe_cancel_cmd;

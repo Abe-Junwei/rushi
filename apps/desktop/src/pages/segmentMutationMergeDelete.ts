@@ -1,5 +1,9 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import {
+  mergeTwoSegments,
+  reindexSegments,
+  type SpeakerMergeChoice,
+} from "./segmentListHelpers";
 import { mergeSegmentRangeFold, resolveSelectedIdxAfterIndexRemoval } from "../utils/segmentSelection";
 import { resolveLiveSegmentText } from "./flushSegmentTextDrafts";
 import type { SegmentPublishApi } from "./segmentPublishApi";
@@ -16,6 +20,11 @@ import { persistTranscriptStructureFromView } from "../components/editor/core/pe
 import { finalizeStructureChangeSelection } from "./finalizeStructureChangeSelection";
 import { isSegmentFrozen } from "../utils/frozenPlaybackSkip";
 
+export type PendingSpeakerMerge =
+  | { kind: "prev"; idx: number }
+  | { kind: "next"; idx: number }
+  | { kind: "range"; lo: number; hi: number };
+
 export type SegmentMergeDeleteDeps = {
   segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
@@ -28,12 +37,20 @@ export type SegmentMergeDeleteDeps = {
     playheadSec: number,
     segments?: readonly SegmentDto[],
   ) => void;
+  requestSpeakerChoice: (request: PendingSpeakerMerge) => void;
 };
 
-function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB: number): SegmentDto {
+function mergePairWithLiveText(
+  a: SegmentDto,
+  b: SegmentDto,
+  idxA: number,
+  idxB: number,
+  speakerChoice?: SpeakerMergeChoice,
+): SegmentDto {
   return mergeTwoSegments(
     { ...a, text: resolveLiveSegmentText(a, idxA) },
     { ...b, text: resolveLiveSegmentText(b, idxB) },
+    speakerChoice,
   );
 }
 
@@ -49,6 +66,19 @@ function rejectIfAnyFrozen(
     }
   }
   return false;
+}
+
+function speakerChoiceRequired(
+  segments: readonly SegmentDto[],
+  indices: readonly number[],
+): boolean {
+  const speakers = new Set(
+    indices.flatMap((index) => {
+      const id = segments[index]?.speaker_id?.trim();
+      return id ? [id] : [];
+    }),
+  );
+  return speakers.size > 1;
 }
 
 type StructureSelectionOpts = {
@@ -139,11 +169,15 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     onSelectionCollapsed,
   } = deps;
 
-  function mergeWithPrevAt(idx: number) {
+  function mergeWithPrevAt(idx: number, speakerChoice?: SpeakerMergeChoice) {
     if (idx <= 0) return;
     const snap = segmentPublish.getCurrentSegmentsSnapshot();
     if (rejectIfAnyFrozen(deps, snap, [idx - 1, idx])) return;
-    if (readTranscriptEditorCoreEnabled()) {
+    if (speakerChoiceRequired(snap, [idx - 1, idx]) && !speakerChoice) {
+      deps.requestSpeakerChoice({ kind: "prev", idx });
+      return;
+    }
+    if (readTranscriptEditorCoreEnabled() && !speakerChoice) {
       const base = snap;
       const opts = { affectedBounds: mergeBounds(base, idx - 1, idx), fallbackIdx: idx - 1 };
       if (dispatchTranscriptMergeWithPrev(base, idx) && persistMergeStructure(base, deps, opts)) {
@@ -158,17 +192,21 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const b = base[idx];
     if (!a || !b) return;
     const bounds = mergeBounds(base, idx - 1, idx);
-    const merged = mergePairWithLiveText(a, b, idx - 1, idx);
+    const merged = mergePairWithLiveText(a, b, idx - 1, idx, speakerChoice);
     const out = [...base];
     out.splice(idx - 1, 2, merged);
     segmentPublish.publishStructure(reindexSegments(out));
     applyPlayheadSelection(deps, { affectedBounds: bounds, fallbackIdx: idx - 1 });
   }
 
-  function mergeWithNextAt(idx: number) {
+  function mergeWithNextAt(idx: number, speakerChoice?: SpeakerMergeChoice) {
     const snap = segmentPublish.getCurrentSegmentsSnapshot();
     if (rejectIfAnyFrozen(deps, snap, [idx, idx + 1])) return;
-    if (readTranscriptEditorCoreEnabled()) {
+    if (speakerChoiceRequired(snap, [idx, idx + 1]) && !speakerChoice) {
+      deps.requestSpeakerChoice({ kind: "next", idx });
+      return;
+    }
+    if (readTranscriptEditorCoreEnabled() && !speakerChoice) {
       const base = snap;
       const opts = { affectedBounds: mergeBounds(base, idx, idx + 1), fallbackIdx: idx };
       if (dispatchTranscriptMergeWithNext(base, idx) && persistMergeStructure(base, deps, opts)) {
@@ -183,7 +221,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const b = base[idx + 1];
     if (!a || !b) return;
     const bounds = mergeBounds(base, idx, idx + 1);
-    const merged = mergePairWithLiveText(a, b, idx, idx + 1);
+    const merged = mergePairWithLiveText(a, b, idx, idx + 1, speakerChoice);
     const out = [...base];
     out.splice(idx, 2, merged);
     segmentPublish.publishStructure(reindexSegments(out));
@@ -198,12 +236,16 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     mergeWithNextAt(selectedIdx);
   }
 
-  function mergeSegmentRange(lo: number, hi: number) {
+  function mergeSegmentRange(lo: number, hi: number, speakerChoice?: SpeakerMergeChoice) {
     const snap = segmentPublish.getCurrentSegmentsSnapshot();
     const indices: number[] = [];
     for (let i = lo; i <= hi; i++) indices.push(i);
     if (rejectIfAnyFrozen(deps, snap, indices)) return;
-    if (readTranscriptEditorCoreEnabled()) {
+    if (speakerChoiceRequired(snap, indices) && !speakerChoice) {
+      deps.requestSpeakerChoice({ kind: "range", lo, hi });
+      return;
+    }
+    if (readTranscriptEditorCoreEnabled() && !speakerChoice) {
       const base = snap;
       const opts = { affectedBounds: mergeBounds(base, lo, hi), fallbackIdx: lo };
       if (dispatchTranscriptMergeRange(base, lo, hi) && persistMergeStructure(base, deps, opts)) {
@@ -215,7 +257,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= base.length || lo >= hi) return;
     const bounds = mergeBounds(base, lo, hi);
-    const merged = mergeSegmentRangeFold(base, lo, hi);
+    const merged = mergeSegmentRangeFold(base, lo, hi, speakerChoice);
     const out = [...base.slice(0, lo), merged, ...base.slice(hi + 1)];
     segmentPublish.publishStructure(reindexSegments(out));
     applyPlayheadSelection(deps, { affectedBounds: bounds, fallbackIdx: lo });

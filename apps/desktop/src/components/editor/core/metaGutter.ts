@@ -38,6 +38,7 @@ export class TranscriptMetaMarker extends GutterMarker {
     readonly frozen: boolean = false,
     /** 0-based segment idx; spacer / unknown use -1. */
     readonly segmentIdx: number = -1,
+    readonly speakerLabel: string | null = null,
   ) {
     super();
   }
@@ -54,7 +55,8 @@ export class TranscriptMetaMarker extends GutterMarker {
       this.selectionKind === other.selectionKind &&
       this.isPlaybackFocus === other.isPlaybackFocus &&
       this.frozen === other.frozen &&
-      this.segmentIdx === other.segmentIdx
+      this.segmentIdx === other.segmentIdx &&
+      this.speakerLabel === other.speakerLabel
     );
   }
 
@@ -77,7 +79,7 @@ export class TranscriptMetaMarker extends GutterMarker {
     ]
       .filter(Boolean)
       .join(" ");
-    el.title = `${this.indexLabel} ${this.timeLabel}`;
+    el.title = [this.indexLabel, this.timeLabel, this.speakerLabel].filter(Boolean).join(" ");
     if (this.segmentIdx >= 0) {
       el.setAttribute(CM_SEGMENT_IDX_ATTR, String(this.segmentIdx));
     }
@@ -99,6 +101,12 @@ export class TranscriptMetaMarker extends GutterMarker {
     timeEl.textContent = this.timeLabel;
 
     el.append(indexEl, timeEl);
+    if (this.speakerLabel) {
+      const speakerEl = document.createElement("span");
+      speakerEl.className = "cm-transcript-meta-speaker";
+      speakerEl.textContent = this.speakerLabel;
+      el.append(speakerEl);
+    }
     return el;
   }
 }
@@ -164,6 +172,7 @@ export function buildTranscriptMetaMarker(
     opts.isPlaybackFocus === true,
     Boolean(meta.frozen),
     idx,
+    meta.speakerLabel ?? (meta.speakerId ? "说话人" : null),
   );
 }
 
@@ -318,6 +327,19 @@ export const transcriptMetaGutterTheme = EditorView.theme({
     fontWeight: "500",
     letterSpacing: "0.01em",
     fontSize: "var(--text-label, 0.75rem)",
+  },
+  ".cm-transcript-meta-speaker": {
+    maxWidth: "100%",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    borderRadius: "999px",
+    padding: "0.125rem 0.375rem",
+    color: "var(--notion-text)",
+    backgroundColor: "var(--zen-saffron-surface)",
+    fontFamily: "var(--font-sans, ui-sans-serif, system-ui)",
+    fontSize: "0.6875rem",
+    lineHeight: "1.25",
   },
 });
 

@@ -95,9 +95,19 @@ pub struct FileDetail {
     pub audio_path: Option<String>,
     /// Cached media duration (seconds); filled after probe / peaks / transcribe.
     pub duration_sec: Option<f64>,
+    pub diarization_run_id: Option<String>,
+    pub speakers: Vec<FileSpeakerDto>,
     pub segments: Vec<SegmentDto>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FileSpeakerDto {
+    pub speaker_id: String,
+    pub ordinal: i32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub display_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -148,6 +158,8 @@ pub struct SegmentDto {
     /// 旧数据 / 未标记为 None，按 0.85 跨度启发式回退判定。
     #[serde(default)]
     pub kind: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker_id: Option<String>,
     #[serde(default = "default_segment_text_stage")]
     pub text_stage: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]

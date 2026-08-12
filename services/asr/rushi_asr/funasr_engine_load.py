@@ -9,10 +9,13 @@ from pathlib import Path
 from typing import Any
 
 from rushi_asr.funasr_load_plan import build_funasr_load_plan
+from rushi_asr.defaults import effective_funasr_spk_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_nano_model
 from rushi_asr.model_prepare_cache import (
     DEFAULT_PUNC_REQUIRED_FILES,
     DEFAULT_VAD_REQUIRED_FILES,
+    DEFAULT_SPK_REQUIRED_FILES,
+    SPK_MIN_WEIGHT_BYTES,
     resolve_funasr_automodel_arg,
 )
 
@@ -44,6 +47,12 @@ def loaded_funasr_device() -> str | None:
         return getattr(engine, "_model_loaded_device", None)
 
 
+def loaded_funasr_spk_model_id() -> str | None:
+    engine = _engine()
+    with engine._runtime_lock:
+        return getattr(engine, "_model_loaded_spk_id", None)
+
+
 def invalidate_funasr_model_cache() -> None:
     """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
     import gc
@@ -53,6 +62,7 @@ def invalidate_funasr_model_cache() -> None:
         engine._model_singleton = None
         engine._model_loaded_id = None
         engine._model_loaded_device = None
+        engine._model_loaded_spk_id = None
     gc.collect()
     try:
         import torch
@@ -91,7 +101,7 @@ def _ensure_funasr_nano_registered() -> None:
         pass
 
 
-def warmup_funasr_model() -> dict[str, Any]:
+def warmup_funasr_model(*, diarization_requested: bool | None = None) -> dict[str, Any]:
     """Load AutoModel into memory (separate from prepare download)."""
     engine = _engine()
     engine.configure_hub_env()
@@ -100,31 +110,38 @@ def warmup_funasr_model() -> dict[str, Any]:
         raise RuntimeError("funasr_model_not_configured")
     if not engine.required_models_cached_guess(model_id):
         raise RuntimeError("funasr_models_not_ready")
-    engine._get_model(model_id)
+    if diarization_requested is None and effective_funasr_spk_model_id() is None:
+        engine._get_model(model_id)
+    else:
+        engine._get_model(model_id, diarization_requested=diarization_requested is not False)
     plan = build_funasr_load_plan(model_id)
     return {
         "status": "ok",
         "funasr_model_id": model_id,
         "funasr_loaded_model_id": engine.loaded_funasr_model_id(),
+        "funasr_loaded_spk_model_id": loaded_funasr_spk_model_id(),
         "load_plan": plan,
     }
 
 
-def _get_model(model_id: str) -> Any:
+def _get_model(model_id: str, *, diarization_requested: bool = False) -> Any:
     engine = _engine()
     with engine._runtime_lock:
         from rushi_asr.funasr_device import resolve_funasr_device
 
         device, device_source = resolve_funasr_device()
+        spk_model_id = effective_funasr_spk_model_id(requested=diarization_requested)
         if (
             engine._model_singleton is not None
             and engine._model_loaded_id == model_id
             and getattr(engine, "_model_loaded_device", None) == device
+            and getattr(engine, "_model_loaded_spk_id", None) == spk_model_id
         ):
             return engine._model_singleton
         engine._model_singleton = None
         engine._model_loaded_id = None
         engine._model_loaded_device = None
+        engine._model_loaded_spk_id = None
         try:
             from funasr import AutoModel
         except ImportError as e:
@@ -160,6 +177,17 @@ def _get_model(model_id: str) -> Any:
             )
             kwargs["punc_model"] = punc_arg
             kwargs.update(_funasr_hub_extra_kwargs(punc, punc_arg))
+        if spk_model_id:
+            spk_arg = resolve_funasr_automodel_arg(
+                spk_model_id,
+                required_files=DEFAULT_SPK_REQUIRED_FILES,
+                min_weight_bytes=SPK_MIN_WEIGHT_BYTES,
+                weight_file="campplus_cn_common.bin",
+            )
+            if spk_arg == spk_model_id:
+                raise RuntimeError("funasr_spk_model_not_ready")
+            kwargs["spk_model"] = spk_arg
+            kwargs.update(_funasr_hub_extra_kwargs(spk_model_id, spk_arg))
         if is_funasr_nano_model(model_id):
             local_dir = Path(model_arg)
             if local_dir.is_dir():
@@ -173,14 +201,16 @@ def _get_model(model_id: str) -> Any:
                 _ensure_funasr_nano_registered()
 
         log.info(
-            "loading FunASR model %s device=%s source=%s vad=%s punc=%s",
+            "loading FunASR model %s device=%s source=%s vad=%s punc=%s spk=%s",
             model_arg,
             device,
             device_source,
             kwargs.get("vad_model") or "-",
             kwargs.get("punc_model") or "-",
+            kwargs.get("spk_model") or "-",
         )
         engine._model_singleton = AutoModel(**kwargs)
         engine._model_loaded_id = model_id
         engine._model_loaded_device = device
+        engine._model_loaded_spk_id = spk_model_id
         return engine._model_singleton

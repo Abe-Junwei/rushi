@@ -41,6 +41,12 @@ pub fn parse_transcribe_segments_from_json(arr: &[Value]) -> Result<Vec<SegmentD
                     Some("speech".to_string())
                 }
             });
+        let speaker_id = row
+            .get("speaker_id")
+            .and_then(|x| x.as_str())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from);
         segments.push(SegmentDto {
             uid: Some(uuid::Uuid::new_v4().to_string()),
             idx: i as i32,
@@ -51,6 +57,7 @@ pub fn parse_transcribe_segments_from_json(arr: &[Value]) -> Result<Vec<SegmentD
             low_confidence,
             detail,
             kind,
+            speaker_id,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,

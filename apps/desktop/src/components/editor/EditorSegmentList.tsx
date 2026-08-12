@@ -1,4 +1,4 @@
-import { memo, useEffect } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -11,6 +11,15 @@ import type { SegmentListFilterState } from "../../services/segmentListFilter";
 import { TranscriptEditorCore } from "./core/TranscriptEditorCore";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
 import { dispatchSegmentLoopButtonClick } from "../../utils/dispatchSegmentLoopButtonClick";
+import * as fileApi from "../../tauri/fileApi";
+import type { FileSpeakerDto } from "../../tauri/projectTypes";
+import { buildSpeakerLabelMap, resolveSpeakerLabel } from "../../services/speakerLabels";
+import { readTranscriptSelectedSegmentIndices } from "./core/transcriptEditorViewHandle";
+import {
+  CONTROL_BTN_SECONDARY,
+  CONTROL_SELECT_INLINE,
+  CONTROL_TEXT_INPUT,
+} from "../../config/controlStyles";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -41,22 +50,124 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   filteredIndices,
   filterActive,
   filterCriteria = null,
-  visibleIndexSet = null,
-  displayPositionByIndex = null,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
   onOpenSegmentAnnotationDialog,
 }: EditorSegmentListProps) {
-  const displayCount = filteredIndices.length;
+  const [speakers, setSpeakers] = useState<FileSpeakerDto[]>([]);
+  const [speakerFilter, setSpeakerFilter] = useState("all");
+  const [renameSpeakerId, setRenameSpeakerId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [speakerBusy, setSpeakerBusy] = useState(false);
+  const speakerSignature = c.segments.map((segment) => segment.speaker_id ?? "").join("|");
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!c.currentFileId) {
+      setSpeakers([]);
+      return;
+    }
+    void fileApi.loadFile(c.currentFileId).then((detail) => {
+      if (!cancelled) setSpeakers(detail.speakers ?? []);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [c.currentFileId, speakerSignature]);
+
+  useEffect(() => {
+    setSpeakerFilter("all");
+    setRenameSpeakerId(null);
+  }, [c.currentFileId]);
+
+  const speakerLabels = useMemo(() => buildSpeakerLabelMap(speakers), [speakers]);
+  const effectiveFilteredIndices = useMemo(() => {
+    if (speakerFilter === "all") return filteredIndices;
+    return filteredIndices.filter((idx) => {
+      const id = c.segments[idx]?.speaker_id ?? null;
+      return speakerFilter === "unassigned" ? id == null : id === speakerFilter;
+    });
+  }, [c.segments, filteredIndices, speakerFilter]);
+  const effectiveFilterActive = filterActive || speakerFilter !== "all";
+  const effectiveVisibleSet = useMemo(
+    () => (effectiveFilterActive ? new Set(effectiveFilteredIndices) : null),
+    [effectiveFilterActive, effectiveFilteredIndices],
+  );
+  const effectiveDisplayPositions = useMemo(() => {
+    if (!effectiveFilterActive) return null;
+    return new Map(effectiveFilteredIndices.map((idx, position) => [idx, position]));
+  }, [effectiveFilterActive, effectiveFilteredIndices]);
+  const displayCount = effectiveFilteredIndices.length;
+
+  const selectedIndices = () => {
+    const indices = readTranscriptSelectedSegmentIndices();
+    return indices.length > 0 ? indices : [c.selectedIdx];
+  };
+
+  const reassignSelected = (speakerId: string | null) => {
+    if (!c.currentFileId) return;
+    c.reassignSegmentsSpeaker(selectedIndices(), speakerId);
+  };
+
+  const createAndAssignSpeaker = async () => {
+    if (!c.currentFileId) return;
+    setSpeakerBusy(true);
+    try {
+      const speaker = await fileApi.fileCreateSpeaker(c.currentFileId);
+      setSpeakers((current) => [...current, speaker]);
+      c.reassignSegmentsSpeaker(selectedIndices(), speaker.speaker_id);
+    } catch (error) {
+      c.setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSpeakerBusy(false);
+    }
+  };
+
+  const confirmRename = async () => {
+    if (!c.currentFileId || !renameSpeakerId) return;
+    const fileId = c.currentFileId;
+    const speakerId = renameSpeakerId;
+    const previousName =
+      speakers.find((speaker) => speaker.speaker_id === speakerId)?.display_name ?? null;
+    const nextName = renameValue.trim() || null;
+    if (previousName === nextName) {
+      setRenameSpeakerId(null);
+      return;
+    }
+    setSpeakerBusy(true);
+    try {
+      await fileApi.fileRenameSpeaker(fileId, speakerId, nextName);
+      setRenameSpeakerId(null);
+      const detail = await fileApi.loadFile(fileId);
+      setSpeakers(detail.speakers ?? []);
+      const applyHistoryName = async (displayName: string | null) => {
+        try {
+          await fileApi.fileRenameSpeaker(fileId, speakerId, displayName);
+          const refreshed = await fileApi.loadFile(fileId);
+          setSpeakers(refreshed.speakers ?? []);
+        } catch (error) {
+          c.setError(error instanceof Error ? error.message : String(error));
+        }
+      };
+      c.pushExternalHistoryAction({
+        undo: () => applyHistoryName(previousName),
+        redo: () => applyHistoryName(nextName),
+      });
+    } catch (error) {
+      c.setError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSpeakerBusy(false);
+    }
+  };
 
   useEffect(() => {
     filterNavRef.current = {
       active: filterActive,
-      indices: filteredIndices,
-      visibleIndexSet,
-      displayPositionByIndex,
+      indices: effectiveFilteredIndices,
+      visibleIndexSet: effectiveVisibleSet,
+      displayPositionByIndex: effectiveDisplayPositions,
     };
-  }, [filterActive, filteredIndices, visibleIndexSet, displayPositionByIndex, filterNavRef]);
+  }, [effectiveFilterActive, effectiveFilteredIndices, effectiveVisibleSet, effectiveDisplayPositions, filterNavRef]);
 
   if (c.segments.length === 0) {
     return (
@@ -66,7 +177,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
     );
   }
 
-  if (filterActive && displayCount === 0) {
+  if (effectiveFilterActive && displayCount === 0) {
     return (
       <div
         ref={segmentListRef}
@@ -80,15 +191,87 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   const panelHighlight =
     c.findReplaceEditorHighlight ?? c.correctionRulesEditorHighlight ?? null;
   const showFilteredSelectedBanner = isSegmentListFilterHidingPrimary({
-    filterActive,
-    filteredIndices,
+    filterActive: effectiveFilterActive,
+    filteredIndices: effectiveFilteredIndices,
     primaryIdx: c.selectedIdx,
     segmentCount: c.segments.length,
-    visibleIndexSet,
+    visibleIndexSet: effectiveVisibleSet,
   });
 
   return (
     <div className="relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
+      {speakers.length > 0 || c.segments.some((segment) => segment.speaker_id) ? (
+        <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-notion-border bg-notion-sidebar px-3 py-2 text-sm text-notion-text-muted">
+          <span className="font-medium text-notion-text">说话人</span>
+          <select
+            className={CONTROL_SELECT_INLINE}
+            aria-label="按说话人筛选"
+            value={speakerFilter}
+            onChange={(event) => setSpeakerFilter(event.currentTarget.value)}
+          >
+            <option value="all">全部</option>
+            {speakers.map((speaker) => (
+              <option key={speaker.speaker_id} value={speaker.speaker_id}>
+                {resolveSpeakerLabel(speaker.speaker_id, speakers)}
+              </option>
+            ))}
+            <option value="unassigned">未标注</option>
+          </select>
+          <select
+            className={CONTROL_SELECT_INLINE}
+            aria-label="更改所选语段说话人"
+            defaultValue=""
+            disabled={speakerBusy}
+            onChange={(event) => {
+              const value = event.currentTarget.value;
+              event.currentTarget.value = "";
+              if (value === "new") void createAndAssignSpeaker();
+              else if (value === "unassigned") reassignSelected(null);
+              else if (value) reassignSelected(value);
+            }}
+          >
+            <option value="">更改所选语段…</option>
+            {speakers.map((speaker) => (
+              <option key={speaker.speaker_id} value={speaker.speaker_id}>
+                {resolveSpeakerLabel(speaker.speaker_id, speakers)}
+              </option>
+            ))}
+            <option value="new">新建说话人</option>
+            <option value="unassigned">设为未标注</option>
+          </select>
+          {renameSpeakerId ? (
+            <>
+              <input
+                className={CONTROL_TEXT_INPUT}
+                aria-label="说话人显示名"
+                value={renameValue}
+                autoFocus
+                onChange={(event) => setRenameValue(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") void confirmRename();
+                  if (event.key === "Escape") setRenameSpeakerId(null);
+                }}
+              />
+              <button className={CONTROL_BTN_SECONDARY} disabled={speakerBusy} onClick={() => void confirmRename()}>
+                保存姓名
+              </button>
+            </>
+          ) : (
+            <button
+              className={CONTROL_BTN_SECONDARY}
+              disabled={speakerBusy || speakers.length === 0}
+              onClick={() => {
+                const target = speakers.find((speaker) => speaker.speaker_id === speakerFilter) ?? speakers[0];
+                if (!target) return;
+                setRenameSpeakerId(target.speaker_id);
+                setRenameValue(target.display_name ?? "");
+              }}
+            >
+              重命名
+            </button>
+          )}
+        </div>
+      ) : null}
       {showFilteredSelectedBanner ? (
         <div className="z-20 flex shrink-0 items-center justify-between gap-3 border-b border-notion-border bg-notion-sidebar px-3 py-2 text-sm text-notion-text">
           <span>所选语段不在当前筛选结果中</span>
@@ -105,6 +288,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
       ) : null}
       <TranscriptEditorCore
         segments={c.segments}
+        speakerLabels={speakerLabels}
         fileId={c.currentFileId}
         initialPrimaryIdxRef={c.selectedIdxRef}
         busy={c.busy}
@@ -114,8 +298,8 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         fontItalic={a.transcriptFontItalic}
         updateSegmentText={c.updateSegmentText}
         panelHighlight={panelHighlight}
-        filterActive={filterActive}
-        filteredIndices={filteredIndices}
+        filterActive={effectiveFilterActive}
+        filteredIndices={effectiveFilteredIndices}
         filterCriteria={filterCriteria}
         listRef={segmentListRef}
         onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}

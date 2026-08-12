@@ -34,7 +34,7 @@
 | **P2** | **R3g-C-NANO vLLM** | GPU 第二运行时 | spike 2–4d | PyTorch Defer + CUDA 机 | 📋 research ✅ |
 | **P2** | **R3g-B Nano+vLLM** | （别名）同上 | — | 合并上行 | 📋 |
 | **P2** | **ACC-ONLINE-U3** | Realtime-Whisper / U3 Pro 在线 STT | 设计 only | ACC-STT-UNIFY | **STREAM-*** | ⏳ |
-| **P2** | **R3g-B diarization** | 说话人 id → schema/UI | 大 | R3t 段模型 | §8.1 | ⏳ |
+| **P2** | **R3g-D diarization** | Paraformer + CAM++ → 跨窗全局 speaker + 命名/纠错/导出 | 已落地 | 不绑 Nano；默认关闭/按需 | [`research`](./r3g-d-speaker-diarization-research.md) · [`spike`](./r3g-d-speaker-diarization-spike-results.md) | 🟡 **Partial Go** 2026-08-11；真实五类 RTTM 与 Windows 冻结 smoke 仍是 Go 闸门 |
 | **P2** | **ASR-RADAR-FireRed** | FireRedASR2-AED：中文 CER SOTA、统一 VAD+LID+Punc；**非 FunASR 生态** | 跟踪 | Sherpa Spike 结论 | §3.3 | 📋 雷达 |
 | **P2** | **ASR-RADAR-Moonshine** | Moonshine Tiny 27M / ~26MB；边缘低 RAM；中文精度未达 Paraformer | 跟踪 | 边缘场景需求 | §3.3 | 📋 雷达 |
 | **—** | Parakeet/MiMo/换引擎 | 与 ADR-0003 冲突或接入成本高 | — | — | **不做** v1 | ❌ |

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -41,6 +41,7 @@ export type DeliveryExportDialogProps = {
     includeRevisionAppendix: boolean,
     includeProjectMetadata: boolean,
     llmPolish: boolean,
+    includeSpeakerLabels: boolean,
   ) => void;
 };
 
@@ -61,6 +62,11 @@ export function DeliveryExportDialog({
   const [mode, setMode] = useState<DocxExportMode>("verbatim");
   const [includeAppendix, setIncludeAppendix] = useState(false);
   const [includeProjectMetadata, setIncludeProjectMetadata] = useState(false);
+  const hasSpeakerLabels = segments.some((segment) => Boolean(segment.speaker_id));
+  const [includeSpeakerLabels, setIncludeSpeakerLabels] = useState(hasSpeakerLabels);
+  useEffect(() => {
+    if (open) setIncludeSpeakerLabels(hasSpeakerLabels);
+  }, [hasSpeakerLabels, open]);
   const polishAvailable = exportModeSupportsLlmPolish(mode);
   const effectiveLlmPolish = exportWantsLlmPolish(mode, true);
   const polishReadiness = assessExportPolishReadiness(
@@ -119,6 +125,7 @@ export function DeliveryExportDialog({
                 includeAppendix,
                 includeProjectMetadata,
                 effectiveLlmPolish,
+                includeSpeakerLabels,
               )
             }
           >
@@ -143,6 +150,23 @@ export function DeliveryExportDialog({
               projectMetadata={projectMetadata}
               onIncludeProjectMetadataChange={setIncludeProjectMetadata}
             />
+            {hasSpeakerLabels ? (
+              <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={includeSpeakerLabels}
+                  disabled={busy}
+                  onChange={(event) => setIncludeSpeakerLabels(event.currentTarget.checked)}
+                />
+                <span>
+                  包含说话人标签
+                  <span className="block text-xs text-notion-text-muted">
+                    使用已命名说话人；未命名时显示“说话人 N”。
+                  </span>
+                </span>
+              </label>
+            ) : null}
             {polishAvailable ? (
               <div className="space-y-2">
                 <div className={`flex items-start gap-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}>

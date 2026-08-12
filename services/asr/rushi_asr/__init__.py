@@ -1,3 +1,5 @@
 """Local ASR HTTP service for Rushi (stub / future FunASR, etc.)."""
 
-__all__ = ["app"]
+__version__ = "0.1.1"
+
+__all__ = ["__version__", "app"]

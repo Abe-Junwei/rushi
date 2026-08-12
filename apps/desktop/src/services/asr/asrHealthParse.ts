@@ -17,6 +17,14 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
     funasr_vad_model_cached: j.funasr_vad_model_cached === true,
     funasr_punc_model_cached:
       typeof j.funasr_punc_model_cached === "boolean" ? j.funasr_punc_model_cached : undefined,
+    funasr_spk_model_cached:
+      typeof j.funasr_spk_model_cached === "boolean" ? j.funasr_spk_model_cached : undefined,
+    funasr_spk_model_loaded:
+      typeof j.funasr_spk_model_loaded === "boolean" ? j.funasr_spk_model_loaded : undefined,
+    funasr_spk_model_id:
+      typeof j.funasr_spk_model_id === "string" ? j.funasr_spk_model_id : null,
+    funasr_loaded_spk_model_id:
+      typeof j.funasr_loaded_spk_model_id === "string" ? j.funasr_loaded_spk_model_id : null,
     funasr_required_models_cached: j.funasr_required_models_cached === true,
     funasr_ready: j.funasr_ready === true,
     ready_for_transcribe: j.ready_for_transcribe === true,

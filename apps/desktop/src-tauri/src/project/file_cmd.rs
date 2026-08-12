@@ -264,6 +264,7 @@ pub(crate) fn copy_file_to_project_inner(
         Option<String>,
         Option<i64>,
         Option<i64>,
+        Option<String>,
     );
     let (
         source_project_id,
@@ -274,10 +275,11 @@ pub(crate) fn copy_file_to_project_inner(
         import_content_sha256,
         import_source_size,
         import_source_modified_ms,
+        diarization_run_id,
     ): CopySourceRow = conn
         .query_row(
             "SELECT project_id, name, file_type, audio_path, import_source_path, import_content_sha256, \
-             import_source_size, import_source_modified_ms FROM files WHERE id = ?1",
+             import_source_size, import_source_modified_ms, diarization_run_id FROM files WHERE id = ?1",
             params![file_id],
             |r| {
                 Ok((
@@ -289,6 +291,7 @@ pub(crate) fn copy_file_to_project_inner(
                     r.get(5)?,
                     r.get(6)?,
                     r.get(7)?,
+                    r.get(8)?,
                 ))
             },
         )
@@ -311,12 +314,13 @@ pub(crate) fn copy_file_to_project_inner(
         Option<String>,
         String,
         i64,
+        Option<String>,
     );
     let segs: Vec<SegRow> = {
         let mut stmt = conn
             .prepare(
                 "SELECT idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, \
-                 text_stage, finalize_via, annotation, frozen FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
+                 text_stage, finalize_via, annotation, frozen, speaker_id FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
             )
             .map_err(|e| e.to_string())?;
         let rows = stmt
@@ -334,7 +338,24 @@ pub(crate) fn copy_file_to_project_inner(
                     r.get::<_, Option<String>>(9)?,
                     r.get::<_, String>(10)?,
                     r.get::<_, i64>(11)?,
+                    r.get::<_, Option<String>>(12)?,
                 ))
+            })
+            .map_err(|e| e.to_string())?;
+        rows.collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?
+    };
+    type SpeakerRow = (String, i32, Option<String>, i64, i64);
+    let speakers: Vec<SpeakerRow> = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT speaker_id, ordinal, display_name, created_at_ms, updated_at_ms \
+                 FROM file_speakers WHERE file_id = ?1 ORDER BY ordinal ASC",
+            )
+            .map_err(|e| e.to_string())?;
+        let rows = stmt
+            .query_map(params![file_id], |r| {
+                Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
             })
             .map_err(|e| e.to_string())?;
         rows.collect::<Result<Vec<_>, _>>()
@@ -364,8 +385,8 @@ pub(crate) fn copy_file_to_project_inner(
         let tx = conn.transaction().map_err(|e| e.to_string())?;
         tx.execute(
             "INSERT INTO files (id, project_id, name, file_type, audio_path, import_source_path, \
-             import_content_sha256, import_source_size, import_source_modified_ms, created_at_ms, updated_at_ms) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+             import_content_sha256, import_source_size, import_source_modified_ms, diarization_run_id, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
             params![
                 &new_file_id,
                 dest_project_id,
@@ -376,6 +397,7 @@ pub(crate) fn copy_file_to_project_inner(
                 import_content_sha256.as_deref(),
                 import_source_size,
                 import_source_modified_ms,
+                diarization_run_id.as_deref(),
                 t,
                 t,
             ],
@@ -395,13 +417,14 @@ pub(crate) fn copy_file_to_project_inner(
             finalize_via,
             annotation,
             frozen,
+            speaker_id,
         ) in &segs
         {
             let uid = Uuid::new_v4().to_string();
             tx.execute(
                 "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, \
-                 low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                 low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen, speaker_id) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
                 params![
                     &new_file_id,
                     &uid,
@@ -417,6 +440,24 @@ pub(crate) fn copy_file_to_project_inner(
                     finalize_via,
                     annotation,
                     frozen,
+                    speaker_id,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+
+        for (speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) in &speakers {
+            tx.execute(
+                "INSERT INTO file_speakers \
+                 (file_id, speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+                params![
+                    &new_file_id,
+                    speaker_id,
+                    ordinal,
+                    display_name,
+                    created_at_ms,
+                    updated_at_ms,
                 ],
             )
             .map_err(|e| e.to_string())?;

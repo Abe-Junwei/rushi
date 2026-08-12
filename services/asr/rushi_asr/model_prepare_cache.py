@@ -3,16 +3,41 @@
 from __future__ import annotations
 
 import os
+import hashlib
 from pathlib import Path
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import (
+    DEFAULT_FUNASR_MODEL_ID,
+    DEFAULT_FUNASR_SPK_MODEL_ID,
+    effective_funasr_model_id,
+    effective_funasr_vad_model_id,
+)
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_nano_model
 
 DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
 DEFAULT_VAD_REQUIRED_FILES = ("model.pt",)
 DEFAULT_PUNC_REQUIRED_FILES = ("model.pt", "config.yaml")
+DEFAULT_SPK_REQUIRED_FILES = ("campplus_cn_common.bin", "config.yaml", "configuration.json")
 
 RECOGNIZER_MIN_WEIGHT_BYTES = 100 * 1024 * 1024
+SPK_MIN_WEIGHT_BYTES = 20 * 1024 * 1024
+SPK_EXPECTED_WEIGHT_BYTES = 28_036_335
+SPK_EXPECTED_WEIGHT_SHA256 = "3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8"
+
+
+def verify_speaker_model_artifact(model_dir: Path) -> bool:
+    """Strict release-pinned CAM++ integrity check used by prepare/warmup."""
+    weight = model_dir / "campplus_cn_common.bin"
+    try:
+        if weight.stat().st_size != SPK_EXPECTED_WEIGHT_BYTES:
+            return False
+        digest = hashlib.sha256()
+        with weight.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest() == SPK_EXPECTED_WEIGHT_SHA256
+    except OSError:
+        return False
 
 
 def recognizer_cache_spec(model_id: str) -> tuple[tuple[str, ...], str, int]:
@@ -207,6 +232,23 @@ def punc_model_cached_guess(model_id: str | None = None) -> bool:
     if not punc_id:
         return True
     return model_cached_guess(punc_id, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024)
+
+
+def speaker_model_cached_guess(model_id: str | None = None) -> bool:
+    resolved = (model_id or "").strip() or DEFAULT_FUNASR_SPK_MODEL_ID
+    model_dir = find_cached_model_dir(
+        resolved,
+        DEFAULT_SPK_REQUIRED_FILES,
+        SPK_MIN_WEIGHT_BYTES,
+        weight_file="campplus_cn_common.bin",
+    )
+    if model_dir is None:
+        return False
+    # The product-supported CAM++ artifact is release-pinned.  A merely
+    # present/sufficiently-large file must not surface as a usable cache.
+    if resolved == DEFAULT_FUNASR_SPK_MODEL_ID:
+        return verify_speaker_model_artifact(model_dir)
+    return True
 
 
 def required_models_cached_guess(model_id: str | None = None) -> bool:

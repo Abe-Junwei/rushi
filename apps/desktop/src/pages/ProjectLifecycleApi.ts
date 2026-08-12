@@ -93,8 +93,8 @@ export interface ProjectLifecycleApi {
   applyEditorInlineCorrection: (item: import("../services/editor/correctSuggestions").CorrectSuggestion) => void;
   autoSaveFooterStatus: import("./useAutoSaveSegments").AutoSaveFooterStatus;
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
-  exportTxt: () => Promise<void>;
-  exportSrt: () => Promise<void>;
+  exportTxt: (includeSpeakerLabels?: boolean) => Promise<void>;
+  exportSrt: (includeSpeakerLabels?: boolean) => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   exportProjectBundle: () => void;
@@ -129,6 +129,10 @@ export interface ProjectLifecycleApi {
   undo: () => void;
   redo: () => void;
   updateSegmentText: (idx: number, text: string) => void;
+  reassignSegmentsSpeaker: (indices: readonly number[], speakerId: string | null) => void;
+  pushExternalHistoryAction: (
+    action: import("./useSegmentUndoRedo").ExternalHistoryAction,
+  ) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (
     idx: number,
@@ -147,6 +151,9 @@ export interface ProjectLifecycleApi {
   mergeWithNextAt: (idx: number) => void;
   mergeWithPrevAt: (idx: number) => void;
   mergeSegmentRange: (lo: number, hi: number) => void;
+  pendingSpeakerMerge: import("./useSegmentMutationController").PendingSpeakerMerge | null;
+  confirmSpeakerMerge: (choice: import("./segmentListHelpers").SpeakerMergeChoice) => void;
+  cancelSpeakerMerge: () => void;
   deleteSegmentAt: (idx: number) => void;
   requestDeleteSelection: (lo: number, hi: number) => void;
   pendingDeleteCount: number;

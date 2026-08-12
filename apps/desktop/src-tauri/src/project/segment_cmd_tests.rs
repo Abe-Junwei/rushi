@@ -2,7 +2,8 @@
 
 use super::correction::SaveSegmentsLearnOpts;
 use super::segment_cmd::{
-    file_restore_segments_from_edit_log_inner, file_save_segments_inner, SegmentSaveEditLog,
+    file_restore_segments_from_edit_log_inner, file_save_segments_inner,
+    file_save_segments_with_diarization_inner, DiarizationSave, SegmentSaveEditLog,
 };
 use super::types::SegmentDto;
 use super::utils::{file_detail_from_conn, now_ms, open_db};
@@ -21,6 +22,77 @@ fn test_root(label: &str) -> PathBuf {
     let root = std::env::temp_dir().join(format!("rushi_segment_cmd_{label}_{unique}"));
     fs::create_dir_all(&root).unwrap();
     root
+}
+
+#[test]
+fn diarization_save_reload_and_manual_edit_preserve_roster() {
+    let st = test_state("diarization_roundtrip");
+    let (_project_id, file_id) = seed_file(&st);
+    let mut a = seg("a", 0, "甲");
+    a.speaker_id = Some("spk:run-1:1".into());
+    let mut b = seg("b", 1, "乙");
+    b.speaker_id = Some("spk:run-1:2".into());
+    file_save_segments_with_diarization_inner(
+        &st,
+        &file_id,
+        &[a.clone(), b.clone()],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+        DiarizationSave::Final { run_id: "run-1" },
+    )
+    .unwrap();
+
+    let conn = open_db(&st).unwrap();
+    conn.execute(
+        "UPDATE file_speakers SET display_name = '张三' WHERE file_id = ?1 AND ordinal = 1",
+        params![&file_id],
+    )
+    .unwrap();
+    drop(conn);
+    a.text = "甲改".into();
+    file_save_segments_inner(
+        &st,
+        &file_id,
+        &[a, b],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+    )
+    .unwrap();
+
+    let detail = file_detail_from_conn(&open_db(&st).unwrap(), &file_id).unwrap();
+    assert_eq!(detail.diarization_run_id.as_deref(), Some("run-1"));
+    assert_eq!(detail.speakers.len(), 2);
+    assert_eq!(detail.speakers[0].display_name.as_deref(), Some("张三"));
+    assert_eq!(
+        detail.segments[0].speaker_id.as_deref(),
+        Some("spk:run-1:1")
+    );
+}
+
+#[test]
+fn disabled_retranscribe_clears_run_and_roster_atomically() {
+    let st = test_state("diarization_disabled");
+    let (_project_id, file_id) = seed_file(&st);
+    let mut initial = seg("a", 0, "甲");
+    initial.speaker_id = Some("spk:run-1:1".into());
+    file_save_segments_with_diarization_inner(
+        &st,
+        &file_id,
+        &[initial],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+        DiarizationSave::Final { run_id: "run-1" },
+    )
+    .unwrap();
+    file_save_segments_with_diarization_inner(
+        &st,
+        &file_id,
+        &[seg("b", 0, "普通转写")],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+        DiarizationSave::Disabled,
+    )
+    .unwrap();
+    let detail = file_detail_from_conn(&open_db(&st).unwrap(), &file_id).unwrap();
+    assert!(detail.diarization_run_id.is_none());
+    assert!(detail.speakers.is_empty());
+    assert!(detail.segments[0].speaker_id.is_none());
 }
 
 fn test_state(label: &str) -> DbState {
@@ -57,6 +129,7 @@ fn seg(uid: &str, idx: i32, text: &str) -> SegmentDto {
         low_confidence: false,
         detail: None,
         kind: None,
+        speaker_id: None,
         text_stage: "auto_transcribe".to_string(),
         finalize_via: None,
         annotation: None,

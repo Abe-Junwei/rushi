@@ -14,7 +14,7 @@ from starlette.responses import Response
 
 from rushi_asr.engine import transcribe_upload
 from rushi_asr.model_cache_env import apply_models_root_env, configure_hub_env
-from rushi_asr.runtime_caps import get_runtime_caps
+from rushi_asr.runtime_caps import get_runtime_caps, sidecar_version
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 8741
@@ -85,7 +85,7 @@ async def read_upload_to_temp(
 
 def create_app() -> FastAPI:
     configure_hub_env()
-    app = FastAPI(title="rushi-asr", version="0.1.0")
+    app = FastAPI(title="rushi-asr", version=sidecar_version())
     # Local loopback service: desktop / Vite dev may POST from another origin.
     app.add_middleware(
         CORSMiddleware,
@@ -225,6 +225,18 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=503, detail=code) from e
             raise HTTPException(status_code=500, detail=code) from e
 
+    @app.post("/v1/models/speaker/prepare")
+    async def prepare_speaker_model_endpoint(request: Request) -> dict[str, object]:
+        """Prepare optional CAM++ without changing global ASR readiness."""
+        _require_local_token(request)
+        _require_funasr_import()
+        from rushi_asr.model_prepare import prepare_speaker_model
+
+        try:
+            return await run_in_threadpool(prepare_speaker_model)
+        except RuntimeError as e:
+            raise HTTPException(status_code=503, detail=str(e)) from e
+
     @app.post("/v1/models/unload")
     async def unload_model_endpoint(request: Request) -> dict[str, object]:
         """Drop FunASR AutoModel from RAM (disk cache unchanged)."""
@@ -249,13 +261,26 @@ def create_app() -> FastAPI:
         request: Request,
         file: UploadFile = File(...),
         hotwords: str | None = Form(default=None),
+        diarization_requested: bool = Form(default=False),
     ) -> dict[str, object]:
         _require_local_token(request)
         tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_"))
         tmp_path = Path(tmp)
         try:
             in_path = await read_upload_to_temp(file, tmp_path)
-            result = await run_in_threadpool(transcribe_upload, in_path, tmp_path, hotwords)
+            try:
+                result = await run_in_threadpool(
+                    lambda: transcribe_upload(
+                        in_path,
+                        tmp_path,
+                        hotwords,
+                        diarization_requested=diarization_requested,
+                    )
+                )
+            except RuntimeError as e:
+                if str(e).startswith("diarization_failed:"):
+                    raise HTTPException(status_code=503, detail=str(e)) from e
+                raise
             return result.model_dump()
         finally:
             await run_in_threadpool(shutil.rmtree, str(tmp_path), True)
@@ -265,6 +290,7 @@ def create_app() -> FastAPI:
         request: Request,
         file: UploadFile = File(...),
         hotwords: str | None = Form(default=None),
+        diarization_requested: bool = Form(default=False),
     ) -> dict[str, object]:
         """Start background transcribe; poll ``GET /v1/transcribe/status`` (R3e-C)."""
         _require_local_token(request)
@@ -276,7 +302,12 @@ def create_app() -> FastAPI:
         try:
             in_path = await read_upload_to_temp(file, tmp_path)
             # Job thread owns tmp_path cleanup after successful handoff.
-            out = start_transcribe_async(in_path, tmp_path, hotwords)
+            out = start_transcribe_async(
+                in_path,
+                tmp_path,
+                hotwords,
+                diarization_requested=diarization_requested,
+            )
             handoff_to_job = True
             return out
         except RuntimeError as e:

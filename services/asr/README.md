@@ -10,7 +10,7 @@
 
 | 文件 | 用途 |
 |------|------|
-| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.12.1` CPU + FunASR 传递依赖；不包含 `qwen-asr`） |
+| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.13.0` CPU + `funasr==1.3.16` + `modelscope==1.38.1`；不包含 `qwen-asr`） |
 | `requirements-sidecar-cpu-macos-x86_64.lock` | `-r` 引用 arm64 锁（同 pins，Intel 上解析 x86_64 轮子） |
 | `requirements-sidecar-cpu-win_amd64.lock` | `-r` 引用 arm64 锁（Windows CPU 侧车） |
 | `requirements-sidecar-cuda-win_amd64.lock` | `rushi-asr-sidecar-cuda.exe`：`torch*+cu126` + 其余与 CPU 锁一致 |
@@ -66,13 +66,15 @@ python -m rushi_asr
 - **Generate Profile（R3g-C）**：`use_itn` / `merge_vad` / `batch_size_*` 等由 `rushi_asr/asr_model_profile.py` 按 SKU+时长生成，见 [`docs/architecture/asr-generate-params-truth.md`](../../docs/architecture/asr-generate-params-truth.md)
 - **R3e-B blocking 长音频分窗**（≥30min）：`RUSHI_FUNASR_WINDOW_SEC`（默认 **300**）、`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC`（默认 **1800**）
 - **R3e-C async 增量预览分窗**：`RUSHI_FUNASR_ASYNC_WINDOW_SEC`（默认 **120**）、`RUSHI_FUNASR_ASYNC_WINDOW_THRESHOLD_SEC`（默认与 async 窗宽相同，即 **≥120s** 音频走分窗 preview；blocking `/v1/transcribe` 仍用 300s/1800s 阈值）
+- **R3g-D 可选说话人分离**：请求字段 `diarization_requested=true` 时按需使用 CAM++，默认关闭；`RUSHI_FUNASR_DIARIZATION_WINDOW_SEC` 默认 **30** 秒。异步 preview 不带 provisional speaker，只有 final response 返回 run-scoped `speaker_id`。
 
 ## 接口
 
-- `GET /health` — 运行时能力：`ready_for_transcribe`、`funasr_model_id`、`funasr_loaded_model_id`、`funasr_load_plan`（含 `uses_local_paths`）等。
+- `GET /health` — 运行时能力：`ready_for_transcribe`、`funasr_model_id`、`funasr_loaded_model_id`、`funasr_load_plan`（含 `uses_local_paths`）等；`version`是侧车版本，`funasr_version` / `modelscope_version` / `torch_version` 仅用于诊断，不参与 ready 判定。
 - `GET /` — 服务目录；桌面用 `transcribe_async` 字段检测 bundled 是否支持 R3e-C。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。
+- `POST /v1/models/speaker/prepare` — 按需准备 CAM++；固定校验 `campplus_cn_common.bin` 大小与 SHA-256，损坏时只移除该权重并定向重下，不改变普通 ASR ready。
 - `POST /v1/models/warmup` — 将 FunASR `AutoModel` 预加载进内存；权重未就绪 **503**。
 - `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`running` 时另含 `progress_percent`（0–99，按 ModelScope 下载回调累计字节 / 预算或已声明文件大小）、`bytes_downloaded`、`bytes_total`；`done` 时 `progress_percent` 为 100，并含 `result`（与同步成功体同形），`error` 时含 `message`。
 - **桌面一键安装（可选）**：仓库根脚本 `scripts/install-funasr-for-desktop.sh` 会在 `services/asr/.venv` 中执行 `pip install -e ".[funasr]"`；需本机已有 **Python 3**、**网络**与足够磁盘；**不会**代替用户设置 `RUSHI_FUNASR_MODEL`，也**不会**自动重启 ASR 进程。
@@ -88,6 +90,7 @@ python -m rushi_asr
 - `POST /v1/transcribe/cancel`
 - `POST /v1/models/prepare-default`
 - `POST /v1/models/prepare-default/async`
+- `POST /v1/models/speaker/prepare`
 
 ## 测试
 

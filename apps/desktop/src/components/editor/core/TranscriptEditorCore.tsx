@@ -90,6 +90,7 @@ export type TranscriptEditorCoreProps = {
   listRef?: React.RefObject<HTMLDivElement | null>;
   className?: string;
   rowHeightDragFromDom?: (target: HTMLElement, event: PointerEvent) => void;
+  speakerLabels?: ReadonlyMap<string, string>;
 };
 
 type EditorViewWithEditContext = typeof EditorView & { EDIT_CONTEXT?: boolean };
@@ -123,6 +124,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     listRef,
     className,
     rowHeightDragFromDom,
+    speakerLabels,
   } = props;
 
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -187,6 +189,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     const state = buildTranscriptEditorState(segs, {
       extensions,
       initialPrimaryIdx: seedIdx,
+      speakerLabels,
     });
     const ViewCtor = EditorView as EditorViewWithEditContext;
     const prev = ViewCtor.EDIT_CONTEXT;
@@ -234,6 +237,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
           Math.abs(m.endSec - seg.end_sec) > 0.0005 ||
           (m.stage ?? null) !== (seg.text_stage ?? null) ||
           (m.finalizeVia ?? null) !== (seg.finalize_via ?? null) ||
+          (m.speakerId ?? null) !== (seg.speaker_id ?? null) ||
+          (m.speakerLabel ?? null) !==
+            (seg.speaker_id ? (speakerLabels?.get(seg.speaker_id) ?? "说话人") : null) ||
           m.uid !== (seg.uid ?? `idx-${i}`) ||
           Boolean(m.frozen) !== Boolean(seg.frozen) ||
           Boolean(m.hasAnnotation) !== Boolean(seg.annotation?.trim())
@@ -244,7 +250,9 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     }
     if (!lengthDrift && !textDrift && metaDrift) {
       view.dispatch({
-        effects: setSegmentMetaEffect.of(segments.map((s, i) => segmentDtoToMeta(s, i))),
+        effects: setSegmentMetaEffect.of(
+          segments.map((s, i) => segmentDtoToMeta(s, i, speakerLabels)),
+        ),
       });
       return;
     }
@@ -269,6 +277,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     view.setState(
       buildTranscriptEditorState(segments, {
         extensions: extensionsRef.current,
+        speakerLabels,
       }),
     );
     view.dom.setAttribute(TRANSCRIPT_EDITOR_CORE_ATTR, "1");
@@ -310,7 +319,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       });
       syncTranscriptProjectionFromView(view);
     }
-  }, [segments, filterActive, filteredIndices, filterCriteria]);
+  }, [segments, filterActive, filteredIndices, filterCriteria, speakerLabels]);
 
   useEffect(() => {
     const view = viewRef.current;

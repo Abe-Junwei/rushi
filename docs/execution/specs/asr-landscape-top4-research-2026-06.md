@@ -14,7 +14,7 @@
 |---|------|---------------|------------------------|
 | **①** | Fun-ASR 报告 + **Fun-ASR-Nano** 注册与 `sentence_info` 契约 | 同栈 **Paraformer 继任**；Nano 已支持时间戳 + diarization | **PyTorch spike ❌ Defer**（2026-06-17）；**vLLM research ✅**；不上 catalog |
 | **②** | **Qwen3-ASR** + **ForcedAligner** 中期 SKU | 第三 SKU 质量线；本仓 **0 语段** 根因已定位 | ASR 线 **No-go**；**必须先跑 R3g-B-Align spike** |
-| **③** | **说话人分离**（Fun-ASR-Nano diarization · FireRedASR2S） | Descript 类缺口；schema/UI 均未就绪 | **P2 新 Epic**；FunASR `cam++` 路径优先于换引擎 |
+| **③** | **说话人分离**（Paraformer + CAM++ · FireRedASR2S 对照） | Descript 类缺口；schema/UI 均未就绪 | **P2 新 Epic**；不依赖 Nano，完整方案见 R3g-D research |
 | **④** | **ASR Leaderboard** 长音频 + **RTFx** 评测体系 | 补 `fixtures/eval`；别只看短句 WER | **P1 薄 slice**：扩展 manifest + `eval-run` 指标列 |
 
 **paperswithcode.co 说明**：站点已于 2025-07 关停 SOTA 榜单，现跳转 [HF Trending Papers](https://paperswithcode.com/)。ASR 榜单真源改为 [Open ASR Leaderboard](https://huggingface.co/spaces/hf-audio/open-asr-leaderboard)、[ASR Leaderboard 论文](https://arxiv.org/abs/2510.06961)（arXiv:2510.06961）。
@@ -147,7 +147,7 @@ Spike 期间合入：`funasr>=1.3.3`、`qwen-asr`、`zh→Chinese` 映射 — **
 
 ---
 
-## ③ 说话人分离（Fun-ASR-Nano · FireRedASR2S）
+## ③ 说话人分离（Paraformer + CAM++；FireRedASR2S 对照）
 
 ### 3.1 问题陈述
 
@@ -161,12 +161,12 @@ Spike 期间合入：`funasr>=1.3.3`、`qwen-asr`、`zh→Chinese` 映射 — **
 
 | # | 路线 | 代表 | 机制 | 与 Rushi |
 |---|------|------|------|----------|
-| A | **FunASR diarization** | Fun-ASR-Nano + `spk_model="cam++"` + VAD + punc | `sentence_info[].spk` 句级标签 | **同栈**；依赖 ① Nano 先通 |
+| A | **FunASR diarization** | Paraformer + `spk_model="cam++"` + 现有 VAD + punc | `sentence_info[].spk` 句级标签；长音频另做运行级聚类 | **同栈**；默认 Paraformer 已具备，不依赖 Nano |
 | B | **FireRedASR2S 流水线** | FireRedVAD → FireRedLID → FireRedASR2 → FireRedPunc | 模块化；**非 FunASR** | [arXiv:2603.10420](https://arxiv.org/abs/2603.10420)；backlog **ASR-RADAR-FireRed**；ADR-0003 **v1 不做第三引擎** |
 | C | **在线 Provider** | AssemblyAI U3 diarization、ElevenLabs Scribe v2 | 云 Job 返回 speaker segments | 已有 adapter 架构；**音频出境** |
 | D | **pyannote / 独立 diarization** | pyannote.audio 3.x | 与 ASR **两阶段** | 第二套权重 + 对齐复杂度；**spike 不采纳** |
 
-**Fun-ASR-Nano diarization（2026/05）**
+**FunASR CAM++ diarization（R3g-D 主路径）**
 
 ```python
 # Fun-ASR README 摘录 — 句级 spk 在 sentence_info
@@ -185,7 +185,7 @@ for sent in res[0]["sentence_info"]:
 
 | 路线 | 复用度 | 可直接用 | 冲突 |
 |------|--------|----------|------|
-| **A FunASR cam++** | **中高** | `segmentation.py` 读 `spk`；扩展 `TranscriptionSegment` + DB 迁移 + UI chip | **schema 全栈**；`cam++` 权重 + 磁盘；与 ① Nano 绑定 |
+| **A FunASR CAM++** | **高** | `segmentation.py` 读 `spk`；扩展 `TranscriptionSegment` + DB 迁移 + UI chip | **schema 全栈**；约 28.86 MB 按需制品；120 秒窗口需 embedding 全局聚类 |
 | **B FireRed** | **低** | VAD/Punc 思路参考 | **非 FunASR**；60s AED 输入上限（backlog）；打包/signing 重做 |
 | **C 在线 diarization** | **中** | `stt_native`、capabilities `diarization` | 隐私；与「本机优先」叙事冲突 |
 
@@ -193,9 +193,9 @@ for sent in res[0]["sentence_info"]:
 
 | 问题 | 结论 |
 |------|------|
-| **选定方案** | **P2 新 Epic「R3g-D diarization」**；技术路径 **A（Fun-ASR-Nano + cam++）** 优先，**在 ① Nano spike Go 之后** 单独立项 |
+| **选定方案** | **P2 Epic「R3g-D diarization」**；技术路径修订为 **Paraformer + cam++**（官方同栈；**不绑定** Nano Go）。完整落位见 [`r3g-d-speaker-diarization-research.md`](./r3g-d-speaker-diarization-research.md)。 |
 | **不做什么** | v1 **不做** FireRed 第三引擎；不做 pyannote 两阶段；不做 `auto_punctuate` 之外的 LLM 说话人推断 |
-| **前置依赖** | ① Nano 或 Paraformer 稳定 `sentence_info`；schema 设计（`speaker_id: string \| null`）+ 导出 + Close Gate |
+| **前置依赖** | Paraformer 稳定 `sentence_info`（已具备）；schema（`speaker_id`）+ 跨窗 id 策略 spike + 导出 + UI |
 | **在线** | ACC-STT 扩展 `capabilities.diarization` 作 **云对照**，不挡本机路径 |
 | **估时** | 大（**2–3 周** 纵向薄片）：schema → 侧车 → 导入 → 列表/波形 UI → 导出 |
 
@@ -266,7 +266,7 @@ for sent in res[0]["sentence_info"]:
 【P2】① Fun-ASR-Nano PyTorch spike ✅ **Defer** 2026-06-17
     ├─ vLLM CUDA spike（research ✅，待 GPU 机）
     └─ 并行雷达 FireRed（只文档，不编码）
-【P2】③ R3g-D diarization Epic（依赖 Nano Go 或 Paraformer + schema）
+【P2】③ R3g-D diarization Epic（Paraformer + CAM++；先 D0 DER/跨窗 spike）
 ```
 
 | 优先级 | ID | 估时 | 依赖 |
@@ -275,7 +275,7 @@ for sent in res[0]["sentence_info"]:
 | **P1** | R3g-B-Align spike | 2–4d | funasr≥1.3.3 ✅ |
 | **P2** | Fun-ASR-Nano PyTorch | — | ❌ **Defer** 2026-06-17 |
 | **P2** | Fun-ASR-Nano vLLM | 2–4d CUDA | research ✅ |
-| **P2** | R3g-D diarization | 大 | Nano Go 或 schema 先行 |
+| **P2** | R3g-D diarization | 12–18d | research ✅；方案确认后先 D0 spike |
 | **雷达** | FireRedASR2S | — | ADR-0003；不 v1 编码 |
 
 ---

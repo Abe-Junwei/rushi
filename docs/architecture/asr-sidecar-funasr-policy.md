@@ -35,9 +35,18 @@
   - **`requirements-sidecar-cpu-macos-arm64.lock`**：macOS arm64 **真源**（`pip freeze` 生成；**Python 3.12**）。
   - **`requirements-sidecar-cpu-macos-x86_64.lock`** / **`requirements-sidecar-cpu-win_amd64.lock`**：`-r` 引用 arm64 锁（同版本号，由目标平台解析对应 wheel）。
   - **`requirements-sidecar-cuda-win_amd64.lock`**：`torch` / `torchvision` / `torchaudio` 使用 **`+cu126`**（**cp312、win_amd64**），其余与 CPU 锁一致；由 `scripts/regen-sidecar-cuda-win-lock.sh` 在 CPU 锁变更后重生成。
+- **2026-08-11 验证结论**：产品 pin 保持 `funasr==1.3.16` / `modelscope==1.38.1`；`1.3.30` 与 `1.4.1` 内容 CER 无回归，但均因上游 VAD 文本拼接导致标点/断句对齐回归而 No-go。`rushi-asr 0.1.1` 加固产物因首次 frozen warmup 超门禁而 **Defer release**，未经平台签收不进安装包。
 - 侧车 CI / 本地构建：**仅** `pip install -r <对应 lock>` 后再 PyInstaller；更新锁：先 `bash scripts/regen-sidecar-cpu-lock.sh`，再 `bash scripts/regen-sidecar-cuda-win-lock.sh`（若 bump torch，需核对 `cu126` 上 Windows 轮是否存在）。
 - **ffmpeg**：**侧车内自带** `ffmpeg` / `ffprobe` **二进制**（与侧车同签/同包），**不依赖**用户 PATH。许可（如 GPL/LGPL）在发布说明与 `NOTICE` 中列明。
 - **默认 `RUSHI_FUNASR_MODEL`**：选用 **许可明确允许再分发** 的模型 ID（实现时在配置常量与 README 写死 **一个** 默认 SKU；若仅允许「运行时从官方拉取」则下载 URL 与许可条款仍须在合规附录中备案）。
+
+### 可选 CAM++ 组件（R3g-D，2026-08-11）
+
+- `iic/speech_campplus_sv_zh-cn_16k-common` 是默认 Paraformer 的**可选组件**，默认关闭、首次使用按需下载，不进入 Tauri 安装资源。
+- 普通 ASR 的 `ready_for_transcribe` 不依赖 CAM++。诊断分别报告 speaker model 的 cached / loaded / model id，本次 job 是否请求与结果是否 final 仍由 job contract 表示。
+- 产品 pin 的 `campplus_cn_common.bin` 为 28,036,335 bytes，SHA-256 `3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8`；目录存在或文件足够大不算完整。
+- 开启后缺失/损坏必须让该 job 明确失败并进入定向准备，禁止回落为无 speaker 的“成功”；关闭时不下载、不挂载 CAM++。
+- 长音频 speaker 使用 30 秒窗口收集 local center，再做 run 级 constrained clustering；async preview 只预览正文，speaker 只在 final 提交。完整质量与平台边界见 R3g-D Acceptance，当前为 Partial Go。
 
 ---
 
@@ -66,7 +75,7 @@
 
 ## 6. 版本与升级（已定）
 
-- **侧车与桌面壳 semver 相互独立**（例如壳 `0.2.0`、侧车 `0.1.3`），在 `GET /health` 或侧车 stdout/元数据 manifest 中报告 **`rushi_asr_sidecar_version`**（实现阶段定字段名）。
+- **侧车与桌面壳 semver 相互独立**（例如壳 `0.2.0`、侧车 `0.1.3`），当前实现在 `GET /health.version` 中报告侧车版本；依赖版本字段仅用于诊断，不参与 ready 与能力状态判定。
 - **应用升级**：安装包升级时 **顺带升级** 已随包分发的侧车二进制（CPU 与可选 CUDA 包与壳 **同次发布物料** 对齐）；模型缓存 **不因壳小版本升级而自动清空**，除非迁移脚本明确要求。
 
 ---

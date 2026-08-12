@@ -18,6 +18,14 @@ vi.mock("../tauri/diagnosticApi", () => ({
   exportDiagnosticBundle: vi.fn(),
 }));
 
+vi.mock("../tauri/fileApi", () => ({
+  loadFile: vi.fn(() =>
+    Promise.resolve({
+      speakers: [{ speaker_id: "spk-a", ordinal: 1, display_name: "张三" }],
+    }),
+  ),
+}));
+
 vi.mock("../services/ui/toast", () => ({
   toast: {
     success: vi.fn(),
@@ -156,6 +164,24 @@ describe("useExportController", () => {
       "访谈录音.txt",
       expect.stringContaining("第一句"),
     );
+  });
+
+  it("TXT speaker labels can be explicitly disabled", async () => {
+    const deps = makeDeps({
+      getCurrentSegmentsSnapshot: () => [
+        {
+          idx: 0,
+          start_sec: 0,
+          end_sec: 1,
+          text: "第一句",
+          low_confidence: false,
+          speaker_id: "spk-a",
+        },
+      ],
+    });
+    const { result } = renderHook(() => useExportController(deps));
+    await act(async () => result.current.exportTxt(false));
+    expect(exportTextFile).toHaveBeenCalledWith("访谈录音.txt", "第一句");
   });
 
   it("exportDiagnosticBundle toasts success when user saves zip", async () => {

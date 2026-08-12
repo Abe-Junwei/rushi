@@ -47,6 +47,7 @@ pub(super) fn create_base_tables(conn: &Connection) -> rusqlite::Result<()> {
             name TEXT NOT NULL,
             file_type TEXT NOT NULL CHECK(file_type IN ('text', 'paired', 'audio_only')),
             audio_path TEXT,
+            diarization_run_id TEXT,
             created_at_ms INTEGER NOT NULL,
             updated_at_ms INTEGER NOT NULL,
             FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -65,10 +66,24 @@ pub(super) fn create_base_tables(conn: &Connection) -> rusqlite::Result<()> {
             detail TEXT NOT NULL DEFAULT '',
             uid TEXT NOT NULL DEFAULT '',
             kind TEXT,
+            speaker_id TEXT,
             FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
             UNIQUE (file_id, idx)
         );
         CREATE INDEX IF NOT EXISTS idx_segments_file ON segments(file_id);
+
+        CREATE TABLE IF NOT EXISTS file_speakers (
+            file_id TEXT NOT NULL,
+            speaker_id TEXT NOT NULL,
+            ordinal INTEGER NOT NULL,
+            display_name TEXT,
+            created_at_ms INTEGER NOT NULL,
+            updated_at_ms INTEGER NOT NULL,
+            PRIMARY KEY (file_id, speaker_id),
+            FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE
+        );
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_file_speakers_ordinal
+            ON file_speakers(file_id, ordinal);
 
         CREATE TABLE IF NOT EXISTS edit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,

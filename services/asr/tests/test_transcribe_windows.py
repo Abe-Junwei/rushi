@@ -92,6 +92,15 @@ def test_async_window_sec_overrides_blocking_window(monkeypatch: pytest.MonkeyPa
     assert transcribe_windows.should_transcribe_by_windows_async(90.0) is True
 
 
+def test_diarization_window_sec_defaults_to_empirical_safe_slice(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("RUSHI_FUNASR_DIARIZATION_WINDOW_SEC", raising=False)
+    assert transcribe_windows.diarization_window_sec() == 30.0
+    monkeypatch.setenv("RUSHI_FUNASR_DIARIZATION_WINDOW_SEC", "45")
+    assert transcribe_windows.diarization_window_sec() == 45.0
+
+
 def test_offset_and_merge_segments() -> None:
     base = [
         TranscriptionSegment(start_sec=1.0, end_sec=2.0, text="a"),
@@ -101,6 +110,20 @@ def test_offset_and_merge_segments() -> None:
     assert shifted[0].start_sec == 301.0
     merged = transcribe_windows.sort_window_segments(shifted)
     assert [s.start_sec for s in merged] == [300.5, 301.0]
+
+
+def test_offset_and_trim_preserve_final_speaker_id() -> None:
+    base = [
+        TranscriptionSegment(
+            start_sec=0.5,
+            end_sec=2.5,
+            text="a",
+            speaker_id="spk:run:1",
+        )
+    ]
+    shifted = transcribe_windows.offset_segments(base, 298.0)
+    trimmed = transcribe_windows.trim_window_prefix_overlap(shifted, 300.0)
+    assert trimmed[0].speaker_id == "spk:run:1"
 
 
 def test_transcribe_by_windows_merges_with_offset(

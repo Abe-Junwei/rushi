@@ -35,7 +35,20 @@ fn write_manifest(root: &std::path::Path, manifest: &BundledAsrModelsManifest) {
 fn write_fake_model(root: &std::path::Path, hub_id: &str, weight_bytes: u64) {
     let parts: Vec<_> = hub_id.split('/').collect();
     let dir = root.join("modelscope/models").join(parts[0]).join(parts[1]);
-    fs::create_dir_all(&dir).unwrap();
+    write_fake_model_at(&dir, hub_id, weight_bytes);
+}
+
+fn write_fake_snapshot_model(root: &std::path::Path, hub_id: &str, weight_bytes: u64) {
+    let (owner, name) = hub_id.split_once('/').unwrap();
+    let dir = root
+        .join("modelscope/models")
+        .join(format!("{owner}--{name}"))
+        .join("snapshots/master");
+    write_fake_model_at(&dir, hub_id, weight_bytes);
+}
+
+fn write_fake_model_at(dir: &std::path::Path, hub_id: &str, weight_bytes: u64) {
+    fs::create_dir_all(dir).unwrap();
     fs::write(dir.join("config.yaml"), "model: test\n").unwrap();
     if hub_id == DEFAULT_FUNASR_HUB_MODEL_ID {
         fs::write(dir.join("tokens.json"), "[]").unwrap();
@@ -45,6 +58,30 @@ fn write_fake_model(root: &std::path::Path, hub_id: &str, weight_bytes: u64) {
         *byte = 1;
     }
     fs::write(dir.join("model.pt"), weight).unwrap();
+}
+
+#[test]
+fn seed_from_modelscope_snapshot_layout_populates_cache() {
+    run_serial(|| {
+        let pack = temp_dir("bundled-seed-snapshot-src");
+        let dest_root = temp_dir("bundled-seed-snapshot-dest");
+        let manifest = triplet_manifest();
+        write_manifest(&pack, &manifest);
+        write_fake_snapshot_model(&pack, DEFAULT_FUNASR_HUB_MODEL_ID, 16);
+        write_fake_snapshot_model(&pack, DEFAULT_FUNASR_VAD_MODEL_ID, 4);
+        write_fake_snapshot_model(&pack, DEFAULT_FUNASR_PUNC_MODEL_ID, 4);
+
+        let result = seed_bundled_asr_models_at(&dest_root, &pack, None).unwrap();
+        assert_eq!(result.bundle_id, DEFAULT_BUNDLED_ASR_BUNDLE_ID);
+        assert!(result.imported_bytes > 0);
+        assert!(dest_root.join(SEED_MARKER_FILE).is_file());
+
+        let second = seed_bundled_asr_models_at(&dest_root, &pack, None).unwrap();
+        assert!(second.skipped_reseed);
+
+        let _ = fs::remove_dir_all(pack);
+        let _ = fs::remove_dir_all(dest_root);
+    });
 }
 
 fn triplet_manifest() -> BundledAsrModelsManifest {

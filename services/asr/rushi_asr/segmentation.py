@@ -2,14 +2,22 @@
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Any
 
 from rushi_asr.asr_model_profile import LONG_AUDIO_SEC, build_generate_kwargs as _profile_build_generate_kwargs
 from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
 from rushi_asr.schemas import TranscriptionSegment
+from rushi_asr.speaker_diarization import normalize_local_speaker_id
 
 # R3t-A: long audio must not end as whole-track-only; short clips may.
 SHORT_WHOLE_TRACK_MAX_SEC = 30.0
+
+SENTENCE_COALESCE_MAX_GAP_SEC = 0.8
+SENTENCE_COALESCE_TARGET_MIN_SEC = 3.0
+SENTENCE_COALESCE_TARGET_MIN_CHARS = 12
+SENTENCE_COALESCE_MAX_SEC = 15.0
+SENTENCE_COALESCE_MAX_CHARS = 40
 
 SegmentationMode = str  # sentence_info | vad_timestamp | whole_track_fallback | empty
 
@@ -90,6 +98,7 @@ def segments_from_sentence_info(
         except (TypeError, ValueError):
             conf_f = None
         low = bool(row.get("low_confidence")) or (conf_f is None)
+        speaker_id = normalize_local_speaker_id(row.get("spk"))
         if conf_f is not None:
             conf_f = max(0.0, min(1.0, conf_f))
         lo = max(0.0, min(s, e))
@@ -101,9 +110,77 @@ def segments_from_sentence_info(
                 text=text,
                 confidence=conf_f,
                 low_confidence=low,
+                speaker_id=speaker_id,
             ),
         )
-    return segs
+    return coalesce_short_sentence_segments(segs)
+
+
+def coalesce_short_sentence_segments(
+    segments: list[TranscriptionSegment],
+) -> list[TranscriptionSegment]:
+    """Merge short adjacent sentence rows without crossing meaningful pauses."""
+    merged: list[TranscriptionSegment] = []
+    for segment in segments:
+        if not merged:
+            merged.append(segment)
+            continue
+
+        previous = merged[-1]
+        gap_sec = segment.start_sec - previous.end_sec
+        previous_duration = previous.end_sec - previous.start_sec
+        previous_chars = _content_char_count(previous.text)
+        combined_duration = segment.end_sec - previous.start_sec
+        combined_chars = previous_chars + _content_char_count(segment.text)
+        previous_is_short = (
+            previous_duration < SENTENCE_COALESCE_TARGET_MIN_SEC
+            or previous_chars < SENTENCE_COALESCE_TARGET_MIN_CHARS
+        )
+        can_merge = (
+            previous.kind == "speech"
+            and segment.kind == "speech"
+            and previous.speaker_id == segment.speaker_id
+            and previous_is_short
+            and 0.0 <= gap_sec <= SENTENCE_COALESCE_MAX_GAP_SEC
+            and combined_duration <= SENTENCE_COALESCE_MAX_SEC
+            and combined_chars <= SENTENCE_COALESCE_MAX_CHARS
+        )
+        if not can_merge:
+            merged.append(segment)
+            continue
+
+        confidence = (
+            min(previous.confidence, segment.confidence)
+            if previous.confidence is not None and segment.confidence is not None
+            else None
+        )
+        detail = previous.detail if previous.detail == segment.detail else None
+        merged[-1] = TranscriptionSegment(
+            start_sec=previous.start_sec,
+            end_sec=segment.end_sec,
+            text=_join_segment_text(previous.text, segment.text),
+            confidence=confidence,
+            low_confidence=previous.low_confidence or segment.low_confidence,
+            detail=detail,
+            kind="speech",
+            speaker_id=previous.speaker_id,
+        )
+    return merged
+
+
+def _content_char_count(text: str) -> int:
+    return sum(
+        1
+        for char in text
+        if not char.isspace() and not unicodedata.category(char).startswith("P")
+    )
+
+
+def _join_segment_text(left: str, right: str) -> str:
+    if not left or not right or left[-1].isspace() or right[0].isspace():
+        return f"{left}{right}"
+    separator = " " if left[-1].isascii() and right[0].isascii() else ""
+    return f"{left}{separator}{right}"
 
 
 def segments_from_timestamp_field(
@@ -278,8 +355,6 @@ def _row_text(row: dict[str, Any]) -> str:
     text_raw = row.get("text")
     if text_raw is None:
         text_raw = row.get("sentence")
-    if text_raw is None:
-        text_raw = row.get("spk")
     if isinstance(text_raw, list):
         return " ".join(str(x) for x in text_raw).strip()
     return str(text_raw or "").strip()

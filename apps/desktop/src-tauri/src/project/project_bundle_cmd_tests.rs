@@ -3,8 +3,8 @@ use super::project_bundle_cmd::{
     import_project_bundle_from_path_with_renames, read_zip_bytes, read_zip_json, zip_opts,
     ProjectBundleDocument, ProjectBundleFileDoc, ProjectBundleFileManifest, ProjectBundleManifest,
     ProjectBundleProjectMeta, MAX_BUNDLE_SEGMENT_COUNT, MAX_BUNDLE_UNCOMPRESSED_BYTES,
-    PROJECT_BUNDLE_KIND, PROJECT_BUNDLE_LEXICON_ENTRY, PROJECT_BUNDLE_VERSION,
-    PROJECT_BUNDLE_VERSION_V1,
+    PROJECT_BUNDLE_KIND, PROJECT_BUNDLE_LEXICON_ENTRY, PROJECT_BUNDLE_SPEAKERS_ENTRY,
+    PROJECT_BUNDLE_VERSION, PROJECT_BUNDLE_VERSION_V1,
 };
 use super::types::SegmentDto;
 use super::utils::open_db;
@@ -88,6 +88,22 @@ fn export_and_import_project_bundle_round_trip() {
     let export_state = test_state("round_trip_export");
     let project_id = "project-export-1";
     let seeded = seed_project(&export_state, project_id, "示例项目", "audio.wav");
+    {
+        let conn = open_db(&export_state).unwrap();
+        conn.execute(
+            "UPDATE files SET diarization_run_id = 'run-export-1' WHERE id = ?1",
+            params![&seeded.file_id],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO file_speakers \
+             (file_id, speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) \
+             VALUES (?1, 'spk:run-export-1:1', 1, '张三', 11, 22), \
+                    (?1, 'spk:run-export-1:2', 2, NULL, 11, 22)",
+            params![&seeded.file_id],
+        )
+        .unwrap();
+    }
     let export_zip = export_state.root.join("bundle.zip");
     let exported_segments = vec![
         SegmentDto {
@@ -100,6 +116,7 @@ fn export_and_import_project_bundle_round_trip() {
             low_confidence: false,
             detail: Some("ok".into()),
             kind: Some("speech".into()),
+            speaker_id: Some("spk:run-export-1:1".into()),
             text_stage: "finalized".to_string(),
             finalize_via: Some("manual".into()),
             annotation: Some("note-a".into()),
@@ -115,6 +132,7 @@ fn export_and_import_project_bundle_round_trip() {
             low_confidence: true,
             detail: None,
             kind: None,
+            speaker_id: Some("spk:run-export-1:2".into()),
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -156,6 +174,16 @@ fn export_and_import_project_bundle_round_trip() {
     assert_eq!(doc.edit_log[0].kind, "save_segments");
     let audio_bytes = read_zip_bytes(&mut archive, &audio_entry).unwrap();
     assert_eq!(audio_bytes, b"test-audio-bytes");
+    let speakers_json: serde_json::Value =
+        read_zip_json(&mut archive, PROJECT_BUNDLE_SPEAKERS_ENTRY).unwrap();
+    assert_eq!(
+        speakers_json["files"][0]["diarization_run_id"],
+        "run-export-1"
+    );
+    assert_eq!(
+        speakers_json["files"][0]["speakers"][0]["display_name"],
+        "张三"
+    );
 
     let import_state = test_state("round_trip_import");
     let imported = import_project_bundle_from_path(&import_state, &export_zip).unwrap();
@@ -189,23 +217,62 @@ fn export_and_import_project_bundle_round_trip() {
         Some("import_project_bundle")
     );
 
-    let (kind, text_stage, finalize_via, annotation): (
+    let (kind, text_stage, finalize_via, annotation, speaker_id): (
         Option<String>,
         String,
         Option<String>,
         String,
+        Option<String>,
     ) = conn
         .query_row(
-            "SELECT kind, text_stage, finalize_via, annotation FROM segments \
+            "SELECT kind, text_stage, finalize_via, annotation, speaker_id FROM segments \
                  WHERE file_id = ?1 AND idx = 0",
             params![&imported.files[0].id],
-            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?)),
+            |row| {
+                Ok((
+                    row.get(0)?,
+                    row.get(1)?,
+                    row.get(2)?,
+                    row.get(3)?,
+                    row.get(4)?,
+                ))
+            },
         )
         .unwrap();
     assert_eq!(kind.as_deref(), Some("speech"));
     assert_eq!(text_stage, "finalized");
     assert_eq!(finalize_via.as_deref(), Some("manual"));
     assert_eq!(annotation, "note-a");
+    assert_eq!(speaker_id.as_deref(), Some("spk:run-export-1:1"));
+    let imported_run: Option<String> = conn
+        .query_row(
+            "SELECT diarization_run_id FROM files WHERE id = ?1",
+            params![&imported.files[0].id],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(imported_run.as_deref(), Some("run-export-1"));
+    let imported_speakers: Vec<(String, i32, Option<String>)> = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT speaker_id, ordinal, display_name FROM file_speakers \
+                 WHERE file_id = ?1 ORDER BY ordinal ASC",
+            )
+            .unwrap();
+        stmt.query_map(params![&imported.files[0].id], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
+        .unwrap()
+        .map(|row| row.unwrap())
+        .collect()
+    };
+    assert_eq!(
+        imported_speakers,
+        vec![
+            ("spk:run-export-1:1".into(), 1, Some("张三".into())),
+            ("spk:run-export-1:2".into(), 2, None),
+        ]
+    );
 
     let _ = fs::remove_dir_all(&export_state.root);
     let _ = fs::remove_dir_all(&import_state.root);
@@ -247,6 +314,7 @@ fn project_bundle_embeds_and_imports_global_lexicon() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -363,6 +431,7 @@ fn export_project_bundle_packs_all_files_primary_segments_override() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -449,6 +518,7 @@ fn export_and_import_includes_peaks_when_present() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -547,6 +617,7 @@ fn export_skips_missing_keeps_orphan_absolute_and_siblings() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -614,6 +685,7 @@ fn import_sorts_segments_by_idx_before_persist() {
                     low_confidence: false,
                     detail: None,
                     kind: None,
+                    speaker_id: None,
                     text_stage: "auto_transcribe".to_string(),
                     finalize_via: None,
                     annotation: None,
@@ -629,6 +701,7 @@ fn import_sorts_segments_by_idx_before_persist() {
                     low_confidence: false,
                     detail: None,
                     kind: None,
+                    speaker_id: None,
                     text_stage: "auto_transcribe".to_string(),
                     finalize_via: None,
                     annotation: None,
@@ -693,6 +766,7 @@ fn import_v1_project_bundle_still_works() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -911,6 +985,7 @@ fn import_project_bundle_rejects_excessive_segment_count() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,
@@ -967,6 +1042,7 @@ fn import_bundle_name_conflict_preview_and_resolutions() {
             low_confidence: false,
             detail: None,
             kind: None,
+            speaker_id: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
             annotation: None,

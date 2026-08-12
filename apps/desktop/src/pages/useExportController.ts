@@ -1,7 +1,13 @@
 import { useCallback, useState } from "react";
 import type { ExportBundleScope } from "../components/ExportBundleScopeDialog";
 import type { BundleConflictDraft } from "../components/BundleImportNameConflictDialog";
-import { formatSrt, formatTxt, type ExportSegment } from "../services/exportFormatters";
+import {
+  formatSpeakerPrefixedText,
+  formatSrt,
+  formatTxt,
+  type ExportSegment,
+  type SpeakerExportOptions,
+} from "../services/exportFormatters";
 import type { ExchangeBundleImportPreview, ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { useBundleImportConflictController } from "./useBundleImportConflictController";
@@ -33,6 +39,8 @@ import { pushExportFailureActivity } from "../services/ui/pushActivity";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import type { BusyReason } from "./useProjectCrudController";
 import { segmentsForDeliveryExport } from "../utils/frozenPlaybackSkip";
+import * as fileApi from "../tauri/fileApi";
+import { resolveSpeakerLabel } from "../services/speakerLabels";
 
 export type DeliveryDocxExportRequest = {
   mode: DocxExportMode;
@@ -43,11 +51,12 @@ export type DeliveryDocxExportRequest = {
   llmPolish?: boolean;
   /** 控制器在导出前拉取的 LLM 处理结果。 */
   polishResult?: ExportPolishResult | null;
+  includeSpeakerLabels?: boolean;
 };
 
 export interface ExportApi {
-  exportTxt: () => Promise<void>;
-  exportSrt: () => Promise<void>;
+  exportTxt: (includeSpeakerLabels?: boolean) => Promise<void>;
+  exportSrt: (includeSpeakerLabels?: boolean) => Promise<void>;
   exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   /** Opens scope chooser (current project vs whole library). */
@@ -130,7 +139,20 @@ export function useExportController(deps: ExportDeps): ExportApi {
     [current, currentFileId, exportContextLabel, setError],
   );
 
-  const exportTxt = useCallback(async () => {
+  const speakerExportOptions = useCallback(
+    async (rows: readonly ExportSegment[], requested = true): Promise<SpeakerExportOptions> => {
+      if (!requested || !currentFileId || !rows.some((row) => row.speaker_id)) return {};
+      const detail = await fileApi.loadFile(currentFileId);
+      const speakers = detail.speakers ?? [];
+      return {
+        includeSpeakerLabels: true,
+        resolveSpeakerLabel: (speakerId) => resolveSpeakerLabel(speakerId, speakers),
+      };
+    },
+    [currentFileId],
+  );
+
+  const exportTxt = useCallback(async (includeSpeakerLabels = true) => {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
@@ -138,14 +160,15 @@ export function useExportController(deps: ExportDeps): ExportApi {
       getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
     );
     try {
-      await p1.exportTextFile(exportDefaultBasename("txt"), formatTxt(rows));
+      const speakerOptions = await speakerExportOptions(rows, includeSpeakerLabels);
+      await p1.exportTextFile(exportDefaultBasename("txt"), formatTxt(rows, speakerOptions));
       syncOnboardingExport();
     } catch (e) {
       reportExportFailure("TXT", e);
     }
-  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError, speakerExportOptions]);
 
-  const exportSrt = useCallback(async () => {
+  const exportSrt = useCallback(async (includeSpeakerLabels = true) => {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
@@ -153,12 +176,13 @@ export function useExportController(deps: ExportDeps): ExportApi {
       getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i })),
     );
     try {
-      await p1.exportTextFile(exportDefaultBasename("srt"), formatSrt(rows));
+      const speakerOptions = await speakerExportOptions(rows, includeSpeakerLabels);
+      await p1.exportTextFile(exportDefaultBasename("srt"), formatSrt(rows, speakerOptions));
       syncOnboardingExport();
     } catch (e) {
       reportExportFailure("SRT", e);
     }
-  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError, speakerExportOptions]);
 
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
@@ -183,7 +207,20 @@ export function useExportController(deps: ExportDeps): ExportApi {
       setError("");
       flushSegmentTextDrafts();
       const allSegments = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
-      const normalized: SegmentDto[] = segmentsForDeliveryExport(allSegments);
+      let normalized: SegmentDto[] = segmentsForDeliveryExport(allSegments);
+      const speakerOptions = await speakerExportOptions(
+        normalized,
+        Boolean(request.includeSpeakerLabels),
+      );
+      if (speakerOptions.includeSpeakerLabels) {
+        normalized = normalized.map((segment) => ({
+          ...segment,
+          text: formatSpeakerPrefixedText(
+            { ...segment, annotation: null },
+            speakerOptions,
+          ),
+        }));
+      }
       const wantsPolish = exportWantsLlmPolish(request.mode, Boolean(request.llmPolish));
       beginBusy(wantsPolish ? "export_polish" : "export_docx");
       try {
@@ -308,6 +345,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       beginBusy,
       endBusy,
       setError,
+      speakerExportOptions,
     ],
   );
 

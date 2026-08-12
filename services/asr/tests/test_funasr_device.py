@@ -6,6 +6,7 @@ import sys
 
 import pytest
 
+from rushi_asr import funasr_device
 from rushi_asr.funasr_device import funasr_device_health_fields, resolve_funasr_device
 
 
@@ -101,3 +102,38 @@ def test_health_fields_shape(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("RUSHI_FUNASR_DEVICE", "cpu")
     fields = funasr_device_health_fields()
     assert fields == {"funasr_device": "cpu", "funasr_device_source": "env"}
+
+
+def test_frozen_macos_arm64_uses_known_mps_variant(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RUSHI_FUNASR_DEVICE", raising=False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "platform", "darwin")
+    monkeypatch.setattr(funasr_device.platform, "machine", lambda: "arm64")
+
+    assert funasr_device_health_fields() == {
+        "funasr_device": "mps",
+        "funasr_device_source": "auto",
+    }
+
+
+@pytest.mark.parametrize(
+    ("executable", "expected"),
+    [
+        (r"C:\\Rushi\\rushi-asr-sidecar.exe", "cpu"),
+        (r"C:\\Rushi\\rushi-asr-sidecar-cuda.exe", "cuda"),
+    ],
+)
+def test_frozen_windows_uses_packaged_variant(
+    monkeypatch: pytest.MonkeyPatch,
+    executable: str,
+    expected: str,
+) -> None:
+    monkeypatch.delenv("RUSHI_FUNASR_DEVICE", raising=False)
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(sys, "executable", executable)
+
+    assert funasr_device_health_fields() == {
+        "funasr_device": expected,
+        "funasr_device_source": "auto",
+    }

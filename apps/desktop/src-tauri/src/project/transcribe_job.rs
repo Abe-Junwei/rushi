@@ -23,6 +23,7 @@ pub async fn post_transcribe_async_multipart(
     base_url: &str,
     audio_path: &Path,
     hotwords: String,
+    diarization_requested: bool,
     timeout: Duration,
     timeline: Option<&mut TranscribeTimelineRecorder>,
 ) -> Result<serde_json::Value, String> {
@@ -32,6 +33,7 @@ pub async fn post_transcribe_async_multipart(
         &url,
         audio_path,
         hotwords,
+        diarization_requested,
         TranscribeHttpOptions {
             auth: TranscribeRequestAuth::default(),
             timeout,
@@ -40,6 +42,38 @@ pub async fn post_transcribe_async_multipart(
         timeline,
     )
     .await
+}
+
+pub async fn prepare_speaker_model(
+    st: &DbState,
+    base_url: &str,
+    timeout: Duration,
+) -> Result<(), String> {
+    let url = format!(
+        "{}/v1/models/speaker/prepare",
+        base_url.trim_end_matches('/')
+    );
+    let resp = crate::asr_sidecar::local_token::apply_local_token_if_asr_loopback(
+        http_client().post(&url).timeout(timeout),
+        &url,
+    )
+    .send()
+    .await
+    .map_err(|e| {
+        append_desktop_log_line(st, "ERROR speaker_model_prepare connect");
+        describe_transcribe_request_error(&e, timeout)
+    })?;
+    if resp.status().is_success() {
+        return Ok(());
+    }
+    let status = resp.status();
+    let body = resp.text().await.unwrap_or_default();
+    let snippet = redact_http_body_snippet(&body);
+    append_desktop_log_line(
+        st,
+        &format!("ERROR speaker_model_prepare http {} {}", status, snippet),
+    );
+    Err(format!("说话人模型准备失败（HTTP {status}）：{snippet}"))
 }
 
 pub async fn get_transcribe_job_status(

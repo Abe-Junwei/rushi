@@ -24,6 +24,7 @@ export function serializeTranscriptEditorState(state: EditorState): SegmentDto[]
       start_sec: m?.startSec ?? 0,
       end_sec: m?.endSec ?? 0,
       text: decodeDocLineToSegmentText(line.text),
+      speaker_id: m?.speakerId ?? null,
       text_stage: m?.stage ?? null,
       finalize_via: m?.finalizeVia ?? null,
     });

@@ -16,12 +16,14 @@ export async function projectRunTranscribe(
   asrBaseUrl?: string | null,
   online?: OnlineTranscribeBridgePayload | null,
   requestId?: string | null,
+  diarizationRequested = false,
 ): Promise<RunTranscribeOutcome> {
   return invoke<RunTranscribeOutcome>("project_run_transcribe", {
     fileId,
     asrBaseUrl: asrBaseUrl ?? null,
     online: online ?? null,
     requestId: requestId ?? null,
+    diarizationRequested,
   });
 }
 
@@ -32,10 +34,12 @@ export async function projectCancelTranscribe(requestId: string): Promise<boolea
 export async function projectTranscribeAsyncStart(
   fileId: string,
   asrBaseUrl?: string | null,
+  diarizationRequested = false,
 ): Promise<{ jobId: string }> {
   const out = await invoke<{ jobId: string }>("project_transcribe_async_start", {
     fileId,
     asrBaseUrl: asrBaseUrl ?? null,
+    diarizationRequested,
   });
   return out;
 }

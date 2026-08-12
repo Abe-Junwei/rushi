@@ -1,6 +1,8 @@
 use super::super::correction::collect_correction_rule_hints;
 use super::super::correction::SaveSegmentsLearnOpts;
-use super::super::segment_cmd::{file_save_segments_inner, SegmentSaveEditLog};
+use super::super::segment_cmd::{
+    file_save_segments_with_diarization_inner, DiarizationSave, SegmentSaveEditLog,
+};
 use super::super::segment_media_sanitize::{
     sanitize_segments_for_media, trim_adjacent_segment_overlaps,
 };
@@ -14,6 +16,7 @@ pub(crate) async fn save_transcribe_segments(
     st: &DbState,
     file_id: &str,
     arr: &[serde_json::Value],
+    diarization: Option<&serde_json::Value>,
     warnings: &mut Vec<String>,
     audio_duration_sec: Option<f64>,
     mut timeline: Option<&mut TranscribeTimelineRecorder>,
@@ -82,11 +85,24 @@ pub(crate) async fn save_transcribe_segments(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match file_save_segments_inner(
+    let diarization_save = match diarization
+        .and_then(|value| value.get("status"))
+        .and_then(|value| value.as_str())
+    {
+        Some("final") => DiarizationSave::Final {
+            run_id: diarization
+                .and_then(|value| value.get("run_id"))
+                .and_then(|value| value.as_str())
+                .ok_or_else(|| "diarization final missing run_id".to_string())?,
+        },
+        _ => DiarizationSave::Disabled,
+    };
+    match file_save_segments_with_diarization_inner(
         st,
         file_id,
         &segments,
         SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+        diarization_save,
     ) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);

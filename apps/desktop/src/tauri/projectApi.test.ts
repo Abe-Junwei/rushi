@@ -33,6 +33,7 @@ describe("projectRunTranscribe", () => {
       asrBaseUrl: "http://127.0.0.1:8741",
       online: null,
       requestId: null,
+      diarizationRequested: false,
     });
   });
 });

@@ -21,7 +21,7 @@ export type EditorViewLayoutProps = {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
   exportKey: string;
-  onExportSelect: (key: string) => void;
+  onExportSelect: (key: string, includeSpeakerLabels?: boolean) => void;
   onOpenEnvironment: () => void;
   onOpenAsrSettings?: () => void;
   onOpenOnlineSttSettings?: () => void;

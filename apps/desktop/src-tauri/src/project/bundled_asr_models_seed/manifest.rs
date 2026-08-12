@@ -14,22 +14,46 @@ pub fn read_manifest_from_dir(root: &Path) -> Result<BundledAsrModelsManifest, S
 }
 
 fn model_dir_candidates(root: &Path, model_id: &str) -> Vec<PathBuf> {
-    let parts: Vec<_> = model_id.split('/').collect();
-    if parts.len() != 2 {
+    let Some((owner, name)) = model_id.split_once('/') else {
         return Vec::new();
-    }
-    let (owner, name) = (parts[0], parts[1]);
+    };
     let escaped = name.replace('.', "___");
-    let mut candidates = vec![
+    let dashed = format!("{owner}--{name}");
+    let dashed_escaped = format!("{owner}--{escaped}");
+    let bases = vec![
+        root.join("models").join(dashed),
+        root.join("models").join(dashed_escaped),
         root.join("models").join(owner).join(name),
         root.join("models").join(owner).join(&escaped),
         root.join("hub").join("models").join(owner).join(name),
         root.join("hub").join("models").join(owner).join(&escaped),
         root.join("hub").join(owner).join(name),
         root.join("hub").join(owner).join(&escaped),
+        root.join(owner).join(name),
+        root.join(owner).join(&escaped),
     ];
-    candidates.sort();
-    candidates.dedup();
+
+    let mut candidates = Vec::new();
+    for base in bases {
+        if !candidates.contains(&base) {
+            candidates.push(base.clone());
+        }
+        let snapshots = base.join("snapshots");
+        let Ok(entries) = fs::read_dir(snapshots) else {
+            continue;
+        };
+        let mut revisions = entries
+            .filter_map(Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| path.is_dir())
+            .collect::<Vec<_>>();
+        revisions.sort_by(|a, b| b.file_name().cmp(&a.file_name()));
+        for revision in revisions {
+            if !candidates.contains(&revision) {
+                candidates.push(revision);
+            }
+        }
+    }
     candidates
 }
 

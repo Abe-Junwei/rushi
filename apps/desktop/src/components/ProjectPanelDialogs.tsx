@@ -22,6 +22,7 @@ import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemor
 import { TranscribeNavBlockDialog } from "./TranscribeNavBlockDialog";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 import { transcribeCancelStoppingLabel } from "./projectStatusFeedbackCopy";
+import { SpeakerMergeChoiceDialog } from "./SpeakerMergeChoiceDialog";
 
 export type ProjectPanelDialogsProps = {
   c: ProjectControllerApi;
@@ -42,6 +43,7 @@ export type ProjectPanelDialogsProps = {
     includeRevisionAppendix: boolean,
     includeProjectMetadata: boolean,
     llmPolish: boolean,
+    includeSpeakerLabels: boolean,
   ) => void;
 };
 
@@ -127,6 +129,13 @@ export function ProjectPanelDialogs({
         onConfirm={() => c.confirmManualCorrectionMemory()}
       />
 
+      <SpeakerMergeChoiceDialog
+        pending={c.pendingSpeakerMerge}
+        busy={c.busy}
+        onCancel={c.cancelSpeakerMerge}
+        onConfirm={c.confirmSpeakerMerge}
+      />
+
       <AutoTranscribeStartDialog
         open={c.transcribeStartDialogOpen && !c.busy}
         busy={c.busy}
@@ -188,9 +197,9 @@ export function ProjectPanelDialogs({
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         onOpenLlmSettings={onOpenLlmSettings}
         onClose={onDeliveryExportClose}
-        onExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish) => {
+        onExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, includeSpeakerLabels) => {
           onDeliveryExportClose();
-          onDeliveryExport(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish);
+          onDeliveryExport(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, includeSpeakerLabels);
         }}
       />
 

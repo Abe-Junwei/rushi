@@ -544,7 +544,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 |--------|-----|------|------|------|------|
 | **P0** | **R3e-C** | 长音频 preview + 停止转写 | — | — | §4.1.1 **⑥½** | ✅ 2026-05-31 |
 | **P0** | （主序内）**R3g-C / ACC-STT-UNIFY / ACC-EVAL-1** | Profile + 词表统一 + 专名回归 | 见 §4.1.1 | R3t-B ✅ | R3g-C ✅ / ACC ✅（在线 E2E ⏳） |
-| **P1** | **R3h-ASR-VER** | FunASR sidecar 精确 pin 升级（**v1 后升级**，不阻塞 ⑤″f） | **3.5–5d**（含 D3 金标、完整 lock、macOS/Windows PyInstaller；原依赖 spike 1–2d） | [`research`](../specs/funasr-sidecar-dependency-upgrade-research-2026-08.md) · [`plan`](../specs/funasr-sidecar-dependency-upgrade-plan.md) | 🟡 规划完成；Slice A/B 待跑 |
+| **P1** | **R3h-ASR-VER** | FunASR sidecar 精确 pin 升级（**v1 后升级**，不阻塞 ⑤″f） | **3.5–5d**（含 D3 金标、完整 lock、macOS/Windows PyInstaller；原依赖 spike 1–2d） | [`research`](../specs/funasr-sidecar-dependency-upgrade-research-2026-08.md) · [`plan`](../specs/funasr-sidecar-dependency-upgrade-plan.md) · [`acceptance`](../specs/funasr-sidecar-dependency-upgrade-acceptance.md) | ❌ **升级 No-go** 2026-08-11（1.3.30/1.4.1 内容 CER 持平，但 VAD 拼接导致标点/断句回归）；`0.1.1` 加固完成、发行 **Defer**（frozen warmup / 跨平台） |
 | **P1** | **R3g-B / ⑤″f-E Qwen3 spike** | 第三 SKU Go/No-go | 2–4d | — | ❌ **No-go** 2026-06-03 |
 | **P2** | **R3g-B-Align** | Qwen3 **ForcedAligner** 时间轴 | spike 2026-06-11 | ⑤″f-E No-go | ❌ **废弃** 2026-06-18 — CPU ~8× Paraformer；[results](../specs/r3g-b-align-forced-aligner-spike-results.md) · **不再做** |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95 / 首段 SLA | 3–5d spike | R3e-C DEV log | 📋 |
@@ -552,6 +552,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 | **P2** | **R3g-C-NANO PyTorch** | Fun-ASR-Nano-2512 同栈 spike | — | research ✅ | ❌ **Defer** 2026-06-17 — [`spike-results`](../specs/r3g-c-funasr-nano-spike-results.md) |
 | **P2** | **R3g-C-NANO vLLM** | GPU 第二运行时（`AutoModelVLLM`） | spike 2–4d | PyTorch Defer + **无 CUDA 环境** | ❌ **Defer** 2026-06-18 — research 保留 · [`vllm-research`](../specs/r3g-c-funasr-nano-vllm-research.md) |
 | **P2** | **R3g-B Nano+vLLM** | （别名）同上 vLLM 轨 | — | 合并至上行 | 📋 |
+| **P2** | **R3g-D** | 本机说话人分离（Paraformer + **CAM++**；运行级跨窗聚类、命名/纠错、导出） | **D1–D5 代码落地**（2026-08-11）；验收剩 2–4d | 不绑 Nano；[`research`](../specs/r3g-d-speaker-diarization-research.md) · [`plan`](../specs/r3g-d-speaker-diarization-plan.md) · [`acceptance`](../specs/r3g-d-speaker-diarization-acceptance.md) · [`spike`](../specs/r3g-d-speaker-diarization-spike-results.md) | 🟡 **Partial Go**：默认关闭/按需；机器守卫全绿（2026-08-12）。130s clean DER 6.83%，coverage 93.19% 未过门槛；**手测 8 条全未跑**、「配置待应用」态未实现、取消/失败路径未验证。转 Go 前置见 acceptance §12 |
 | **P2** | **ASR-RADAR-FireRed** | 中文 CER SOTA；统一 VAD+LID+Punc；**v1 后**第三引擎评估 | 跟踪 | Sherpa Spike 结论 | 📋 雷达 |
 | **P2** | **ASR-RADAR-Moonshine** | 27M 边缘低 RAM；中文精度未达 Paraformer | 跟踪 | 边缘场景需求 | 📋 雷达 |
 | **P2** | **STREAM-*** / 在线 Realtime | OpenAI Realtime-Whisper 等 | 新 Epic | ACC-STT-UNIFY | ⏳ |

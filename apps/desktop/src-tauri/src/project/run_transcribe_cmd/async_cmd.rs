@@ -5,6 +5,7 @@ use super::super::stt_vocabulary::{
 use super::super::transcribe::build_glossary_hotwords;
 use super::super::transcribe_job::{
     get_transcribe_job_status, parse_transcribe_job_phase, post_transcribe_async_multipart,
+    prepare_speaker_model,
 };
 use super::super::transcribe_response::merge_transcribe_warnings;
 use super::super::transcribe_timeline::{
@@ -34,6 +35,7 @@ pub async fn project_transcribe_async_start(
     state: State<'_, DbState>,
     file_id: String,
     asr_base_url: Option<String>,
+    diarization_requested: Option<bool>,
 ) -> Result<TranscribeAsyncStartOutcome, String> {
     let st = state.inner().clone();
     let mut tl = TranscribeTimelineRecorder::new(&file_id, "local");
@@ -82,12 +84,19 @@ pub async fn project_transcribe_async_start(
         return Err(e);
     }
     let timeout = local_transcribe_timeout_duration(audio_duration_sec);
+    let diarization_requested = diarization_requested.unwrap_or(false);
+    if diarization_requested {
+        append_desktop_log_line(&st, "INFO speaker_model_prepare_start");
+        prepare_speaker_model(&st, &base, Duration::from_secs(30 * 60)).await?;
+        append_desktop_log_line(&st, "INFO speaker_model_prepare_done");
+    }
     append_desktop_log_line(&st, "INFO transcribe_async_start");
     let v = match post_transcribe_async_multipart(
         &st,
         &base,
         &audio_path,
         hotwords,
+        diarization_requested,
         timeout,
         Some(&mut tl),
     )
@@ -222,6 +231,7 @@ pub async fn project_transcribe_async_finalize(
         &st,
         &file_id,
         arr,
+        status.get("diarization"),
         &mut warnings,
         audio_duration_sec,
         Some(&mut tl),

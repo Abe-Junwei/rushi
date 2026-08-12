@@ -22,7 +22,7 @@ interface EditorViewProps {
   controller: ProjectControllerApi;
   txInput: TranscriptionLayerInput;
   exportKey: string;
-  onExportSelect: (key: string) => void;
+  onExportSelect: (key: string, includeSpeakerLabels?: boolean) => void;
   onOpenEnvironment: () => void;
   onOpenAsrSettings?: () => void;
   onOpenOnlineSttSettings?: () => void;

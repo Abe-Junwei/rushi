@@ -35,11 +35,35 @@ pub enum SegmentSaveEditLog {
     Custom { kind: &'static str, detail: String },
 }
 
+/// Full-transcribe saves replace diarization metadata in the same transaction as segments.
+/// Ordinary editor saves preserve the current run and roster.
+pub enum DiarizationSave<'a> {
+    Preserve,
+    Disabled,
+    Final { run_id: &'a str },
+}
+
 pub fn file_save_segments_inner(
     state: &DbState,
     file_id: &str,
     segments: &[SegmentDto],
     edit_log: SegmentSaveEditLog,
+) -> Result<(), String> {
+    file_save_segments_with_diarization_inner(
+        state,
+        file_id,
+        segments,
+        edit_log,
+        DiarizationSave::Preserve,
+    )
+}
+
+pub fn file_save_segments_with_diarization_inner(
+    state: &DbState,
+    file_id: &str,
+    segments: &[SegmentDto],
+    edit_log: SegmentSaveEditLog,
+    diarization: DiarizationSave<'_>,
 ) -> Result<(), String> {
     let learn = match &edit_log {
         SegmentSaveEditLog::SaveSegments(learn) => learn.clone(),
@@ -109,8 +133,8 @@ pub fn file_save_segments_inner(
             .execute(
                 "UPDATE segments SET idx = ?1, start_sec = ?2, end_sec = ?3, text = ?4, \
                  confidence = ?5, low_confidence = ?6, detail = ?7, kind = ?8, \
-                 text_stage = ?9, finalize_via = ?10, annotation = ?11, frozen = ?12 \
-                 WHERE file_id = ?13 AND uid = ?14",
+                 speaker_id = ?9, text_stage = ?10, finalize_via = ?11, annotation = ?12, frozen = ?13 \
+                 WHERE file_id = ?14 AND uid = ?15",
                 params![
                     s.idx,
                     s.start_sec,
@@ -120,6 +144,7 @@ pub fn file_save_segments_inner(
                     low,
                     detail,
                     kind,
+                    s.speaker_id.as_deref().filter(|v| !v.trim().is_empty()),
                     text_stage,
                     finalize_via,
                     annotation,
@@ -131,8 +156,8 @@ pub fn file_save_segments_inner(
             .map_err(|e| e.to_string())?;
         if updated == 0 {
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, speaker_id, text_stage, finalize_via, annotation, frozen) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
                 params![
                     file_id,
                     uid.as_str(),
@@ -144,6 +169,7 @@ pub fn file_save_segments_inner(
                     low,
                     detail,
                     kind,
+                    s.speaker_id.as_deref().filter(|v| !v.trim().is_empty()),
                     text_stage,
                     finalize_via,
                     annotation,
@@ -151,6 +177,59 @@ pub fn file_save_segments_inner(
                 ],
             )
             .map_err(|e| e.to_string())?;
+        }
+    }
+    match diarization {
+        DiarizationSave::Preserve => {}
+        DiarizationSave::Disabled => {
+            tx.execute(
+                "UPDATE files SET diarization_run_id = NULL WHERE id = ?1",
+                params![file_id],
+            )
+            .map_err(|e| e.to_string())?;
+            tx.execute(
+                "DELETE FROM file_speakers WHERE file_id = ?1",
+                params![file_id],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+        DiarizationSave::Final { run_id } => {
+            let run_id = run_id.trim();
+            if run_id.is_empty() {
+                return Err("diarization final missing run_id".to_string());
+            }
+            tx.execute(
+                "UPDATE files SET diarization_run_id = ?1 WHERE id = ?2",
+                params![run_id, file_id],
+            )
+            .map_err(|e| e.to_string())?;
+            tx.execute(
+                "DELETE FROM file_speakers WHERE file_id = ?1",
+                params![file_id],
+            )
+            .map_err(|e| e.to_string())?;
+            let mut speaker_ids: Vec<&str> = Vec::new();
+            for segment in segments {
+                if let Some(speaker_id) = segment
+                    .speaker_id
+                    .as_deref()
+                    .map(str::trim)
+                    .filter(|v| !v.is_empty())
+                {
+                    if !speaker_ids.contains(&speaker_id) {
+                        speaker_ids.push(speaker_id);
+                    }
+                }
+            }
+            for (index, speaker_id) in speaker_ids.into_iter().enumerate() {
+                tx.execute(
+                    "INSERT INTO file_speakers \
+                     (file_id, speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) \
+                     VALUES (?1, ?2, ?3, NULL, ?4, ?4)",
+                    params![file_id, speaker_id, index as i32 + 1, t],
+                )
+                .map_err(|e| e.to_string())?;
+            }
         }
     }
     if kept_uids.is_empty() {

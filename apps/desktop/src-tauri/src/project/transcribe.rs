@@ -32,6 +32,7 @@ pub async fn post_transcribe_multipart(
     url: &str,
     audio_path: &Path,
     hotwords: String,
+    diarization_requested: bool,
     http: TranscribeHttpOptions<'_>,
     mut timeline: Option<&mut TranscribeTimelineRecorder>,
 ) -> Result<serde_json::Value, String> {
@@ -43,6 +44,9 @@ pub async fn post_transcribe_multipart(
         let mut f = reqwest::multipart::Form::new().part("file", part);
         if !hotwords.is_empty() {
             f = f.text("hotwords", hotwords);
+        }
+        if diarization_requested {
+            f = f.text("diarization_requested", "true");
         }
         f
     };

@@ -505,14 +505,22 @@ fn copy_file_to_project_duplicates_segments_and_keeps_source() {
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, diarization_run_id, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, 'run-copy-1', ?6, ?7)",
             params![&file_id, &src_id, "clip.wav", "paired", &audio_path, t, t],
         )
         .unwrap();
         conn.execute(
-            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, uid) VALUES (?1, 0, 0.0, 1.0, 'hi', ?2)",
+            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, uid, speaker_id) \
+             VALUES (?1, 0, 0.0, 1.0, 'hi', ?2, 'spk:run-copy-1:1')",
             params![&file_id, Uuid::new_v4().to_string()],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO file_speakers \
+             (file_id, speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) \
+             VALUES (?1, 'spk:run-copy-1:1', 1, '李四', ?2, ?2)",
+            params![&file_id, t],
         )
         .unwrap();
     }
@@ -564,4 +572,23 @@ fn copy_file_to_project_duplicates_segments_and_keeps_source() {
         )
         .unwrap();
     assert_eq!(dest_segs, 1);
+    let copied_speaker: Option<String> = conn
+        .query_row(
+            "SELECT speaker_id FROM segments WHERE file_id = ?1 AND idx = 0",
+            params![&result.file_id],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(copied_speaker.as_deref(), Some("spk:run-copy-1:1"));
+    let copied_roster: (Option<String>, String, Option<String>) = conn
+        .query_row(
+            "SELECT f.diarization_run_id, s.speaker_id, s.display_name \
+             FROM files f JOIN file_speakers s ON s.file_id = f.id WHERE f.id = ?1",
+            params![&result.file_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(copied_roster.0.as_deref(), Some("run-copy-1"));
+    assert_eq!(copied_roster.1, "spk:run-copy-1:1");
+    assert_eq!(copied_roster.2.as_deref(), Some("李四"));
 }

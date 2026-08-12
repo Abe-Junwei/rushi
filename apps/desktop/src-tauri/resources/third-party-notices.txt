@@ -59,3 +59,17 @@ FFmpeg / ffprobe
   来源：https://modelscope.cn （构建时 snapshot_download；随包资源内附 NOTICE 与 LICENSE）
   说明：该模型包是 v0.1.8 Plan B 安装包的一部分，不再通过 GitHub Release 单独分发 zip。
   许可正文：见「许可正文 — Apache License Version 2.0」
+
+------------------------------------------------------------------------
+可选按需下载的说话人模型（不随安装包分发）
+------------------------------------------------------------------------
+
+CAM++ 中文说话人模型（FunASR / ModelScope）
+  用途：用户显式开启「区分说话人」后，在本机生成运行级说话人分组
+  著作权：Alibaba / 通义实验室（ModelScope 模型仓库）
+  许可：Apache License 2.0
+  来源：https://modelscope.cn/models/iic/speech_campplus_sv_zh-cn_16k-common
+  制品：campplus_cn_common.bin，28,036,335 bytes
+        SHA-256 3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8
+  说明：不属于主安装包；首次使用时由用户触发下载到本机模型缓存。音频不因该能力上传。
+  许可正文：见 bundled-asr-models/LICENSE-APACHE-2.0.txt

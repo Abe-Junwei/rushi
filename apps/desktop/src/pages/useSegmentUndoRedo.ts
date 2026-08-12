@@ -17,17 +17,27 @@ function primaryIdxForRestore(segmentCount: number): number {
 export interface SegmentUndoRedoApi {
   pushUndo: () => void;
   pushUndoForTextEdit: (idx: number) => void;
+  pushExternalAction: (action: ExternalHistoryAction) => void;
   undo: () => void;
   redo: () => void;
   reset: () => void;
 }
 
+export type ExternalHistoryAction = {
+  undo: () => void | Promise<void>;
+  redo: () => void | Promise<void>;
+};
+
+type HistoryEntry =
+  | { kind: "segments"; value: SegmentDto[] }
+  | { kind: "external"; action: ExternalHistoryAction };
+
 export function useSegmentUndoRedo(
   publishTextBulk: (next: SegmentListNext) => void,
   getCurrentSegmentsSnapshot: () => SegmentDto[],
 ): SegmentUndoRedoApi {
-  const undoStack = useRef<SegmentDto[][]>([]);
-  const redoStack = useRef<SegmentDto[][]>([]);
+  const undoStack = useRef<HistoryEntry[]>([]);
+  const redoStack = useRef<HistoryEntry[]>([]);
   const textEditUndoRef = useRef<{ idx: number; atMs: number } | null>(null);
 
   const reset = useCallback(() => {
@@ -38,7 +48,7 @@ export function useSegmentUndoRedo(
 
   const pushUndo = useCallback(() => {
     redoStack.current = [];
-    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
+    undoStack.current.push({ kind: "segments", value: cloneSegments(getCurrentSegmentsSnapshot()) });
     if (undoStack.current.length > 40) undoStack.current.shift();
   }, [getCurrentSegmentsSnapshot]);
 
@@ -53,6 +63,12 @@ export function useSegmentUndoRedo(
     [pushUndo],
   );
 
+  const pushExternalAction = useCallback((action: ExternalHistoryAction) => {
+    redoStack.current = [];
+    undoStack.current.push({ kind: "external", action });
+    if (undoStack.current.length > 40) undoStack.current.shift();
+  }, []);
+
   const restoreSnapshot = useCallback(
     (next: SegmentDto[]) => {
       dispatchTranscriptApplySegments(next, primaryIdxForRestore(next.length));
@@ -62,18 +78,28 @@ export function useSegmentUndoRedo(
   );
 
   const undo = useCallback(() => {
-    const prev = undoStack.current.pop();
-    if (!prev) return;
-    redoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    restoreSnapshot(prev);
+    const entry = undoStack.current.pop();
+    if (!entry) return;
+    if (entry.kind === "external") {
+      redoStack.current.push(entry);
+      void entry.action.undo();
+      return;
+    }
+    redoStack.current.push({ kind: "segments", value: cloneSegments(getCurrentSegmentsSnapshot()) });
+    restoreSnapshot(entry.value);
   }, [getCurrentSegmentsSnapshot, restoreSnapshot]);
 
   const redo = useCallback(() => {
-    const next = redoStack.current.pop();
-    if (!next) return;
-    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    restoreSnapshot(next);
+    const entry = redoStack.current.pop();
+    if (!entry) return;
+    if (entry.kind === "external") {
+      undoStack.current.push(entry);
+      void entry.action.redo();
+      return;
+    }
+    undoStack.current.push({ kind: "segments", value: cloneSegments(getCurrentSegmentsSnapshot()) });
+    restoreSnapshot(entry.value);
   }, [getCurrentSegmentsSnapshot, restoreSnapshot]);
 
-  return { pushUndo, pushUndoForTextEdit, undo, redo, reset };
+  return { pushUndo, pushUndoForTextEdit, pushExternalAction, undo, redo, reset };
 }

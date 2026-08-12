@@ -20,6 +20,8 @@ _COMMON_GENERATE_KEYS = frozenset({
     "batch_size_s",
     "batch_size_threshold_s",
     "hotword",
+    "return_spk_center",
+    "preset_spk_num",
 })
 
 _PROFILE_GENERATE_KEYS: dict[SkuFamily, frozenset[str]] = {

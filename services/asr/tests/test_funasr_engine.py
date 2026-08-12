@@ -7,8 +7,10 @@ import pytest
 import rushi_asr.funasr_engine as funasr_engine
 from rushi_asr.funasr_engine import invalidate_funasr_model_cache
 from rushi_asr.asr_model_profile import LONG_AUDIO_SEC
+from rushi_asr.schemas import TranscriptionSegment
 from rushi_asr.segmentation import (
     SHORT_WHOLE_TRACK_MAX_SEC,
+    coalesce_short_sentence_segments,
     funasr_generate_kwargs,
     segment_audio_to_transcription_segments,
     segment_funasr_generate_result,
@@ -25,6 +27,30 @@ def test_sentence_info_keeps_seconds_for_long_audio() -> None:
     assert len(segs) == 1
     assert segs[0].start_sec == 300.0
     assert segs[0].end_sec == 330.0
+
+
+def test_sentence_info_reads_speaker_and_never_uses_it_as_text() -> None:
+    segs = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 1000, "text": "甲", "spk": 0},
+            {"start": 1100, "end": 2000, "sentence": "乙", "spk": 1},
+            {"start": 2100, "end": 3000, "spk": 2},
+        ],
+        duration_sec=5.0,
+    )
+    assert [segment.speaker_id for segment in segs] == ["0", "1", "2"]
+    assert segs[2].text == ""
+
+
+def test_sentence_coalescing_never_crosses_speaker_boundary() -> None:
+    segs = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 1000, "text": "甲", "spk": 0},
+            {"start": 1100, "end": 2000, "text": "乙", "spk": 1},
+        ],
+        duration_sec=5.0,
+    )
+    assert len(segs) == 2
 
 
 def test_sentence_info_converts_milliseconds_when_far_above_duration() -> None:
@@ -55,13 +81,78 @@ def test_sentence_info_millisecond_timestamps_below_per_row_threshold() -> None:
         {"start": 8200, "end": 12500, "text": "第三句"},
     ]
     segs = segments_from_sentence_info(rows, duration_sec=780.0)
-    assert len(segs) == 3
+    assert len(segs) == 1
     assert segs[0].start_sec == 0.0
-    assert segs[0].end_sec == pytest.approx(3.4)
-    assert segs[1].start_sec == pytest.approx(3.4)
-    assert segs[1].end_sec == pytest.approx(8.2)
-    assert segs[2].start_sec == pytest.approx(8.2)
-    assert segs[2].end_sec == pytest.approx(12.5)
+    assert segs[0].end_sec == pytest.approx(12.5)
+    assert segs[0].text == "第一句第二句第三句"
+
+
+def test_sentence_coalescing_keeps_long_pause_boundary() -> None:
+    segs = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 1000, "text": "短句"},
+            {"start": 1900, "end": 3000, "text": "下一句"},
+        ],
+        duration_sec=10.0,
+    )
+    assert len(segs) == 2
+
+
+def test_sentence_coalescing_respects_duration_and_character_caps() -> None:
+    over_duration = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 2000, "text": "短句"},
+            {"start": 2100, "end": 16000, "text": "后续"},
+        ],
+        duration_sec=20.0,
+    )
+    over_chars = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 2000, "text": "短句"},
+            {"start": 2100, "end": 5000, "text": "长" * 39},
+        ],
+        duration_sec=10.0,
+    )
+    assert len(over_duration) == 2
+    assert len(over_chars) == 2
+
+
+def test_sentence_coalescing_preserves_text_and_conservative_confidence() -> None:
+    original = [
+        TranscriptionSegment(
+            start_sec=0.0,
+            end_sec=1.0,
+            text="第一句，",
+            confidence=0.9,
+            low_confidence=False,
+        ),
+        TranscriptionSegment(
+            start_sec=1.2,
+            end_sec=2.5,
+            text="第二句。",
+            confidence=0.7,
+            low_confidence=True,
+        ),
+    ]
+    merged = coalesce_short_sentence_segments(original)
+    assert len(merged) == 1
+    assert merged[0].start_sec == 0.0
+    assert merged[0].end_sec == 2.5
+    assert merged[0].text == "".join(segment.text for segment in original)
+    assert merged[0].confidence == 0.7
+    assert merged[0].low_confidence is True
+
+
+def test_sentence_coalescing_keeps_english_word_boundary() -> None:
+    segs = segments_from_sentence_info(
+        [
+            {"start": 0, "end": 1000, "text": "hello"},
+            {"start": 1100, "end": 2000, "text": "world"},
+        ],
+        duration_sec=5.0,
+    )
+    assert len(segs) == 1
+    assert segs[0].text == "hello world"
 
 
 def test_paraformer_generate_kwargs_request_sentence_timestamp() -> None:

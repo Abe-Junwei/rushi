@@ -6,7 +6,11 @@ import logging
 import threading
 from typing import Any
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_vad_model_id
+from rushi_asr.defaults import (
+    DEFAULT_FUNASR_MODEL_ID,
+    DEFAULT_FUNASR_SPK_MODEL_ID,
+    effective_funasr_vad_model_id,
+)
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.model_catalog import resolve_hub_model_id
 from rushi_asr.model_prepare_cache import (
@@ -15,8 +19,74 @@ from rushi_asr.model_prepare_cache import (
     recognizer_model_cached_guess,
     required_models_cached_guess,
     vad_model_cached_guess,
+    DEFAULT_SPK_REQUIRED_FILES,
+    SPK_MIN_WEIGHT_BYTES,
+    speaker_model_cached_guess,
+    verify_speaker_model_artifact,
 )
-from rushi_asr.model_prepare_download import download_models
+from rushi_asr.model_prepare_download import disk_warnings, download_models
+
+
+def prepare_speaker_model() -> dict[str, Any]:
+    """Download and verify the optional CAM++ component."""
+    from rushi_asr.funasr_engine import invalidate_funasr_model_cache, runtime_lock
+    from rushi_asr.model_prepare_download import resolve_aux_model_dir
+
+    warnings, _ = disk_warnings()
+    cached = speaker_model_cached_guess(DEFAULT_FUNASR_SPK_MODEL_ID)
+    if cached:
+        from rushi_asr.model_prepare_cache import find_cached_model_dir
+
+        path = find_cached_model_dir(
+            DEFAULT_FUNASR_SPK_MODEL_ID,
+            DEFAULT_SPK_REQUIRED_FILES,
+            SPK_MIN_WEIGHT_BYTES,
+            weight_file="campplus_cn_common.bin",
+        )
+        if path is not None and verify_speaker_model_artifact(path):
+            return {
+                "status": "ok",
+                "model_id": DEFAULT_FUNASR_SPK_MODEL_ID,
+                "path": str(path),
+                "cached_only": True,
+                "speaker_model_cached": True,
+                "weight_sha256": "3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8",
+                "warnings": warnings,
+            }
+        if path is not None:
+            # A same-size corrupt cache can otherwise be treated as complete by
+            # ModelScope. Remove only the pinned weight so snapshot_download repairs it.
+            try:
+                (path / "campplus_cn_common.bin").unlink(missing_ok=True)
+            except OSError as e:
+                raise RuntimeError("speaker_model_corrupt_unrepairable") from e
+    try:
+        from modelscope.hub.snapshot_download import snapshot_download
+    except ImportError as e:
+        raise RuntimeError("modelscope_not_installed") from e
+    path = resolve_aux_model_dir(
+        DEFAULT_FUNASR_SPK_MODEL_ID,
+        DEFAULT_SPK_REQUIRED_FILES,
+        SPK_MIN_WEIGHT_BYTES,
+        snapshot_download=snapshot_download,
+        progress_callbacks=(),
+        weight_file="campplus_cn_common.bin",
+    )
+    if not speaker_model_cached_guess(DEFAULT_FUNASR_SPK_MODEL_ID):
+        raise RuntimeError("speaker_model_prepare_incomplete")
+    if not verify_speaker_model_artifact(path):
+        raise RuntimeError("speaker_model_checksum_mismatch")
+    with runtime_lock():
+        invalidate_funasr_model_cache()
+    return {
+        "status": "ok",
+        "model_id": DEFAULT_FUNASR_SPK_MODEL_ID,
+        "path": str(path),
+        "cached_only": False,
+        "speaker_model_cached": True,
+        "weight_sha256": "3388cf5fd3493c9ac9c69851d8e7a8badcfb4f3dc631020c4961371646d5ada8",
+        "warnings": warnings,
+    }
 from rushi_asr.model_prepare_progress import (
     PrepareCancelledError,
     clear_prepare_cancel,

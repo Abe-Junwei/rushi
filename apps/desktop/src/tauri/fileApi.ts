@@ -174,6 +174,37 @@ export async function fileSaveSegments(
   });
 }
 
+export async function fileCreateSpeaker(
+  fileId: string,
+  displayName?: string | null,
+): Promise<import("./projectTypes").FileSpeakerDto> {
+  return invoke("file_create_speaker", { fileId, displayName: displayName ?? null });
+}
+
+export async function fileRenameSpeaker(
+  fileId: string,
+  speakerId: string,
+  displayName?: string | null,
+): Promise<void> {
+  return invoke("file_rename_speaker", {
+    fileId,
+    speakerId,
+    displayName: displayName ?? null,
+  });
+}
+
+export async function fileReassignSegmentsSpeaker(
+  fileId: string,
+  segmentUids: string[],
+  speakerId?: string | null,
+): Promise<void> {
+  return invoke("file_reassign_segments_speaker", {
+    fileId,
+    segmentUids,
+    speakerId: speakerId ?? null,
+  });
+}
+
 /** 将新格式 ProjectDetail 适配为旧格式（含 audio_storage_path + segments + files）。
  *  如果项目有文件，取第一个文件的音频路径和语段；否则返回空。 */
 export async function adaptToLegacyProjectDetail(

@@ -93,6 +93,40 @@ def test_transcribe_optional_hotwords_stub_emits_warning(client: TestClient, tmp
     assert "hotwords_ignored_stub" in body["warnings"]
 
 
+@pytest.mark.skipif(not ffmpeg_audio.ffmpeg_available(), reason="ffmpeg not on PATH")
+def test_requested_diarization_never_falls_back_to_fake_success(
+    client: TestClient,
+    tmp_path: Path,
+) -> None:
+    wav = tmp_path / "speaker.wav"
+    subprocess.run(
+        [
+            shutil.which("ffmpeg") or "ffmpeg",
+            "-hide_banner",
+            "-nostdin",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=440:duration=0.2",
+            "-y",
+            str(wav),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    with patch(
+        "rushi_asr.funasr_engine.transcribe_with_funasr",
+        side_effect=RuntimeError("funasr_spk_model_not_ready"),
+    ):
+        res = client.post(
+            "/v1/transcribe",
+            files={"file": ("speaker.wav", wav.read_bytes(), "audio/wav")},
+            data={"diarization_requested": "true"},
+        )
+    assert res.status_code == 503
+    assert "diarization_failed:funasr_spk_model_not_ready" in res.json()["detail"]
+
+
 def test_transcribe_async_upload_too_large_cleans_temp_dir(
     client: TestClient,
     tmp_path: Path,

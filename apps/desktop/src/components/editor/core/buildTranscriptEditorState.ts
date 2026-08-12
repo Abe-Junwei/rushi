@@ -18,6 +18,7 @@ export type BuildTranscriptEditorStateOptions = {
   encodeEmbeddedNewlines?: boolean;
   /** Seed multi-selection primary (file open / remount). Defaults to 0. */
   initialPrimaryIdx?: number;
+  speakerLabels?: ReadonlyMap<string, string>;
 };
 
 /**
@@ -40,7 +41,8 @@ export function buildTranscriptEditorState(
     endSec: s.end_sec,
     stage: s.text_stage ?? null,
     finalizeVia: s.finalize_via ?? null,
-    speakerId: null,
+    speakerId: s.speaker_id ?? null,
+    speakerLabel: s.speaker_id ? (opts.speakerLabels?.get(s.speaker_id) ?? "说话人") : null,
     frozen: Boolean(s.frozen),
     hasAnnotation: Boolean(s.annotation?.trim()),
   }));

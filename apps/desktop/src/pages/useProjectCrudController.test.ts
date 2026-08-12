@@ -54,9 +54,11 @@ function useTestCrud(opts: {
 
   const mutationsRef = useRef<SegmentMutationApi>({
     pushUndo: vi.fn(),
+    pushExternalHistoryAction: vi.fn(),
     undo: vi.fn(),
     redo: vi.fn(),
     updateSegmentText: vi.fn(),
+    reassignSegmentsSpeaker: vi.fn(),
     updateSegmentTime: vi.fn(),
     updateSegmentBounds: vi.fn(),
     splitAtSelection: vi.fn(),
@@ -66,6 +68,9 @@ function useTestCrud(opts: {
     mergeWithPrevAt: vi.fn(),
     mergeWithNextAt: vi.fn(),
     mergeSegmentRange: vi.fn(),
+    pendingSpeakerMerge: null,
+    confirmSpeakerMerge: vi.fn(),
+    cancelSpeakerMerge: vi.fn(),
     deleteSegmentRange: vi.fn(),
     deleteSegmentIndices: vi.fn(),
     deleteSegmentAt: vi.fn(),

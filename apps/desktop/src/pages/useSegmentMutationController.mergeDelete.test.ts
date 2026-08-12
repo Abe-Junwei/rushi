@@ -47,6 +47,24 @@ describe("useSegmentMutationController merge/delete", () => {
     expect(result.current.segments[0].end_sec).toBe(2);
   });
 
+  it("requires an explicit speaker choice before merging different speakers", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "甲", start_sec: 0, end_sec: 1, speaker_id: "spk-a" }),
+        makeSeg({ text: "乙", start_sec: 1, end_sec: 2, speaker_id: "spk-b" }),
+      ]),
+    );
+
+    act(() => result.current.mutations.mergeWithNextAt(0));
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.mutations.pendingSpeakerMerge).toEqual({ kind: "next", idx: 0 });
+
+    act(() => result.current.mutations.confirmSpeakerMerge("right"));
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.segments[0]?.speaker_id).toBe("spk-b");
+    expect(result.current.mutations.pendingSpeakerMerge).toBeNull();
+  });
+
   it("mergeWithPrevAt merges towards previous segment", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([

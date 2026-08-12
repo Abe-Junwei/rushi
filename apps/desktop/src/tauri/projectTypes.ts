@@ -38,6 +38,8 @@ export interface SegmentDto {
   detail?: string | null;
   /** 显式语段类型；缺省走启发式占位判定（见 SegmentKind）。 */
   kind?: SegmentKind | null;
+  /** 当前 diarization run 内的聚类键；不是跨文件真人身份。 */
+  speaker_id?: string | null;
   /** 正文编辑阶段（§ segment-edit-stage-indicator-research） */
   text_stage?: SegmentTextStage | null;
   /** 定稿方式；仅 text_stage=finalized 时有意义 */
@@ -77,9 +79,17 @@ export interface FileDetail {
   audio_path: string | null;
   /** Cached media duration (seconds); filled after probe / peaks / transcribe. */
   duration_sec?: number | null;
+  diarization_run_id?: string | null;
+  speakers?: FileSpeakerDto[];
   segments: SegmentDto[];
   created_at_ms: number;
   updated_at_ms: number;
+}
+
+export interface FileSpeakerDto {
+  speaker_id: string;
+  ordinal: number;
+  display_name?: string | null;
 }
 
 /** P0 project-level session metadata (oral history fields). */

@@ -19,6 +19,11 @@ export interface AsrHealthCapabilities {
   funasr_vad_model_cached?: boolean;
   /** ct-punc 标点模型是否已完整缓存（Paraformer 多语段所需）。 */
   funasr_punc_model_cached?: boolean;
+  /** Optional CAM++ component state; does not participate in global ASR ready. */
+  funasr_spk_model_cached?: boolean;
+  funasr_spk_model_loaded?: boolean;
+  funasr_spk_model_id?: string | null;
+  funasr_loaded_spk_model_id?: string | null;
   /** 当前默认 ASR 所需模型集合是否都已完整缓存。 */
   funasr_required_models_cached?: boolean;
   /** 仅当 runtime + 必需模型都就绪时才应视为真正可转写。 */

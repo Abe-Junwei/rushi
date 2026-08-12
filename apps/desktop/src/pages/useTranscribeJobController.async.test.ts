@@ -112,7 +112,13 @@ describe("useTranscribeJobController async paths", () => {
     });
 
     expect(projectTranscribeAsyncStart).toHaveBeenCalled();
-    expect(projectRunTranscribe).toHaveBeenCalledWith("file-1", TRANSCRIBE_TEST_ASR_BASE, null);
+    expect(projectRunTranscribe).toHaveBeenCalledWith(
+      "file-1",
+      TRANSCRIBE_TEST_ASR_BASE,
+      null,
+      null,
+      false,
+    );
     expect(projectTranscribeAsyncFinalize).not.toHaveBeenCalled();
     expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith([
       expect.stringContaining("增量转写"),

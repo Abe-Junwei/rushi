@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+
+import rushi_asr.model_prepare_cache as model_prepare_cache
 
 from rushi_asr.model_prepare_cache import (
     looks_like_complete_model_dir,
@@ -10,6 +13,7 @@ from rushi_asr.model_prepare_cache import (
     recognizer_model_cached_guess,
     resolve_cached_hub_arg,
     resolve_funasr_automodel_arg,
+    speaker_model_cached_guess,
 )
 
 
@@ -92,3 +96,27 @@ def test_resolve_funasr_automodel_arg_vad_prefers_local_path(tmp_path: Path, mon
         )
         == str(vad_dir)
     )
+
+
+def test_speaker_cache_requires_real_campplus_artifacts(tmp_path: Path, monkeypatch) -> None:
+    ms = tmp_path / "ms"
+    model_dir = ms / "models" / "iic" / "speech_campplus_sv_zh-cn_16k-common"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.yaml").write_text("ok", encoding="utf-8")
+    (model_dir / "configuration.json").write_text("{}", encoding="utf-8")
+    weight = model_dir / "campplus_cn_common.bin"
+    payload = b"pinned-campplus-test-artifact"
+    weight.write_bytes(payload)
+    monkeypatch.setattr(model_prepare_cache, "SPK_MIN_WEIGHT_BYTES", 1)
+    monkeypatch.setattr(model_prepare_cache, "SPK_EXPECTED_WEIGHT_BYTES", len(payload))
+    monkeypatch.setattr(
+        model_prepare_cache,
+        "SPK_EXPECTED_WEIGHT_SHA256",
+        hashlib.sha256(payload).hexdigest(),
+    )
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    assert speaker_model_cached_guess()
+    weight.write_bytes(b"x" * len(payload))
+    assert not speaker_model_cached_guess()
+    weight.unlink()
+    assert not speaker_model_cached_guess()

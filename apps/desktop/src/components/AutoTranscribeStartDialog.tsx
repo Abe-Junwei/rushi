@@ -1,4 +1,9 @@
+import { useEffect, useState } from "react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import {
+  getSpeakerDiarizationPreference,
+  setSpeakerDiarizationPreference,
+} from "../services/speakerDiarizationPreference";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { resolveTranscribeSourceDescription } from "../services/stt/transcribeSourcePresentation";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
@@ -45,6 +50,12 @@ export function AutoTranscribeStartDialog({
   onCancel,
   onConfirm,
 }: Props) {
+  const [diarizationEnabled, setDiarizationEnabled] = useState(
+    getSpeakerDiarizationPreference,
+  );
+  useEffect(() => {
+    if (open) setDiarizationEnabled(getSpeakerDiarizationPreference());
+  }, [open]);
   const handleClose = () => {
     if (!busy) onCancel();
   };
@@ -110,6 +121,28 @@ export function AutoTranscribeStartDialog({
               ) : null}
             </div>
           </div>
+
+          {source === "local" ? (
+            <label className="flex items-start gap-2 text-sm text-zen-ink-secondary">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-zen-saffron"
+                checked={diarizationEnabled}
+                disabled={busy}
+                onChange={(event) => {
+                  const enabled = event.currentTarget.checked;
+                  setDiarizationEnabled(enabled);
+                  setSpeakerDiarizationPreference(enabled);
+                }}
+              />
+              <span>
+                区分说话人（实验）
+                <span className="mt-0.5 block text-xs text-zen-ink-tertiary">
+                  首次使用会准备约 27 MB 的本机模型；短且无停顿的多人音频可能欠分。重新转写会生成新分组，已有姓名需重新确认。
+                </span>
+              </span>
+            </label>
+          ) : null}
 
           {vocabularyLines.length > 0 ? (
             <>

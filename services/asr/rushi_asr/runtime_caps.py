@@ -3,18 +3,44 @@
 from __future__ import annotations
 
 import os
+import sys
+from importlib.util import find_spec as _find_spec
 from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+from rushi_asr import __version__
 
 
 def sidecar_version() -> str:
-    """Installed rushi-asr package version (for /health upgrade-compat checks)."""
+    """Build/source version used by /health compatibility checks."""
+    return __version__
+
+
+def dependency_version(package: str) -> str | None:
+    """Installed dependency version for diagnostics only."""
     try:
-        return _pkg_version("rushi-asr")
+        return _pkg_version(package)
     except PackageNotFoundError:
-        return "0+unknown"
+        return None
+
+
+def funasr_runtime_available() -> bool:
+    """Check the frozen bundle cheaply; source environments still verify import."""
+    if getattr(sys, "frozen", False):
+        return dependency_version("funasr") is not None and _find_spec("funasr") is not None
+    try:
+        import funasr  # noqa: F401, PLC0415 — optional heavy dep
+
+        return True
+    except ImportError:
+        return False
 
 from rushi_asr import ffmpeg_audio
-from rushi_asr.defaults import effective_funasr_model_id, funasr_model_explicit_from_env
+from rushi_asr.defaults import (
+    DEFAULT_FUNASR_SPK_MODEL_ID,
+    effective_funasr_model_id,
+    effective_funasr_spk_model_id,
+    funasr_model_explicit_from_env,
+)
 from rushi_asr.model_catalog import get_catalog_status
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.funasr_device import funasr_device_health_fields
@@ -22,6 +48,7 @@ from rushi_asr.funasr_engine import (
     effective_funasr_language,
     loaded_funasr_device,
     loaded_funasr_model_id,
+    loaded_funasr_spk_model_id,
 )
 from rushi_asr.funasr_load_plan import build_funasr_load_plan
 from rushi_asr.inference_queue import inference_queue_stats
@@ -31,6 +58,7 @@ from rushi_asr.model_prepare import (
     recognizer_model_cached_guess,
     required_models_cached_guess,
     vad_model_cached_guess,
+    speaker_model_cached_guess,
 )
 
 
@@ -39,12 +67,7 @@ def get_runtime_caps() -> dict[str, object]:
     ffmpeg_audio.ensure_ffmpeg_on_path()
     ffmpeg_ok = ffmpeg_audio.ffmpeg_available()
     ffmpeg_on_path = ffmpeg_audio.ffmpeg_on_path()
-    try:
-        import funasr  # noqa: F401, PLC0415 — optional heavy dep
-
-        funasr_import_ok = True
-    except ImportError:
-        funasr_import_ok = False
+    funasr_import_ok = funasr_runtime_available()
 
     model = effective_funasr_model_id()
     funasr_model_configured = bool(model)
@@ -56,6 +79,8 @@ def get_runtime_caps() -> dict[str, object]:
     active_model_cached = recognizer_model_cached_guess(model)
     load_plan = build_funasr_load_plan(model)
     loaded_id = loaded_funasr_model_id()
+    configured_spk_id = effective_funasr_spk_model_id()
+    loaded_spk_id = loaded_funasr_spk_model_id()
     loaded_str = str(loaded_id).strip() if loaded_id else ""
     model_loaded_in_memory = bool(loaded_str)
     model_memory_matches_config = bool(model and loaded_str and loaded_str == model)
@@ -77,6 +102,9 @@ def get_runtime_caps() -> dict[str, object]:
 
     return {
         "version": sidecar_version(),
+        "funasr_version": dependency_version("funasr"),
+        "modelscope_version": dependency_version("modelscope"),
+        "torch_version": dependency_version("torch"),
         "ffmpeg_ok": ffmpeg_ok,
         "ffmpeg_on_path": ffmpeg_on_path,
         "funasr_import_ok": funasr_import_ok,
@@ -87,6 +115,11 @@ def get_runtime_caps() -> dict[str, object]:
         "funasr_vad_model_cached": vad_model_cached,
         "funasr_punc_model_cached": punc_model_cached,
         "funasr_punc_model_id": punc_model_id,
+        "funasr_spk_model_id": configured_spk_id,
+        "funasr_spk_default_model_id": DEFAULT_FUNASR_SPK_MODEL_ID,
+        "funasr_spk_model_cached": speaker_model_cached_guess(),
+        "funasr_spk_model_loaded": bool(loaded_spk_id),
+        "funasr_loaded_spk_model_id": loaded_spk_id,
         "funasr_required_models_cached": required_models_cached,
         "funasr_load_plan": load_plan,
         "local_asr_model_catalog": get_catalog_status(model),

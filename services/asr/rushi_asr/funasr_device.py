@@ -9,11 +9,25 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
+import sys
+from pathlib import Path
 from typing import Literal
 
 log = logging.getLogger(__name__)
 
 DeviceSource = Literal["env", "auto"]
+
+
+def _frozen_sidecar_device() -> str | None:
+    """Resolve the known PyInstaller variant without a cold torch import."""
+    if not getattr(sys, "frozen", False):
+        return None
+    if sys.platform == "darwin":
+        return "mps" if platform.machine() == "arm64" else "cpu"
+    if sys.platform == "win32":
+        return "cuda" if "cuda" in Path(sys.executable).stem.lower() else "cpu"
+    return "cpu"
 
 
 def _probe_auto_device() -> str:
@@ -47,7 +61,12 @@ def resolve_funasr_device() -> tuple[str, DeviceSource]:
 
 
 def funasr_device_health_fields() -> dict[str, str]:
-    device, source = resolve_funasr_device()
+    raw = os.environ.get("RUSHI_FUNASR_DEVICE", "").strip()
+    if raw:
+        device, source = raw, "env"
+    else:
+        device = _frozen_sidecar_device() or _probe_auto_device()
+        source = "auto"
     return {
         "funasr_device": device,
         "funasr_device_source": source,

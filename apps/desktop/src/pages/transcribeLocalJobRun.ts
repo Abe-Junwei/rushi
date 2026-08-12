@@ -31,6 +31,7 @@ export type LocalTranscribeJobRunArgs = {
   segmentPublish: SegmentPublishApi;
   refs: LocalTranscribeJobRunRefs;
   callbacks: LocalTranscribeJobRunCallbacks;
+  diarizationRequested?: boolean;
 };
 
 function onTranscribeStatusTick(
@@ -93,11 +94,15 @@ async function persistPollFailureTimeline(
 export async function runLocalTranscribeJob(
   args: LocalTranscribeJobRunArgs,
 ): Promise<{ out: p1.RunTranscribeOutcome; usedAsyncFallback: boolean }> {
-  const { fileId, base, segmentPublish, refs, callbacks } = args;
+  const { fileId, base, segmentPublish, refs, callbacks, diarizationRequested = false } = args;
   refs.activeJobId.current = TRANSCRIBE_PENDING_JOB_ID;
   try {
     throwIfUserCancelled(refs);
-    const { jobId } = await p1.projectTranscribeAsyncStart(fileId, asrBaseUrl());
+    const { jobId } = await p1.projectTranscribeAsyncStart(
+      fileId,
+      asrBaseUrl(),
+      diarizationRequested,
+    );
     refs.activeJobId.current = jobId;
     if (refs.userCancelRequested.current) {
       await bestEffortCancelSidecarJob(base, jobId);
@@ -118,7 +123,13 @@ export async function runLocalTranscribeJob(
       throw e;
     }
     throwIfUserCancelled(refs);
-    const out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), null);
+    const out = await p1.projectRunTranscribe(
+      fileId,
+      asrBaseUrl(),
+      null,
+      null,
+      diarizationRequested,
+    );
     return { out, usedAsyncFallback: true };
   } finally {
     refs.activeJobId.current = null;

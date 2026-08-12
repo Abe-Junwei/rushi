@@ -1,7 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import type { SegmentDto } from "../../../tauri/projectTypes";
 import { selectSegmentCommand, selectSegmentIndicesCommand, selectSegmentRangeCommand, type SelectSegmentOptions } from "./selectionCommands";
-import { primarySegmentIdx } from "./selectionField";
+import { getTranscriptMultiSelection, primarySegmentIdx } from "./selectionField";
 import { readTranscriptEditorCoreEnabled } from "./transcriptEditorCoreFlag";
 import {
   applyTranscriptSegmentsStructure,
@@ -43,6 +43,11 @@ export function registerTranscriptEditorView(view: EditorView | null): void {
 
 export function getTranscriptEditorView(): EditorView | null {
   return activeView;
+}
+
+export function readTranscriptSelectedSegmentIndices(): number[] {
+  if (!activeView) return [];
+  return [...getTranscriptMultiSelection(activeView.state).selectedSet].sort((a, b) => a - b);
 }
 
 export {

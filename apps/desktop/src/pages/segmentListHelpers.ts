@@ -102,6 +102,7 @@ export function segmentsEqualForPersist(a: SegmentDto[], b: SegmentDto[]): boole
       Boolean(s.low_confidence) === Boolean(t.low_confidence) &&
       (s.detail ?? null) === (t.detail ?? null) &&
       (s.kind ?? null) === (t.kind ?? null) &&
+      (s.speaker_id ?? null) === (t.speaker_id ?? null) &&
       (s.text_stage ?? "auto_transcribe") === (t.text_stage ?? "auto_transcribe") &&
       (s.finalize_via ?? null) === (t.finalize_via ?? null) &&
       (s.annotation ?? null) === (t.annotation ?? null) &&
@@ -119,13 +120,35 @@ export function segmentsPersistSignature(segs: SegmentDto[]): string {
   return reindexSegments(segs)
     .map(
       (s) =>
-        `${s.uid ?? ""}|${s.start_sec}|${s.end_sec}|${s.text}|${s.confidence ?? ""}|${Boolean(s.low_confidence)}|${s.detail ?? ""}|${s.kind ?? ""}|${s.text_stage ?? "auto_transcribe"}|${s.finalize_via ?? ""}|${s.annotation ?? ""}|${Boolean(s.frozen)}`,
+        `${s.uid ?? ""}|${s.start_sec}|${s.end_sec}|${s.text}|${s.confidence ?? ""}|${Boolean(s.low_confidence)}|${s.detail ?? ""}|${s.kind ?? ""}|${s.speaker_id ?? ""}|${s.text_stage ?? "auto_transcribe"}|${s.finalize_via ?? ""}|${s.annotation ?? ""}|${Boolean(s.frozen)}`,
     )
     .join("\n");
 }
 
 /** 合并两条相邻语段（时间、文本、置信度与 detail）。 */
-export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
+export type SpeakerMergeChoice = "left" | "right" | "unassigned";
+
+export function resolveMergedSpeakerId(
+  a: SegmentDto,
+  b: SegmentDto,
+  choice?: SpeakerMergeChoice,
+): string | null {
+  const left = a.speaker_id?.trim() || null;
+  const right = b.speaker_id?.trim() || null;
+  if (left === right) return left;
+  if (!left) return right;
+  if (!right) return left;
+  if (choice === "left") return left;
+  if (choice === "right") return right;
+  if (choice === "unassigned") return null;
+  throw new Error("speaker_merge_choice_required");
+}
+
+export function mergeTwoSegments(
+  a: SegmentDto,
+  b: SegmentDto,
+  speakerChoice?: SpeakerMergeChoice,
+): SegmentDto {
   const confA = a.confidence ?? null;
   const confB = b.confidence ?? null;
   return {
@@ -139,6 +162,7 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
     low_confidence: Boolean(a.low_confidence || b.low_confidence),
     detail: [a.detail, b.detail].filter(Boolean).join(" / ") || null,
     kind: "speech",
+    speaker_id: resolveMergedSpeakerId(a, b, speakerChoice),
     annotation: mergeSegmentAnnotations(a, b),
     ...mergeSegmentStageFields(a, b),
   };
@@ -189,6 +213,7 @@ export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; 
     low_confidence: false,
     detail: null,
     kind: "speech",
+    speaker_id: s.speaker_id ?? null,
     annotation: null,
   });
   return { left, right };

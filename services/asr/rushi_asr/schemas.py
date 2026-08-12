@@ -22,12 +22,20 @@ class TranscriptionSegment(BaseModel):
     low_confidence: bool = False
     detail: str | None = None
     kind: Literal["speech", "placeholder"] = "speech"
+    speaker_id: str | None = None
 
     @model_validator(mode="after")
     def check_times(self) -> TranscriptionSegment:
         if self.end_sec < self.start_sec:
             raise ValueError("end_sec must be >= start_sec")
         return self
+
+
+class DiarizationInfo(BaseModel):
+    status: Literal["disabled", "final"] = "disabled"
+    run_id: str | None = None
+    speaker_count: int | None = None
+    warnings: list[str] = Field(default_factory=list)
 
 
 class TranscriptionResult(BaseModel):
@@ -39,3 +47,4 @@ class TranscriptionResult(BaseModel):
     error: TranscriptionError | None = None
     warnings: list[str] = Field(default_factory=list)
     segmentation_mode: str | None = None
+    diarization: DiarizationInfo = Field(default_factory=DiarizationInfo)

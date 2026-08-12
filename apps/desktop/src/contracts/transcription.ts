@@ -21,6 +21,8 @@ export interface TranscriptionSegment {
   low_confidence?: boolean;
   /** Optional per-segment note (e.g. stub / post-process). May serialize as JSON `null`. */
   detail?: string | null;
+  /** Run-scoped diarization cluster id; not a cross-recording identity. */
+  speaker_id?: string | null;
 }
 
 export interface TranscriptionError {
@@ -45,6 +47,12 @@ export interface TranscriptionResult {
   warnings: string[];
   /** L2 segmentation source when known: sentence_info | vad_timestamp | whole_track_fallback | empty. */
   segmentation_mode?: string | null;
+  diarization?: {
+    status: "disabled" | "final";
+    run_id?: string | null;
+    speaker_count?: number | null;
+    warnings: string[];
+  };
 }
 
 /** Client-side contract for calling a local or remote ASR HTTP service. */
@@ -74,6 +82,8 @@ function isTranscriptionSegment(v: unknown): v is TranscriptionSegment {
   if (s.low_confidence !== undefined && typeof s.low_confidence !== "boolean") return false;
   const d = s.detail;
   if (d !== undefined && d !== null && typeof d !== "string") return false;
+  const speaker = s.speaker_id;
+  if (speaker !== undefined && speaker !== null && typeof speaker !== "string") return false;
   return true;
 }
 

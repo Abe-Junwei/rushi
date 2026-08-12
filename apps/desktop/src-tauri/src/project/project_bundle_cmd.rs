@@ -24,10 +24,11 @@ use super::lexicon_bundle::{
     preview_lexicon_bundle_import, serialize_lexicon_bundle, LexiconBundleConflictResolution,
 };
 use super::segment_uid::segment_uid_or_new;
-use super::types::{ProjectDetail, SegmentDto};
+use super::types::{FileSpeakerDto, ProjectDetail, SegmentDto};
 use super::utils::{now_ms, open_db, project_detail_from_conn};
 
 pub(super) const PROJECT_BUNDLE_LEXICON_ENTRY: &str = "lexicon.json";
+pub(super) const PROJECT_BUNDLE_SPEAKERS_ENTRY: &str = "speakers.json";
 
 pub(super) const PROJECT_BUNDLE_KIND: &str = "rushi_project_bundle";
 /// v2 = self-contained multi-file + peaks + metadata + edit_log.
@@ -127,6 +128,21 @@ pub(super) struct ProjectBundleEditLogEntry {
     pub(super) detail: String,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct ProjectBundleSpeakerFile {
+    original_file_id: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    diarization_run_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    speakers: Vec<FileSpeakerDto>,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct ProjectBundleSpeakersDocument {
+    #[serde(default)]
+    files: Vec<ProjectBundleSpeakerFile>,
+}
+
 pub(super) fn zip_opts() -> SimpleFileOptions {
     SimpleFileOptions::default().compression_method(CompressionMethod::Deflated)
 }
@@ -202,7 +218,7 @@ fn load_segments_from_db(st: &DbState, file_id: &str) -> CommandResult<Vec<Segme
     let mut stmt = conn
         .prepare(
             "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, \
-             text_stage, finalize_via, annotation, frozen \
+             speaker_id, text_stage, finalize_via, annotation, frozen \
              FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
         )
         .map_err(CommandError::from)?;
@@ -211,10 +227,11 @@ fn load_segments_from_db(st: &DbState, file_id: &str) -> CommandResult<Vec<Segme
             let uid: String = r.get(0)?;
             let detail: String = r.get(7)?;
             let kind: Option<String> = r.get(8)?;
-            let text_stage: String = r.get(9)?;
-            let finalize_via: Option<String> = r.get(10)?;
-            let annotation: String = r.get(11)?;
-            let frozen: i64 = r.get(12)?;
+            let speaker_id: Option<String> = r.get(9)?;
+            let text_stage: String = r.get(10)?;
+            let finalize_via: Option<String> = r.get(11)?;
+            let annotation: String = r.get(12)?;
+            let frozen: i64 = r.get(13)?;
             Ok(SegmentDto {
                 uid: if uid.trim().is_empty() {
                     None
@@ -233,6 +250,7 @@ fn load_segments_from_db(st: &DbState, file_id: &str) -> CommandResult<Vec<Segme
                     Some(detail)
                 },
                 kind: kind.filter(|s| !s.trim().is_empty()),
+                speaker_id: speaker_id.filter(|s| !s.trim().is_empty()),
                 text_stage: if text_stage.trim().is_empty() {
                     "auto_transcribe".to_string()
                 } else {
@@ -253,6 +271,40 @@ fn load_segments_from_db(st: &DbState, file_id: &str) -> CommandResult<Vec<Segme
         out.push(row.map_err(CommandError::from)?);
     }
     Ok(out)
+}
+
+fn load_speakers_from_db(st: &DbState, file_id: &str) -> CommandResult<ProjectBundleSpeakerFile> {
+    let conn = open_db(st).map_err(CommandError::db_pool)?;
+    let diarization_run_id = conn
+        .query_row(
+            "SELECT diarization_run_id FROM files WHERE id = ?1",
+            params![file_id],
+            |r| r.get::<_, Option<String>>(0),
+        )
+        .map_err(CommandError::from)?;
+    let mut stmt = conn
+        .prepare(
+            "SELECT speaker_id, ordinal, display_name FROM file_speakers \
+             WHERE file_id = ?1 ORDER BY ordinal ASC",
+        )
+        .map_err(CommandError::from)?;
+    let rows = stmt
+        .query_map(params![file_id], |r| {
+            Ok(FileSpeakerDto {
+                speaker_id: r.get(0)?,
+                ordinal: r.get(1)?,
+                display_name: r.get(2)?,
+            })
+        })
+        .map_err(CommandError::from)?;
+    let speakers = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(CommandError::from)?;
+    Ok(ProjectBundleSpeakerFile {
+        original_file_id: file_id.to_string(),
+        diarization_run_id,
+        speakers,
+    })
 }
 
 fn load_edit_log(st: &DbState, project_id: &str) -> CommandResult<Vec<ProjectBundleEditLogEntry>> {
@@ -358,8 +410,8 @@ fn insert_segments(
         let annotation = s.annotation.as_deref().unwrap_or("").trim();
         let frozen = if s.frozen { 1i64 } else { 0i64 };
         tx.execute(
-            "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation, frozen) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
+            "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, speaker_id, text_stage, finalize_via, annotation, frozen) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)",
             params![
                 file_id,
                 uid.as_str(),
@@ -371,6 +423,7 @@ fn insert_segments(
                 low,
                 detail,
                 kind,
+                s.speaker_id.as_deref().filter(|v| !v.trim().is_empty()),
                 text_stage,
                 finalize_via,
                 annotation,
@@ -479,6 +532,7 @@ pub(super) fn export_project_bundle_to_path(
 
     let mut manifest_files = Vec::new();
     let mut doc_files = Vec::new();
+    let mut speaker_files = Vec::new();
     let mut total_segments = 0usize;
 
     for (file_id, file_name, file_type, audio_storage) in &files_raw {
@@ -539,6 +593,10 @@ pub(super) fn export_project_bundle_to_path(
             file_type: file_type.clone(),
             segments,
         });
+        let speaker_file = load_speakers_from_db(st, file_id)?;
+        if speaker_file.diarization_run_id.is_some() || !speaker_file.speakers.is_empty() {
+            speaker_files.push(speaker_file);
+        }
     }
 
     if manifest_files.is_empty() {
@@ -585,6 +643,18 @@ pub(super) fn export_project_bundle_to_path(
         .map_err(CommandError::BundleFinish)?;
     zip.write_all(&serde_json::to_vec_pretty(&doc).map_err(CommandError::BundleSerializeProject)?)
         .map_err(|e| CommandError::io("写入 project.json", e))?;
+
+    if !speaker_files.is_empty() {
+        zip.start_file(PROJECT_BUNDLE_SPEAKERS_ENTRY, zip_opts())
+            .map_err(CommandError::BundleFinish)?;
+        zip.write_all(
+            &serde_json::to_vec_pretty(&ProjectBundleSpeakersDocument {
+                files: speaker_files,
+            })
+            .map_err(CommandError::BundleSerializeProject)?,
+        )
+        .map_err(|e| CommandError::io("写入 speakers.json", e))?;
+    }
 
     if let Some(lexicon_json) = lexicon_json {
         zip.start_file(PROJECT_BUNDLE_LEXICON_ENTRY, zip_opts())
@@ -718,6 +788,7 @@ fn import_v1(
             audio_bytes,
             doc.segments,
             None,
+            None,
         )],
         &[],
         archive,
@@ -738,6 +809,17 @@ fn import_v2(
         return Err(CommandError::BundleNoExportableAudio);
     }
     let doc: ProjectBundleDocument = read_zip_json(archive, "project.json")?;
+    let speaker_files: ProjectBundleSpeakersDocument =
+        if archive.by_name(PROJECT_BUNDLE_SPEAKERS_ENTRY).is_ok() {
+            read_zip_json(archive, PROJECT_BUNDLE_SPEAKERS_ENTRY)?
+        } else {
+            ProjectBundleSpeakersDocument::default()
+        };
+    let mut speakers_by_id: HashMap<String, ProjectBundleSpeakerFile> = speaker_files
+        .files
+        .into_iter()
+        .map(|file| (file.original_file_id.clone(), file))
+        .collect();
     let mut segs_by_id: std::collections::HashMap<String, Vec<SegmentDto>> = doc
         .files
         .into_iter()
@@ -772,6 +854,7 @@ fn import_v2(
             audio_bytes,
             segments,
             f.peaks_dir.clone(),
+            speakers_by_id.remove(&f.original_file_id),
         ));
     }
 
@@ -804,6 +887,7 @@ fn import_project_from_parts(
         Vec<u8>,
         Vec<SegmentDto>,
         Option<String>,
+        Option<ProjectBundleSpeakerFile>,
     )],
     edit_log: &[ProjectBundleEditLogEntry],
     archive: &mut ZipArchive<File>,
@@ -848,8 +932,16 @@ fn import_project_from_parts(
         )
         .map_err(CommandError::from)?;
 
-        for (old_fid, file_name, file_type, audio_leaf, audio_bytes, segments, peaks_prefix) in
-            files
+        for (
+            old_fid,
+            file_name,
+            file_type,
+            audio_leaf,
+            audio_bytes,
+            segments,
+            peaks_prefix,
+            speaker_file,
+        ) in files
         {
             let write_name = rename_map
                 .get(&(source_key.to_string(), file_name.clone()))
@@ -879,20 +971,40 @@ fn import_project_from_parts(
                 "paired"
             };
             tx.execute(
-                "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                "INSERT INTO files (id, project_id, name, file_type, audio_path, diarization_run_id, created_at_ms, updated_at_ms) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
                 params![
                     &new_file_id,
                     &id,
                     write_name,
                     ft,
                     audio_path,
+                    speaker_file
+                        .as_ref()
+                        .and_then(|file| file.diarization_run_id.as_deref()),
                     created_at_ms,
                     now,
                 ],
             )
             .map_err(CommandError::from)?;
             insert_segments(&tx, &new_file_id, segments)?;
+            if let Some(speaker_file) = speaker_file {
+                for speaker in &speaker_file.speakers {
+                    tx.execute(
+                        "INSERT INTO file_speakers \
+                         (file_id, speaker_id, ordinal, display_name, created_at_ms, updated_at_ms) \
+                         VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
+                        params![
+                            &new_file_id,
+                            &speaker.speaker_id,
+                            speaker.ordinal,
+                            speaker.display_name.as_deref(),
+                            now,
+                        ],
+                    )
+                    .map_err(CommandError::from)?;
+                }
+            }
 
             if let Some(prefix) = peaks_prefix {
                 extract_peaks_from_zip(archive, prefix, old_fid, &peaks_root, &new_file_id)?;

@@ -84,6 +84,7 @@ pub(crate) async fn fetch_online_transcribe_json(
                 url,
                 audio_path,
                 hotwords.to_string(),
+                false,
                 TranscribeHttpOptions {
                     auth: TranscribeRequestAuth {
                         authorization: auth,

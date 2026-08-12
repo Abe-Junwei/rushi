@@ -15,6 +15,7 @@ import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabi
 import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
+import { getSpeakerDiarizationPreference } from "../services/speakerDiarizationPreference";
 import {
   isTranscribeInvokeCancelled,
   isTranscribeUserCancellation,
@@ -187,6 +188,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
           segmentPublish,
           refs: runRefs,
           callbacks: { setTranscribeProgress },
+          diarizationRequested: getSpeakerDiarizationPreference(),
         });
         out = local.out;
         if (local.usedAsyncFallback) {

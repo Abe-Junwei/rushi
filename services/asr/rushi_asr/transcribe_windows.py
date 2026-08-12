@@ -10,11 +10,17 @@ from pathlib import Path
 
 from rushi_asr import ffmpeg_audio
 from rushi_asr.schemas import TranscriptionSegment
+from rushi_asr.speaker_diarization import (
+    SpeakerWindowResult,
+    finalize_speaker_windows,
+    strip_speaker_ids,
+)
 
 log = logging.getLogger(__name__)
 
 DEFAULT_WINDOW_SEC = 300.0
 DEFAULT_ASYNC_WINDOW_SEC = 120.0
+DEFAULT_DIARIZATION_WINDOW_SEC = 30.0
 DEFAULT_WINDOW_THRESHOLD_SEC = 1800.0
 DEFAULT_WINDOW_OVERLAP_SEC = 2.0
 
@@ -57,6 +63,11 @@ def window_sec() -> float:
 def async_window_sec() -> float:
     """R3e-C async preview slice size (blocking long-audio path keeps ``window_sec()``)."""
     return _env_float("RUSHI_FUNASR_ASYNC_WINDOW_SEC", DEFAULT_ASYNC_WINDOW_SEC)
+
+
+def diarization_window_sec() -> float:
+    """D0 quality gate: CAM++ is materially more stable on 30 s slices than 120 s."""
+    return _env_float("RUSHI_FUNASR_DIARIZATION_WINDOW_SEC", DEFAULT_DIARIZATION_WINDOW_SEC)
 
 
 def window_threshold_sec() -> float:
@@ -121,6 +132,7 @@ def offset_segments(
                 low_confidence=seg.low_confidence,
                 detail=seg.detail,
                 kind=seg.kind,
+                speaker_id=seg.speaker_id,
             ),
         )
     return out
@@ -152,6 +164,7 @@ def trim_window_prefix_overlap(
                 low_confidence=seg.low_confidence,
                 detail=seg.detail,
                 kind=seg.kind,
+                speaker_id=seg.speaker_id,
             ),
         )
     return out
@@ -166,6 +179,8 @@ def transcribe_by_windows(
     on_window_done: Callable[[int, int, list[TranscriptionSegment]], None] | None = None,
     should_cancel: Callable[[], bool] | None = None,
     slice_sec: float | None = None,
+    diarization_requested: bool = False,
+    diarization_out: dict[str, object] | None = None,
 ) -> tuple[list[TranscriptionSegment], str, str | None]:
     """Slice normalized WAV, run FunASR per window, merge with global timestamps."""
     from rushi_asr.funasr_engine import generate_and_parse_funasr
@@ -186,6 +201,7 @@ def transcribe_by_windows(
 
     merged: list[TranscriptionSegment] = []
     engine_label = ""
+    speaker_windows: list[SpeakerWindowResult] = []
 
     try:
         for index, (start_sec, dur_sec) in enumerate(windows, start=1):
@@ -205,19 +221,45 @@ def transcribe_by_windows(
                 start_sec,
                 dur_sec,
             )
+            generate_kwargs = {}
+            if diarization_requested:
+                generate_kwargs = {
+                    "diarization_requested": True,
+                    "window_index": index,
+                    "speaker_windows_out": speaker_windows,
+                }
             segs, engine_label, _mode = generate_and_parse_funasr(
                 slice_path,
                 dur_sec,
                 hotwords,
                 out_warnings,
+                **generate_kwargs,
             )
             offset = offset_segments(segs, start_sec)
             if index > 1 and effective_overlap_sec > 0:
                 offset = trim_window_prefix_overlap(offset, start_sec + effective_overlap_sec)
             merged.extend(offset)
+            if diarization_requested and speaker_windows:
+                local = speaker_windows[-1]
+                speaker_windows[-1] = SpeakerWindowResult(
+                    window_index=local.window_index,
+                    segments=offset,
+                    centers=local.centers,
+                )
             if on_window_done is not None:
-                on_window_done(index, len(windows), offset)
+                on_window_done(
+                    index,
+                    len(windows),
+                    strip_speaker_ids(offset) if diarization_requested else offset,
+                )
     finally:
         shutil.rmtree(slice_dir, ignore_errors=True)
 
+    if diarization_requested:
+        finalized, info = finalize_speaker_windows(speaker_windows)
+        if diarization_out is not None:
+            diarization_out.update(info.model_dump())
+        if out_warnings is not None:
+            out_warnings.extend(info.warnings)
+        merged = finalized
     return sort_window_segments(merged), engine_label, "transcribe_windowed"

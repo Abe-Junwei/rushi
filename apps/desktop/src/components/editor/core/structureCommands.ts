@@ -31,14 +31,19 @@ import {
 } from "./revealSegmentAfterStructure";
 import { segmentHasAnnotation } from "../../../utils/segmentAnnotation";
 
-export function segmentDtoToMeta(s: SegmentDto, i: number): SegmentMeta {
+export function segmentDtoToMeta(
+  s: SegmentDto,
+  i: number,
+  speakerLabels?: ReadonlyMap<string, string>,
+): SegmentMeta {
   return {
     uid: s.uid ?? `idx-${i}`,
     startSec: s.start_sec,
     endSec: s.end_sec,
     stage: s.text_stage ?? null,
     finalizeVia: s.finalize_via ?? null,
-    speakerId: null,
+    speakerId: s.speaker_id ?? null,
+    speakerLabel: s.speaker_id ? (speakerLabels?.get(s.speaker_id) ?? "说话人") : null,
     frozen: Boolean(s.frozen),
     hasAnnotation: segmentHasAnnotation(s),
   };

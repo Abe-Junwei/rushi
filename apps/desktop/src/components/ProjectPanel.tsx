@@ -227,13 +227,14 @@ export function ProjectPanel() {
           deliveryMode.continueToDeliveryExport(() => setDeliveryExportOpen(true));
         }}
         onDeliveryExportClose={() => setDeliveryExportOpen(false)}
-        onDeliveryExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish) => {
+        onDeliveryExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, includeSpeakerLabels) => {
           syncOnboardingExport();
           void c.exportDeliveryDocx({
             mode,
             includeRevisionAppendix,
             includeProjectMetadata,
             llmPolish,
+            includeSpeakerLabels,
           });
         }}
         hasRecordedMetadata={hasRecordedProjectMetadata({

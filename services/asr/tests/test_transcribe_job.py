@@ -44,6 +44,7 @@ def test_async_job_emits_window_deltas(monkeypatch: pytest.MonkeyPatch, tmp_path
         should_cancel,
         on_phase,
         on_windows_planned=None,
+        diarization_requested=False,
     ):
         from rushi_asr.schemas import TranscriptionResult
 
@@ -114,6 +115,7 @@ def test_async_job_plans_window_count_before_first_delta(
         should_cancel,
         on_phase,
         on_windows_planned,
+        diarization_requested=False,
     ):
         from rushi_asr.schemas import TranscriptionResult
 
@@ -211,3 +213,51 @@ def test_async_job_rejects_second_active_job(tmp_path: Path) -> None:
         start_transcribe_async(upload, first_work, None)
         with pytest.raises(RuntimeError, match="transcribe_job_limit"):
             start_transcribe_async(upload, second_work, None)
+
+
+def test_diarization_job_forces_short_windows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    from rushi_asr.transcribe_job import _transcribe_with_progress
+
+    upload = tmp_path / "in.wav"
+    upload.write_bytes(b"wav")
+    work = tmp_path / "work-diarization"
+    work.mkdir()
+    monkeypatch.setattr("rushi_asr.ffmpeg_audio.ffmpeg_available", lambda: True)
+    monkeypatch.setattr("rushi_asr.ffmpeg_audio.ffprobe_duration_sec", lambda _path: 130.0)
+    monkeypatch.setattr(
+        "rushi_asr.ffmpeg_audio.normalize_to_wav_16k_mono",
+        lambda _src, dst: dst.write_bytes(b"normalized"),
+    )
+    monkeypatch.setattr(
+        "rushi_asr.transcribe_windows.should_transcribe_by_windows_async",
+        lambda _duration: False,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_windows(_wav, _duration, **kwargs):
+        captured.update(kwargs)
+        kwargs["diarization_out"].update(
+            {"requested": True, "status": "final", "run_id": "run-test", "speaker_count": 2}
+        )
+        return (
+            [TranscriptionSegment(start_sec=0.0, end_sec=1.0, text="测试", speaker_id="spk:run-test:1")],
+            "funasr+test",
+            "transcribe_windowed",
+        )
+
+    monkeypatch.setattr("rushi_asr.transcribe_windows.transcribe_by_windows", fake_windows)
+    result = _transcribe_with_progress(
+        upload,
+        work,
+        None,
+        on_window_done=lambda *_args: None,
+        should_cancel=lambda: False,
+        on_phase=lambda *_args: None,
+        diarization_requested=True,
+    )
+    assert captured["slice_sec"] == 30.0
+    assert captured["diarization_requested"] is True
+    assert result.diarization.status == "final"
+    assert result.segments[0].speaker_id == "spk:run-test:1"

@@ -263,27 +263,47 @@ pub fn persist_probed_file_duration(st: &DbState, file_id: &str, audio_path: &Pa
 }
 
 pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDetail, String> {
-    let (project_id, name, file_type, audio_path, duration_sec, c_ms, u_ms): (
+    let (project_id, name, file_type, audio_path, duration_sec, diarization_run_id, c_ms, u_ms): (
         String,
         String,
         String,
         Option<String>,
         Option<f64>,
+        Option<String>,
         i64,
         i64,
     ) = conn
         .query_row(
-            "SELECT project_id, name, file_type, audio_path, duration_sec, created_at_ms, updated_at_ms \
+            "SELECT project_id, name, file_type, audio_path, duration_sec, diarization_run_id, created_at_ms, updated_at_ms \
              FROM files WHERE id = ?1",
             params![file_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?, r.get(6)?, r.get(7)?)),
         )
+        .map_err(|e| e.to_string())?;
+
+    let speakers = conn
+        .prepare(
+            "SELECT speaker_id, ordinal, display_name FROM file_speakers \
+             WHERE file_id = ?1 ORDER BY ordinal ASC",
+        )
+        .and_then(|mut stmt| {
+            stmt.query_map(params![file_id], |r| {
+                Ok(super::types::FileSpeakerDto {
+                    speaker_id: r.get(0)?,
+                    ordinal: r.get(1)?,
+                    display_name: r
+                        .get::<_, Option<String>>(2)?
+                        .filter(|s| !s.trim().is_empty()),
+                })
+            })?
+            .collect::<Result<Vec<_>, _>>()
+        })
         .map_err(|e| e.to_string())?;
 
     let mut stmt = conn
         .prepare(
             "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, \
-             text_stage, finalize_via, annotation, frozen \
+             speaker_id, text_stage, finalize_via, annotation, frozen \
              FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -292,10 +312,11 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
             let uid: String = r.get(0)?;
             let detail: String = r.get(7)?;
             let kind: Option<String> = r.get(8)?;
-            let text_stage: String = r.get(9)?;
-            let finalize_via: Option<String> = r.get(10)?;
-            let annotation: String = r.get(11)?;
-            let frozen: i64 = r.get(12)?;
+            let speaker_id: Option<String> = r.get(9)?;
+            let text_stage: String = r.get(10)?;
+            let finalize_via: Option<String> = r.get(11)?;
+            let annotation: String = r.get(12)?;
+            let frozen: i64 = r.get(13)?;
             Ok(SegmentDto {
                 uid: if uid.trim().is_empty() {
                     None
@@ -314,6 +335,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
                     Some(detail)
                 },
                 kind: kind.filter(|s| !s.trim().is_empty()),
+                speaker_id: speaker_id.filter(|s| !s.trim().is_empty()),
                 text_stage: if text_stage.trim().is_empty() {
                     "auto_transcribe".to_string()
                 } else {
@@ -341,6 +363,8 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
         file_type,
         audio_path,
         duration_sec: duration_sec.filter(|d| d.is_finite() && *d > 0.0),
+        diarization_run_id: diarization_run_id.filter(|s| !s.trim().is_empty()),
+        speakers,
         segments,
         created_at_ms: c_ms,
         updated_at_ms: u_ms,

@@ -54,6 +54,15 @@ describe("P1 build/serializeTranscriptEditorState", () => {
     expect(back.map((s) => s.start_sec)).toEqual(segments.map((s) => s.start_sec));
   });
 
+  it("round-trips speaker metadata", () => {
+    const segments = makeSegments(1, { speaker_id: "spk-a" });
+    const state = buildTranscriptEditorState(segments, {
+      speakerLabels: new Map([["spk-a", "张三"]]),
+    });
+    expect(state.field(segmentMetaField)[0]?.speakerLabel).toBe("张三");
+    expect(serializeTranscriptEditorState(state)[0]?.speaker_id).toBe("spk-a");
+  });
+
   it("seeds caret + multi-selection from initialPrimaryIdx", () => {
     const segments = makeSegments(5);
     const state = buildTranscriptEditorState(segments, { initialPrimaryIdx: 3 });

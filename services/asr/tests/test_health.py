@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 from fastapi.testclient import TestClient
+import pytest
 
 from rushi_asr.app import create_app
+from rushi_asr import runtime_caps
 
 
 def test_root_ok() -> None:
     app = create_app()
+    assert app.version == "0.1.1"
     client = TestClient(app)
     res = client.get("/")
     assert res.status_code == 200
@@ -26,6 +29,9 @@ def test_health_ok() -> None:
     assert body["status"] == "ok"
     assert body["service"] == "rushi-asr"
     assert isinstance(body.get("version"), str) and body["version"]
+    assert body.get("funasr_version") is None or isinstance(body["funasr_version"], str)
+    assert body.get("modelscope_version") is None or isinstance(body["modelscope_version"], str)
+    assert body.get("torch_version") is None or isinstance(body["torch_version"], str)
     assert "ffmpeg_ok" in body
     assert "ffmpeg_on_path" in body
     assert "funasr_import_ok" in body
@@ -59,7 +65,20 @@ def test_health_ok() -> None:
     assert isinstance(body.get("funasr_device"), str) and body["funasr_device"]
     assert body.get("funasr_device_source") in ("env", "auto")
     assert "funasr_loaded_device" in body
+    assert "funasr_spk_model_cached" in body
+    assert "funasr_spk_model_loaded" in body
+    assert "funasr_spk_model_id" in body
     assert body.get("local_token_required") is False
+
+
+def test_frozen_runtime_probe_uses_metadata_without_import(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(runtime_caps.sys, "frozen", True, raising=False)
+    monkeypatch.setattr(runtime_caps, "dependency_version", lambda package: "1.3.16")
+    monkeypatch.setattr(runtime_caps, "_find_spec", lambda package: object())
+
+    assert runtime_caps.funasr_runtime_available() is True
 
 
 def test_health_local_token_required_flag(monkeypatch) -> None:

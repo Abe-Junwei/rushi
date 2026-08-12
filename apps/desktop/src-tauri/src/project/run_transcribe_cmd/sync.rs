@@ -11,6 +11,7 @@ use super::super::transcribe_cancel_cmd::{
     run_transcribe_abortable, TranscribeCancelState, TRANSCRIBE_CANCELLED_MESSAGE,
 };
 use super::super::transcribe_errors::describe_transcribe_payload_error;
+use super::super::transcribe_job::prepare_speaker_model;
 use super::super::transcribe_response::merge_transcribe_warnings;
 use super::super::transcribe_timeline::{
     fail_and_persist_active_timeline, load_last_timeline, update_active_timeline_progress,
@@ -36,6 +37,7 @@ pub async fn project_run_transcribe(
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
     request_id: Option<String>,
+    diarization_requested: Option<bool>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
     crate::asr_sidecar::warm::inc_transcribe_in_flight();
@@ -54,6 +56,7 @@ pub async fn project_run_transcribe(
         asr_base_url,
         online,
         request_id,
+        diarization_requested.unwrap_or(false),
         &mut tl,
     )
     .await
@@ -111,6 +114,7 @@ async fn project_run_transcribe_inner(
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
     request_id: Option<String>,
+    diarization_requested: bool,
     tl: &mut TranscribeTimelineRecorder,
 ) -> Result<RunTranscribeOutcome, String> {
     tl.begin_stage(STAGE_PREFLIGHT);
@@ -197,6 +201,9 @@ async fn project_run_transcribe_inner(
         assert_local_asr_ready_for_transcribe(&st, &base)
             .await
             .map_err(|e| record_transcribe_err(tl, e))?;
+        if diarization_requested {
+            prepare_speaker_model(&st, &base, std::time::Duration::from_secs(30 * 60)).await?;
+        }
         let url = format!("{base}/v1/transcribe");
         let timeout = local_transcribe_timeout_duration(audio_duration_sec);
         append_desktop_log_line(
@@ -215,6 +222,7 @@ async fn project_run_transcribe_inner(
             &url,
             &audio_path,
             hotwords,
+            diarization_requested,
             TranscribeHttpOptions {
                 auth: TranscribeRequestAuth::default(),
                 timeout,
@@ -326,6 +334,7 @@ async fn project_run_transcribe_inner(
         &st,
         &file_id,
         arr,
+        v.get("diarization"),
         &mut warnings,
         audio_duration_sec,
         Some(tl),
