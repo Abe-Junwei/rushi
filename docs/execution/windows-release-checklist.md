@@ -23,13 +23,13 @@
 - **版本硬闸门**：tag、desktop package、Tauri config、Cargo package 四者必须一致；历史补发必须 checkout 源 run SHA。
 - **PowerShell 硬规则**：`-LiteralPath` **禁止**带 `*` / `?`（不会展开通配，会当成字面文件名 `*`）。目录内容复制用 `Get-ChildItem -LiteralPath $dir` 再按项 `Copy-Item -LiteralPath $_.FullName`。守卫同上。
 - **makensis MAX_PATH**：NSIS 前 `scripts/prune-windows-sidecar-for-nsis.ps1`。
-- **离线 zip**：真源 `scripts/ci-pack-windows-offline-installer-zip.ps1`（ASCII `tar -f` → 中文 rename；禁止对中文最终名 `tar -xf`）。
+- **离线 zip**：真源 `scripts/ci-pack-windows-offline-installer-zip.ps1`（ASCII `ZipArchive` 中间件 → 中文 rename）；必须解压回读并逐项校验 manifest 必需文件与权重体积。
 
 ## 1. 物料
 
 - [ ] **离线安装包 zip**：CDN `/<tag>/如是我闻_<ver>_Windows_x64_离线安装包.zip`；内含中文 setup.exe + `resources/bundled-asr-models/`。
 - [ ] **`rushi-asr-sidecar.exe` onedir**：打进 NSIS；`npm run asr:build-sidecar-windows-cpu`。
-- [ ] **Plan B 模型**：NSIS **之后** stage；进离线 zip 旁路（`preflight-bundled-asr-models`）。
+- [ ] **Plan B 模型**：NSIS **之后** stage；进离线 zip 旁路；产物必须归一化为 `modelscope/models/iic/<name>/`（`preflight-bundled-asr-models`）。
 - [ ] **CUDA 侧车 zip**：`windows-cuda-opt-in` 上传 CDN；**不要**打进安装介质；不阻塞 core / verify。
 - [ ] 体积：NSIS 前 measure（无模型）；NSIS &lt; 2GB；layout 前 `-RequirePlanBForOfflineLayout`。
 
@@ -48,6 +48,7 @@
 ## 4. 冒烟
 
 - [ ] 断网 VM：解压离线 zip → 安装 → 首启 seed → 可转写。
+- [ ] v1.0.0 snapshot 兼容：保留 `modelscope/models/iic--<name>/snapshots/master/` 安装资源，清空 App Data 后升级瘦 NSIS → 首启 seed 可成功。
 - [ ] 单独拷贝 setup.exe（无同级 resources）→ 安装 Abort。
 - [ ] 单独 setup.exe `/S` 干净首装 → 非零退出，不留下无模型安装。
 - [ ] （可选）OTA：瘦 NSIS 升级后侧车更新；App Data 模型保留。

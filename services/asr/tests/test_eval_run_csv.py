@@ -50,6 +50,8 @@ def test_print_csv_includes_ab_columns() -> None:
                     "rtfx": 8.04,
                     "segmentation_mode": "sentence_info",
                     "term_hit_rate": 0.0,
+                    "cer_chars": 0.2,
+                    "content_cer_chars": 0.1,
                     "engine": "test-engine",
                     "warnings": [],
                 },
@@ -78,6 +80,7 @@ def test_print_csv_includes_ab_columns() -> None:
     assert "segment_count" in header
     assert "rtfx" in header
     assert "segmentation_mode" in header
+    assert "content_cer_chars" in header
     assert ",on," in text or ',"on",' in text
     assert "term_hit_rate" in text
 

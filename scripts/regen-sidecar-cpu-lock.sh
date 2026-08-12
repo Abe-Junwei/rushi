@@ -14,10 +14,11 @@ source .venv-lockgen-cpu/bin/activate
 python -m pip install -U pip setuptools wheel
 python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -e ".[funasr]"
-# Floor pins for known CVEs (pip-audit): pillow PYSEC-2026-* · setuptools PYSEC-2026-3447.
+# Floor pins for known CVEs (pip-audit): cryptography PYSEC-2026-3552 · pillow PYSEC-2026-* · setuptools PYSEC-2026-3447.
 # Note: as of 2026-07, PyTorch CPU index may ship torch 2.13 with torchaudio still at 2.11 — accept that skew.
-python -m pip install "pillow>=12.3.0" "setuptools>=83.0.0"
-python -c 'import torch,torchvision,torchaudio,PIL,setuptools; print("torch",torch.__version__,"tv",torchvision.__version__,"ta",torchaudio.__version__,"pillow",PIL.__version__,"setuptools",setuptools.__version__)'
+python -m pip install "cryptography>=50.0.0" "pillow>=12.3.0" "setuptools>=83.0.0"
+python -c 'import funasr,modelscope,torch,torchvision,torchaudio,PIL,setuptools; print("funasr",funasr.__version__,"modelscope",modelscope.__version__,"torch",torch.__version__,"tv",torchvision.__version__,"ta",torchaudio.__version__,"pillow",PIL.__version__,"setuptools",setuptools.__version__)'
+python -m pip check
 
 
 {
@@ -42,5 +43,10 @@ HDR
     | sed "s/^\(uvloop==.*\)$/\1; sys_platform != 'win32'/" \
     | LC_ALL=C sort
 } > "$OUT"
+
+python -m pytest \
+  tests/test_sidecar_dependency_policy.py::test_funasr_extra_uses_exact_validated_pins \
+  tests/test_sidecar_dependency_policy.py::test_cpu_lock_matches_validated_asr_pins \
+  -q
 
 echo "Wrote $OUT ($(wc -l < "$OUT") lines). Next: refresh requirements-sidecar-cuda-win_amd64.lock torch lines if torch family bumped."

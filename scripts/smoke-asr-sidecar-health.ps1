@@ -47,7 +47,9 @@ try {
   $proc = Start-Process -FilePath $Exe -PassThru -NoNewWindow -RedirectStandardOutput $log -RedirectStandardError $logErr
 
   $ready = $false
-  for ($i = 0; $i -lt 120; $i++) {
+  $healthTimeoutSec = if ($env:RUSHI_SMOKE_HEALTH_TIMEOUT_SEC) { [int]$env:RUSHI_SMOKE_HEALTH_TIMEOUT_SEC } else { 45 }
+  $healthWait = [System.Diagnostics.Stopwatch]::StartNew()
+  while ($healthWait.Elapsed.TotalSeconds -lt $healthTimeoutSec) {
     try {
       Invoke-WebRequest -Uri "http://127.0.0.1:$Port/health" -UseBasicParsing -OutFile $healthJson -TimeoutSec 2 | Out-Null
       if ((Get-Item $healthJson).Length -gt 0) {
@@ -85,6 +87,14 @@ if body.get("ffmpeg_ok") is not True:
     sys.exit(f"ffmpeg_ok is not true: {body!r}")
 if body.get("funasr_ready") is not True:
     sys.exit(f"funasr_ready is not true: {body!r}")
+if body.get("version") in (None, "", "0+unknown"):
+    sys.exit(f"sidecar package metadata missing: {body!r}")
+if body.get("funasr_version") != "1.3.16":
+    sys.exit(f"unexpected funasr_version: {body!r}")
+if body.get("modelscope_version") != "1.38.1":
+    sys.exit(f"unexpected modelscope_version: {body!r}")
+if not body.get("torch_version"):
+    sys.exit(f"torch package metadata missing: {body!r}")
 if "funasr_loaded_model_id" not in body:
     sys.exit(f"missing funasr_loaded_model_id: {body!r}")
 print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpeg_ok"))
@@ -134,3 +144,14 @@ print("smoke root OK: catalog + warmup endpoints present")
   }
   Pop-Location
 }
+
+Start-Sleep -Seconds 2
+try {
+  $leftover = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+  if ($leftover) {
+    throw "smoke: port $Port still in use after sidecar exit (possible frozen multiprocessing orphan)"
+  }
+} catch {
+  if ("$($_.Exception.Message)" -match 'still in use') { throw }
+}
+Write-Host "smoke exit OK: port $Port released"

@@ -60,12 +60,15 @@ cleanup() {
 trap cleanup EXIT
 
 HEALTH_URL="http://127.0.0.1:${PORT}/health"
-for _ in $(seq 1 120); do
-  if curl -sf "$HEALTH_URL" >/tmp/rushi-sidecar-smoke-health.json 2>/dev/null; then
-    break
-  fi
-  sleep 0.5
-done
+HEALTH_TIMEOUT_SEC="${RUSHI_SMOKE_HEALTH_TIMEOUT_SEC:-45}"
+curl -sf \
+  --connect-timeout 1 \
+  --max-time "$HEALTH_TIMEOUT_SEC" \
+  --retry "$HEALTH_TIMEOUT_SEC" \
+  --retry-connrefused \
+  --retry-delay 1 \
+  --retry-max-time "$HEALTH_TIMEOUT_SEC" \
+  "$HEALTH_URL" >/tmp/rushi-sidecar-smoke-health.json 2>/dev/null || true
 
 if [[ ! -s /tmp/rushi-sidecar-smoke-health.json ]]; then
   echo "smoke: /health did not become ready (see /tmp/rushi-sidecar-smoke.log)" >&2
@@ -87,6 +90,14 @@ if body.get("ffmpeg_ok") is not True:
     sys.exit(f"ffmpeg_ok is not true: {body!r}")
 if body.get("funasr_ready") is not True:
     sys.exit(f"funasr_ready is not true: {body!r}")
+if body.get("version") in (None, "", "0+unknown"):
+    sys.exit(f"sidecar package metadata missing: {body!r}")
+if body.get("funasr_version") != "1.3.16":
+    sys.exit(f"unexpected funasr_version: {body!r}")
+if body.get("modelscope_version") != "1.38.1":
+    sys.exit(f"unexpected modelscope_version: {body!r}")
+if not body.get("torch_version"):
+    sys.exit(f"torch package metadata missing: {body!r}")
 if "funasr_loaded_model_id" not in body:
     sys.exit(f"missing funasr_loaded_model_id: {body!r}")
 print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpeg_ok"))
@@ -173,3 +184,13 @@ if [[ "$WARMUP_CODE" == "200" && "$UNLOAD_CODE" == "200" && -n "$WARMUP_RSS" ]];
     echo "smoke RSS OK: unload ${UNLOAD_RSS}KB vs warmup ${WARMUP_RSS}KB"
   fi
 fi
+
+cleanup
+trap - EXIT
+sleep 2
+if lsof -i ":$PORT" >/dev/null 2>&1; then
+  echo "smoke: port $PORT still in use after sidecar exit (possible frozen multiprocessing orphan)" >&2
+  lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >&2 || true
+  exit 1
+fi
+echo "smoke exit OK: port $PORT released"

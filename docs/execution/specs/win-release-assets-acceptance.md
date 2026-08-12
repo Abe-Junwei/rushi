@@ -15,6 +15,7 @@
 - [ ] `release.yml` **tauri-windows** 绿（tag / `workflow_dispatch`）；NSIS **&lt; 2GB**（目标 &lt; 1.5GB）
 - [ ] CDN **`/<tag>/如是我闻_<ver>_Windows_x64_离线安装包.zip`** 可下载（**主分发**；CI early upload，不依赖 CUDA）
 - [ ] 离线 zip **含** 中文 `*_安装包.exe` + 同级 `resources/bundled-asr-models/`（CI fail closed）；**不含** 便携版布局
+- [ ] 离线 zip 内三个默认模型均为规范 `modelscope/models/iic/<name>/` 布局；manifest 必需文件与权重最小体积逐项通过
 - [ ] NSIS / 离线 zip **不含** `rushi-asr-sidecar-cuda`（CUDA 仅 CDN）；NSIS **不含** Plan B；Plan B 仅离线 zip 旁路
 - [ ] CDN `/<tag>/如是我闻_<ver>_Windows_x64_CUDA侧车.zip` + `/runtime/rushi-runtime-manifest.json` 可下载
 - [ ] `release.yml` **verify-cdn-release** 合并 `latest.json` 含 `windows-x86_64`（有 OTA 时）
@@ -30,6 +31,7 @@
 | H-WIN-0 | CDN 下载 `*_离线安装包.zip`，**完整解压**后运行同级安装包 | 安装成功 · Plan B CopyFiles · 可启动 · 关于页版本与 tag 一致 | ☐ |
 | H-WIN-0b | 单独拷贝 `*_安装包.exe`（无同级 `resources/`）交互运行 | **Abort** 中文说明须完整解压离线包 | ☐ |
 | H-WIN-0c | 已装用户 OTA（瘦 NSIS，无旁路） | 升级成功；不因缺旁路 Abort；转写仍可用 | ☐ |
+| H-WIN-0d | 保留 v1.0.0 `models/iic--<name>/snapshots/master/` 安装资源，清空 App Data 后安装新版瘦 NSIS | Rust seed 兼容 snapshot 布局；不再报「复制后仍缺少完整模型」 | ☐ |
 | H-WIN-1 | （可选）仅用 CDN 上的 NSIS exe（无旁路） | 与 H-WIN-0b 同：Abort（勿作首装主路径） | ☐ |
 | H-WIN-2 | 断网：导入音频 → 波形 → 本机转写 | 侧车 OK · Plan B seed · 语段可见 | ☐ |
 | H-WIN-2b | （N 卡）环境页推荐 → 下载 CUDA → 重启侧车 | GPU 路径可用；取消/失败仍可 CPU 转写 | ☐ |
@@ -72,3 +74,4 @@ git push origin main
 | 2026-06-20 | 初版 · CI 修复 cli-win32 + Linux 签名 env |
 | 2026-07-15 | 启用 Win OTA（NSIS + 合并 manifest）· 见 spike research |
 | 2026-07-19 | 路线三：离线安装包取代便携版；NSIS=CPU-only + POSTINSTALL CopyFiles |
+| 2026-08-11 | 修复 ModelScope 1.38 snapshot 布局误判；发行包强制规范布局 + zip/NSIS 必需文件深校验 |

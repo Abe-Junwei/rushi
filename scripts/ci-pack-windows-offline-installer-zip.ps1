@@ -63,6 +63,58 @@ function New-ZipFromDirectory {
   }
 }
 
+function Assert-CanonicalBundledModels([string]$PackRoot) {
+  $manifestPath = Join-Path $PackRoot "manifest.json"
+  if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+    throw "Missing Plan B manifest: $manifestPath"
+  }
+  $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding utf8 | ConvertFrom-Json
+  if ($null -eq $manifest.pack_version -or [int64]$manifest.pack_version -ne 1L) {
+    throw "Unexpected Plan B pack_version: $($manifest.pack_version)"
+  }
+  if ([string]$manifest.bundle_id -cne "default-paraformer-v1") {
+    throw "Unexpected Plan B bundle_id: $($manifest.bundle_id)"
+  }
+  $models = @($manifest.models)
+  if ($models.Count -eq 0) { throw "Bundled model manifest contains no models: $manifestPath" }
+  foreach ($model in $models) {
+    $hubId = [string]$model.hub_id
+    $parts = @($hubId -split "/")
+    if (
+      $parts.Count -ne 2 -or
+      $parts[0] -notmatch "^[A-Za-z0-9][A-Za-z0-9._-]*$" -or
+      $parts[1] -notmatch "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    ) {
+      throw "Invalid bundled model id: $hubId"
+    }
+    $modelDir = Join-Path $PackRoot ("modelscope\models\{0}\{1}" -f $parts[0], $parts[1])
+    $modelBoundary = [System.IO.Path]::GetFullPath($modelDir).TrimEnd('\') + '\'
+    $requiredFiles = @($model.required_files)
+    if ($requiredFiles.Count -eq 0) { throw "Bundled model has no required_files: $hubId" }
+    foreach ($relative in $requiredFiles) {
+      $relative = [string]$relative
+      $requiredPath = [System.IO.Path]::GetFullPath((Join-Path $modelDir $relative))
+      if (-not $requiredPath.StartsWith($modelBoundary, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Invalid required model path for ${hubId}: $relative"
+      }
+      if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
+        throw "Incomplete bundled model ${hubId}: missing $requiredPath"
+      }
+    }
+    $weightRelative = $requiredFiles | Where-Object { $_ -match "\.(pt|onnx)$" } | Select-Object -First 1
+    if ([string]::IsNullOrWhiteSpace([string]$weightRelative)) { $weightRelative = "model.pt" }
+    $weightPath = Join-Path $modelDir ([string]$weightRelative)
+    $minimumBytes = if ($null -eq $model.min_weight_bytes) { 0L } else { [int64]$model.min_weight_bytes }
+    if ($minimumBytes -lt 0L) {
+      throw "Invalid min_weight_bytes for ${hubId}: $($model.min_weight_bytes)"
+    }
+    $weightBytes = (Get-Item -LiteralPath $weightPath).Length
+    if ($weightBytes -le $minimumBytes) {
+      throw "Incomplete bundled model ${hubId}: $weightPath is $weightBytes bytes (must exceed $minimumBytes)"
+    }
+  }
+}
+
 $NsisSetupPath = Resolve-FullPath $NsisSetupPath
 $ModelsDir = Resolve-FullPath $ModelsDir
 $FinalZipPath = Resolve-FullPath $FinalZipPath
@@ -78,6 +130,7 @@ $modelscopeSrc = Join-Path $ModelsDir "modelscope"
 if (-not (Test-Path -LiteralPath $modelscopeSrc)) {
   throw "Missing Plan B modelscope/: $modelscopeSrc"
 }
+Assert-CanonicalBundledModels $ModelsDir
 
 $onCi = ($env:GITHUB_ACTIONS -eq "true")
 if ([string]::IsNullOrWhiteSpace($StageDir)) {
@@ -166,6 +219,7 @@ if (-not $SkipVerifyExtract) {
   if (-not (Test-Path -LiteralPath $probeModelscope)) {
     throw "offline zip missing Plan B modelscope/: $probeModelscope"
   }
+  Assert-CanonicalBundledModels (Join-Path $ProbeDir "resources\bundled-asr-models")
   Write-Host "OK: ascii zip contains NSIS setup + sibling Plan B models."
   Remove-Item -LiteralPath $ProbeDir -Recurse -Force
 }

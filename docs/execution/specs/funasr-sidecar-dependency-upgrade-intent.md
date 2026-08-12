@@ -1,5 +1,6 @@
 # Intent：FunASR 侧车依赖升级
 
+> **状态**：已执行；引擎升级 No-go，`0.1.1` 加固发行 Defer（2026-08-11 校正指标定性）
 > **Research**：[`funasr-sidecar-dependency-upgrade-research-2026-08.md`](./funasr-sidecar-dependency-upgrade-research-2026-08.md)
 > **Plan**：[`funasr-sidecar-dependency-upgrade-plan.md`](./funasr-sidecar-dependency-upgrade-plan.md)
 > **Acceptance**：[`funasr-sidecar-dependency-upgrade-acceptance.md`](./funasr-sidecar-dependency-upgrade-acceptance.md)
@@ -49,6 +50,12 @@
 
 1. `1.3.30` 是首选落地目标，因为其修复与当前 Paraformer VAD/PUNC 管线可建立直接关系。
 2. `1.4.1` 是观察候选；只有在全部门禁通过且解决 `1.3.30` 的阻塞或带来可测收益时才选择。
-3. 任一候选出现 CER、语段、时间轴、热词或包体硬回归，即不为追版本而修改产品阈值。
+3. 任一候选出现内容 CER、含标点 CER/断句可读性、语段、时间轴、热词或包体硬回归，即不为追版本而修改产品阈值。
 4. 候选均不通过时保持 `1.3.16`，记录 No-go 证据，后续按新的上游修复重开。
 5. ModelScope 默认保持 `1.38.1`；只有候选元数据或完整 lock 的 `pip check` 明确要求时才单独 bump，并重跑全部门禁，禁止顺手升级到最新。
+
+## 执行结果
+
+- `1.3.30` / `1.4.1` 的 D3 内容 CER 与基线同为 `0.1433`；但上游 VAD 文本拼接使含标点 CER 从约 `0.211` 升至约 `0.321`，断句可读性回归，因此仍 No-go；默认引擎保持 `1.3.16`。
+- `rushi-asr 0.1.1` 已完成精确 pin、诊断、安全审计与 macOS arm64 构建加固。
+- 产物发行 Defer：首次 frozen warmup 约 `205.5s`，且缺 Intel macOS / Windows 独立证据。

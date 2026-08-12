@@ -109,8 +109,18 @@ from pathlib import Path
 ROOT = Path(os.environ["RUSHI_REPO_ROOT"])
 sys.path.insert(0, str(ROOT / "services" / "asr"))
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID
-from rushi_asr.model_prepare_cache import required_models_cached_guess
+from rushi_asr.defaults import (
+    DEFAULT_FUNASR_MODEL_ID,
+    DEFAULT_FUNASR_PUNC_MODEL_ID,
+    DEFAULT_FUNASR_VAD_MODEL_ID,
+)
+from rushi_asr.model_prepare_cache import (
+    DEFAULT_PUNC_REQUIRED_FILES,
+    DEFAULT_VAD_REQUIRED_FILES,
+    find_cached_model_dir,
+    recognizer_cache_spec,
+    required_models_cached_guess,
+)
 
 if not required_models_cached_guess(DEFAULT_FUNASR_MODEL_ID):
     raise SystemExit("FAIL: recognizer not cached after download")
@@ -123,7 +133,31 @@ manifest_template = Path(os.environ["MANIFEST_TEMPLATE"])
 dest_modelscope = staging / "modelscope"
 if dest_modelscope.exists():
     shutil.rmtree(dest_modelscope)
-shutil.copytree(ms_cache, dest_modelscope, dirs_exist_ok=True)
+
+# ModelScope >=1.38 stores snapshots under models/{owner}--{name}/snapshots/{rev}.
+# Release packs use one stable canonical layout so installer checks do not depend
+# on the cache implementation used by the build runner.
+recognizer_required, recognizer_weight, recognizer_min = recognizer_cache_spec(
+    DEFAULT_FUNASR_MODEL_ID
+)
+model_specs = (
+    (DEFAULT_FUNASR_MODEL_ID, recognizer_required, recognizer_weight, recognizer_min),
+    (DEFAULT_FUNASR_VAD_MODEL_ID, DEFAULT_VAD_REQUIRED_FILES, "model.pt", 1024 * 1024),
+    (DEFAULT_FUNASR_PUNC_MODEL_ID, DEFAULT_PUNC_REQUIRED_FILES, "model.pt", 1024 * 1024),
+)
+for model_id, required_files, weight_file, min_weight_bytes in model_specs:
+    source = find_cached_model_dir(
+        model_id,
+        required_files,
+        min_weight_bytes,
+        weight_file=weight_file,
+    )
+    if source is None:
+        raise SystemExit(f"FAIL: cannot resolve cached model directory for {model_id}")
+    owner, name = model_id.split("/", 1)
+    destination = dest_modelscope / "models" / owner / name
+    shutil.copytree(source, destination)
+    print(f"canonicalized {model_id}: {source} -> {destination}")
 
 manifest = json.loads(manifest_template.read_text(encoding="utf-8"))
 manifest["rushi_version"] = version

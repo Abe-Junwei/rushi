@@ -1,6 +1,6 @@
 # Acceptance：FunASR 侧车依赖升级
 
-> **状态**：待执行
+> **状态**：执行完成；指标定性已校正（2026-08-11）
 > **Research**：[`funasr-sidecar-dependency-upgrade-research-2026-08.md`](./funasr-sidecar-dependency-upgrade-research-2026-08.md)
 > **Intent**：[`funasr-sidecar-dependency-upgrade-intent.md`](./funasr-sidecar-dependency-upgrade-intent.md)
 > **Plan**：[`funasr-sidecar-dependency-upgrade-plan.md`](./funasr-sidecar-dependency-upgrade-plan.md)
@@ -8,146 +8,137 @@
 
 ## 1. 最终判定
 
-| 判定 | 条件 |
-|------|------|
-| **Go** | 选定版本在完整 regenerated lock 下通过 A-F 全部硬门禁，并有目标发布平台的 PyInstaller 证据 |
-| **Partial Go** | macOS 全绿但 Windows 证据未完成：只允许 macOS 平台安装包发布新侧车；Windows CPU/CUDA 整体保持同一旧版本，同一 Windows 物料禁止混用新旧 FunASR；CUDA CDN/manifest 必须与 Windows CPU 版本对齐；发布说明与诊断列明各平台实际版本 |
-| **Defer** | 质量主路径通过，但包体、平台 wheel、构建机或审计证据未闭合；不得更新正式发布锁 |
-| **No-go** | CER、语段、时间轴、热词、async、CPU fallback 任一硬门禁失败，或候选需改变产品架构才能运行 |
+| 对象 | 判定 | 结论 |
+|------|------|------|
+| FunASR `1.3.30` | **No-go** | D3 内容 CER 与基线同为 `0.1433`，但含标点 CER 从 `0.2115` 回归到 `0.3207`；消融确认为上游 VAD 文本拼接导致的标点/断句对齐回归 |
+| FunASR `1.4.1` | **No-go** | 内容 CER 仍为 `0.1433`，但继承 `1.3.30` 的标点回归，对中文 Paraformer 无额外可测收益 |
+| FunASR 正式 pin | **保持 `1.3.16`** | 两个候选均不写入正式锁 |
+| `rushi-asr 0.1.1` 加固 | **Defer release** | 精确 pin、诊断、安全锁、macOS arm64 构建和质量回归完成；冻结包首次 warmup `205.5s` 不满足门禁，且无 Intel macOS / Windows 产物证据 |
 
-最终选择：`待填（1.3.16 / 1.3.30 / 1.4.1）`
+本轮不发布新 FunASR，不发布新 Windows CPU/CUDA 侧车，不变更默认 Paraformer SKU。
 
 ## 2. 环境与版本证据
 
-| 项 | Baseline | Candidate A | Candidate B | Final lock |
-|----|----------|-------------|-------------|------------|
-| rushi-asr sidecar | 0.1.0 | — | — | 待填 |
-| FunASR | 1.3.16 | 1.3.30 | 1.4.1 | 待填 |
-| ModelScope | 1.38.1 | 默认 1.38.1 | 默认 1.38.1 | 默认 1.38.1；若被依赖强制 bump，填版本与理由 |
-| torch / torchvision / torchaudio | 待填 | 待填 | 待填 | 待填 |
-| Python | 3.12.x | 待填 | 待填 | 待填 |
-| 平台 / device | 待填 | 同基线 | 同基线 | 待填 |
-| lock SHA256 | 待填 | N/A | N/A | 待填 |
+| 项 | Baseline | Candidate A | Candidate B | Final hardening lock |
+|----|----------|-------------|-------------|----------------------|
+| rushi-asr sidecar | 0.1.0 | 0.1.0 source | 0.1.0 source | 0.1.1 |
+| FunASR | 1.3.16 | 1.3.30 | 1.4.1 | 1.3.16 |
+| ModelScope | 1.38.1 | 1.38.1 | 1.38.1 | 1.38.1 |
+| torch / vision / audio | 2.13.0 / 0.28.0 / 2.11.0 | 同基线 | 同基线 | 同基线 |
+| cryptography | 49.0.0 | 49.0.0 | 49.0.0 | 50.0.0（修复 `PYSEC-2026-3552`） |
+| Python | 3.12.4 | 3.12.4 | 3.12.4 | 3.12.4 |
+| 平台 / device | macOS 26.5.2 arm64 / MPS | 同基线 | 同基线 | 同基线 |
+| CPU lock SHA256 | `9509cffd...` | N/A | N/A | `c5604817...` |
+| CUDA lock SHA256 | `02cdbdf5...` | N/A | N/A | `045073b2...` |
 
-## 3. A：依赖与契约硬门禁
+ModelScope 未随手升级；只对安全审计明确报错的 `cryptography` 做单 pin 修复。
 
-- [ ] `pyproject.toml` 中 FunASR/ModelScope 为精确 pins。
-- [ ] ModelScope 默认保持 `1.38.1`；如发生 bump，有候选元数据或 `pip check` 的强制证据，并已重跑全部门禁；不存在“顺手升最新”。
-- [ ] CPU canonical lock 与 pyproject 关键 pins 一致。
-- [ ] Windows CUDA lock 的非 torch pins 与 CPU lock 一致。
-- [ ] `pip check` 通过；CPU lock `pip-audit` 无已知高危漏洞。
-- [ ] Windows CUDA lock 在 Windows/CUDA 索引完成 resolver/audit，不用 macOS 结果代替。
-- [ ] `/health.version` 为新 sidecar 版本。
-- [ ] FastAPI/OpenAPI app version 与 `/health.version` 读取同一版本真源，不再硬编码另一份 `0.1.0`。
-- [ ] `/health.funasr_version`、`modelscope_version`、`torch_version` 与产物实际依赖一致。
-- [ ] 根路由和 prepare/warmup/transcribe/async/status/cancel/unload 端点无删除或语义变化。
-- [ ] local token 对所有既有写接口仍生效。
+## 3. A：依赖与契约
 
-## 4. B：Paraformer 质量硬门禁
+- [x] `pyproject.toml` 精确锁定 `funasr==1.3.16` / `modelscope==1.38.1`。
+- [x] CPU/CUDA locks 的 FunASR、ModelScope 与安全 floor 由 policy test 对齐；CUDA torch family 保持 `cu126`。
+- [x] `pip check` 通过；CPU lock `pip-audit` 结果为 `No known vulnerabilities found`。
+- [x] `/health.version` 与 FastAPI/OpenAPI 共用 `sidecar_version()`。
+- [x] 冻结包实测 `/health` 报告 `0.1.1 / 1.3.16 / 1.38.1 / 2.13.0`。
+- [x] 新依赖版本字段只诊断，未进入 D4/D5/D8/ready 派生。
+- [x] 根路由、prepare/warmup/transcribe/async/status/cancel/unload 契约与 local token 回归通过。
+- [ ] Windows resolver/audit 未执行；因本轮不发布 Windows 产物，不用 macOS 证据代签。
 
-同一机器、同一 device、同一权重、先 warmup；D3 每版本至少 2 次，比较中位数。
+## 4. B：Paraformer 质量
 
-| 指标 | `1.3.16` 基线 | 候选 | 通过阈值 | 实测结论 |
-|------|---------------|------|----------|----------|
-| 30s 非空结果 | 待填 | 待填 | 非空；无 stub/fallback | 待填 |
-| 30s segment count | 待填 | 待填 | 不低于 baseline 80% | 待填 |
-| D3 content CER | 待填 | 待填 | `candidate <= baseline + 0.01`；这里是 `content_cer` 比率的绝对增量，约 +1 percentage point，不是相对 +1% | 待填 |
-| D3 segment count | 待填 | 待填 | baseline 的 90%-120%，且 `>=50` | 待填 |
-| segmentation mode | 待填 | 待填 | `sentence_info`，不得 whole-track fallback | 待填 |
-| term hit（hotwords on） | 待填 | 待填 | `>= baseline` | 待填 |
-| hotwords warnings | 待填 | 待填 | 无 ignored/unsupported | 待填 |
-| D3 wall median | 待填 | 待填 | `<= baseline * 1.15` | 待填 |
-| D3 RTFx | 待填 | 待填 | `>= baseline / 1.15` | 待填 |
-| 空文本/复读 | 待填 | 待填 | 无新增空段、连续复读或明显文本污染 | 待填 |
+| 指标 | `1.3.16` 基线 | `1.3.30` | `1.4.1` | Final `1.3.16` | 结论 |
+|------|---------------|----------|---------|----------------|------|
+| 30s 结果 | 1 段，“哦，” | 1 段，“哦。” | 1 段，“哦。” | 1 段，“哦，” | 均非 stub |
+| D3 CER（含标点） | `0.2095–0.2130` | `0.3207–0.3217` | `0.3207–0.3217` | `0.2110–0.2125` | 候选标点/断句回归 |
+| D3 content CER（忽略标点） | `0.1433` | `0.1433` | `0.1433` | `0.1433` | 识别内容无回归 |
+| D3 segment count | `184–186` | `184–185` | `184–185` | `184–185` | 通过 |
+| segmentation mode | `sentence_info` | `sentence_info` | `sentence_info` | `sentence_info` | 通过 |
+| term hit（hotwords on） | `0.75` | `0.75` | `0.75` | `0.75` | 通过 |
+| hotwords warnings | `[]` | `[]` | `[]` | `[]` | 通过 |
+| D3 wall median | `26.789s` | `25.322s` | `25.445s` | `25.468s` | 通过 |
+| D3 RTFx median | `44.617` | `47.200` | `46.972` | `46.928` | 通过 |
 
-时间轴逐段校验：
+时间轴在 30s、130s 与 D3 样本上均满足单调、duration bound 与 `sentence_info`。候选的 ASR 内容字符与基线完全一致；No-go 来自用户可见的标点/断句回归，详见 [`funasr-1.3.30-vad-punctuation-regression-repro.md`](./funasr-1.3.30-vad-punctuation-regression-repro.md)。
 
-- [ ] `0 <= start_sec < end_sec <= duration_sec + 0.5`。
-- [ ] segment 按 start 单调排列，index 连续。
-- [ ] 跨 120s 窗 offset 正确，无整窗归零或跳回。
-- [ ] 最后一段不被截到媒体时长之外。
-- [ ] 标点异常时仍保留 VAD 分段，而不是整轨单段。
+> 后续粒度改善不依赖候选版本：[`asr-sentence-segment-coalescing-acceptance.md`](./asr-sentence-segment-coalescing-acceptance.md) 在 `1.3.16` 上将 D3 从 186 段保守合并为 139 段，全文与 CER 不变。
 
-## 5. C：生命周期与长音频硬门禁
+## 5. C：生命周期与长音频
 
-- [ ] prepare 使用既有 bundled weights / models root，不触发默认联网下载。
-- [ ] warmup 后 D8 loaded，`funasr_loaded_model_id` 与 D2 一致。
-- [ ] 130s 样本在默认 120s async 窗策略下得到 `window_count >= 2`，并产生合法 `window_index` 与增量 segments。
-- [ ] cancel 后 job 进入既有终态，不残留 inference busy。
-- [ ] unload 返回 200；D8 清空、D4 保持 true。
-- [ ] unload 后再次 warmup/transcribe 成功，无进程重启要求。
-- [ ] blocking 长音频仍使用既有 300s/1800s 策略；默认常量未改。
-- [ ] MPS 不可用或失败时可通过既有 env 强制 CPU；Windows CUDA 失败仍可启动 CPU onedir。
+- [x] 使用既有 models root 与 bundled Paraformer/VAD/PUNC，未下载新权重。
+- [x] 130s async 在所有版本均为 `window_count=2`，最终累计 7 段，首段 `17.86s`，末段 `128.885s`。
+- [x] 基线 cancel 进入 `cancelled`；候选未改 async/cancel 代码。
+- [x] final warmup 后 D8=true；unload 后 D8=false、D4/ready 保持，无需重启。
+- [x] `freeze_support()` 修复 PyInstaller resource tracker 退出后重启入口；smoke 新增端口释放硬门禁。
+- [x] 120s async 与 300s/1800s blocking 常量未改。
+- [x] 冻结产物的 health 按已知变体轻量报告预期 device；真正 warmup 仍由 torch 实测 CUDA/MPS 并保留 CPU fallback，显式 env 仍最高优先级。
 
-## 6. D：包体与运行资源门禁
+## 6. D：包体与运行资源
 
 | 指标 | Baseline | Final | 阈值 | 结果 |
 |------|----------|-------|------|------|
-| macOS onedir 大小 | 待填 | 待填 | 增量 `<= max(10%, 200MB)`，且 CPU/MPS sidecar 绝对值 `<= 2.5GB` | 待填 |
-| Windows CPU onedir | 待填 | 待填 | 增量 `<= max(10%, 200MB)`，且 CPU sidecar 绝对值 `<= 2.5GB` | 待填 |
-| Windows CUDA onedir | 待填 | 待填 | 记录；不进入 NSIS 预算 | 待填 |
-| 启动到 `/health` | 待填 | 待填 | `<= baseline * 1.20 + 2s` | 待填 |
-| warmup wall | 待填 | 待填 | `<= baseline * 1.20` | 待填 |
-| D3 峰值 RSS | 待填 | 待填 | `<= baseline * 1.15`；超限只能转 Defer 并书面分析、确认无 OOM，**不得**引用 5GB 磁盘预算豁免 | 待填 |
+| macOS onedir | 968,316 KB | 969,404 KB（约 946.7 MiB） | 增量 `<= max(10%, 200MB)` 且 `<=2.5GB` | 通过；+1,088 KB（约 0.11%） |
+| 启动到 `/health` | 旧产物未保留可重复冷基线 | final smoke 在 45s 桌面窗口内通过；监听后 health 约 0.05s | `<= baseline*1.20+2s` | 绝对发行窗口通过；相对阈值无可比基线 |
+| 首次 warmup | 源码侧车重载 `6.918s` | 全新冻结包 `205.526s` | `<= baseline*1.20` | **失败，Defer release** |
+| D3 峰值 RSS | 3,244,960 KB | 3,355,760 KB | `<= baseline*1.15` | 通过；+3.4%，无 OOM |
 
-- [ ] bundled ffmpeg/ffprobe 可用。
-- [ ] PyInstaller 不缺 FunASR model registry、frontend、tokenizer 或配置数据文件。
-- [ ] post-build smoke 通过，不只验证源码 venv。
-- [ ] sidecar 签名/发行预检沿用既有策略。
-- [ ] CPU sidecar 绝对包体满足 policy §8 的约 2.0–2.5GB 目标；应用壳、侧车、模型缓存合计的约 5GB **仅作为磁盘预算**，不用于 RSS 判定。
+- [x] bundled ffmpeg/ffprobe、FunASR registry/data、分发元数据可用。
+- [x] macOS arm64 clean PyInstaller build + post-build smoke 通过。
+- [x] smoke 对 health 设 45s 上限，不再因无 curl timeout 无限等待。
+- [x] 5GB 仅作磁盘总预算，未用于 RSS 豁免。
+- [ ] 冻结包首次 torch/FunASR import 仍需专项优化；未通过前不发布 `0.1.1`。
 
 ## 7. E：平台矩阵
 
-| 平台 | clean resolve | build | smoke | 30s | D3 | device/fallback | 状态 |
-|------|---------------|-------|-------|-----|----|-----------------|------|
-| macOS arm64 CPU/MPS | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | 待填 |
-| macOS x86_64 CPU | ☐ | ☐ | ☐ | ☐ | 可用 tracer | ☐ | 待填 |
-| Windows x64 CPU | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ | 待填 |
-| Windows x64 CUDA cu126 | ☐ | ☐ | ☐ | ☐ | ☐ | ☐ CPU fallback | 待填 |
-| Linux x64 engineering | ☐ | ☐ | ☐ | ☐ | N/A | ☐ | 非产品门禁 |
+| 平台 | resolve/build/smoke | 30s/D3 | device/fallback | 状态 |
+|------|---------------------|--------|-----------------|------|
+| macOS arm64 | 通过 | 通过 | MPS 通过；显式 CPU 解析通过 | 代码可合并，发行 Defer（warmup） |
+| macOS x86_64 | 未执行 | 未执行 | 单测覆盖冻结 CPU 变体 | 不发布 |
+| Windows x64 CPU | 未执行 | 未执行 | 单测覆盖 CPU exe 变体 | 不发布 |
+| Windows x64 CUDA cu126 | 未执行 | 未执行 | 单测覆盖 CUDA exe 变体 | 不发布 CUDA 组件 |
+| Linux x64 engineering | 未执行 | N/A | 非产品门禁 | 无发行承诺 |
 
-## 8. F：能力—UI 状态矩阵
+平台证据不互代；因此本轮不产生 Partial Go 安装包，也不更新 CUDA CDN/manifest。
 
-| 场景 | 预期 | 结果 |
-|------|------|------|
-| D1=Paraformer、D2=旧/不同 SKU | UI 仍提示运行模型不一致；依赖版本字段不改变判断 | 待填 |
-| D4=true、D8=false | 显示已落盘但未加载；不得显示权重已在内存 | 待填 |
-| D5=true、D1 对应 D4=false | 不得把全局 ready 当成所选 SKU 已缓存 | 待填 |
-| warmup 完成 | D8=true，D1/D4 不被改写 | 待填 |
-| unload 完成 | D8=false、D4=true、侧车进程仍运行 | 待填 |
-| 新依赖版本字段缺失 | 旧 sidecar 仍可被桌面解析，UI 不崩溃 | 待填 |
+## 8. F：能力—UI 状态
+
+| 场景 | 结果 |
+|------|------|
+| D1≠D2 | 未改既有 SKU 字段与派生；依赖版本不参与 |
+| D4=true、D8=false | final unload 实测 `ready_for_transcribe=true`、`selected_model_ready=false`、`model_loaded_in_memory=false` |
+| warmup 完成 | `selected_model_ready=true`、`model_loaded_in_memory=true` |
+| 新依赖字段缺失 | 桌面未新增消费代码；JSON additive 契约不改旧 parser |
+| ready/chip/button | 无 UI 修改，不读 `funasr_version` / `modelscope_version` / `torch_version` |
 
 ## 9. 自动化证据
 
-- [ ] `npm run asr:test`
-- [ ] dependency policy test
-- [ ] `baseline-1.3.16-d3-hotwords-ab.csv`
-- [ ] `candidate-1.3.30-d3-hotwords-ab.csv`
-- [ ] `candidate-1.4.1-d3-hotwords-ab.csv`（若候选进入 D3 gate）
-- [ ] `final-lock-d3-hotwords-ab.csv`
-- [ ] macOS sidecar build + post-build smoke
-- [ ] Windows CPU build + PowerShell smoke
-- [ ] Windows CUDA build + PowerShell smoke（发布 CUDA 组件时）
-- [ ] `npm run typecheck`
-- [ ] `npm run test`
-- [ ] `npm run lint`
-- [ ] `node scripts/check-architecture-guard.mjs`
+- [x] 最终 `npm run asr:test`：`158 passed, 2 skipped`。
+- [x] dependency policy test + `pip check` + CPU lock `pip-audit`。
+- [x] baseline / candidate `1.3.30` / candidate `1.4.1` / final-lock D3 CSV。
+- [x] `1.3.16` / `1.3.30` / `1.4.1` 及两组 `1.3.30` 后处理消融 JSON；评测真源新增 `content_cer_chars`，避免把标点差异误报为识别内容回归。
+- [x] baseline / candidates / final-lock 30s 与 130s async JSON/NDJSON。
+- [x] macOS sidecar clean build + 版本诊断 + warmup/unload + exit-port smoke。
+- [ ] Windows CPU/CUDA build/smoke；本轮不发布对应产物。
+- [x] 全仓 typecheck 通过；Vitest `2633 passed`；lint `0 errors / 36` 条既有 warnings；architecture guard `0 errors / 58` 条既有 warnings。
 
-## 10. 回滚演练
+证据目录：`docs/execution/spike-output/funasr-sidecar-upgrade-2026-08/`（gitignored）。
 
-- [ ] 恢复 sidecar `0.1.0`、FunASR `1.3.16`、ModelScope `1.38.1` 与对应旧 locks 后可 clean build。
-- [ ] 旧侧车读取当前 bundled Paraformer weights 与 models root 成功。
-- [ ] 回滚不删除 D4 模型缓存，不修改 SQLite，不要求 first-launch seed 重跑。
-- [ ] Windows CPU/CUDA manifest 不会把新旧 onedir 混装。
-- [ ] Partial Go 时，平台安装包、诊断和发布说明中的 sidecar/FunASR 版本矩阵一致；Windows CPU/CUDA 始终同版。
+## 10. 回滚与发布边界
 
-## 11. 结果摘要（执行后填写）
+- [x] 引擎回滚已实施：正式 pin 保持 `funasr==1.3.16` / `modelscope==1.38.1`，候选从未进入 canonical lock。
+- [x] 模型权重、模型缓存和 SQLite 未改动。
+- [x] 若撤回加固，只需恢复 sidecar `0.1.0`代码/产物；FunASR/ModelScope 仍是同版。
+- [x] 未产生混用新旧 FunASR 的 Windows CPU/CUDA 物料。
+- [x] `0.1.1` 在 warmup 和对应平台门禁闭合前不进入安装包或 CUDA manifest。
+
+## 11. 结果摘要
 
 | 项 | 结论 |
 |----|------|
-| 最终版本 | 待填 |
-| Go / Partial Go / Defer / No-go | 待填 |
-| 关键收益 | 待填 |
-| 已知残余风险 | 待填 |
-| 发布平台 | 待填 |
+| 最终引擎版本 | `funasr 1.3.16 + modelscope 1.38.1` |
+| 引擎升级 | **No-go** |
+| 加固版本 | `rushi-asr 0.1.1 + cryptography 50.0.0` |
+| 加固发行 | **Defer** |
+| 关键收益 | 防 regen 漂移、产物版本可诊断、安全审计清零、退出不留孤儿进程、health 在桌面启动窗口内可用 |
+| 残余风险 | 首次 frozen warmup `205.5s`；Intel macOS / Windows CPU/CUDA 未验证 |
+| 发布平台 | 无（代码可合并，产物不发布） |
 | 回滚版本 | `rushi-asr 0.1.0 + funasr 1.3.16 + modelscope 1.38.1` |

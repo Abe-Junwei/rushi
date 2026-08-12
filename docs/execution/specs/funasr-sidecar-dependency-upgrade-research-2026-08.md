@@ -1,6 +1,6 @@
 # 调研：FunASR 侧车依赖升级（2026-08）
 
-> **状态**：调研完成，待按 acceptance 做版本 spike
+> **状态**：调研、spike 与归因消融完成（2026-08-11）；`1.3.30` / `1.4.1` 均 No-go
 > **关联 Intent**：[`funasr-sidecar-dependency-upgrade-intent.md`](./funasr-sidecar-dependency-upgrade-intent.md)
 > **关联 Plan**：[`funasr-sidecar-dependency-upgrade-plan.md`](./funasr-sidecar-dependency-upgrade-plan.md)
 > **关联 Acceptance**：[`funasr-sidecar-dependency-upgrade-acceptance.md`](./funasr-sidecar-dependency-upgrade-acceptance.md)
@@ -84,6 +84,10 @@
 | 首要风险 | 同一版本在源码 venv 与 PyInstaller onedir 表现不同；CPU/MPS/CUDA 轮子不一致；`sentence_info` 与时间轴回归；全量 regen 意外带入无关依赖升级。 |
 | 控制方式 | 先只替换 FunASR wheel 做隔离试验，再刷新完整 lock 重跑；候选失败即停，不用兼容补丁掩盖质量退化。 |
 
+### 执行后结论
+
+`1.3.30` 与 `1.4.1` 在同机、同 MPS、同 Paraformer 权重下的 D3 内容 CER 与基线同为 `0.1433`，识别字符没有回归。原评测脚本只输出含标点 `cer_chars`，文档误将 `0.211 -> 0.321` 标为 `content_cer`。消融证明差异来自上游 `_join_vad_texts()` 改变 PUNC 输入边界，导致用户可见的标点/断句回归。因此候选仍 No-go，但定性修正为“后处理标点回归”，不再称为识别准确率下降。完整数据见 [acceptance](./funasr-sidecar-dependency-upgrade-acceptance.md) 与 [repro](./funasr-1.3.30-vad-punctuation-regression-repro.md)。
+
 ### 当前 lock 漂移风险
 
 `regen-sidecar-cpu-lock.sh` 当前执行 `pip install -e ".[funasr]"`。由于项目 extra 只设最低版本，直接 regen 会解析当时最新 FunASR/ModelScope，而不是复现 `1.3.16/1.38.1`。因此 Slice C 的硬顺序是：**先把已验证 FunASR 与 ModelScope 写成精确 pin，再 regen canonical lock**；禁止反序执行。
@@ -106,9 +110,11 @@
 - [x] 调研 brief 完成
 - [x] 业内路线与本仓复用评估完成
 - [x] Intent / Plan / Acceptance 已链接本文
-- [ ] 候选版本 spike 完成
-- [ ] 用户确认进入依赖修改与构建阶段
+- [x] 候选版本 spike 完成
+- [x] 用户已授权完整迭代，依赖修改与 macOS 构建已执行
 
 | 日期 | 说明 |
 |------|------|
 | 2026-08-09 | 初版；明确 Paraformer-only、现有 sidecar contract 不变，并建立 1.3.30 / 1.4.1 候选门禁 |
+| 2026-08-10 | 回填 spike；两候选均因 D3 含标点 CER 硬回归 No-go，保持 1.3.16 |
+| 2026-08-11 | 增补消融；确认内容 CER 无回归，定位 `_join_vad_texts()` 导致的 PUNC/断句对齐回归，修正评测指标命名 |

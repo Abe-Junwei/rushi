@@ -252,6 +252,8 @@ Invoke-RushiNativeChecked -FailMessage "pyinstaller failed" -Command {
   & pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
     --add-binary "$FfExe;." `
     --add-binary "$FfProbe;." `
+    --copy-metadata rushi-asr `
+    --copy-metadata modelscope `
     --hidden-import=uvicorn.logging `
     --hidden-import=uvicorn.loops `
     --hidden-import=uvicorn.loops.auto `

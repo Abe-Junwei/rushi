@@ -44,6 +44,7 @@ build_stub() {
   cd "$ASR"
   rm -rf build dist rushi-asr-sidecar.spec
   pyinstaller --noconfirm --clean --onedir --name rushi-asr-sidecar \
+    --copy-metadata rushi-asr \
     --hidden-import=uvicorn.logging \
     --hidden-import=uvicorn.loops \
     --hidden-import=uvicorn.loops.auto \
@@ -81,6 +82,8 @@ build_funasr() {
   pyinstaller --noconfirm --clean --onedir --name rushi-asr-sidecar \
     --add-binary "$ffdir/ffmpeg:." \
     --add-binary "$ffdir/ffprobe:." \
+    --copy-metadata rushi-asr \
+    --copy-metadata modelscope \
     --hidden-import=uvicorn.logging \
     --hidden-import=uvicorn.loops \
     --hidden-import=uvicorn.loops.auto \

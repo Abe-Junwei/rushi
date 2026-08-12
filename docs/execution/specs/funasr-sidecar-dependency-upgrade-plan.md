@@ -1,5 +1,6 @@
 # Plan：FunASR 侧车依赖升级
 
+> **状态**：Slice A–F 已执行；升级 No-go，加固发行 Defer（2026-08-11 校正指标定性）
 > **Research**：[`funasr-sidecar-dependency-upgrade-research-2026-08.md`](./funasr-sidecar-dependency-upgrade-research-2026-08.md)
 > **Intent**：[`funasr-sidecar-dependency-upgrade-intent.md`](./funasr-sidecar-dependency-upgrade-intent.md)
 > **Acceptance**：[`funasr-sidecar-dependency-upgrade-acceptance.md`](./funasr-sidecar-dependency-upgrade-acceptance.md)
@@ -16,6 +17,8 @@
 
 任何一层失败都不进入正式锁。
 
+**执行结果**：`1.3.30` / `1.4.1` 的 D3 内容 CER 无回归，但均触发用户可见的标点/断句硬回归，故保持 `1.3.16`。消融定位到上游 `_join_vad_texts()` 改变 PUNC 输入边界。Slice C/D 中与候选无关的防漂移、诊断、安全与打包生命周期加固已落地；Slice E 因首次 frozen warmup `205.5s` 停在 Defer，未进入发布物料。
+
 ## 1. 执行切片
 
 ### Slice A：冻结 `1.3.16` 基线（约 0.5 天）
@@ -29,7 +32,7 @@
    - 130s async `/v1/transcribe/async`，确认 `window_count >= 2` 并收到跨窗增量
    - D3 gold（约 1195s）hotwords on/off
    - warmup → transcribe → unload → health
-6. 记录 D3 的 CER、segment count、`segmentation_mode`、term hit、wall、RTFx、warnings；校验 timestamp 单调且在 duration 内。
+6. 记录 D3 的 `cer_chars`（含标点）、`content_cer_chars`（忽略标点）、segment count、`segmentation_mode`、term hit、wall、RTFx、warnings；校验 timestamp 单调且在 duration 内。
 7. 记录源码侧车启动时间、warmup wall、峰值 RSS；记录当前 bundled onedir 大小作为包体基线。
 
 证据目录使用 `docs/execution/spike-output/funasr-sidecar-upgrade-2026-08/`（gitignored），固定文件名如下，最终摘要回填 acceptance：
@@ -205,7 +208,7 @@ npm run asr:build-sidecar-windows-cuda
 | 风险 | 早期信号 | 止损动作 |
 |------|----------|----------|
 | `sentence_info` 变化导致语段骤减 | segment count、fallback warning | 淘汰候选，不放宽 min segments |
-| CER 或热词退化 | D3 CER/term hit | 回到 `1.3.16`；单独上游复现，不在产品层修补 |
+| 内容 CER、标点/断句或热词退化 | D3 `content_cer_chars` / `cer_chars` / term hit | 回到 `1.3.16`；单独上游复现，不在产品层修补 |
 | full lock 才出现回归 | 隔离 wheel 绿、regen lock 红 | diff 传递依赖并拆分升级；canonical lock 不落地 |
 | PyInstaller 缺数据文件 | 源码绿、bundled `/health` 或 warmup 红 | 检查 collect 清单；无法稳定收集则 No-go |
 | mac 绿、Windows wheel 不可用 | Win resolver/build 失败 | Windows 平台整体保持旧 CPU/CUDA 侧车；不得在同一 Windows 物料混发新旧版本 |

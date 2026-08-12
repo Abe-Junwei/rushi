@@ -44,6 +44,7 @@ _eval_metrics = _load_module("rushi_eval_metrics", ASR_PKG / "eval_metrics.py")
 _eval_manifest = _load_module("rushi_eval_manifest", ASR_PKG / "eval_manifest.py")
 
 cer_chars = _eval_metrics.cer_chars
+content_cer_chars = _eval_metrics.content_cer_chars
 low_confidence_ratio = _eval_metrics.low_confidence_ratio
 resolve_segmentation_mode = _eval_metrics.resolve_segmentation_mode
 rtfx = _eval_metrics.rtfx
@@ -234,6 +235,7 @@ def transcribe_manifest_item(
         segs if all(isinstance(s, dict) for s in segs) else []
     )
     row["cer_chars"] = cer_chars(ref, hyp) if ref else None
+    row["content_cer_chars"] = content_cer_chars(ref, hyp) if ref else None
     if expected_terms:
         terms = [str(t).strip() for t in expected_terms if str(t).strip()]
         row["expected_terms"] = terms
@@ -284,6 +286,7 @@ CSV_COLUMNS = [
     "segmentation_mode",
     "term_hit_rate",
     "cer_chars",
+    "content_cer_chars",
     "low_confidence_ratio",
     "engine",
     "warnings",

@@ -27,4 +27,6 @@ HDR
   grep -v '^[[:space:]]*#' "$CPU" | grep -v '^--' | grep -viE '^(torch|torchvision|torchaudio)==' | LC_ALL=C sort
 } > "$OUT"
 
+"$ASR/.venv-lockgen-cpu/bin/python" -m pytest "$ASR/tests/test_sidecar_dependency_policy.py" -q
+
 echo "Wrote $OUT"
