@@ -8,6 +8,14 @@ import uuid
 from dataclasses import dataclass
 from typing import Any
 
+from rushi_asr.defaults import (
+    SPK_ADAPTIVE_FLOOR_MIN_SEC,
+    SPK_ADAPTIVE_FLOOR_SPEECH_RATIO,
+    effective_spk_absorb_floor,
+    effective_spk_max_speakers,
+    effective_spk_min_observation_speech_sec,
+    effective_spk_min_speaker_speech_sec,
+)
 from rushi_asr.schemas import DiarizationInfo, TranscriptionSegment
 
 DEFAULT_SIMILARITY_THRESHOLD = 0.72
@@ -104,6 +112,33 @@ class _Cluster:
     first_seen: float
 
 
+@dataclass(frozen=True)
+class ClusteringPolicy:
+    """Guards for run-level clustering.
+
+    ``min_observation_speech_sec`` keeps unreliable short CAM++ centers from
+    seeding clusters; ``min_speaker_speech_sec`` and ``max_speakers`` bound the
+    final roster. See the rework plan §1 for why the cannot-link constraint alone
+    over-fragments real meeting audio.
+    """
+
+    threshold: float
+    min_observation_speech_sec: float
+    min_speaker_speech_sec: float
+    max_speakers: int
+    absorb_floor: float
+
+    @classmethod
+    def from_env(cls, *, threshold: float | None = None) -> ClusteringPolicy:
+        return cls(
+            threshold=_effective_threshold(threshold),
+            min_observation_speech_sec=effective_spk_min_observation_speech_sec(),
+            min_speaker_speech_sec=effective_spk_min_speaker_speech_sec(),
+            max_speakers=effective_spk_max_speakers(),
+            absorb_floor=effective_spk_absorb_floor(),
+        )
+
+
 def _observations(windows: list[SpeakerWindowResult]) -> tuple[list[_Observation], list[str]]:
     observations: list[_Observation] = []
     warnings: list[str] = []
@@ -183,6 +218,139 @@ def _cluster_observations(
     return sorted(clusters, key=lambda cluster: cluster.first_seen)
 
 
+def _seed_cluster(observation: _Observation) -> _Cluster:
+    return _Cluster(
+        [observation],
+        observation.center,
+        observation.duration,
+        {observation.window_index},
+        observation.first_seen,
+    )
+
+
+def _nearest_cluster(orphan: _Cluster, clusters: list[_Cluster]) -> tuple[int, float] | None:
+    best: tuple[int, float] | None = None
+    for index, cluster in enumerate(clusters):
+        similarity = _cosine(orphan.center, cluster.center)
+        if best is None or similarity > best[1]:
+            best = (index, similarity)
+    return best
+
+
+def _absorb_into_nearest(
+    survivors: list[_Cluster],
+    orphans: list[_Cluster],
+    *,
+    floor: float,
+    warnings: list[str],
+) -> list[_Cluster]:
+    """Merge each orphan into its nearest survivor, ignoring cannot-link.
+
+    Dropping the window constraint here is deliberate: it is the only way a
+    speaker that FunASR over-split inside a single window can be reassembled,
+    and it mirrors how pyannote makes its same-chunk constraint usable.
+    """
+    if not orphans:
+        return survivors
+    absorbed_speech = 0.0
+    below_floor = 0
+    for orphan in sorted(orphans, key=lambda cluster: cluster.weight):
+        nearest = _nearest_cluster(orphan, survivors)
+        if nearest is None:
+            survivors.append(orphan)
+            continue
+        index, similarity = nearest
+        if similarity < floor:
+            below_floor += 1
+        survivors[index] = _merged_cluster(survivors[index], orphan)
+        absorbed_speech += orphan.weight
+    warnings.append(
+        f"speaker_small_clusters_absorbed:count={len(orphans)}:speech_sec={absorbed_speech:.2f}"
+    )
+    if below_floor:
+        warnings.append(f"speaker_absorbed_below_floor:count={below_floor}")
+    return survivors
+
+
+def _clamp_to_max_speakers(
+    clusters: list[_Cluster],
+    *,
+    max_speakers: int,
+    warnings: list[str],
+) -> list[_Cluster]:
+    if max_speakers < 1 or len(clusters) <= max_speakers:
+        return clusters
+    before = len(clusters)
+    while len(clusters) > max_speakers:
+        smallest = min(range(len(clusters)), key=lambda index: clusters[index].weight)
+        orphan = clusters.pop(smallest)
+        nearest = _nearest_cluster(orphan, clusters)
+        if nearest is None:
+            clusters.append(orphan)
+            break
+        index, _ = nearest
+        clusters[index] = _merged_cluster(clusters[index], orphan)
+    warnings.append(f"speaker_count_clamped:from={before}:to={len(clusters)}")
+    return clusters
+
+
+def _adaptive_speaker_floor(total_speech_sec: float, configured: float) -> float:
+    """Shrink the speaker floor on short recordings so it cannot eat every cluster."""
+    return min(
+        configured,
+        max(SPK_ADAPTIVE_FLOOR_MIN_SEC, SPK_ADAPTIVE_FLOOR_SPEECH_RATIO * total_speech_sec),
+    )
+
+
+def _resolve_clusters(
+    observations: list[_Observation],
+    policy: ClusteringPolicy,
+    warnings: list[str],
+) -> list[_Cluster]:
+    if not observations:
+        return []
+
+    reliable = [
+        obs for obs in observations if obs.duration >= policy.min_observation_speech_sec
+    ]
+    short = [obs for obs in observations if obs.duration < policy.min_observation_speech_sec]
+    if not reliable:
+        reliable, short = observations, []
+
+    candidates = _cluster_observations(reliable, policy.threshold)
+    candidates.extend(_seed_cluster(obs) for obs in short)
+
+    floor = _adaptive_speaker_floor(
+        sum(obs.duration for obs in observations), policy.min_speaker_speech_sec
+    )
+    survivors = [cluster for cluster in candidates if cluster.weight >= floor]
+    if not survivors:
+        survivors = [max(candidates, key=lambda cluster: cluster.weight)]
+    survivor_ids = {id(cluster) for cluster in survivors}
+    orphans = [cluster for cluster in candidates if id(cluster) not in survivor_ids]
+
+    survivors = _absorb_into_nearest(
+        survivors, orphans, floor=policy.absorb_floor, warnings=warnings
+    )
+    survivors = _clamp_to_max_speakers(
+        survivors, max_speakers=policy.max_speakers, warnings=warnings
+    )
+    return sorted(survivors, key=lambda cluster: cluster.first_seen)
+
+
+def _effective_threshold(threshold: float | None) -> float:
+    if threshold is None:
+        try:
+            threshold = float(
+                os.environ.get(
+                    "RUSHI_FUNASR_SPK_SIMILARITY_THRESHOLD", DEFAULT_SIMILARITY_THRESHOLD
+                )
+            )
+        except ValueError:
+            threshold = DEFAULT_SIMILARITY_THRESHOLD
+    return max(-1.0, min(1.0, threshold))
+
+
 def _run_id() -> str:
     return uuid.uuid4().hex
 
@@ -192,20 +360,13 @@ def finalize_speaker_windows(
     *,
     threshold: float | None = None,
     run_id: str | None = None,
+    policy: ClusteringPolicy | None = None,
 ) -> tuple[list[TranscriptionSegment], DiarizationInfo]:
     """Map window-local speaker labels to opaque, run-scoped final ids."""
     if not windows:
         return [], DiarizationInfo(status="final", run_id=run_id or _run_id(), speaker_count=0)
 
-    effective_threshold = threshold
-    if effective_threshold is None:
-        try:
-            effective_threshold = float(
-                os.environ.get("RUSHI_FUNASR_SPK_SIMILARITY_THRESHOLD", DEFAULT_SIMILARITY_THRESHOLD)
-            )
-        except ValueError:
-            effective_threshold = DEFAULT_SIMILARITY_THRESHOLD
-    effective_threshold = max(-1.0, min(1.0, effective_threshold))
+    effective_policy = policy or ClusteringPolicy.from_env(threshold=threshold)
     effective_run_id = run_id or _run_id()
 
     observations, warnings = _observations(windows)
@@ -222,7 +383,7 @@ def finalize_speaker_windows(
         for ordinal, local in enumerate(sorted(locals_by_first, key=locals_by_first.get), start=1):
             mapping[(windows[0].window_index, local)] = f"spk:{effective_run_id}:{ordinal}"
     else:
-        clusters = _cluster_observations(observations, effective_threshold)
+        clusters = _resolve_clusters(observations, effective_policy, warnings)
         for ordinal, cluster in enumerate(clusters, start=1):
             final_id = f"spk:{effective_run_id}:{ordinal}"
             for obs in cluster.observations:
