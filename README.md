@@ -2,7 +2,7 @@
 
 ![如是我闻](apps/desktop/src/assets/brand/lockup-readme.png)
 
-**如是我闻** — 本地中文课录音转写与校对桌面应用（Tauri 2 + React + SQLite + Python ASR 侧车）。
+**如是我闻** — 本地中文录音转写与校对（桌面应用）（Tauri 2 + React + SQLite + Python ASR 侧车）。全称：如是我闻本地中文录音转写与校对软件。
 
 - 欢迎页 → 项目 Hub → 编辑器（波形 + 语段列表）
 - 本机 / 在线转写、校对、拆分合并、词表与纠错记忆

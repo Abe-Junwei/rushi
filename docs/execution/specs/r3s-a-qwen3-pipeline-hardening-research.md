@@ -9,7 +9,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 用户场景 | 中文长课、远场、专名密集；需本机 CPU 可跑、语段可编辑、术语可提示、正文有标点 |
+| 用户场景 | 中文长录音、远场、专名密集；需本机 CPU 可跑、语段可编辑、术语可提示、正文有标点 |
 | 本仓现状 | Qwen3 spike 已有 Silero VAD 与 `hotwords`，但固定 `max_new_tokens=128`、VAD threshold=0.5、max speech=30s；无标点；交叉 CER 不能裁定质量 |
 | 成功标准 | 官方 Qwen3 ONNX + 可调 VAD + 512 token + Qwen hotwords + CT-Transformer 标点可由一条命令跑金标，输出文本 CER、标点后 CER、术语命中与截断诊断 |
 

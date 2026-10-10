@@ -13,7 +13,7 @@
 
 | 项 | 内容 |
 |----|------|
-| 用户场景 | 用户继续使用内置 Paraformer 对中文长课音频做本机转写，希望侧车获得上游稳定性修复，同时不引入新的安装、联网或界面负担。 |
+| 用户场景 | 用户继续使用内置 Paraformer 对中文长录音做本机转写，希望侧车获得上游稳定性修复，同时不引入新的安装、联网或界面负担。 |
 | 本仓现状 | 发布锁固定 `funasr==1.3.16`、`modelscope==1.38.1`，但 `pyproject.toml` 仍声明 `funasr>=1.3.3` / `modelscope>=1.20`；默认仍为 Paraformer + FSMN-VAD + CT-Transformer PUNC；桌面通过 Rushi 自定义 loopback HTTP 契约管理 prepare、warmup、async progress、cancel、unload 与 D1-D8 能力状态。 |
 | 待解决问题 | 上游已发布 `1.3.30` 和 `1.4.1`。需要判断是否值得升级、升级到哪一版，以及如何避免质量、时间轴、包体、平台轮子和 PyInstaller 回归。 |
 | 成功标准 | 在同机同权重下，候选版本通过 Python 回归、Paraformer 金标、异步长音频、热词、macOS/Windows 侧车构建与状态契约门禁；失败可直接恢复旧锁且无需迁移模型缓存。 |

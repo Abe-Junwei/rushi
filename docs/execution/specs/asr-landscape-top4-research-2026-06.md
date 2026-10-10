@@ -27,7 +27,7 @@
 
 | 项 | 内容 |
 |----|------|
-| **用户场景** | 中文长课音频（13～21min+）本机转写，需要 **多语段 + 时间轴 + 标点**；部分用户需要 **方言/远场** 更好识别 |
+| **用户场景** | 中文长录音（13～21min+）本机转写，需要 **多语段 + 时间轴 + 标点**；部分用户需要 **方言/远场** 更好识别 |
 | **本仓现状** | Catalog 仅 **Paraformer-long-vad-punc**（`model_catalog.py`）；分段真源 `segmentation.py` 优先解析 `sentence_info`，其次 `timestamp`，长音频无轴则 **0 段**（禁止 whole-track fallback） |
 | **成功标准（spike）** | 源码 venv 下 `FunAudioLLM/Fun-ASR-Nano-2512` 经 **同一** `transcribe_upload` → **≥10 段** + `segmentation_mode=sentence_info`；制控样例 wall ≤ **2× Paraformer** 记 Defer，≤ **1.5×** 记 Go 候选 |
 

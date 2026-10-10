@@ -1,4 +1,4 @@
-# Acceptance: R3s-A — Qwen3 中文长课管线硬化
+# Acceptance: R3s-A — Qwen3 中文长录音管线硬化
 
 > **Research**：[r3s-a-qwen3-pipeline-hardening-research.md](./r3s-a-qwen3-pipeline-hardening-research.md)  
 > **Intent**：[r3s-a-qwen3-pipeline-hardening-intent.md](./r3s-a-qwen3-pipeline-hardening-intent.md) · **Plan**：[r3s-a-qwen3-pipeline-hardening-plan.md](./r3s-a-qwen3-pipeline-hardening-plan.md)

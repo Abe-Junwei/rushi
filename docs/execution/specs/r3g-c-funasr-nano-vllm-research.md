@@ -11,7 +11,7 @@
 
 | 项 | 内容 |
 |----|------|
-| **用户场景** | 中文长课音频（13～21min+）本机转写；Rushi 桌面用户中 **有 NVIDIA GPU 且愿意接受更大模型体积** 的群体，希望获得比 Paraformer 更好的鲁棒性 / 准确率 |
+| **用户场景** | 中文长录音（13～21min+）本机转写；Rushi 桌面用户中 **有 NVIDIA GPU 且愿意接受更大模型体积** 的群体，希望获得比 Paraformer 更好的鲁棒性 / 准确率 |
 | **环境约束** | 当前开发机 **仅 macOS**，无 NVIDIA CUDA；vLLM 官方主路径为 CUDA，macOS 虽有 [vllm-metal](https://github.com/vllm-project/vllm-metal) 实验插件，但 **Fun-ASR-Nano + vLLM 在 Apple Silicon 上未经验证**。本 spike 必须在 Windows/Linux CUDA 环境执行 |
 | **本仓现状** | R3g-C PyTorch `AutoModel` 路径已 **Defer**：全量制控触发 `tiktoken <|no|>` stub；3min 片段仅产 `vad_timestamp` 而非 `sentence_info`；180s 强制窗可跑通但段数 108 vs Paraformer 198，N2/N3 未达标（详见 [`r3g-c-funasr-nano-spike-results.md`](./r3g-c-funasr-nano-spike-results.md)） |
 | **成功标准（spike）** | 在 **Windows CUDA 源码 venv** 下，`Fun-ASR-Nano-2512` 经 vLLM 后端复跑同一制控样本，验证是否：**A1** 不再 `<|no|>` stub；**A2** 产出 `sentence_info` 或至少稳定语段数 ≥ Paraformer 90%（≥178）；**A3** wall ≤ 1.5× Paraformer（≤ ~280s）；**A4** 峰值显存 ≤ 8GB；**A5** 失败时仍可降级到 Paraformer |

@@ -1,6 +1,6 @@
 # ASR 路线测评汇总
 
-> **Agent 先读结论**：Rushi 当前本机中文长课音频默认路线仍是 **FunASR 侧车 + Paraformer 长音频 SKU**。SenseVoice、Fun-ASR-Nano、Qwen3 FunASR、Qwen3 + ForcedAligner、Sherpa Paraformer、Sherpa Qwen3 均已有 spike 证据；未满足对应门槛前不要重新提为默认链路。
+> **Agent 先读结论**：Rushi 当前本机中文长录音默认路线仍是 **FunASR 侧车 + Paraformer 长音频 SKU**。SenseVoice、Fun-ASR-Nano、Qwen3 FunASR、Qwen3 + ForcedAligner、Sherpa Paraformer、Sherpa Qwen3 均已有 spike 证据；未满足对应门槛前不要重新提为默认链路。
 
 ## 当前决策
 
@@ -38,7 +38,7 @@
 
 ## 为什么 LLM-ASR 暂不替换默认
 
-LLM 式 ASR 的主要优势是多语言、方言、上下文、术语提示与 GPU/vLLM 高并发吞吐。Rushi 当前默认场景是单机 CPU / macOS 或 Windows / 中文长课音频 / 需要稳定 `segments[]` 时间轴。这个场景更看重：
+LLM 式 ASR 的主要优势是多语言、方言、上下文、术语提示与 GPU/vLLM 高并发吞吐。Rushi 当前默认场景是单机 CPU / macOS 或 Windows / 中文长录音 / 需要稳定 `segments[]` 时间轴。这个场景更看重：
 
 - 单任务长音频 wall time；
 - `sentence_info` 或等价稳定语段；

@@ -46,7 +46,7 @@
 2. **精度**：在本仓 D3 金标上，large-v3 **明显劣于** Paraformer；antihall 仍 content_cer≈0.56。  
 3. **幻觉**：默认参数对长音频出现经典中文「请不吝点赞…」复读；EasyWhisperUI 常用 flags 可缓解但未消除。  
 4. **墙钟**：~5–6× Paraformer（同机 Metal），不适合默认引擎。  
-5. **与用户主观**：座谈录音上 EasyWhisperUI 可能更好，**不能**外推到 Rushi 金标/默认课音频；若要为佛学场景特化，须另建该域金标再测。
+5. **与用户主观**：座谈录音上 EasyWhisperUI 可能更好，**不能**外推到 Rushi 金标/默认录音；若要为佛学场景特化，须另建该域金标再测。
 
 ## 复核：是不是测错了？
 
@@ -61,7 +61,7 @@
 
 机制（业内常见）：片头偏弱/非典型语音 → 解码出 YouTube 口播幻觉 → 上下文自条件 → 后续窗继续复读。  
 因此「全程幻觉」描述的是 **整轨从 0 跑完的那次产物**，不是「large-v3 完全不能听这段课」。  
-产品含义仍成立：Rushi 长课若直挂 whisper-cli 整轨、无稳健 VAD/切窗/幻觉抑制，**会踩同一坑**；中段能听懂 ≠ 可直接替换 Paraformer 默认路径。
+产品含义仍成立：Rushi 长录音若直挂 whisper-cli 整轨、无稳健 VAD/切窗/幻觉抑制，**会踩同一坑**；中段能听懂 ≠ 可直接替换 Paraformer 默认路径。
 
 复核产物：`docs/execution/spike-output/whisper-cpp-compare/verify-mid180.txt` 等（gitignore）。
 

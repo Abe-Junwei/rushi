@@ -11,7 +11,7 @@
 
 | 项 | 内容 |
 |----|------|
-| **用户场景** | 禅修/制控类长课音频，术语表已勾选「纳入热词」；专名（制控、禅堂、觉观、经行）仍可能听错或未出现在假设中 |
+| **用户场景** | 禅修/制控类长录音，术语表已勾选「纳入热词」；专名（制控、禅堂、觉观、经行）仍可能听错或未出现在假设中 |
 | **本仓现状** | Catalog 仅 **Paraformer-long-vad-punc**；热词经 `hotword=` 空格串传入 `generate()`（[`asr_model_profile.py`](../../../services/asr/rushi_asr/asr_model_profile.py)）；D3 金标对照 Paraformer **term_hit 3/4**（漏「经行」），CER **0.214** |
 | **Spike 成功标准** | env-only 侧车跑通 SeACo SKU，在同一 manifest 样本上 **term_hit / CER / hotwords on-off lift** 可量化；产出 **Go / Defer / No-go** |
 

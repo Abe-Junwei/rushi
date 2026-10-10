@@ -1,6 +1,6 @@
 # Rushi（如是我闻本地版）
 
-本地中文课音频转写与校对桌面应用（Tauri + React + SQLite + Python ASR 侧车）。本文件是**领域词汇表**——只定义叫什么、避免叫什么；实现细节见 `docs/architecture/`，决策见 `docs/adr/`。
+本地中文录音转写与校对（桌面应用）（Tauri + React + SQLite + Python ASR 侧车）。全称：如是我闻本地中文录音转写与校对软件。本文件是**领域词汇表**——只定义叫什么、避免叫什么；实现细节见 `docs/architecture/`，决策见 `docs/adr/`。
 
 ## Language — 导航与生命周期
 

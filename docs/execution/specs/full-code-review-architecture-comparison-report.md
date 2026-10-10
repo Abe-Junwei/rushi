@@ -9,7 +9,7 @@
 
 ## 1. 执行摘要
 
-Rushi 是一个功能完整的本地中文音频转写与校对桌面应用，采用 **Tauri 2 + React 19 + SQLite + Python FunASR 侧车** 的技术栈。本次全量代码审查覆盖了约 **87.6k 行 TypeScript/React**、**32.7k 行 Rust**、**3.4k 行 Python ASR** 源码，以及对应的测试与 CI 配置。
+Rushi 是一个功能完整的本地中文录音转写与校对（桌面应用），采用 **Tauri 2 + React 19 + SQLite + Python FunASR 侧车** 的技术栈。本次全量代码审查覆盖了约 **87.6k 行 TypeScript/React**、**32.7k 行 Rust**、**3.4k 行 Python ASR** 源码，以及对应的测试与 CI 配置。
 
 **总体判断**：
 - Rushi 的架构在「垂直切片交付」上非常成功：Controller/Service/Tauri 命令分层清晰，Notion Zen 视觉约定落地严格，测试密度高于多数同类单人项目。

@@ -25,7 +25,7 @@
 | 分段走哪条内核路径？ | warnings 里散落 | **无结构化 `segmentation_mode`** |
 | 与 ASR Leaderboard 可比？ | 仅 CER（需 reference） | **无 long-form 轨标记** |
 
-[ASR Leaderboard (arXiv:2510.06961)](https://arxiv.org/abs/2510.06961) 强调 **long-form + RTFx** 与短句 WER 分开报告；Rushi 主场景是 **13～21min 中文课音频**，不能只看占位 `clear.wav` 冒烟。
+[ASR Leaderboard (arXiv:2510.06961)](https://arxiv.org/abs/2510.06961) 强调 **long-form + RTFx** 与短句 WER 分开报告；Rushi 主场景是 **13～21min 中文录音**，不能只看占位 `clear.wav` 冒烟。
 
 ### 1.2 本仓现状
 

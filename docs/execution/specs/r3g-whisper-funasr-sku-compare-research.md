@@ -12,7 +12,7 @@
 
 | 项 | 内容 |
 |----|------|
-| **用户场景** | 决策「路径 A」是否值得做：同课录音上 FunASR 内嵌 Whisper 相对现有 Paraformer 的精度、断句、标点、墙钟 |
+| **用户场景** | 决策「路径 A」是否值得做：同次录音上 FunASR 内嵌 Whisper 相对现有 Paraformer 的精度、断句、标点、墙钟 |
 | **本仓现状** | Catalog 仅 Paraformer（[`model_catalog.py`](../../../services/asr/rushi_asr/model_catalog.py)）；推理硬绑 `funasr_engine`；分段真源 [`segmentation.py`](../../../services/asr/rushi_asr/segmentation.py)；评测 [`eval_metrics.py`](../../../services/asr/rushi_asr/eval_metrics.py) + [`fixtures/eval`](../../../fixtures/eval/) |
 | **成功标准** | 可复现对照表 + `Go / Defer / No-go`；Whisper 长音频 `<10` 段或整轨占位 → **No-go**（与 Qwen/Nano 同纪律） |
 
@@ -26,7 +26,7 @@
 | B | **独立 faster-whisper / openai-whisper 引擎** | CTranslate2 / OpenAI | 第二推理栈；需另建分段适配 | 本仓 remediation plan **明确不采纳**（Phase 0） |
 | C | **维持 Paraformer only** | 本仓默认 SKU | VAD + ct-punc → `sentence_info` | ADR-0003 |
 
-公开长音频中文 CER（FunASR 官方 2026）：Paraformer-Large **10.18%** vs Whisper-large-v3 **20.02%** — 精度预期 Whisper 劣，本对照验证本仓课录音形态与**断句契约**。
+公开长音频中文 CER（FunASR 官方 2026）：Paraformer-Large **10.18%** vs Whisper-large-v3 **20.02%** — 精度预期 Whisper 劣，本对照验证本仓录音形态与**断句契约**。
 
 ---
 

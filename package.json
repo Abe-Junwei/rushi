@@ -1,7 +1,7 @@
 {
   "name": "rushi",
   "private": true,
-  "description": "如是我闻 — 本地中文转写与校对（独立仓）",
+  "description": "如是我闻 — 本地中文录音转写与校对（桌面应用）",
   "workspaces": ["apps/desktop"],
   "scripts": {
     "prepare": "cd apps/desktop && husky",
