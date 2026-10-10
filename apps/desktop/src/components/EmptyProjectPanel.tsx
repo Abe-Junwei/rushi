@@ -50,7 +50,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
   };
 
   useEffect(() => {
-    let unlisten: (() => void) | null = null;
+    let unlisten: (() => void | Promise<void>) | null = null;
     let disposed = false;
 
     void (async () => {
@@ -97,7 +97,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
         });
 
         if (disposed) {
-          off();
+          await Promise.resolve(off());
           return;
         }
         unlisten = off;
@@ -108,7 +108,17 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
 
     return () => {
       disposed = true;
-      unlisten?.();
+      const off = unlisten;
+      unlisten = null;
+      if (off) {
+        void (async () => {
+          try {
+            await Promise.resolve(off());
+          } catch {
+            // listener already gone
+          }
+        })();
+      }
     };
   }, []);
 
