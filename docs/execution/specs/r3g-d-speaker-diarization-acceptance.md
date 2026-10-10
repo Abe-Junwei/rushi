@@ -155,7 +155,7 @@
 
 > **状态（2026-08-12）**：以下 8 条**均未执行**，无手测记录。转 Go 前必须逐条跑通并回填结果。
 
-1. 偏好关、模型不存在：单人课音频正常转写，结果与升级前一致。
+1. 偏好关、模型不存在：单人录音正常转写，结果与升级前一致。
 2. 打开能力：完成 CAM++ 准备与应用；多人短音频 final 后出现 speaker chip。
 3. 重命名“说话人 1”为姓名，将一条错分段改派给“说话人 2”，保存重开。
 4. 拆段、同 speaker 合段、不同 speaker 合段并分别选择 A/B/不标注；撤销重做。
@@ -168,15 +168,21 @@
 
 | 项 | 结论 |
 |----|------|
-| Go / Partial / Defer / No-go | **Partial Go**（默认关闭、实验能力、按需下载） |
+| Go / Partial / Defer / No-go | **Partial Go**（2026-08-13：聚类重构 DC1+DC2 后 20→8 人、碎片清零；用户拍板 8 人可用。能力默认关闭。转 Go 等金标，见 [`clustering-rework-acceptance`](./r3g-d-diarization-clustering-rework-acceptance.md)） |
 | 实测 DER / confusion / 单人误拆 | DER 6.83%、confusion 0.02%（单条 130 秒合成双人）；单人误拆**无样例未测** |
 | 默认开关策略 | 默认关；`AutoTranscribeStartDialog` 标注“区分说话人（实验）” |
 | CAM++ 分发 | 按需下载，不入安装包；`iic/speech_campplus_sv_zh-cn_16k-common`，权重 28,036,335 bytes，SHA-256 `3388cf5f…6d5ada8` |
 | 跨窗阈值 / max speakers | cosine `0.72`，同窗 hard cannot-link；diarization 走 30 秒窗 + 2 秒 overlap（普通 ASR 仍用原窗口策略） |
 | 支持平台与长度范围 | 仅 macOS arm64 源码侧车已验证；Windows 与冻结产物未验证。长度上仅验证到 130 秒，30 分钟／2 小时样例未跑 |
-| 残余风险 | ① coverage 93.19% 未过 95% 门槛；② 短而无停顿的多人音频会欠分（9 秒样例欠分为 1 人）；③ 无真实 RTTM 金标，全部结论基于合成拼接；④ 无 CAM++ 基线缺失导致 CER/wall 增量不可计算；⑤ “配置待应用”能力态未实现；⑥ 取消/失败路径未验证；⑦ 峰值 RSS 未记录 |
+| 残余风险 | ⓪ 真实金标未交付，8 人是否拆/合仍待证（§12.1）；① coverage 93.19% 未过 95%；② 短而无停顿的多人音频会欠分；③ 合成拼接曾是唯一 DER 依据；④ 无 CAM++ 基线，CER/wall 增量不可计算；⑤ “配置待应用”能力态未实现；⑥ 取消/失败路径未验证；⑦ 峰值 RSS 未记录 |
+
+### 12.1 真实音频（2026-08-12 反例 → 2026-08-13 收敛）
+
+33 分钟真实会议 `20260712-师资部会议-惟海法师-节选` 首次跑出 **20 个说话人**（14 个仅 1 段、最短 0.5 秒、无 warning），据此曾下调为 Defer。DC1+DC2 后同一音频为 **8 人、单段碎片 0**。用户 2026-08-13 拍板：该样例可能本就约 8 人，**8 人可用**。详细数据见 [`clustering-rework-acceptance`](./r3g-d-diarization-clustering-rework-acceptance.md) §2。
 
 ### 转完整 Go 的前置条件
+
+0. 用户交付金标后复测 DER / confusion；不以 3–6 为硬门禁。
 
 1. 补齐单人、三人轮换、噪声/远场三类**真实录音** RTTM 金标，并复测 DER / confusion / 单人误拆。
 2. 跑无 CAM++ 同音频基线，计算 CER 增量与 wall 比值，记录峰值 RSS。

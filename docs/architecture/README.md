@@ -28,6 +28,7 @@
 - [`stt-online-providers.md`](./stt-online-providers.md) — 在线 STT Provider 调研、与解语式合约对齐及后续接线说明。
 - [`asr-sidecar-funasr-policy.md`](./asr-sidecar-funasr-policy.md) — ASR 侧车 + FunASR：目标用户、联网与磁盘预算、CPU/GPU（MPS + CUDA）策略。
 - [`asr-evaluation-routes.md`](./asr-evaluation-routes.md) — **ASR 路线测评汇总**：Paraformer / Sherpa / Qwen3 / Nano / SenseVoice / SeACo 当前结论、原始证据与重开条件。
+- [`../execution/specs/asr-recent-technology-research-2026-09.md`](../execution/specs/asr-recent-technology-research-2026-09.md) — **近三个月 STT 技术雷达**：FunASR GGUF、VAD 时间轴、diarization 可观测性与 MOSS 的 Rushi 落地优先级。
 - [`recording-transcribe-llm-pipeline.md`](./recording-transcribe-llm-pipeline.md) — **R3t 管线真源**
 - [`lexicon-guided-llm-refine.md`](./lexicon-guided-llm-refine.md) — **R3t-E 词表有据校对**
 - [`../execution/specs/lexicon-mining-backlog.md`](../execution/specs/lexicon-mining-backlog.md) — **候选** LEX-MINE / ASR-FT（词表挖掘与训练数据 backlog）
