@@ -27,10 +27,26 @@ resolve_venv_py() {
 }
 
 cleanup() {
-  if [[ "$STARTED_ASR" == "1" && -n "$ASR_PID" ]]; then
-    kill "$ASR_PID" 2>/dev/null || true
-    wait "$ASR_PID" 2>/dev/null || true
+  # Only stop the ASR we launched this session (not a pre-existing 8741).
+  if [[ "$STARTED_ASR" != "1" || -z "$ASR_PID" ]]; then
+    return 0
   fi
+  echo "==> Stopping dev ASR (pid ${ASR_PID})…"
+  # Multiprocessing leaves a resource_tracker child; kill the tree first.
+  pkill -P "$ASR_PID" 2>/dev/null || true
+  kill "$ASR_PID" 2>/dev/null || true
+  local _i
+  for _i in 1 2 3 4 5 6 7 8 9 10; do
+    kill -0 "$ASR_PID" 2>/dev/null || break
+    sleep 0.2
+  done
+  pkill -9 -P "$ASR_PID" 2>/dev/null || true
+  kill -9 "$ASR_PID" 2>/dev/null || true
+  wait "$ASR_PID" 2>/dev/null || true
+  # Fallback: we started this session's listener — clear :8741 if still held.
+  stop_sidecar_on_8741
+  STARTED_ASR=0
+  ASR_PID=""
 }
 trap cleanup EXIT INT TERM
 
@@ -159,4 +175,6 @@ for arg in "$@"; do
   fi
 done
 
-exec npm run tauri dev -w @rushi/desktop -- --features devtools "$@"
+# Do NOT exec: replacing this shell would drop the EXIT trap and orphan rushi_asr
+# (PPID→1). Keep the shell so cleanup() always runs when tauri/npm exits.
+npm run tauri dev -w @rushi/desktop -- --features devtools "$@"
