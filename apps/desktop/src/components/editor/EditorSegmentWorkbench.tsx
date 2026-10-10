@@ -1,9 +1,11 @@
 import { memo } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { SegmentListFilterState } from "../../services/segmentListFilter";
+import type { FileSpeakerDto } from "../../tauri/projectTypes";
 import { EditorSegmentList } from "./EditorSegmentList";
 
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
@@ -16,6 +18,8 @@ interface EditorSegmentWorkbenchProps {
   filterCriteria?: SegmentListFilterState | null;
   visibleIndexSet?: ReadonlySet<number> | null;
   displayPositionByIndex?: ReadonlyMap<number, number> | null;
+  speakers: FileSpeakerDto[];
+  setSpeakers: Dispatch<SetStateAction<FileSpeakerDto[]>>;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
   onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
@@ -29,6 +33,8 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   filterCriteria = null,
   visibleIndexSet = null,
   displayPositionByIndex = null,
+  speakers,
+  setSpeakers,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
   onOpenSegmentAnnotationDialog,
@@ -46,6 +52,8 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         filterCriteria={filterCriteria}
         visibleIndexSet={visibleIndexSet}
         displayPositionByIndex={displayPositionByIndex}
+        speakers={speakers}
+        setSpeakers={setSpeakers}
         onResetSegmentListFilter={onResetSegmentListFilter}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
         onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}
@@ -68,6 +76,8 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.filterCriteria === next.filterCriteria &&
     prev.visibleIndexSet === next.visibleIndexSet &&
     prev.displayPositionByIndex === next.displayPositionByIndex &&
+    prev.speakers === next.speakers &&
+    prev.setSpeakers === next.setSpeakers &&
     prev.onResetSegmentListFilter === next.onResetSegmentListFilter &&
     prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
     prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&

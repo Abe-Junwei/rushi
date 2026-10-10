@@ -15,10 +15,14 @@ export type SegmentFrozenFilter = "all" | "frozen" | "unfrozen";
 
 export type SegmentStageFilterMap = Record<SegmentTextStage, boolean>;
 
+export type SegmentSpeakerFilter = "all" | "unassigned" | (string & {});
+
 export type SegmentListFilterState = {
   stages: SegmentStageFilterMap;
   annotation: SegmentAnnotationFilter;
   frozen: SegmentFrozenFilter;
+  /** File-scoped; not persisted. `"all"` / `"unassigned"` / a `speaker_id`. */
+  speaker: SegmentSpeakerFilter;
 };
 
 export const SEGMENT_TEXT_STAGES: readonly SegmentTextStage[] = [
@@ -41,12 +45,14 @@ export const DEFAULT_SEGMENT_LIST_FILTER: SegmentListFilterState = {
   stages: DEFAULT_SEGMENT_STAGE_FILTER,
   annotation: "all",
   frozen: "all",
+  speaker: "all",
 };
 
 export function isDefaultSegmentListFilter(filter: SegmentListFilterState): boolean {
   return (
     filter.annotation === "all" &&
     filter.frozen === "all" &&
+    filter.speaker === "all" &&
     SEGMENT_TEXT_STAGES.every((stage) => filter.stages[stage])
   );
 }
@@ -56,6 +62,7 @@ export type SegmentListFilterMatchInput = {
   stage: SegmentTextStage | null | undefined;
   frozen: boolean;
   hasAnnotation: boolean;
+  speakerId: string | null;
 };
 
 export function segmentDtoToListFilterMatchInput(seg: SegmentDto): SegmentListFilterMatchInput {
@@ -63,6 +70,7 @@ export function segmentDtoToListFilterMatchInput(seg: SegmentDto): SegmentListFi
     stage: seg.text_stage,
     frozen: isSegmentFrozen(seg),
     hasAnnotation: segmentHasAnnotation(seg),
+    speakerId: seg.speaker_id?.trim() || null,
   };
 }
 
@@ -70,11 +78,13 @@ export function segmentMetaToListFilterMatchInput(meta: {
   stage: SegmentTextStage | null | undefined;
   frozen: boolean;
   hasAnnotation: boolean;
+  speakerId?: string | null;
 }): SegmentListFilterMatchInput {
   return {
     stage: meta.stage,
     frozen: Boolean(meta.frozen),
     hasAnnotation: Boolean(meta.hasAnnotation),
+    speakerId: meta.speakerId?.trim() || null,
   };
 }
 
@@ -91,6 +101,11 @@ export function segmentMatchesListFilterInput(
 
   if (filter.frozen === "frozen" && !input.frozen) return false;
   if (filter.frozen === "unfrozen" && input.frozen) return false;
+
+  if (filter.speaker === "unassigned" && input.speakerId != null) return false;
+  if (filter.speaker !== "all" && filter.speaker !== "unassigned" && input.speakerId !== filter.speaker) {
+    return false;
+  }
 
   return true;
 }
@@ -179,6 +194,7 @@ export function resetSegmentListFilter(): SegmentListFilterState {
     stages: { ...DEFAULT_SEGMENT_STAGE_FILTER },
     annotation: "all",
     frozen: "all",
+    speaker: "all",
   };
 }
 
@@ -220,6 +236,8 @@ export function parseStoredSegmentListFilter(raw: string | null): SegmentListFil
       annotation: parseTriState(parsed.annotation, ["all", "with", "without"] as const, "all"),
       // Older persisted filters omit frozen — default to "all".
       frozen: parseTriState(parsed.frozen, ["all", "frozen", "unfrozen"] as const, "all"),
+      // Speaker ids are file-scoped; never restore them across sessions/files.
+      speaker: "all",
     };
   } catch {
     return null;
@@ -239,11 +257,12 @@ export function readStoredSegmentListFilter(): SegmentListFilterState {
 export function writeStoredSegmentListFilter(filter: SegmentListFilterState): void {
   if (typeof window === "undefined") return;
   try {
-    if (isDefaultSegmentListFilter(filter)) {
+    const persistable: SegmentListFilterState = { ...filter, speaker: "all" };
+    if (isDefaultSegmentListFilter(persistable)) {
       localStorage.removeItem(SEGMENT_LIST_FILTER_STORAGE_KEY);
       return;
     }
-    localStorage.setItem(SEGMENT_LIST_FILTER_STORAGE_KEY, JSON.stringify(filter));
+    localStorage.setItem(SEGMENT_LIST_FILTER_STORAGE_KEY, JSON.stringify(persistable));
   } catch {
     /* noop */
   }
@@ -264,7 +283,7 @@ const FROZEN_FILTER_LABELS: Record<SegmentFrozenFilter, string> = {
 /** 筛选下拉触发器文案（默认「筛选」；有筛选时摘要 + 可选 n/m）。 */
 export function formatSegmentListFilterTriggerLabel(
   filter: SegmentListFilterState,
-  opts?: { filteredCount?: number; totalCount?: number },
+  opts?: { filteredCount?: number; totalCount?: number; speakerName?: string | null },
 ): string {
   const parts: string[] = [];
   if (!isDefaultSegmentListFilter(filter)) {
@@ -277,6 +296,11 @@ export function formatSegmentListFilterTriggerLabel(
     }
     if (filter.frozen !== "all") {
       parts.push(FROZEN_FILTER_LABELS[filter.frozen]);
+    }
+    if (filter.speaker === "unassigned") {
+      parts.push("未标注");
+    } else if (filter.speaker !== "all") {
+      parts.push(opts?.speakerName?.trim() || "说话人");
     }
   }
   const filteredCount = opts?.filteredCount;

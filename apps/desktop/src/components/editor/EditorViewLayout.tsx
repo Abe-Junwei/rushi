@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { useMemo } from "react";
 import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { EditorToolbar } from "../EditorToolbar";
@@ -11,6 +11,7 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { useSegmentListFilter } from "../../hooks/useSegmentListFilter";
+import type { FileSpeakerDto } from "../../tauri/projectTypes";
 import { WaveformSelectionChromeViewProvider } from "../../hooks/WaveformSelectionChromeViewContext";
 
 type EditHistory = ReturnType<typeof useEditorEditHistory>;
@@ -37,6 +38,8 @@ export type EditorViewLayoutProps = {
   footerCenterHintKind: "status" | "shortcut" | "none";
   transcriptStats: { segmentCount: number; charCount: number };
   editorDialogs: ReactNode;
+  speakers: FileSpeakerDto[];
+  setSpeakers: Dispatch<SetStateAction<FileSpeakerDto[]>>;
   onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
 };
 
@@ -60,6 +63,8 @@ export function EditorViewLayout({
   footerCenterHintKind,
   transcriptStats,
   editorDialogs,
+  speakers,
+  setSpeakers,
   onOpenSegmentAnnotationDialog,
 }: EditorViewLayoutProps) {
   const chromeViewInput = useMemo(
@@ -132,6 +137,7 @@ export function EditorViewLayout({
           tx={tx}
           hasAudio={Boolean(c.audioSrc)}
           segmentFilter={segmentFilter}
+          speakers={speakers}
         />
 
         <EditorSegmentWorkbench
@@ -143,6 +149,8 @@ export function EditorViewLayout({
           filterCriteria={segmentFilter.filter}
           visibleIndexSet={segmentFilter.visibleIndexSet}
           displayPositionByIndex={segmentFilter.displayPositionByIndex}
+          speakers={speakers}
+          setSpeakers={setSpeakers}
           onResetSegmentListFilter={segmentFilter.resetFilter}
           onOpenSegmentContextMenu={tx.openSegmentContextMenu}
           onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}

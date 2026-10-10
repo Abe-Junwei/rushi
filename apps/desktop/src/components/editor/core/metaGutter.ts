@@ -20,6 +20,8 @@ import {
   resolveTranscriptGutterSegmentIdx,
 } from "./transcriptGutterSegmentIdx";
 
+export const CM_SPEAKER_ID_ATTR = "data-cm-speaker-id";
+
 export type TranscriptRowSelectionKind = "primary" | "in" | "playback" | null;
 
 /** Left meta gutter width — full legacy meta column (stage lives in the after gutter). */
@@ -39,6 +41,7 @@ export class TranscriptMetaMarker extends GutterMarker {
     /** 0-based segment idx; spacer / unknown use -1. */
     readonly segmentIdx: number = -1,
     readonly speakerLabel: string | null = null,
+    readonly speakerId: string | null = null,
   ) {
     super();
   }
@@ -56,7 +59,8 @@ export class TranscriptMetaMarker extends GutterMarker {
       this.isPlaybackFocus === other.isPlaybackFocus &&
       this.frozen === other.frozen &&
       this.segmentIdx === other.segmentIdx &&
-      this.speakerLabel === other.speakerLabel
+      this.speakerLabel === other.speakerLabel &&
+      this.speakerId === other.speakerId
     );
   }
 
@@ -92,27 +96,40 @@ export class TranscriptMetaMarker extends GutterMarker {
       el.append(bar);
     }
 
+    const headline = document.createElement("div");
+    headline.className = "cm-transcript-meta-headline";
+
     const indexEl = document.createElement("span");
     indexEl.className = "cm-transcript-meta-index";
     indexEl.textContent = this.indexLabel;
+    headline.append(indexEl);
+
+    if (this.speakerLabel) {
+      const speakerEl = document.createElement("button");
+      speakerEl.type = "button";
+      speakerEl.tabIndex = -1;
+      speakerEl.className = "cm-transcript-meta-speaker";
+      speakerEl.textContent = this.speakerLabel;
+      speakerEl.title = `${this.speakerLabel} · 点击重命名`;
+      speakerEl.setAttribute("aria-label", this.speakerLabel);
+      if (this.speakerId) {
+        speakerEl.setAttribute(CM_SPEAKER_ID_ATTR, this.speakerId);
+      }
+      headline.append(speakerEl);
+    }
 
     const timeEl = document.createElement("span");
     timeEl.className = "cm-transcript-meta-time";
     timeEl.textContent = this.timeLabel;
 
-    el.append(indexEl, timeEl);
-    if (this.speakerLabel) {
-      const speakerEl = document.createElement("span");
-      speakerEl.className = "cm-transcript-meta-speaker";
-      speakerEl.textContent = this.speakerLabel;
-      el.append(speakerEl);
-    }
+    el.append(headline, timeEl);
     return el;
   }
 }
 
 export type TranscriptMetaGutterOptions = {
   onSelectSegment?: (idx: number, opts: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onRenameSpeaker?: (speakerId: string) => void;
 };
 
 type MetaGutterMousedownView = {
@@ -149,10 +166,25 @@ export function handleTranscriptMetaGutterMousedown(
   const shiftKey = event.shiftKey;
   selectSegmentCommand(view, idx, { toggle, shiftKey, scrollIntoView: false });
   opts.onSelectSegment?.(idx, { toggle, shiftKey });
+  if (!toggle && !shiftKey) {
+    const speakerId = resolveClickedSpeakerId(event);
+    if (speakerId) {
+      event.preventDefault();
+      opts.onRenameSpeaker?.(speakerId);
+    }
+  }
   return true;
 }
 
-/** Pure marker builder (also used by tests). Left gutter = index + timestamp only. */
+function resolveClickedSpeakerId(event: MouseEvent): string | null {
+  const raw = event.target;
+  const el = raw instanceof Element ? raw : raw instanceof Node ? raw.parentElement : null;
+  const speakerEl = el?.closest(".cm-transcript-meta-speaker");
+  const speakerId = speakerEl?.getAttribute(CM_SPEAKER_ID_ATTR)?.trim();
+  return speakerId || null;
+}
+
+/** Pure marker builder (also used by tests). Left gutter = index · speaker · timestamp. */
 export function buildTranscriptMetaMarker(
   meta: SegmentMeta | undefined,
   idx: number,
@@ -173,6 +205,7 @@ export function buildTranscriptMetaMarker(
     Boolean(meta.frozen),
     idx,
     meta.speakerLabel ?? (meta.speakerId ? "说话人" : null),
+    meta.speakerId ?? null,
   );
 }
 
@@ -189,7 +222,7 @@ function selectionKindForIdx(
 }
 
 /**
- * Product meta gutter: index + timestamp in the CM6 viewport (legacy left column).
+ * Product meta gutter: index + optional speaker on the first line, timestamp below.
  * Stage chip lives in {@link createTranscriptStageGutter} (side after).
  */
 export function createTranscriptMetaGutter(
@@ -323,23 +356,41 @@ export const transcriptMetaGutterTheme = EditorView.theme({
   ".cm-transcript-meta-marker--playback": {
     color: "var(--notion-text-muted)",
   },
+  ".cm-transcript-meta-headline": {
+    display: "flex",
+    flexDirection: "row",
+    flexWrap: "nowrap",
+    alignItems: "baseline",
+    justifyContent: "flex-end",
+    gap: "0.35rem",
+    maxWidth: "100%",
+    minWidth: "0",
+  },
   ".cm-transcript-meta-index, .cm-transcript-meta-time": {
     fontWeight: "500",
     letterSpacing: "0.01em",
     fontSize: "var(--text-label, 0.75rem)",
   },
   ".cm-transcript-meta-speaker": {
-    maxWidth: "100%",
+    appearance: "none",
+    margin: "0",
+    padding: "0",
+    border: "none",
+    background: "transparent",
+    minWidth: "0",
+    maxWidth: "4.75rem",
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
-    borderRadius: "999px",
-    padding: "0.125rem 0.375rem",
-    color: "var(--notion-text)",
-    backgroundColor: "var(--zen-saffron-surface)",
+    color: "var(--notion-text-muted)",
     fontFamily: "var(--font-sans, ui-sans-serif, system-ui)",
-    fontSize: "0.6875rem",
-    lineHeight: "1.25",
+    fontSize: "var(--text-label, 0.75rem)",
+    fontWeight: "500",
+    lineHeight: "1.2",
+    cursor: "pointer",
+  },
+  ".cm-transcript-meta-speaker:hover": {
+    color: "var(--notion-text)",
   },
 });
 

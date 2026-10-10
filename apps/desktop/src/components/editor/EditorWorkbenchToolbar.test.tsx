@@ -53,6 +53,7 @@ function makeSegmentFilter() {
       },
       annotation: "all" as const,
       frozen: "all" as const,
+      speaker: "all" as const,
     },
     filteredIndices: [],
     visibleIndexSet: null,
@@ -62,6 +63,7 @@ function makeSegmentFilter() {
     toggleStage: vi.fn(),
     setAnnotation: vi.fn(),
     setFrozen: vi.fn(),
+    setSpeaker: vi.fn(),
     resetFilter: vi.fn(),
   };
 }

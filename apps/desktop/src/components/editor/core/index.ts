@@ -66,6 +66,7 @@ export {
   computeTranscriptMetaGutterWidthPx,
   transcriptMetaGutterTheme,
   transcriptMetaGutterExtensions,
+  CM_SPEAKER_ID_ATTR,
   type TranscriptMetaGutterOptions,
 } from "./metaGutter";
 export {

@@ -1344,6 +1344,11 @@
   list-style: none;
 }
 
+.segment-filter-menu-list--scroll {
+  max-height: 14.5rem;
+  overflow-y: auto;
+}
+
 .segment-filter-menu-option {
   display: flex;
   align-items: center;

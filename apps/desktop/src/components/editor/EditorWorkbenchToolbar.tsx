@@ -8,6 +8,7 @@ import { useWaveformSelectionChromeViewContext } from "../../hooks/WaveformSelec
 import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
+import type { FileSpeakerDto } from "../../tauri/projectTypes";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
 import { collectPackableSegmentSpansSec } from "../../utils/waveformSegmentBounds";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -27,6 +28,7 @@ interface EditorWorkbenchToolbarProps {
   tx: TranscriptionLayerApi;
   hasAudio: boolean;
   segmentFilter: SegmentListFilterApi;
+  speakers?: FileSpeakerDto[];
 }
 
 /** 波形区与语段区之间的统一单行工具条（左听 / 中改+筛选 / 右看）。 */
@@ -35,6 +37,7 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
   tx,
   hasAudio,
   segmentFilter,
+  speakers = [],
 }: EditorWorkbenchToolbarProps) {
   const { trackRef, compact: compactLayout } = useWorkbenchToolbarCompactFromElement();
   const { view: selectionView } = useWaveformSelectionChromeViewContext();
@@ -47,9 +50,11 @@ export const EditorWorkbenchToolbar = memo(function EditorWorkbenchToolbar({
         totalCount={c.segments.length}
         busy={c.busy}
         isActive={segmentFilter.isActive}
+        speakers={speakers}
         onToggleStage={segmentFilter.toggleStage}
         onAnnotationChange={segmentFilter.setAnnotation}
         onFrozenChange={segmentFilter.setFrozen}
+        onSpeakerChange={segmentFilter.setSpeaker}
         onReset={segmentFilter.resetFilter}
       />
     ) : null;
@@ -196,7 +201,9 @@ function areEditorWorkbenchToolbarPropsEqual(
   if (prev.segmentFilter.toggleStage !== next.segmentFilter.toggleStage) return false;
   if (prev.segmentFilter.setAnnotation !== next.segmentFilter.setAnnotation) return false;
   if (prev.segmentFilter.setFrozen !== next.segmentFilter.setFrozen) return false;
+  if (prev.segmentFilter.setSpeaker !== next.segmentFilter.setSpeaker) return false;
   if (prev.segmentFilter.resetFilter !== next.segmentFilter.resetFilter) return false;
+  if (prev.speakers !== next.speakers) return false;
   return (
     projectControllerShellRenderEqual(prev.controller, next.controller) &&
     transcriptionLayerWorkbenchToolbarRenderEqual(prev.tx, next.tx)

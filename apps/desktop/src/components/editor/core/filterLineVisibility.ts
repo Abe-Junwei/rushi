@@ -144,12 +144,13 @@ export function computeVisibleSetFromFilterCriteria(
         stage: m?.stage ?? null,
         frozen: Boolean(m?.frozen),
         hasAnnotation: Boolean(m?.hasAnnotation),
+        speakerId: m?.speakerId ?? null,
       }),
     );
   }
   // Pad if doc longer than meta (should be rare).
   for (let i = n; i < lineCount; i++) {
-    items.push({ stage: null, frozen: false, hasAnnotation: false });
+    items.push({ stage: null, frozen: false, hasAnnotation: false, speakerId: null });
   }
   const indices = computeFilteredSegmentIndicesFromMatchInputs(items, criteria);
   if (lineCount > 0 && indices.length >= lineCount) return null;

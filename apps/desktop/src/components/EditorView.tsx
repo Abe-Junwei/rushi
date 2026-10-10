@@ -15,6 +15,7 @@ import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { useEditorFooterShortcutHintRotation } from "../hooks/useEditorFooterShortcutHintRotation";
 import { useSegmentListFilter } from "../hooks/useSegmentListFilter";
+import { useFileSpeakers } from "../hooks/useFileSpeakers";
 import { useEditorViewContextMenu } from "./editor/useEditorViewContextMenu";
 import { EditorViewLayout } from "./editor/EditorViewLayout";
 
@@ -92,6 +93,7 @@ export function EditorView({
   const footerCenterLabel = statusCenterLabel || shortcutHint;
   const footerCenterHintKind = statusCenterLabel ? "status" : shortcutHint ? "shortcut" : "none";
   const segmentFilter = useSegmentListFilter(c.currentFileId, c.segments);
+  const { speakers, setSpeakers } = useFileSpeakers(c.currentFileId, c.segments);
 
   const editorDialogs = (
     <>
@@ -151,6 +153,8 @@ export function EditorView({
       footerCenterHintKind={footerCenterHintKind}
       transcriptStats={transcriptStats}
       editorDialogs={editorDialogs}
+      speakers={speakers}
+      setSpeakers={setSpeakers}
       onOpenSegmentAnnotationDialog={c.openSegmentAnnotationDialog}
     />
   );

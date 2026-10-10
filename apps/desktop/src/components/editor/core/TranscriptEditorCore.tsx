@@ -69,6 +69,8 @@ export type TranscriptEditorCoreProps = {
   onToggleSegmentLoop?: (idx: number) => void;
   /** Click the annotation icon in the stage gutter to edit the segment note. */
   onOpenSegmentAnnotationDialog?: (idx: number) => void;
+  /** Click the speaker name in the left meta gutter to rename that speaker. */
+  onRenameSpeaker?: (speakerId: string) => void;
   /** Syncs play/stop icon on primary stage gutter. */
   isSelectedSegmentPlaying?: boolean;
   /** Syncs loop pressed state on primary stage gutter. */
@@ -114,6 +116,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
     onToggleSegmentPlay,
     onToggleSegmentLoop,
     onOpenSegmentAnnotationDialog,
+    onRenameSpeaker,
     isSelectedSegmentPlaying = false,
     segmentLoopPlayback = false,
     onOpenContextMenu,
@@ -144,6 +147,8 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
   onToggleSegmentLoopRef.current = onToggleSegmentLoop;
   const onOpenSegmentAnnotationDialogRef = useRef(onOpenSegmentAnnotationDialog);
   onOpenSegmentAnnotationDialogRef.current = onOpenSegmentAnnotationDialog;
+  const onRenameSpeakerRef = useRef(onRenameSpeaker);
+  onRenameSpeakerRef.current = onRenameSpeaker;
   const onOpenContextMenuRef = useRef(onOpenContextMenu);
   onOpenContextMenuRef.current = onOpenContextMenu;
   const busyRef = useRef(busy);
@@ -172,6 +177,7 @@ export function TranscriptEditorCore(props: TranscriptEditorCoreProps) {
       onToggleSegmentPlayRef,
       onToggleSegmentLoopRef,
       onOpenSegmentAnnotationDialogRef,
+      onRenameSpeakerRef,
       busyRef,
       onOpenContextMenuRef,
       rowHeightDragFromDomRef,

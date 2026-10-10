@@ -9,11 +9,14 @@ import {
   type SegmentAnnotationFilter,
   type SegmentFrozenFilter,
   type SegmentListFilterState,
+  type SegmentSpeakerFilter,
 } from "../../services/segmentListFilter";
 import {
   resolveSegmentStageLabels,
   type SegmentTextStage,
 } from "../../services/segmentTextStage";
+import { resolveSpeakerLabel } from "../../services/speakerLabels";
+import type { FileSpeakerDto } from "../../tauri/projectTypes";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { WorkbenchOverflowMenu } from "./WorkbenchOverflowMenu";
 import { SegmentStageIcon } from "../segmentRow/segmentStageIcon";
@@ -24,9 +27,11 @@ type Props = {
   totalCount: number;
   busy?: boolean;
   isActive: boolean;
+  speakers?: readonly FileSpeakerDto[];
   onToggleStage: (stage: SegmentTextStage) => void;
   onAnnotationChange: (value: SegmentAnnotationFilter) => void;
   onFrozenChange: (value: SegmentFrozenFilter) => void;
+  onSpeakerChange?: (value: SegmentSpeakerFilter) => void;
   onReset: () => void;
 };
 
@@ -49,6 +54,7 @@ function FilterRadioSection<T extends string>(props: {
   busy: boolean;
   labelFor: (value: T) => string;
   onChange: (value: T) => void;
+  listClassName?: string;
 }) {
   return (
     <section className="segment-filter-menu-section" aria-labelledby={props.headId}>
@@ -56,7 +62,7 @@ function FilterRadioSection<T extends string>(props: {
         <span>{props.title}</span>
         <span className="segment-filter-menu-section-hint">{props.hint}</span>
       </header>
-      <ul className="segment-filter-menu-list">
+      <ul className={["segment-filter-menu-list", props.listClassName].filter(Boolean).join(" ")}>
         {props.options.map((option) => {
           const selected = props.value === option;
           return (
@@ -86,9 +92,11 @@ export function EditorSegmentListFilterMenu({
   totalCount,
   busy = false,
   isActive,
+  speakers = [],
   onToggleStage,
   onAnnotationChange,
   onFrozenChange,
+  onSpeakerChange,
   onReset,
 }: Props) {
   if (totalCount === 0) return null;
@@ -96,9 +104,19 @@ export function EditorSegmentListFilterMenu({
   const triggerLabel = formatSegmentListFilterTriggerLabel(filter, {
     filteredCount,
     totalCount,
+    speakerName: resolveSpeakerLabel(
+      filter.speaker === "all" || filter.speaker === "unassigned" ? null : filter.speaker,
+      speakers,
+    ),
   });
 
   const enabledStageCount = SEGMENT_TEXT_STAGES.filter((stage) => filter.stages[stage]).length;
+  const speakerOptions: SegmentSpeakerFilter[] = [
+    "all",
+    ...speakers.map((speaker) => speaker.speaker_id),
+    "unassigned",
+  ];
+  const showSpeakerFilter = speakers.length > 0 && onSpeakerChange != null;
 
   return (
     <WorkbenchOverflowMenu
@@ -106,11 +124,33 @@ export function EditorSegmentListFilterMenu({
       ariaLabel="语段列表筛选"
       engaged={isActive}
       align="end"
-      panelMinWidth={172}
+      panelMinWidth={showSpeakerFilter ? 188 : 172}
       className="workbench-segment-filter-menu"
     >
       {(close) => (
         <div className="segment-filter-menu" role="group" aria-label="语段筛选选项">
+          {showSpeakerFilter ? (
+            <>
+              <FilterRadioSection
+                headId="segment-filter-speaker-head"
+                title="说话人"
+                hint="单选"
+                name="segment-list-speaker-filter"
+                options={speakerOptions}
+                value={filter.speaker}
+                busy={busy}
+                labelFor={(value) => {
+                  if (value === "all") return "全部";
+                  if (value === "unassigned") return "未标注";
+                  return resolveSpeakerLabel(value, speakers) ?? "说话人";
+                }}
+                onChange={(value) => onSpeakerChange?.(value)}
+                listClassName={speakerOptions.length > 8 ? "segment-filter-menu-list--scroll" : undefined}
+              />
+              <div className="segment-filter-menu-divider" role="separator" />
+            </>
+          ) : null}
+
           <section className="segment-filter-menu-section" aria-labelledby="segment-filter-stage-head">
             <header id="segment-filter-stage-head" className="segment-filter-menu-section-head">
               <span>阶段</span>

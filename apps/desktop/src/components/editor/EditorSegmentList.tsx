@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useState } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -9,17 +10,13 @@ import {
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { SegmentListFilterState } from "../../services/segmentListFilter";
 import { TranscriptEditorCore } from "./core/TranscriptEditorCore";
-import { CONTROL_BTN_LINK } from "../../config/controlStyles";
+import { CONTROL_BTN_LINK, CONTROL_SELECT_INLINE } from "../../config/controlStyles";
 import { dispatchSegmentLoopButtonClick } from "../../utils/dispatchSegmentLoopButtonClick";
 import * as fileApi from "../../tauri/fileApi";
 import type { FileSpeakerDto } from "../../tauri/projectTypes";
 import { buildSpeakerLabelMap, resolveSpeakerLabel } from "../../services/speakerLabels";
 import { readTranscriptSelectedSegmentIndices } from "./core/transcriptEditorViewHandle";
-import {
-  CONTROL_BTN_SECONDARY,
-  CONTROL_SELECT_INLINE,
-  CONTROL_TEXT_INPUT,
-} from "../../config/controlStyles";
+import { SpeakerRenameDialog } from "../SpeakerRenameDialog";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -36,6 +33,8 @@ interface EditorSegmentListProps {
   filterCriteria?: SegmentListFilterState | null;
   visibleIndexSet?: ReadonlySet<number> | null;
   displayPositionByIndex?: ReadonlyMap<number, number> | null;
+  speakers: FileSpeakerDto[];
+  setSpeakers: Dispatch<SetStateAction<FileSpeakerDto[]>>;
   onResetSegmentListFilter?: () => void;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
   onOpenSegmentAnnotationDialog?: (segmentIdx: number) => void;
@@ -50,54 +49,20 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   filteredIndices,
   filterActive,
   filterCriteria = null,
+  visibleIndexSet = null,
+  displayPositionByIndex = null,
+  speakers,
+  setSpeakers,
   onResetSegmentListFilter,
   onOpenSegmentContextMenu,
   onOpenSegmentAnnotationDialog,
 }: EditorSegmentListProps) {
-  const [speakers, setSpeakers] = useState<FileSpeakerDto[]>([]);
-  const [speakerFilter, setSpeakerFilter] = useState("all");
   const [renameSpeakerId, setRenameSpeakerId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [speakerBusy, setSpeakerBusy] = useState(false);
-  const speakerSignature = c.segments.map((segment) => segment.speaker_id ?? "").join("|");
-
-  useEffect(() => {
-    let cancelled = false;
-    if (!c.currentFileId) {
-      setSpeakers([]);
-      return;
-    }
-    void fileApi.loadFile(c.currentFileId).then((detail) => {
-      if (!cancelled) setSpeakers(detail.speakers ?? []);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [c.currentFileId, speakerSignature]);
-
-  useEffect(() => {
-    setSpeakerFilter("all");
-    setRenameSpeakerId(null);
-  }, [c.currentFileId]);
 
   const speakerLabels = useMemo(() => buildSpeakerLabelMap(speakers), [speakers]);
-  const effectiveFilteredIndices = useMemo(() => {
-    if (speakerFilter === "all") return filteredIndices;
-    return filteredIndices.filter((idx) => {
-      const id = c.segments[idx]?.speaker_id ?? null;
-      return speakerFilter === "unassigned" ? id == null : id === speakerFilter;
-    });
-  }, [c.segments, filteredIndices, speakerFilter]);
-  const effectiveFilterActive = filterActive || speakerFilter !== "all";
-  const effectiveVisibleSet = useMemo(
-    () => (effectiveFilterActive ? new Set(effectiveFilteredIndices) : null),
-    [effectiveFilterActive, effectiveFilteredIndices],
-  );
-  const effectiveDisplayPositions = useMemo(() => {
-    if (!effectiveFilterActive) return null;
-    return new Map(effectiveFilteredIndices.map((idx, position) => [idx, position]));
-  }, [effectiveFilterActive, effectiveFilteredIndices]);
-  const displayCount = effectiveFilteredIndices.length;
+  const displayCount = filteredIndices.length;
 
   const selectedIndices = () => {
     const indices = readTranscriptSelectedSegmentIndices();
@@ -163,11 +128,11 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   useEffect(() => {
     filterNavRef.current = {
       active: filterActive,
-      indices: effectiveFilteredIndices,
-      visibleIndexSet: effectiveVisibleSet,
-      displayPositionByIndex: effectiveDisplayPositions,
+      indices: filteredIndices,
+      visibleIndexSet,
+      displayPositionByIndex,
     };
-  }, [effectiveFilterActive, effectiveFilteredIndices, effectiveVisibleSet, effectiveDisplayPositions, filterNavRef]);
+  }, [filterActive, filteredIndices, visibleIndexSet, displayPositionByIndex, filterNavRef]);
 
   if (c.segments.length === 0) {
     return (
@@ -177,7 +142,7 @@ export const EditorSegmentList = memo(function EditorSegmentList({
     );
   }
 
-  if (effectiveFilterActive && displayCount === 0) {
+  if (filterActive && displayCount === 0) {
     return (
       <div
         ref={segmentListRef}
@@ -191,32 +156,22 @@ export const EditorSegmentList = memo(function EditorSegmentList({
   const panelHighlight =
     c.findReplaceEditorHighlight ?? c.correctionRulesEditorHighlight ?? null;
   const showFilteredSelectedBanner = isSegmentListFilterHidingPrimary({
-    filterActive: effectiveFilterActive,
-    filteredIndices: effectiveFilteredIndices,
+    filterActive,
+    filteredIndices,
     primaryIdx: c.selectedIdx,
     segmentCount: c.segments.length,
-    visibleIndexSet: effectiveVisibleSet,
+    visibleIndexSet,
   });
+  const showReassignBar =
+    speakers.length > 0 || c.segments.some((segment) => segment.speaker_id);
+  const renamePlaceholder =
+    resolveSpeakerLabel(renameSpeakerId, speakers) ?? "说话人";
 
   return (
     <div className="relative flex h-0 min-h-0 flex-1 flex-col overflow-hidden">
-      {speakers.length > 0 || c.segments.some((segment) => segment.speaker_id) ? (
+      {showReassignBar ? (
         <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-notion-border bg-notion-sidebar px-3 py-2 text-sm text-notion-text-muted">
           <span className="font-medium text-notion-text">说话人</span>
-          <select
-            className={CONTROL_SELECT_INLINE}
-            aria-label="按说话人筛选"
-            value={speakerFilter}
-            onChange={(event) => setSpeakerFilter(event.currentTarget.value)}
-          >
-            <option value="all">全部</option>
-            {speakers.map((speaker) => (
-              <option key={speaker.speaker_id} value={speaker.speaker_id}>
-                {resolveSpeakerLabel(speaker.speaker_id, speakers)}
-              </option>
-            ))}
-            <option value="unassigned">未标注</option>
-          </select>
           <select
             className={CONTROL_SELECT_INLINE}
             aria-label="更改所选语段说话人"
@@ -239,37 +194,6 @@ export const EditorSegmentList = memo(function EditorSegmentList({
             <option value="new">新建说话人</option>
             <option value="unassigned">设为未标注</option>
           </select>
-          {renameSpeakerId ? (
-            <>
-              <input
-                className={CONTROL_TEXT_INPUT}
-                aria-label="说话人显示名"
-                value={renameValue}
-                autoFocus
-                onChange={(event) => setRenameValue(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") void confirmRename();
-                  if (event.key === "Escape") setRenameSpeakerId(null);
-                }}
-              />
-              <button className={CONTROL_BTN_SECONDARY} disabled={speakerBusy} onClick={() => void confirmRename()}>
-                保存姓名
-              </button>
-            </>
-          ) : (
-            <button
-              className={CONTROL_BTN_SECONDARY}
-              disabled={speakerBusy || speakers.length === 0}
-              onClick={() => {
-                const target = speakers.find((speaker) => speaker.speaker_id === speakerFilter) ?? speakers[0];
-                if (!target) return;
-                setRenameSpeakerId(target.speaker_id);
-                setRenameValue(target.display_name ?? "");
-              }}
-            >
-              重命名
-            </button>
-          )}
         </div>
       ) : null}
       {showFilteredSelectedBanner ? (
@@ -298,11 +222,16 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         fontItalic={a.transcriptFontItalic}
         updateSegmentText={c.updateSegmentText}
         panelHighlight={panelHighlight}
-        filterActive={effectiveFilterActive}
-        filteredIndices={effectiveFilteredIndices}
+        filterActive={filterActive}
+        filteredIndices={filteredIndices}
         filterCriteria={filterCriteria}
         listRef={segmentListRef}
         onOpenSegmentAnnotationDialog={onOpenSegmentAnnotationDialog}
+        onRenameSpeaker={(speakerId) => {
+          const target = speakers.find((speaker) => speaker.speaker_id === speakerId);
+          setRenameSpeakerId(speakerId);
+          setRenameValue(target?.display_name ?? "");
+        }}
         onOpenContextMenu={({ x, y, segmentIdx, pointerTimeSec, selectionText }) => {
           onOpenSegmentContextMenu({
             x,
@@ -343,6 +272,15 @@ export const EditorSegmentList = memo(function EditorSegmentList({
         }}
         rowHeightDragFromDom={tx.beginTranscriptRowHeightDragFromDom}
       />
+      <SpeakerRenameDialog
+        open={renameSpeakerId != null}
+        busy={speakerBusy}
+        value={renameValue}
+        placeholder={renamePlaceholder}
+        onChange={setRenameValue}
+        onCancel={() => setRenameSpeakerId(null)}
+        onConfirm={() => void confirmRename()}
+      />
     </div>
   );
 }, areEditorSegmentListPropsEqual);
@@ -361,6 +299,8 @@ function areEditorSegmentListPropsEqual(
   if (prev.filterCriteria !== next.filterCriteria) return false;
   if (prev.visibleIndexSet !== next.visibleIndexSet) return false;
   if (prev.displayPositionByIndex !== next.displayPositionByIndex) return false;
+  if (prev.speakers !== next.speakers) return false;
+  if (prev.setSpeakers !== next.setSpeakers) return false;
   if (prev.controller.findReplaceEditorHighlight !== next.controller.findReplaceEditorHighlight) {
     return false;
   }

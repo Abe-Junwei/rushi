@@ -43,6 +43,7 @@ function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "idx">): SegmentDto
     text_stage: partial.text_stage ?? "auto_transcribe",
     annotation: partial.annotation ?? null,
     frozen: partial.frozen ?? false,
+    speaker_id: partial.speaker_id,
   };
 }
 
@@ -150,6 +151,7 @@ describe("segmentListFilter", () => {
       stages: DEFAULT_SEGMENT_LIST_FILTER.stages,
       annotation: "with",
       frozen: "all",
+      speaker: "all",
     });
   });
 
@@ -174,7 +176,39 @@ describe("segmentListFilter", () => {
       },
       annotation: "all",
       frozen: "all",
+      speaker: "all",
     });
+  });
+
+  it("filters by speaker id", () => {
+    const segments = [
+      seg({ idx: 0, speaker_id: "spk-a" }),
+      seg({ idx: 1, speaker_id: "spk-b" }),
+      seg({ idx: 2 }),
+    ];
+    expect(
+      computeFilteredSegmentIndices(segments, { ...DEFAULT_SEGMENT_LIST_FILTER, speaker: "spk-a" }),
+    ).toEqual([0]);
+    expect(
+      computeFilteredSegmentIndices(segments, {
+        ...DEFAULT_SEGMENT_LIST_FILTER,
+        speaker: "unassigned",
+      }),
+    ).toEqual([2]);
+  });
+
+  it("does not persist speaker filter across reloads", () => {
+    writeStoredSegmentListFilter({ ...DEFAULT_SEGMENT_LIST_FILTER, speaker: "spk-a" });
+    expect(readStoredSegmentListFilter()).toEqual(DEFAULT_SEGMENT_LIST_FILTER);
+  });
+
+  it("formats speaker name on the trigger", () => {
+    expect(
+      formatSegmentListFilterTriggerLabel(
+        { ...DEFAULT_SEGMENT_LIST_FILTER, speaker: "spk-a" },
+        { speakerName: "惟海法师" },
+      ),
+    ).toBe("筛选 · 惟海法师");
   });
 
   it("matches CM meta projection the same as DTO fields", () => {

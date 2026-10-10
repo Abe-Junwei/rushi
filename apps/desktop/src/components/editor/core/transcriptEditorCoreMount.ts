@@ -179,6 +179,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
   onOpenSegmentAnnotationDialogRef?: React.MutableRefObject<
     ((idx: number) => void) | undefined
   >;
+  onRenameSpeakerRef?: React.MutableRefObject<((speakerId: string) => void) | undefined>;
   busyRef: React.MutableRefObject<boolean>;
   onOpenContextMenuRef?: React.MutableRefObject<
     | ((args: {
@@ -215,6 +216,7 @@ export function buildTranscriptEditorCoreExtensions(args: {
       segmentTransportHandlersRef,
       metaGutter: {
         onSelectSegment: (idx, opts) => bridgePrimaryMoved(idx, opts),
+        onRenameSpeaker: (speakerId) => args.onRenameSpeakerRef?.current?.(speakerId),
       },
       stageGutter: {
         onOpenSegmentAnnotationDialog: (idx) =>

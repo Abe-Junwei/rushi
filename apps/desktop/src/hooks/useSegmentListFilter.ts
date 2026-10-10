@@ -11,6 +11,7 @@ import {
   writeStoredSegmentListFilter,
   type SegmentAnnotationFilter,
   type SegmentFrozenFilter,
+  type SegmentSpeakerFilter,
   type SegmentListFilterState,
 } from "../services/segmentListFilter";
 
@@ -20,6 +21,10 @@ export function useSegmentListFilter(_currentFileId: string | null, segments: Se
   useEffect(() => {
     writeStoredSegmentListFilter(filter);
   }, [filter]);
+
+  useEffect(() => {
+    setFilter((prev) => (prev.speaker === "all" ? prev : { ...prev, speaker: "all" }));
+  }, [_currentFileId]);
 
   const isActive = !isDefaultSegmentListFilter(filter);
 
@@ -48,6 +53,10 @@ export function useSegmentListFilter(_currentFileId: string | null, segments: Se
     setFilter((prev) => ({ ...prev, frozen }));
   }, []);
 
+  const setSpeaker = useCallback((speaker: SegmentSpeakerFilter) => {
+    setFilter((prev) => ({ ...prev, speaker }));
+  }, []);
+
   const resetFilter = useCallback(() => {
     setFilter(resetSegmentListFilter());
   }, []);
@@ -62,6 +71,7 @@ export function useSegmentListFilter(_currentFileId: string | null, segments: Se
     toggleStage,
     setAnnotation,
     setFrozen,
+    setSpeaker,
     resetFilter,
   };
 }

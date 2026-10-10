@@ -54,8 +54,31 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(marker0!.highlighted).toBe(true);
     const dom = marker0!.toDOM();
     expect(dom.querySelector(".cm-transcript-meta-stage")).toBeNull();
+    expect(dom.querySelector(".cm-transcript-meta-speaker")).toBeNull();
+    expect(dom.querySelector(".cm-transcript-meta-headline .cm-transcript-meta-index")).toBeTruthy();
     expect(dom.className).toContain("cm-transcript-meta-marker--primary");
     expect(dom.getAttribute(CM_SEGMENT_IDX_ATTR)).toBe("0");
+  });
+
+  it("places the speaker label beside the index in the left meta gutter", () => {
+    const segs = makeSegments(1).map((s) => ({ ...s, speaker_id: "spk-a" }));
+    const state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+      speakerLabels: new Map([["spk-a", "惟海法师"]]),
+    });
+    const meta = state.field(segmentMetaField);
+    expect(meta[0]?.speakerLabel).toBe("惟海法师");
+    const dom = buildTranscriptMetaMarker(meta[0], 0)!.toDOM();
+    const headline = dom.querySelector(".cm-transcript-meta-headline");
+    const speaker = dom.querySelector(".cm-transcript-meta-speaker");
+    expect(headline).toBeTruthy();
+    expect(speaker?.textContent).toBe("惟海法师");
+    expect(speaker?.getAttribute("aria-label")).toBe("惟海法师");
+    expect(headline?.contains(dom.querySelector(".cm-transcript-meta-index") as Node)).toBe(true);
+    expect(headline?.contains(speaker as Node)).toBe(true);
+    expect(speaker?.tagName).toBe("BUTTON");
+    expect(speaker?.getAttribute("data-cm-speaker-id")).toBe("spk-a");
+    expect(dom.querySelector(".cm-transcript-meta-time")?.parentElement).toBe(dom);
   });
 
   it("meta gutter click uses stamped idx when CM6 lineFrom lands on preceding filter-collapsed run", () => {
@@ -96,6 +119,83 @@ describe("P4 meta gutter + reveal + stage", () => {
     expect(handled).toBe(true);
     expect(onSelectSegment).toHaveBeenCalledWith(3, { toggle: false, shiftKey: false });
     expect(primarySegmentIdx(state)).toBe(3);
+  });
+
+  it("clicking the speaker name opens rename for that speaker_id", () => {
+    const segs = makeSegments(2).map((s, i) => ({ ...s, speaker_id: i === 0 ? "spk-a" : "spk-b" }));
+    let state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+      speakerLabels: new Map([
+        ["spk-a", "惟海法师"],
+        ["spk-b", "说话人 2"],
+      ]),
+    });
+    const onSelectSegment = vi.fn();
+    const onRenameSpeaker = vi.fn();
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+    const speaker = document.createElement("button");
+    speaker.className = "cm-transcript-meta-speaker";
+    speaker.setAttribute("data-cm-speaker-id", "spk-a");
+    const marker = document.createElement("div");
+    marker.setAttribute(CM_SEGMENT_IDX_ATTR, "0");
+    marker.append(speaker);
+    const handled = handleTranscriptMetaGutterMousedown(
+      view,
+      state.doc.line(1).from,
+      {
+        button: 0,
+        metaKey: false,
+        ctrlKey: false,
+        shiftKey: false,
+        target: speaker,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      } as unknown as MouseEvent,
+      { onSelectSegment, onRenameSpeaker },
+    );
+    expect(handled).toBe(true);
+    expect(onSelectSegment).toHaveBeenCalledWith(0, { toggle: false, shiftKey: false });
+    expect(onRenameSpeaker).toHaveBeenCalledWith("spk-a");
+  });
+
+  it("does not rename when clicking the meta gutter away from the speaker name", () => {
+    const segs = makeSegments(1).map((s) => ({ ...s, speaker_id: "spk-a" }));
+    let state = buildTranscriptEditorState(segs, {
+      extensions: transcriptEditorCoreExtensions({ withProjection: false }),
+    });
+    const onRenameSpeaker = vi.fn();
+    const view = {
+      get state() {
+        return state;
+      },
+      dispatch: (tr: TransactionSpec) => {
+        state = state.update(tr).state;
+      },
+    };
+    const marker = document.createElement("div");
+    marker.setAttribute(CM_SEGMENT_IDX_ATTR, "0");
+    handleTranscriptMetaGutterMousedown(
+      view,
+      state.doc.line(1).from,
+      {
+        button: 0,
+        metaKey: false,
+        ctrlKey: false,
+        shiftKey: false,
+        target: marker,
+        preventDefault: () => {},
+        stopPropagation: () => {},
+      } as unknown as MouseEvent,
+      { onRenameSpeaker },
+    );
+    expect(onRenameSpeaker).not.toHaveBeenCalled();
   });
 
   it("builds trailing stage chip from meta.stage + finalizeVia", () => {
