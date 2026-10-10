@@ -7,6 +7,34 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("stub"))).toBe(true);
   });
 
+  it("flags clamped speaker count with the cap", () => {
+    const h = deriveTranscribeHints(
+      "funasr+cam++",
+      ["speaker_count_clamped:from=20:to=10"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("说话人数已达上限 10"))).toBe(true);
+    expect(h.some((x) => x.includes("人工核对"))).toBe(true);
+  });
+
+  it("flags missing speaker centers", () => {
+    const h = deriveTranscribeHints(
+      "funasr+cam++",
+      ["speaker_center_missing_count:7"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("声纹特征"))).toBe(true);
+  });
+
+  it("stays quiet for normal small-cluster absorption", () => {
+    const h = deriveTranscribeHints(
+      "funasr+cam++",
+      ["speaker_small_clusters_absorbed:count=3:speech_sec=4.20"],
+      [{ text: "a" }],
+    );
+    expect(h).toEqual([]);
+  });
+
   it("flags hotword param unsupported", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotword_param_unsupported"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("热词参数"))).toBe(true);

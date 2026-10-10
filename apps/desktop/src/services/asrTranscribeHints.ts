@@ -87,6 +87,18 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   } else if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
     hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在「热词与记忆」减少条目或优先保留关键专名。");
   }
+  const clamped = warnings.find((w) => w.startsWith("speaker_count_clamped:"));
+  if (clamped) {
+    const cap = /:to=(\d+)/.exec(clamped)?.[1] ?? "";
+    hints.push(
+      `说话人数已达上限${cap ? ` ${cap}` : ""}，超出的聚类已并入最接近的说话人：本次说话人划分可能不准确，建议人工核对后再改名。`,
+    );
+  }
+  if (warnings.some((w) => w.includes("speaker_center_missing"))) {
+    hints.push(
+      "部分语段未取得声纹特征，说话人归属的可信度下降；可在文稿中手动改派这些语段。",
+    );
+  }
   const dominantRemoved = parseDominantSpanFilteredCount(warnings);
   if (dominantRemoved > 0) {
     hints.push(

@@ -97,6 +97,24 @@ pub(crate) async fn save_transcribe_segments(
         },
         _ => DiarizationSave::Disabled,
     };
+    if let Some(items) = diarization
+        .and_then(|value| value.get("warnings"))
+        .and_then(|value| value.as_array())
+    {
+        // Per-window "center missing" entries scale with audio length, so collapse them
+        // into one count instead of flooding the job warnings array.
+        let mut center_missing = 0usize;
+        for warning in items.iter().filter_map(|item| item.as_str()) {
+            if warning.starts_with("speaker_center_missing:") {
+                center_missing += 1;
+            } else {
+                warnings.push(warning.to_string());
+            }
+        }
+        if center_missing > 0 {
+            warnings.push(format!("speaker_center_missing_count:{center_missing}"));
+        }
+    }
     match file_save_segments_with_diarization_inner(
         st,
         file_id,
