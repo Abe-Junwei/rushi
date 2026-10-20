@@ -262,17 +262,19 @@ pub fn persist_probed_file_duration(st: &DbState, file_id: &str, audio_path: &Pa
     let _ = update_file_duration_sec(&conn, file_id, dur);
 }
 
+type FileDetailColumns = (
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<f64>,
+    Option<String>,
+    i64,
+    i64,
+);
+
 pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDetail, String> {
-    let (project_id, name, file_type, audio_path, duration_sec, diarization_run_id, c_ms, u_ms): (
-        String,
-        String,
-        String,
-        Option<String>,
-        Option<f64>,
-        Option<String>,
-        i64,
-        i64,
-    ) = conn
+    let (project_id, name, file_type, audio_path, duration_sec, diarization_run_id, c_ms, u_ms): FileDetailColumns = conn
         .query_row(
             "SELECT project_id, name, file_type, audio_path, duration_sec, diarization_run_id, created_at_ms, updated_at_ms \
              FROM files WHERE id = ?1",
