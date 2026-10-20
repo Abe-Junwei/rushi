@@ -1,4 +1,4 @@
-# Advisories we cannot clear without upstream bumps (Tauri GTK stack / docx-rs / calamine).
+# Advisories we cannot clear without upstream bumps (Tauri GTK stack / docx-rs / calamine / updater).
 [advisories]
 ignore = [
   # Historical ignore (gtk/glib proc-macros path).
@@ -6,4 +6,10 @@ ignore = [
   # quick-xml DoS: docx-rs pins 0.36; calamine/tauri-plist pin 0.39; patched >=0.41 not adoptable yet.
   "RUSTSEC-2026-0194",
   "RUSTSEC-2026-0195",
+  # zip extract/symlink advisories. Fixed only in zip >=9.
+  # docx-rs 0.4.22 requires zip ^8.6; tauri-plugin-updater 2.14 requires zip ^4 (Windows).
+  # No patched 4.x or 8.x release exists. Rushi does not call ZipArchive::extract.
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
 ]
