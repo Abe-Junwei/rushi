@@ -62,7 +62,7 @@ impl SharedClock {
     pub(crate) fn decrement_queued_samples(&self, n: u64) {
         let _ = self
             .queued_samples
-            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |cur| {
+            .try_update(Ordering::Relaxed, Ordering::Relaxed, |cur| {
                 Some(cur.saturating_sub(n))
             });
     }

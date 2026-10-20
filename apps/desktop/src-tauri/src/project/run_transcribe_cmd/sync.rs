@@ -107,6 +107,7 @@ pub fn record_transcribe_timeline_poll_failure(
     fail_and_persist_active_timeline(state.inner(), &job_id, &error_message)
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn project_run_transcribe_inner(
     st: DbState,
     cancel_state: &TranscribeCancelState,

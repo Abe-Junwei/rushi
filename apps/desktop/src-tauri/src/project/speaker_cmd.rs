@@ -32,7 +32,7 @@ pub(crate) fn file_create_speaker_inner(
     display_name: Option<String>,
 ) -> Result<FileSpeakerDto, String> {
     let mut conn = open_db(st)?;
-    let project_id = file_project_id(&conn, &file_id)?;
+    let project_id = file_project_id(&conn, file_id)?;
     let ordinal: i32 = conn
         .query_row(
             "SELECT COALESCE(MAX(ordinal), 0) + 1 FROM file_speakers WHERE file_id = ?1",
@@ -53,7 +53,7 @@ pub(crate) fn file_create_speaker_inner(
         params![&file_id, &speaker_id, ordinal, display_name.as_deref(), t],
     )
     .map_err(|e| e.to_string())?;
-    touch_file_and_project(&tx, &file_id, &project_id, t)?;
+    touch_file_and_project(&tx, file_id, &project_id, t)?;
     tx.commit().map_err(|e| e.to_string())?;
     Ok(FileSpeakerDto {
         speaker_id,
@@ -79,7 +79,7 @@ pub(crate) fn file_rename_speaker_inner(
     display_name: Option<String>,
 ) -> Result<(), String> {
     let mut conn = open_db(st)?;
-    let project_id = file_project_id(&conn, &file_id)?;
+    let project_id = file_project_id(&conn, file_id)?;
     let display_name = display_name
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty());
@@ -95,7 +95,7 @@ pub(crate) fn file_rename_speaker_inner(
     if updated == 0 {
         return Err("说话人不存在。".to_string());
     }
-    touch_file_and_project(&tx, &file_id, &project_id, t)?;
+    touch_file_and_project(&tx, file_id, &project_id, t)?;
     tx.commit().map_err(|e| e.to_string())
 }
 
@@ -127,7 +127,7 @@ pub(crate) fn file_reassign_segments_speaker_inner(
         .map(|v| v.trim().to_string())
         .filter(|v| !v.is_empty());
     let mut conn = open_db(st)?;
-    let project_id = file_project_id(&conn, &file_id)?;
+    let project_id = file_project_id(&conn, file_id)?;
     if let Some(id) = speaker_id.as_deref() {
         let exists: bool = conn
             .query_row(
@@ -154,7 +154,7 @@ pub(crate) fn file_reassign_segments_speaker_inner(
     if updated != segment_uids.len() {
         return Err("部分语段不存在，未保存说话人修改。".to_string());
     }
-    touch_file_and_project(&tx, &file_id, &project_id, t)?;
+    touch_file_and_project(&tx, file_id, &project_id, t)?;
     tx.commit().map_err(|e| e.to_string())
 }
 
