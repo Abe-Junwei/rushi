@@ -5,6 +5,7 @@ import {
   applyWaveSurferProgressWithoutClip,
   estimateWaveSurferCanvasCount,
   formatWaveSurferPlayedPercent,
+  readWaveSurferScrollableFlag,
   installWaveSurferTierScrollSync,
   installWaveSurferPlayedRegionDisplayFix,
   restoreWaveSurferMainCanvasVisibility,
@@ -17,6 +18,17 @@ import {
 afterEach(() => {
   setWaveSurferVisualProgressRatioReader(null);
   clearAllCspScopeRulesForTests();
+});
+
+describe("readWaveSurferScrollableFlag", () => {
+  it("reads a v7 boolean and a v8 signal value", () => {
+    expect(readWaveSurferScrollableFlag(true, 100, 100)).toBe(true);
+    expect(readWaveSurferScrollableFlag(false, 10_000, 100)).toBe(false);
+    expect(readWaveSurferScrollableFlag({ value: true }, 100, 800)).toBe(true);
+    expect(readWaveSurferScrollableFlag({ value: false }, 10_000, 100)).toBe(false);
+    expect(readWaveSurferScrollableFlag(undefined, 10_000, 800)).toBe(true);
+    expect(readWaveSurferScrollableFlag(undefined, 100, 800)).toBe(false);
+  });
 });
 
 describe("formatWaveSurferPlayedPercent", () => {

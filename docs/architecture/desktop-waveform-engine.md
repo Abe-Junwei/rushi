@@ -8,7 +8,7 @@
 
 编辑器 (React)
   useWaveformPeaks → PeakCache.fromLevelUrls
-  useProjectWaveform + WaveSurfer v7     ← 媒体宿主（play/seek/currentTime）；可见波形不再依赖 WS 全长 canvas
+  useProjectWaveform + WaveSurfer v8     ← 媒体宿主（play/seek/currentTime）；可见波形不再依赖 WS 全长 canvas
   WaveformViewportPeaksCanvas            ← 可见主波形（PeakCache @ drawPxPerSec，视口 + overscan）
   useWaveformZoomSync                    ← layout/draw px/s 驱动 Rushi canvas；WS 不再 load 全长 peaks（WS-2b）
   WaveformSegmentBandCanvas              ← packable 语段色带（timeline-native virtual Canvas window）
@@ -17,7 +17,7 @@
   EditorSegmentList                      ← 语段列表（CM6 TranscriptEditorCore；一行一段）
 ```
 
-> **WS-2b（spike v4 PASS · Plan 定稿）**：可见主波形 = PeakCache 驱动的视口窗口 canvas（Peaks **模型**，非迁移 Peaks.js）；WS = media transport（stub peaks、silence 内部 timer/progress、host 1×1）。生产化见 [`waveform-ws2b-viewport-render-plan.md`](../execution/specs/waveform-ws2b-viewport-render-plan.md)。调研：[`waveform-ws2b-viewport-render-research.md`](../execution/specs/waveform-ws2b-viewport-render-research.md)。
+> **WS-2b（spike v4 PASS · Plan 定稿）**：可见主波形 = PeakCache 驱动的视口窗口 canvas（Peaks **模型**，非迁移 Peaks.js）；WS = media transport（stub peaks、silence 内部播放时钟 / progress、host 1×1）。生产化见 [`waveform-ws2b-viewport-render-plan.md`](../execution/specs/waveform-ws2b-viewport-render-plan.md)。调研：[`waveform-ws2b-viewport-render-research.md`](../execution/specs/waveform-ws2b-viewport-render-research.md)。
 
 **已移除（2026-05）**：`WaveformPeaksTileLayer`、`WaveformProgressOverlay`、全局 overview 条（`WaveformOverviewStrip` / `WaveformGlobalStripShell`）、canvas draw 路径（`drawWaveformPeaksTile` / `tileGeometry` / `useWaveformTileLifecycle`）。
 
@@ -265,7 +265,7 @@
 - **WS `seeking` 事件**：播放态 **不**重同步 playhead（下一帧 rAF / media 轮询覆盖）；暂停态 **仍** `syncDisplayPlayheadAfterSeek` — 覆盖 peaks 热重载等 **WS-only `setTime`**（不经 Peaks 序），避免 band `playheadSecRef` 滞后。
 - **Pause / Chromium 回退**：停播取消 rAF；`lastTimeUiCommitRef` → `setCurrentTime` → `syncPausedTime`；`pausedImperativeSeekUntil`（~400ms）防止 stale React `currentTime` 覆盖 imperative seek。
 - **单 rAF 发布/订阅**：playing rAF / seek sync 经 [`schedulePlaybackViewportFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 同帧通知：滚动跟随（`PLAYHEAD_FRAME_PRIORITY_SCROLL=0`，已有 scroll epsilon 节流）→ playhead transform（`=1`）。[`useWaveformPlaybackScrollFollow`](../../apps/desktop/src/hooks/useWaveformPlaybackScrollFollow.ts)、[`WaveformViewportPlayhead`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) 订阅同一帧时间；[`useWaveformLiveClock`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts) 读 `getDisplayPlayheadTimeSec`。embedded ruler **不**订阅 playhead 重绘（WR-1）。
-- **高频几何写入（direct style）**：playhead transform、band / ruler `left/width/height`、ruler/minimap scroll transform 一律经 [`setDirectLayoutStyle`](../../apps/desktop/src/utils/cspElementLayout.ts)（`element.style.setProperty`，**CSP 合法**，零全文档 style recalc，与 WaveSurfer v7 同构）。`lastTransformRef` / `lastCssLeftRef` 去重。调研与 CSP probe 实测见 [`waveform-csp-dynamic-style-performance-research.md`](../execution/specs/waveform-csp-dynamic-style-performance-research.md)。
+- **高频几何写入（direct style）**：playhead transform、band / ruler `left/width/height`、ruler/minimap scroll transform 一律经 [`setDirectLayoutStyle`](../../apps/desktop/src/utils/cspElementLayout.ts)（`element.style.setProperty`，**CSP 合法**，零全文档 style recalc，与 WaveSurfer 同构）。`lastTransformRef` / `lastCssLeftRef` 去重。调研与 CSP probe 实测见 [`waveform-csp-dynamic-style-performance-research.md`](../execution/specs/waveform-csp-dynamic-style-performance-research.md)。
   - **边界**：`setCspLayoutRules`（nonce `<style>` 注册表）仅保留给**需要选择器 / 伪类 / 媒体查询**的动态样式（这类真 `<style>` 元素会被 `style-src-elem` 拦，须 nonce）；**禁止**用于每帧路径。`element.style` 仅允许在 `cspElementLayout.ts` 单点封装（架构守卫 allowlist），组件不散落 `.style.`；`style={{}}` / `setAttribute('style')` / `cssText` 仍全仓禁（`style-src-attr` 拦截）。
 - **已播放 / visited 显示边界**：时间轴已播放区由 [`WaveformViewportPeaksCanvas`](../../apps/desktop/src/components/WaveformViewportPeaksCanvas.tsx) wash + playhead 表示；未选中语段在 playhead 越过起点后用中性 `--segment-fill-visited`（弱于 selected）。选中 / 多选 / 低置信仍优先于 visited。
 - **已删除**：`waveformImperativePlayheadSync`（50ms）、`waveformSelectionSeekChrome`（1200ms seeking coalesce）— 双钟竞争补丁；选中后防播放跟随回拽仍用 `playbackFollowSuppressUntilRef`（与 playhead 时钟无关）。
