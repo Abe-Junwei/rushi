@@ -1,14 +1,27 @@
 import type WaveSurfer from "wavesurfer.js";
 
-type WaveSurferTimer = {
-  start: () => void;
+type WaveSurferPlaybackClock = {
+  start: (callback?: () => void) => void;
   stop: () => void;
 };
 
 type WaveSurferClockInternals = {
-  timer?: WaveSurferTimer;
+  /** v7 internal rAF owner. */
+  timer?: WaveSurferPlaybackClock;
+  /** v8 replacement for `timer` (`FrameScheduler`). */
+  frameScheduler?: WaveSurferPlaybackClock;
   updateProgress?: (timeSec?: number) => number;
 };
+
+function silencePlaybackClock(clock: WaveSurferPlaybackClock | undefined): void {
+  if (!clock) return;
+  try {
+    clock.stop();
+  } catch {
+    /* noop */
+  }
+  clock.start = () => {};
+}
 
 type WaveSurferRendererProgress = {
   renderProgress?: (ratio: number, isPlaying: boolean) => void;
@@ -17,7 +30,8 @@ type WaveSurferRendererProgress = {
 const silencedWaveSurfers = new WeakSet<object>();
 
 /**
- * Stop WaveSurfer's internal rAF timer and noop progress paints.
+ * Stop WaveSurfer's internal rAF clock and noop progress paints.
+ * v7 exposes `timer`; v8 moved that loop to `frameScheduler`.
  * Rushi polls media.currentTime on its own rAF
  * ({@link useWaveformVisualPlayheadClock}); dual clocks + renderProgress
  * capped playbackFrames near ~40 after media-only canvas collapse.
@@ -28,15 +42,8 @@ export function silenceWaveSurferRendererClock(ws: WaveSurfer): boolean {
   if (silencedWaveSurfers.has(ws)) return false;
   const internal = ws as unknown as WaveSurferClockInternals;
   try {
-    const timer = internal.timer;
-    if (timer) {
-      try {
-        timer.stop();
-      } catch {
-        /* noop */
-      }
-      timer.start = () => {};
-    }
+    silencePlaybackClock(internal.timer);
+    silencePlaybackClock(internal.frameScheduler);
     internal.updateProgress = (timeSec?: number) =>
       timeSec ?? (Number.isFinite(ws.getCurrentTime()) ? ws.getCurrentTime() : 0);
     const renderer = ws.getRenderer() as unknown as WaveSurferRendererProgress;

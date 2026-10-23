@@ -38,17 +38,31 @@ export type WaveSurferWaveformLayerNodes = {
   progressWrapper: HTMLElement;
 };
 
+type WaveSurferScrollableFlag = boolean | { value?: boolean };
+
 type WaveSurferRendererInternals = {
   renderProgress?: (ratio: number, isPlaying: boolean) => void;
   canvasWrapper?: HTMLElement;
   progressWrapper?: HTMLElement;
   cursor?: HTMLElement;
   scrollContainer?: HTMLElement;
-  isScrollable?: boolean;
+  /** v7 boolean; v8 `Signal<boolean>` with a `.value` getter. */
+  isScrollable?: WaveSurferScrollableFlag;
   options?: { cursorWidth?: number };
 };
 
-/** WS v7 emits `rendered`; older builds used `redrawcomplete`. */
+/** v8 stores scrollable state on a signal; a raw object must not count as true. */
+export function readWaveSurferScrollableFlag(
+  flag: WaveSurferScrollableFlag | undefined,
+  scrollW: number,
+  clientW: number,
+): boolean {
+  if (typeof flag === "boolean") return flag;
+  if (flag && typeof flag.value === "boolean") return flag.value;
+  return scrollW > clientW + 1;
+}
+
+/** v8 emits `redrawcomplete`; older builds also emitted `rendered`. */
 export function subscribeWaveSurferAfterRender(ws: WaveSurfer, handler: () => void): () => void {
   const unsubs: Array<() => void> = [];
   for (const event of ["rendered", "redrawcomplete"] as const) {
@@ -119,7 +133,7 @@ function readWaveSurferGeom(ws: WaveSurfer): WaveSurferGeom {
     scrollLeft: scroll?.scrollLeft ?? 0,
     drawnCanvases,
     expectedCanvases: neededCanvases(scrollW, clientW),
-    isScrollable: renderer.isScrollable ?? scrollW > clientW + 1,
+    isScrollable: readWaveSurferScrollableFlag(renderer.isScrollable, scrollW, clientW),
   };
 }
 

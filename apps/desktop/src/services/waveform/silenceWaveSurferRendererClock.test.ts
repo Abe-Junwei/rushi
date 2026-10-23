@@ -27,6 +27,25 @@ describe("silenceWaveSurferRendererClock", () => {
     expect(renderProgress).not.toHaveBeenCalled();
   });
 
+  it("stops the v8 frameScheduler and noops later start()", () => {
+    const stop = vi.fn();
+    const start = vi.fn();
+    const renderProgress = vi.fn();
+    const renderer = { renderProgress };
+    const ws = {
+      getCurrentTime: () => 4,
+      getRenderer: () => renderer,
+      frameScheduler: { start, stop },
+      updateProgress: vi.fn(() => 1),
+    };
+    expect(silenceWaveSurferRendererClock(ws as never)).toBe(true);
+    expect(stop).toHaveBeenCalledTimes(1);
+    ws.frameScheduler.start(() => {});
+    expect(start).not.toHaveBeenCalled();
+    renderer.renderProgress(0.2, true);
+    expect(renderProgress).not.toHaveBeenCalled();
+  });
+
   it("is idempotent per instance", () => {
     const stop = vi.fn();
     const ws = {
