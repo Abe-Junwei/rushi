@@ -20,6 +20,7 @@ VENV_PY=""
 ASR_BASE="${RUSHI_ASR_BASE:-http://127.0.0.1:8741}"
 ASR_PID=""
 STARTED_ASR=0
+export RUSHI_LOCAL_TOKEN="${RUSHI_LOCAL_TOKEN:-$(node -e 'process.stdout.write(require("crypto").randomBytes(32).toString("hex"))')}"
 
 resolve_venv_py() {
   # Unix .venv/bin/python or Windows .venv/Scripts/python.exe (Git Bash / MSYS).
@@ -72,11 +73,8 @@ process.exit(root && exp && root === exp ? 0 : 1);
 ' 2>/dev/null
 }
 
-health_local_token_required() {
-  curl -sf --max-time 2 "${ASR_BASE}/health" 2>/dev/null | node -e '
-let j; try { j = JSON.parse(require("fs").readFileSync(0, "utf8")); } catch { process.exit(1); }
-process.exit(j.local_token_required === true ? 0 : 1);
-' 2>/dev/null
+health_token_matches() {
+  curl --noproxy '*' -sf --max-time 2 -H "x-rushi-local-token: ${RUSHI_LOCAL_TOKEN}" "${ASR_BASE}/v1/auth/check" >/dev/null 2>&1
 }
 
 # curl -sf succeeds only when /health returns JSON quickly (detects hung listeners on :8741).
@@ -139,11 +137,11 @@ start_source_sidecar() {
 
 if asr_health_reachable; then
   if sidecar_looks_current; then
-    if health_models_root_matches && ! health_local_token_required; then
+    if health_models_root_matches && health_token_matches; then
       export_asr_model_env
       echo "==> Using existing ASR on 8741 (models: ${RUSHI_MODELS_ROOT})"
-    elif health_local_token_required; then
-      echo "==> 8741 ASR requires RUSHI_LOCAL_TOKEN (leftover bundled sidecar) — restarting source ASR without token…"
+    elif ! health_token_matches; then
+      echo "==> 8741 ASR token differs — restarting source ASR with this desktop session token…"
       stop_sidecar_on_8741
       start_source_sidecar
     else

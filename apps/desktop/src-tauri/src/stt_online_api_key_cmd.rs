@@ -1,8 +1,6 @@
 use super::postprocess_cmd::normalize_api_key_id;
 use super::postprocess_cmd::postprocess_api_key_cmd::secret_account_for_delete;
-use super::stt_online_secret_store::{
-    delete_stt_secret, read_stt_secret, stt_secret_exists, write_stt_secret,
-};
+use super::stt_online_secret_store::{delete_stt_secret, stt_secret_exists, write_stt_secret};
 use crate::DbState;
 use serde::Deserialize;
 use tauri::State;
@@ -26,13 +24,6 @@ pub struct SttDeleteApiKeyRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SttHasStoredApiKeyRequest {
-    #[serde(default, alias = "api_key_id")]
-    pub api_key_id: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SttReadApiKeyRequest {
     #[serde(default, alias = "api_key_id")]
     pub api_key_id: Option<String>,
 }
@@ -67,13 +58,4 @@ pub fn stt_delete_api_key(
 ) -> Result<(), String> {
     let api_key_id = secret_account_for_delete(req.api_key_id.as_deref());
     delete_stt_secret(&state.root, &api_key_id)
-}
-
-#[tauri::command]
-pub fn stt_read_api_key(
-    state: State<'_, DbState>,
-    req: SttReadApiKeyRequest,
-) -> Result<Option<String>, String> {
-    let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
-    read_stt_secret(&state.root, &api_key_id)
 }

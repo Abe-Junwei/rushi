@@ -24,17 +24,42 @@ pub struct LoopbackResponse {
     pub body: Value,
 }
 
-fn normalize_path(path: &str) -> Result<String, String> {
-    let p = path.trim();
-    if !p.starts_with('/') {
-        return Err("invalid_loopback_path".into());
+fn normalize_path(path: &str, method: &Method) -> Result<String, String> {
+    let (route, query) = path.split_once('?').unwrap_or((path, ""));
+    let allowed = match *method {
+        Method::GET => matches!(
+            route,
+            "/" | "/health"
+                | "/v1/models/catalog"
+                | "/v1/models/prepare-status"
+                | "/v1/transcribe/status"
+        ),
+        Method::POST => matches!(
+            route,
+            "/v1/models/prepare"
+                | "/v1/models/prepare-default"
+                | "/v1/models/prepare/async"
+                | "/v1/models/prepare-default/async"
+                | "/v1/models/prepare-cancel"
+                | "/v1/models/warmup"
+                | "/v1/models/unload"
+                | "/v1/models/speaker/prepare"
+                | "/v1/transcribe/cancel"
+        ),
+        _ => false,
+    };
+    if !allowed || path.contains('#') || path.contains('\\') {
+        return Err("loopback_path_not_allowed".into());
     }
-    for component in std::path::Path::new(p).components() {
-        if matches!(component, std::path::Component::ParentDir) {
-            return Err("invalid_loopback_path".into());
+    if route == "/v1/transcribe/status" {
+        let pairs: Vec<_> = url::form_urlencoded::parse(query.as_bytes()).collect();
+        if pairs.len() != 1 || pairs[0].0 != "job_id" || pairs[0].1.is_empty() {
+            return Err("loopback_query_not_allowed".into());
         }
+    } else if path.contains('?') {
+        return Err("loopback_query_not_allowed".into());
     }
-    Ok(p.to_string())
+    Ok(path.to_string())
 }
 
 /// rushi-asr binds `127.0.0.1` only (see `app::bind_addr`). Always connect via IPv4 loopback:
@@ -69,7 +94,6 @@ pub async fn loopback_request_json(
     port: Option<u16>,
     timeout_ms: Option<u64>,
 ) -> Result<LoopbackResponse, String> {
-    let path = normalize_path(&args.path)?;
     let method_s = args
         .method
         .as_deref()
@@ -81,6 +105,7 @@ pub async fn loopback_request_json(
     if method != Method::GET && method != Method::POST {
         return Err("loopback_method_not_allowed".into());
     }
+    let path = normalize_path(&args.path, &method)?;
     let port = match port {
         None => ASR_LOOPBACK_PORT,
         Some(p) if p == ASR_LOOPBACK_PORT => ASR_LOOPBACK_PORT,
@@ -89,6 +114,8 @@ pub async fn loopback_request_json(
     let host = loopback_connect_host();
     let url = format!("http://{host}:{port}{path}");
     let client = reqwest::Client::builder()
+        .no_proxy()
+        .redirect(reqwest::redirect::Policy::none())
         .timeout(loopback_timeout(timeout_ms))
         .build()
         .map_err(|e| e.to_string())?;
@@ -122,11 +149,25 @@ mod tests {
     use super::normalize_path;
 
     #[test]
-    fn normalize_path_rejects_traversal() {
-        assert!(normalize_path("/health").is_ok());
-        assert!(normalize_path("/v1/transcribe/status").is_ok());
-        assert!(normalize_path("../health").is_err());
-        assert!(normalize_path("/foo/../health").is_err());
+    fn proxy_allows_only_declared_method_route_and_query() {
+        use reqwest::Method;
+        assert!(normalize_path("/health", &Method::GET).is_ok());
+        assert!(normalize_path("/v1/models/unload", &Method::POST).is_ok());
+        assert!(normalize_path("/v1/transcribe/status?job_id=synthetic", &Method::GET).is_ok());
+        for path in [
+            "//evil.test",
+            "/foo/../health",
+            "/%68ealth",
+            "/health#x",
+            "/health?x=1",
+            "/openapi.json",
+            "/v1/transcribe/status",
+            "/v1/transcribe/status?job_id=a&job_id=b",
+        ] {
+            assert!(normalize_path(path, &Method::GET).is_err(), "{path}");
+        }
+        assert!(normalize_path("/health", &Method::POST).is_err());
+        assert!(normalize_path("/v1/models/unload", &Method::GET).is_err());
     }
 
     #[test]

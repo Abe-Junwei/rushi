@@ -15,7 +15,7 @@ from rushi_asr import ffmpeg_audio
 
 @pytest.fixture
 def client() -> TestClient:
-    return TestClient(create_app())
+    return TestClient(create_app(), headers={"x-rushi-local-token": "test-local-token"})
 
 
 @pytest.mark.skipif(not ffmpeg_audio.ffmpeg_available(), reason="ffmpeg not on PATH")

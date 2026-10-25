@@ -6,6 +6,11 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=scripts/resolve-asr-models-root.sh
 source "${ROOT}/scripts/resolve-asr-models-root.sh"
 
+if [[ -z "${RUSHI_LOCAL_TOKEN:-}" ]]; then
+  echo 'FAIL: set RUSHI_LOCAL_TOKEN in both ASR and desktop terminals, or use npm run desktop:dev (automatic session token).' >&2
+  exit 1
+fi
+export RUSHI_LOCAL_TOKEN
 ASR_DIR="${ROOT}/services/asr"
 ASR_BASE="${RUSHI_ASR_BASE:-http://127.0.0.1:8741}"
 
@@ -81,6 +86,7 @@ except Exception:
 }
 
 sidecar_matches_want_env() {
+  curl --noproxy '*' -sf --max-time 2 -H "x-rushi-local-token: ${RUSHI_LOCAL_TOKEN}" "${ASR_BASE}/v1/auth/check" >/dev/null 2>&1 || return 1
   local snap want_model active_model
   snap="$(health_sidecar_snapshot)"
   [[ -n "${snap}" ]] || return 1

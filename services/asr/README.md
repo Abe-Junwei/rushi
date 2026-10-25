@@ -47,7 +47,7 @@ python -m rushi_asr
 
 - `ASR_HOST`（默认 `127.0.0.1`）
 - `ASR_PORT`（默认 `8741`）
-- `RUSHI_LOCAL_TOKEN`（可选；设置后对写接口启用本地 token 校验，请在请求头带 `x-rushi-local-token`）。**桌面壳自动拉起 bundled 侧车时会生成随机 token 并注入子进程**；手动 `npm run asr:dev` 默认**不**设置该变量。若 8741 上残留带 token 的内置侧车而桌面已重启，转写会返回 `401 invalid_local_token`——`npm run desktop:dev` 会自动重启无 token 的源码侧车；安装包路径会尝试结束旧进程并重新拉起内置侧车。
+- `RUSHI_LOCAL_TOKEN`（写接口必需；请求头 `x-rushi-local-token`）。未配置时写接口返回 **503 local_token_not_configured**，缺失/错误请求头返回 **401 invalid_local_token**。Bundled 启动与 `npm run desktop:dev` 自动生成并传递会话 token。单独运行 `npm run asr:dev` 时，须在 ASR 与桌面终端显式设置相同的随机 token；不要将 token 写入日志或提交到仓库。`GET /v1/auth/check` 可校验共享 token（成功只返回 authenticated=true）。
 
 ## 依赖
 
@@ -83,11 +83,16 @@ python -m rushi_asr
 - `GET /v1/transcribe/status` — 查询 Job 状态（`phase`、`segments_delta`、`window_index`、`window_count` 等）；**无需** local token。
 - `POST /v1/transcribe/cancel` — 取消 Job；Body `{ "job_id": "..." }`。
 
-若设置了 `RUSHI_LOCAL_TOKEN`，以下写接口都需要请求头 `x-rushi-local-token: <token>`，否则返回 **401**：
+以下写接口都必须配置 `RUSHI_LOCAL_TOKEN` 并携带请求头 `x-rushi-local-token: <token>`；未配置返回 **503**，请求头缺失或错误返回 **401**：
 
 - `POST /v1/transcribe`
 - `POST /v1/transcribe/async`
 - `POST /v1/transcribe/cancel`
+- `POST /v1/models/prepare`
+- `POST /v1/models/prepare/async`
+- `POST /v1/models/prepare-cancel`
+- `POST /v1/models/warmup`
+- `POST /v1/models/unload`
 - `POST /v1/models/prepare-default`
 - `POST /v1/models/prepare-default/async`
 - `POST /v1/models/speaker/prepare`
@@ -103,3 +108,7 @@ pytest
 ## P0 验收
 
 见仓库根 [`docs/execution/p0-acceptance.md`](../../docs/execution/p0-acceptance.md) 与脚本 `scripts/p0-acceptance.sh`、`scripts/generate-p0-chinese-samples-macos.sh`。
+
+### 模型可执行代码
+
+默认模型以 `trust_remote_code=False` 加载。Nano 的手动同步脚本使用 `funasr_nano_code_manifest.json` 中固定的 Git 提交及 SHA256；校验不匹配或存在额外 Python 文件时拒绝执行。清单记录来源完整性，不代替上游代码审查。更新清单须重新评估来源并验证 Nano；默认 Paraformer 不依赖此下载。

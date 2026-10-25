@@ -1,4 +1,4 @@
-//! Optional loopback token for rushi-asr mutating endpoints (`RUSHI_LOCAL_TOKEN`).
+//! Required loopback token for rushi-asr mutating endpoints (`RUSHI_LOCAL_TOKEN`).
 
 use reqwest::RequestBuilder;
 use std::sync::{Mutex, OnceLock};
@@ -12,7 +12,7 @@ fn managed_token_store() -> &'static Mutex<Option<String>> {
     MANAGED_TOKEN.get_or_init(|| Mutex::new(None))
 }
 
-/// Generate a sidecar-local token (desktop-managed bundled child only).
+/// Generate a sidecar-local token (desktop-managed sidecar child).
 pub fn generate_local_token() -> String {
     format!("rushi-{}", Uuid::new_v4())
 }

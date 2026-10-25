@@ -1,69 +1,76 @@
-"""Sync Fun-ASR repo remote_code (model.py + ctc.py + tools/) into Nano weight directory."""
-
+"""Fetch and verify the pinned Fun-ASR Nano Python code bundle."""
 from __future__ import annotations
 
+import hashlib
+import importlib.util
+import sys
 import json
-import logging
-import shutil
 import urllib.request
 from pathlib import Path
 
-log = logging.getLogger(__name__)
-
-_FUN_ASR_RAW = "https://raw.githubusercontent.com/FunAudioLLM/Fun-ASR/main"
-_GITHUB_API = "https://api.github.com/repos/FunAudioLLM/Fun-ASR/contents"
-_REMOTE_FILES = ("model.py", "ctc.py", "__init__.py")
-_REMOTE_DIRS = ("tools",)
+_MANIFEST = json.loads(Path(__file__).with_name("funasr_nano_code_manifest.json").read_text())
+_REVISION = _MANIFEST["revision"]
+_FILES: dict[str, str] = _MANIFEST["files"]
+_BASE = f"https://raw.githubusercontent.com/FunAudioLLM/Fun-ASR/{_REVISION}"
 
 
 def funasr_nano_remote_code_ready(model_dir: Path) -> bool:
-    if not model_dir.is_dir():
+    """Existence alone must never authorize executable model code."""
+    try:
+        return all(
+            not (model_dir / name).is_symlink()
+            and hashlib.sha256((model_dir / name).read_bytes()).hexdigest() == digest
+            for name, digest in _FILES.items()
+        ) and set(p.relative_to(model_dir).as_posix() for p in (model_dir / "tools").rglob("*.py")) == {
+            name for name in _FILES if name.startswith("tools/")
+        }
+    except OSError:
         return False
-    if not (model_dir / "model.py").is_file():
-        return False
-    if not (model_dir / "ctc.py").is_file():
-        return False
-    return (model_dir / "tools").is_dir()
 
 
-def _fetch_bytes(url: str) -> bytes:
-    with urllib.request.urlopen(url, timeout=120) as resp:
-        return resp.read()
-
-
-def _fetch_raw(path: str) -> bytes:
-    return _fetch_bytes(f"{_FUN_ASR_RAW}/{path}")
-
-
-def _sync_tree(rel_dir: str, dest_root: Path) -> None:
-    listing = json.loads(_fetch_bytes(f"{_GITHUB_API}/{rel_dir}"))
-    out_dir = dest_root / rel_dir
-    out_dir.mkdir(parents=True, exist_ok=True)
-    for item in listing:
-        name = item["name"]
-        item_type = item["type"]
-        rel_path = f"{rel_dir}/{name}"
-        if item_type == "file":
-            (out_dir / name).write_bytes(_fetch_raw(rel_path))
-        elif item_type == "dir":
-            _sync_tree(rel_path, dest_root)
+def load_funasr_nano_remote_code(model_dir: Path) -> None:
+    """Import verified Python only; never enable FunASR's automatic pip/remote-code hook."""
+    if not funasr_nano_remote_code_ready(model_dir):
+        raise RuntimeError("funasr_nano_remote_code_unverified")
+    name = f"rushi_funasr_nano_{_REVISION}"
+    if name in sys.modules:
+        return
+    spec = importlib.util.spec_from_file_location(name, model_dir / "model.py")
+    if spec is None or spec.loader is None:
+        raise RuntimeError("funasr_nano_code_import_failed")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    sys.path.insert(0, str(model_dir))
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        sys.modules.pop(name, None)
+        raise
+    finally:
+        sys.path.remove(str(model_dir))
 
 
 def sync_funasr_nano_remote_code(model_dir: Path, *, force: bool = False) -> Path:
-    """Download Fun-ASR remote_code bundle beside cached Nano weights."""
-    model_dir.mkdir(parents=True, exist_ok=True)
+    """Validate all downloads before replacing any executable files."""
     if not force and funasr_nano_remote_code_ready(model_dir):
         return model_dir / "model.py"
-
-    log.info("syncing Fun-ASR remote_code into %s", model_dir)
-    for name in _REMOTE_FILES:
-        (model_dir / name).write_bytes(_fetch_raw(name))
-
-    if (model_dir / "tools").exists():
-        shutil.rmtree(model_dir / "tools")
-    for rel_dir in _REMOTE_DIRS:
-        _sync_tree(rel_dir, model_dir)
-
+    payloads = {}
+    for name, digest in _FILES.items():
+        with urllib.request.urlopen(f"{_BASE}/{name}", timeout=120) as response:
+            content = response.read()
+        if hashlib.sha256(content).hexdigest() != digest:
+            raise RuntimeError(f"funasr_nano_code_sha256_mismatch:{name}")
+        payloads[name] = content
+    # Refuse an old or augmented tools tree rather than executing unlisted Python files.
+    for path in (model_dir / "tools").rglob("*.py"):
+        if path.relative_to(model_dir).as_posix() not in _FILES:
+            raise RuntimeError("funasr_nano_code_unlisted_file")
+    for name, content in payloads.items():
+        dest = model_dir / name
+        if dest.is_symlink() or any(p.is_symlink() for p in dest.parents if p != model_dir.parent):
+            raise RuntimeError("funasr_nano_code_symlink")
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        dest.write_bytes(content)
     if not funasr_nano_remote_code_ready(model_dir):
         raise RuntimeError("funasr_nano_remote_code_incomplete")
     return model_dir / "model.py"

@@ -59,7 +59,7 @@ export function isSttOnlineRuntimeConnectionVerified(): boolean {
 
 /**
  * 编辑器「在线」选项与自动转录门控：密钥引用 + 配置完整 + 连接已验证。
- * 实际转写前须 `ensureSttOnlineApiKeyForSession()` / `ensureSttOnlineApiSecretForSession()` 将密钥注入内存以构建载荷。
+ * 已保存密钥只传引用，由 Rust 在实际转写前解析。
  */
 export function isOnlineTranscribeReady(): boolean {
   if (!hasSttOnlineApiKeyReference()) return false;
@@ -74,10 +74,10 @@ export function isOnlineTranscribeReady(): boolean {
 export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgePayload | null {
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
   const key = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!key) return null;
+  if (!key && !c.apiKeyId) return null;
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (!def) return null;
-  if (def.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim()) return null;
+  if (def.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim() && !c.apiSecretId) return null;
   const timeoutSec = Math.min(600, Math.max(30, Math.round(c.timeoutMs / 1000)));
   const authorization =
     def.requiresApiSecret || c.selectedProviderId === "iflytek-speed-asr"
@@ -104,11 +104,11 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
         : c.accent?.trim();
     return {
       transcribeUrl,
-      authorization,
+      ...(c.apiKeyId ? { apiKeyId: c.apiKeyId } : { authorization }),
       timeoutSec,
       nativeAdapter: shellAdapter,
       ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
-      ...(apiSecretTrim ? { apiSecret: apiSecretTrim } : {}),
+      ...(c.apiSecretId ? { apiSecretId: c.apiSecretId } : apiSecretTrim ? { apiSecret: apiSecretTrim } : {}),
       ...(accentValue ? { accent: accentValue } : {}),
     };
   }
@@ -118,7 +118,7 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
   const appKeyTrim = c.appKey?.trim();
   return {
     transcribeUrl,
-    authorization,
+    ...(c.apiKeyId ? { apiKeyId: c.apiKeyId } : { authorization }),
     timeoutSec,
     ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
   };

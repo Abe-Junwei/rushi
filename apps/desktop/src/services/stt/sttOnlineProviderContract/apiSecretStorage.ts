@@ -1,6 +1,6 @@
 import { STT_ONLINE_PROVIDER_STORAGE_KEYS } from "./constants";
 import { getSttOnlineProviderDefinition } from "./definitions";
-import { getSttOnlineApiSecretFromMemory, setSttOnlineApiSecretInMemory } from "./memorySecrets";
+import { getSttOnlineApiSecretFromMemory } from "./memorySecrets";
 import { readExternalSttOnlineRuntimeConfigFromStorage } from "./runtimeConfig";
 import { readStorage, writeStorage } from "./storage";
 import {
@@ -8,7 +8,7 @@ import {
   normalizeSttApiKeyId,
   resolveSttApiSecretIdForProvider,
 } from "./sttApiKeyIds";
-import { sttReadApiKey } from "../../../tauri/sttApi";
+import { sttHasStoredApiKey } from "../../../tauri/sttApi";
 
 let ensureSttOnlineApiSecretInflight: Promise<boolean> | null = null;
 
@@ -56,7 +56,7 @@ export function hasSttOnlineApiSecretReference(): boolean {
   return Boolean(getSttOnlineApiSecretFromMemory()?.trim() || readSttOnlineApiSecretIdFromStorage());
 }
 
-/** 从本地受保护存储读回 APISecret 并注入会话内存（供探测 / 转写使用）。 */
+/** 仅检查 APISecret 引用；不向渲染层读回已保存秘密。 */
 export async function ensureSttOnlineApiSecretForSession(): Promise<boolean> {
   const providerId = readExternalSttOnlineRuntimeConfigFromStorage().selectedProviderId;
   if (!resolveSttApiSecretIdForProvider(providerId)) return true;
@@ -68,10 +68,7 @@ export async function ensureSttOnlineApiSecretForSession(): Promise<boolean> {
     const apiSecretId = readSttOnlineApiSecretIdFromStorage();
     if (!apiSecretId) return false;
     try {
-      const secret = await sttReadApiKey({ apiKeyId: apiSecretId ?? IFLYTEK_STT_API_SECRET_ID });
-      if (!secret?.trim()) return false;
-      setSttOnlineApiSecretInMemory(secret);
-      return true;
+      return await sttHasStoredApiKey({ apiKeyId: apiSecretId ?? IFLYTEK_STT_API_SECRET_ID });
     } catch {
       return false;
     }

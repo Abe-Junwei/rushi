@@ -45,7 +45,7 @@ def test_prepare_cancel_raises_in_progress_callback() -> None:
 
 def test_prepare_cancel_endpoint() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/prepare-cancel")
     assert res.status_code == 200
     assert res.json().get("cancelled") is False
@@ -53,7 +53,7 @@ def test_prepare_cancel_endpoint() -> None:
 
 def test_warmup_endpoint_when_models_not_ready() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/warmup")
     if res.status_code == 503:
         assert res.json().get("detail") in (
@@ -68,7 +68,7 @@ def test_warmup_endpoint_when_models_not_ready() -> None:
 
 def test_root_documents_warmup() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.get("/")
     assert res.status_code == 200
     assert "warmup" in str(res.json().get("warmup_model", ""))
@@ -76,7 +76,7 @@ def test_root_documents_warmup() -> None:
 
 def test_root_documents_prepare_cancel() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.get("/")
     assert res.status_code == 200
     body = res.json()
@@ -85,7 +85,7 @@ def test_root_documents_prepare_cancel() -> None:
 
 def test_prepare_status_idle() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.get("/v1/models/prepare-status")
     assert res.status_code == 200
     body = res.json()
@@ -104,7 +104,7 @@ def test_prepare_default_without_funasr_returns_503() -> None:
     """Blocking prepare returns 503 when FunASR is not installed."""
     _skip_if_funasr_installed()
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/prepare-default")
     assert res.status_code == 503
     assert res.json().get("detail") == "funasr_not_installed"
@@ -114,7 +114,7 @@ def test_prepare_async_without_funasr_returns_503() -> None:
     """Async prepare returns 503 when FunASR is not installed."""
     _skip_if_funasr_installed()
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res2 = client.post("/v1/models/prepare-default/async")
     assert res2.status_code == 503
     res3 = client.post(
@@ -128,7 +128,7 @@ def test_prepare_async_without_funasr_returns_503() -> None:
 
 def test_models_catalog_endpoint() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.get("/v1/models/catalog")
     assert res.status_code == 200
     body = res.json()

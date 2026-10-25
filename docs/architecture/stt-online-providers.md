@@ -35,7 +35,7 @@
 
 1. **是否必须流式**：P1 当前是「整段音频 → 语段列表」的 **离线拉取**，首版在线 Provider 以 **异步/批量 REST** 即可对齐现有 UX。  
 2. **输出形态**：能否稳定给出 **带起止时间的分句**（或至少词级时间戳便于后处理）；与现有 `TranscriptionSegment` / `schema_version: "1"` 对齐成本。  
-3. **合规与密钥**：API Key **不得**写入 `localStorage` 明文；桌面端经 Tauri 写入 **OS 密钥库 / AppData 受保护文件**（`secrets/stt-online/`），前端 `localStorage` 仅保留 `apiKeyId` 引用，运行时按需读回会话内存。  
+3. **合规与密钥**：API Key **不得**写入 `localStorage` 明文；桌面端经 Tauri 写入 **OS 密钥库 / AppData 受保护文件**（`secrets/stt-online/`），前端 `localStorage` 仅保留 `apiKeyId` 引用，探测与转写仅传 `apiKeyId` / `apiSecretId`，由 Rust 在原生存储中解析，不向前端读回已保存秘密。
 4. **网络与 CORS**：浏览器直连第三方常受 CORS 限制；**推荐**由 **Tauri 命令** 或 **本机 ASR 反向代理** 转发请求（与当前 `project_run_transcribe` 走 Rust `reqwest` 的思路一致）。
 
 ## 2. 复用解语的设计要点（映射到 Rushi）
@@ -61,7 +61,7 @@ Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`Transcripti
 - 选择 **OpenAI** 或 **AssemblyAI**：Rust 内建 **厂商原生 HTTP**（OpenAI `audio/transcriptions` + `verbose_json`；AssemblyAI v2 `upload` + `transcript` 轮询），再归一为 **`TranscriptionResult`（schema_version 1）**；URL 可留空以使用默认 `api.openai.com` / `api.assemblyai.com`。**术语表**（ACC-STT-UNIFY + ASR-VOC-3）：全局 `glossary_terms`（按 `updated_at_ms` 降序拼入）→ `SttVocabularyPlan` → OpenAI `prompt`（≤224 字）/ AssemblyAI `keyterms_prompt`（≤100 条）/ Deepgram `keywords`（≤50）；超长见 `online_vocabulary_truncated_*` warnings 与 `deriveTranscribeHints` 分型文案。
 - 选择 **Deepgram**：壳直连 + **术语表** 映射为 URL `keywords`（ACC-STT-UNIFY）。
 - 选择 **百炼 Fun-ASR（`dashscope-asr`）**：`fun-asr` **录音文件异步 Job**（临时 OSS 上传 → `file_urls` → 轮询 `tasks` → 解析 `sentences[]`）+ 术语库 → 百炼 `speech-biasing` 热词表（`vocabulary_id`，`target_model=fun-asr`）；见 ACC-STT-ALI。engine 标记为 `dashscope:fun-asr:file`。单文件上限与 AssemblyAI 同类（512MB 读入 guard）；轮询超时沿用在线转写 timeout（30–600s）。
-- 选择 **讯飞极速录音转写（`iflytek-speed-asr`）**：讯飞开放平台 **录音文件转写极速版**（speedTranscription / OST API），走 Tauri 壳内直连 `xunfeiSpeedAsr`。凭证为三件套 AppID + APIKey + APISecret；APISecret 仅会话内存、不落库。音频经 bundled ffmpeg 归一到 16 kHz mono s16le WAV，小文件直传 `upload-ost-api.xfyun.cn`，≥30 MB 走 `mpupload/*` 分块；创建 `pro_create` 任务后轮询 `query`，解析 `lattice[]` 为 `TranscriptionResult`。`business.accent` 支持 8 项预设（默认 `mandarin`），术语库 → `business.dhw` 逗号分隔热词，超长触发 `online_vocabulary_truncated_xunfei_speed_asr_hotword`。engine 标记为 `iflytek:speed-transcription:file`；失败仅报错，不回落本机 ASR。见 ACC-STT-IFLYTEK。
+- 选择 **讯飞极速录音转写（`iflytek-speed-asr`）**：讯飞开放平台 **录音文件转写极速版**（speedTranscription / OST API），走 Tauri 壳内直连 `xunfeiSpeedAsr`。凭证为三件套 AppID + APIKey + APISecret；APIKey 与 APISecret 保存至本机受保护存储；前端仅持引用，Rust 在探测/转写时解析。音频经 bundled ffmpeg 归一到 16 kHz mono s16le WAV，小文件直传 `upload-ost-api.xfyun.cn`，≥30 MB 走 `mpupload/*` 分块；创建 `pro_create` 任务后轮询 `query`，解析 `lattice[]` 为 `TranscriptionResult`。`business.accent` 支持 8 项预设（默认 `mandarin`），术语库 → `business.dhw` 逗号分隔热词，超长触发 `online_vocabulary_truncated_xunfei_speed_asr_hotword`。engine 标记为 `iflytek:speed-transcription:file`；失败仅报错，不回落本机 ASR。见 ACC-STT-IFLYTEK。
 - 上述 native adapter：`dashscopeAsr`（含热词）、`deepgramListen`（含热词）、`xunfeiSpeedAsr`（含热词与口音）。**内置厂商转写 URL 已预置**；仅「自定义代理」需用户填写 POST URL。
 - **自定义代理**：须配置 **与本机 rushi-asr 兼容的** `POST` 完整 URL（`multipart`：`file` + 可选 `hotwords`）；响应须已为 Rushi JSON 契约。若配置了持久化 **AppKey**，Tauri 会额外附带请求头 **`X-Rushi-Stt-App-Key`**，供网关读取后与厂商 API 组合。
 
@@ -89,3 +89,7 @@ Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`Transcripti
 ---
 
 维护：若实现策略从「浏览器直连」改为「仅 Tauri」，请同步更新本文 §1 合规与 §3 接线说明。
+
+### 2026-10-25 安全边界修复
+
+`stt_read_api_key` 已从命令、handler、ACL 与前端 API 移除。原生探测接收凭证引用，原生转写在统一入口解析引用；用户新输入的凭证仍可通过保存命令写入原有存储。存在性查询不返回秘密。自定义代理的出站配置权限仍存在，本轮没有建立独立于渲染层的 Provider 配置授权机制。验收见 [security-boundary-acceptance.md](../execution/specs/security-boundary-acceptance.md)。

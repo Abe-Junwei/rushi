@@ -1,0 +1,17 @@
+{
+  "revision": "c0a20e2bb698bbad11d143bdccd6c0760e9d6e5b",
+  "files": {
+    "__init__.py": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "ctc.py": "67d65f49fcd1a9e573976b03eb0175010c48e3473019ec9374c59d740cc0c5d7",
+    "model.py": "223e24104889df1bd5d7f85fa7584233ad31936ea43b0c57afde37a3d9c90da5",
+    "tools/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "tools/cn_tn.py": "b3b8c931dcf22e05e920a66e00fcf3bde25f4261b30d04e1096d6f2f9ee7f593",
+    "tools/compute_ja_cer.py": "f0a78ac189090be642ceaeca9271e765b8a20f7b16bf7819f87c0ba02a48f9ea",
+    "tools/format5res.py": "86c55b06e3ad9980394ce1e603bb95c83494e6fd5c3397e80e195813857463bb",
+    "tools/scp2jsonl.py": "1d038203aea623046fb98cf1dedf0295cf4309af87dbfeee68f0b9bd313c5711",
+    "tools/sdr_eval_demo/score_sdr.py": "3384a2eb414a6342d774ef9eb9bec3225ede1dd719a41e16eac76ec4e482b980",
+    "tools/sdr_eval_demo/split_chunks_by_dur_sdr.py": "389ff208961141dccce9e74f0aa31e7848146252a94bd30048da16511cc01958",
+    "tools/utils.py": "c8d22d62f5cb8bd967552de0129696e1576eeba578c286dfb895a5db290fc08b",
+    "tools/whisper_mix_normalize.py": "db5ede24ab73fe4c67940907a7ee652f96c09918c2f4e6a15a59b8d64415d8aa"
+  }
+}

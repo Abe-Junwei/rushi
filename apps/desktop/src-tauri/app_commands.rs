@@ -116,7 +116,6 @@ pub const APP_COMMANDS: &[&str] = &[
     "stt_save_api_key",
     "stt_delete_api_key",
     "stt_has_stored_api_key",
-    "stt_read_api_key",
     "postprocess_auto_punctuate",
     "postprocess_refine_segments",
     "postprocess_stage_b_proofread",

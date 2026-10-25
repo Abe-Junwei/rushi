@@ -203,6 +203,9 @@ pub fn stt_secret_exists(app_data_root: &Path, api_key_id: &str) -> Result<bool,
 }
 
 pub fn read_stt_secret(app_data_root: &Path, api_key_id: &str) -> Result<Option<String>, String> {
+    if crate::postprocess_cmd::normalize_api_key_id(Some(api_key_id)) != api_key_id {
+        return Err("invalid_stt_secret_id".into());
+    }
     if let Some(key) = read_file_secret(app_data_root, api_key_id)? {
         return Ok(Some(key));
     }

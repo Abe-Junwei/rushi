@@ -261,6 +261,7 @@ def test_get_model_reloads_when_resolved_device_changes(monkeypatch) -> None:
 
     class FakeAutoModel:
         def __init__(self, **kwargs: object) -> None:
+            assert kwargs["trust_remote_code"] is False
             loads.append(str(kwargs.get("device")))
 
     monkeypatch.setattr(

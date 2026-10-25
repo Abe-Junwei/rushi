@@ -5,6 +5,8 @@ export type SttOnlineProbeRequest = {
   url: string;
   headers: Record<string, string>;
   timeoutMs: number;
+  apiKeyId?: string;
+  authStyle?: "raw" | "token" | "bearer";
 };
 
 export type SttApiKeyRequest = {
@@ -22,6 +24,8 @@ export type SttXunfeiCredentialProbeRequest = {
   appId: string;
   apiKey: string;
   apiSecret: string;
+  apiKeyId?: string;
+  apiSecretId?: string;
   timeoutMs: number;
 };
 
@@ -41,8 +45,4 @@ export async function sttDeleteApiKey(req: { apiKeyId?: string }): Promise<void>
 
 export async function sttHasStoredApiKey(req: { apiKeyId?: string }): Promise<boolean> {
   return await invoke<boolean>("stt_has_stored_api_key", { req });
-}
-
-export async function sttReadApiKey(req: { apiKeyId?: string }): Promise<string | null> {
-  return await invoke<string | null>("stt_read_api_key", { req });
 }

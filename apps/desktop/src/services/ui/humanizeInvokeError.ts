@@ -4,7 +4,6 @@ const TAURI_COMMAND_DENIED =
 const COMMAND_DENIED_HINTS: Record<string, string> = {
   stt_save_api_key: "无法保存在线 STT 密钥：应用权限未配置，请更新后重试。",
   stt_delete_api_key: "无法清除在线 STT 密钥：应用权限未配置，请更新后重试。",
-  stt_read_api_key: "无法读取在线 STT 密钥：应用权限未配置，请更新后重试。",
   stt_has_stored_api_key: "无法检查在线 STT 密钥：应用权限未配置，请更新后重试。",
   llm_save_api_key: "无法保存 LLM 密钥：应用权限未配置，请更新后重试。",
   llm_delete_api_key: "无法清除 LLM 密钥：应用权限未配置，请更新后重试。",

@@ -68,7 +68,7 @@ def test_health_ok() -> None:
     assert "funasr_spk_model_cached" in body
     assert "funasr_spk_model_loaded" in body
     assert "funasr_spk_model_id" in body
-    assert body.get("local_token_required") is False
+    assert body.get("local_token_required") is True
 
 
 def test_frozen_runtime_probe_uses_metadata_without_import(
@@ -132,3 +132,19 @@ def test_optional_local_token_allows_when_header_matches(monkeypatch) -> None:
     )
     # With valid token, request should pass token gate and enter normal endpoint path.
     assert prep.status_code != 401
+
+
+def test_unconfigured_token_rejects_write_before_side_effect(monkeypatch) -> None:
+    monkeypatch.delenv("RUSHI_LOCAL_TOKEN", raising=False)
+    client = TestClient(create_app())
+    response = client.post("/v1/models/unload")
+    assert response.status_code == 503
+    assert response.json()["detail"] == "local_token_not_configured"
+    assert client.get("/health").status_code == 200
+
+
+def test_auth_check_verifies_shared_development_token(monkeypatch) -> None:
+    monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "synthetic-session")
+    client = TestClient(create_app())
+    assert client.get("/v1/auth/check").status_code == 401
+    assert client.get("/v1/auth/check", headers={"x-rushi-local-token": "synthetic-session"}).json() == {"authenticated": True}

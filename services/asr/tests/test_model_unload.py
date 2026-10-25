@@ -23,7 +23,7 @@ def test_unload_endpoint_noop_when_not_loaded(monkeypatch: pytest.MonkeyPatch) -
     monkeypatch.setattr("rushi_asr.funasr_engine.invalidate_funasr_model_cache", fake_invalidate)
 
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/unload")
     assert res.status_code == 200
     body = res.json()
@@ -50,7 +50,7 @@ def test_unload_after_warmup_clears_loaded_id(monkeypatch: pytest.MonkeyPatch) -
     )
 
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/unload")
     assert res.status_code == 200
     assert loaded["id"] is None
@@ -70,7 +70,7 @@ def test_unload_is_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     for _ in range(2):
         res = client.post("/v1/models/unload")
         assert res.status_code == 200
@@ -86,7 +86,7 @@ def test_unload_rejects_when_transcribe_busy(monkeypatch: pytest.MonkeyPatch) ->
     )
 
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.post("/v1/models/unload")
     assert res.status_code == 409
     assert res.json().get("detail") == "model_unload_transcribe_busy"
@@ -95,7 +95,7 @@ def test_unload_rejects_when_transcribe_busy(monkeypatch: pytest.MonkeyPatch) ->
 
 def test_root_documents_unload() -> None:
     app = create_app()
-    client = TestClient(app)
+    client = TestClient(app, headers={"x-rushi-local-token": "test-local-token"})
     res = client.get("/")
     assert res.status_code == 200
     assert "unload" in str(res.json().get("unload_model", ""))

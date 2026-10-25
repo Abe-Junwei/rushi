@@ -99,7 +99,7 @@ fn try_start_bundled_inner(handle: &AppHandle) {
                 if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
                     eprintln!(
                         "[rushi-asr-sidecar] 8741 requires x-rushi-local-token but this desktop session has none. \
-                         Stop the ASR on 8741 (lsof -i :8741) and restart without RUSHI_LOCAL_TOKEN, \
+                         Restart npm run desktop:dev to start ASR with a fresh session token, \
                          or export the same RUSHI_LOCAL_TOKEN before npm run desktop:dev."
                     );
                     append_sidecar_log_line(handle, "WARN bundled_sidecar_token_mismatch_dev");

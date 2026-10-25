@@ -1,8 +1,8 @@
 import { STT_ONLINE_PROVIDER_STORAGE_KEYS } from "./constants";
-import { getSttOnlineApiKeyFromMemory, setSttOnlineApiKeyInMemory } from "./memorySecrets";
+import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
 import { readStorage, writeStorage } from "./storage";
 import { DEFAULT_STT_API_KEY_ID, normalizeSttApiKeyId } from "./sttApiKeyIds";
-import { sttReadApiKey } from "../../../tauri/sttApi";
+import { sttHasStoredApiKey } from "../../../tauri/sttApi";
 
 let ensureSttOnlineApiKeyInflight: Promise<boolean> | null = null;
 
@@ -47,7 +47,7 @@ export function hasSttOnlineApiKeyReference(): boolean {
   return Boolean(getSttOnlineApiKeyFromMemory()?.trim() || readSttOnlineApiKeyIdFromStorage());
 }
 
-/** 从本地受保护存储读回密钥并注入会话内存（供探测 / 转写使用）。 */
+/** 仅检查本地密钥引用；已保存密钥由 Rust 在探测 / 转写时解析。 */
 export async function ensureSttOnlineApiKeyForSession(): Promise<boolean> {
   if (getSttOnlineApiKeyFromMemory()?.trim()) return true;
   if (ensureSttOnlineApiKeyInflight) return ensureSttOnlineApiKeyInflight;
@@ -57,10 +57,7 @@ export async function ensureSttOnlineApiKeyForSession(): Promise<boolean> {
     const apiKeyId = readSttOnlineApiKeyIdFromStorage();
     if (!apiKeyId) return false;
     try {
-      const key = await sttReadApiKey({ apiKeyId: apiKeyId ?? DEFAULT_STT_API_KEY_ID });
-      if (!key?.trim()) return false;
-      setSttOnlineApiKeyInMemory(key);
-      return true;
+      return await sttHasStoredApiKey({ apiKeyId: apiKeyId ?? DEFAULT_STT_API_KEY_ID });
     } catch {
       return false;
     }

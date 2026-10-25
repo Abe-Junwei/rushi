@@ -26,6 +26,10 @@ pub struct SttOnlineProbeRequest {
     #[serde(default)]
     pub headers: HashMap<String, String>,
     pub timeout_ms: u64,
+    #[serde(default)]
+    pub api_key_id: Option<String>,
+    #[serde(default)]
+    pub auth_style: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -214,6 +218,10 @@ pub struct SttXunfeiCredentialProbeRequest {
     pub app_id: String,
     pub api_key: String,
     pub api_secret: String,
+    #[serde(default)]
+    pub api_key_id: Option<String>,
+    #[serde(default)]
+    pub api_secret_id: Option<String>,
     pub timeout_ms: u64,
 }
 
@@ -244,12 +252,23 @@ pub(crate) fn probe_xunfei_credentials_blocking(
 #[tauri::command]
 pub async fn stt_probe_xunfei_credentials(
     state: State<'_, DbState>,
-    req: SttXunfeiCredentialProbeRequest,
+    mut req: SttXunfeiCredentialProbeRequest,
 ) -> Result<SttOnlineProbeResponse, String> {
+    let root = state.root.clone();
     append_desktop_log_line(&state, "INFO stt_probe_xunfei_start");
-    let out = tauri::async_runtime::spawn_blocking(move || probe_xunfei_credentials_blocking(&req))
-        .await
-        .map_err(|e| format!("探测任务被取消：{e}"))?;
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        if let Some(id) = req.api_key_id.as_deref() {
+            req.api_key = crate::stt_online_secret_store::read_stt_secret(&root, id)?
+                .ok_or_else(|| "在线 STT 密钥不存在，请重新保存。".to_string())?;
+        }
+        if let Some(id) = req.api_secret_id.as_deref() {
+            req.api_secret = crate::stt_online_secret_store::read_stt_secret(&root, id)?
+                .ok_or_else(|| "在线 STT APISecret 不存在，请重新保存。".to_string())?;
+        }
+        Ok::<_, String>(probe_xunfei_credentials_blocking(&req))
+    })
+    .await
+    .map_err(|e| format!("探测任务被取消：{e}"))??;
     let level = if out.available { "INFO" } else { "WARN" };
     append_desktop_log_line(
         &state,
@@ -268,18 +287,44 @@ pub async fn stt_probe_xunfei_credentials(
     Ok(out)
 }
 
+fn resolve_probe_credentials(
+    root: &std::path::Path,
+    req: &mut SttOnlineProbeRequest,
+) -> Result<(), String> {
+    if let Some(id) = req.api_key_id.as_deref() {
+        let key = crate::stt_online_secret_store::read_stt_secret(root, id)?
+            .ok_or_else(|| "在线 STT 密钥不存在，请重新保存。".to_string())?;
+        let style = req.auth_style.as_deref().unwrap_or("bearer");
+        let auth = match style {
+            "raw" => key,
+            "token" => format!(
+                "Token {}",
+                key.trim_start_matches("Bearer ")
+                    .trim_start_matches("Token ")
+            ),
+            _ => format!("Bearer {key}"),
+        };
+        req.headers.insert("authorization".into(), auth);
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub async fn stt_probe_online_health(
     state: State<'_, DbState>,
-    req: SttOnlineProbeRequest,
+    mut req: SttOnlineProbeRequest,
 ) -> Result<SttOnlineProbeResponse, String> {
     append_desktop_log_line(
         &state,
         &format!("INFO stt_probe_start url={}", req.url.trim()),
     );
-    let out = tauri::async_runtime::spawn_blocking(move || probe_stt_online_health_blocking(&req))
-        .await
-        .map_err(|e| format!("探测任务被取消：{e}"))?;
+    let root = state.root.clone();
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        resolve_probe_credentials(&root, &mut req)?;
+        Ok::<_, String>(probe_stt_online_health_blocking(&req))
+    })
+    .await
+    .map_err(|e| format!("探测任务被取消：{e}"))??;
     let level = if out.available { "INFO" } else { "WARN" };
     append_desktop_log_line(
         &state,
@@ -303,8 +348,52 @@ mod tests {
     use super::*;
 
     #[test]
+    fn saved_probe_credential_reaches_http_without_renderer_readback() {
+        use std::io::{Read, Write};
+        let root = std::env::temp_dir().join(format!("rushi-stt-probe-{}", uuid::Uuid::new_v4()));
+        let dir = root.join("secrets/stt-online");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("synthetic.key"), "synthetic-probe-key").unwrap();
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let endpoint = format!("http://{}/", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut request = Vec::new();
+            let mut byte = [0; 1];
+            while !request.ends_with(b"\r\n\r\n") {
+                assert_eq!(stream.read(&mut byte).unwrap(), 1);
+                request.push(byte[0]);
+            }
+            stream
+                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}")
+                .unwrap();
+            String::from_utf8(request).unwrap()
+        });
+        let mut req = SttOnlineProbeRequest {
+            url: endpoint,
+            headers: HashMap::new(),
+            timeout_ms: 5000,
+            api_key_id: Some("synthetic".into()),
+            auth_style: Some("token".into()),
+        };
+        resolve_probe_credentials(&root, &mut req).unwrap();
+        assert!(probe_stt_online_health_blocking(&req).available);
+        assert!(server
+            .join()
+            .unwrap()
+            .to_ascii_lowercase()
+            .contains("authorization: token synthetic-probe-key"));
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
     fn rejects_disallowed_url_before_request() {
         let out = probe_stt_online_health_blocking(&SttOnlineProbeRequest {
+            api_key_id: None,
+            auth_style: None,
             url: "http://evil.com/probe".into(),
             headers: HashMap::new(),
             timeout_ms: 5_000,

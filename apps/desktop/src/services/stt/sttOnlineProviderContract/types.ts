@@ -112,12 +112,14 @@ export type OnlineNativeAdapterId =
 export type OnlineTranscribeBridgePayload = {
   transcribeUrl: string;
   authorization?: string | null;
+  apiKeyId?: string;
+  apiSecretId?: string;
   timeoutSec?: number | null;
   /** 非空时 Rust 走厂商原生 API，再归一为 Rushi `TranscriptionResult` JSON。 */
   nativeAdapter?: OnlineNativeAdapterId | null;
   /** 应用级标识（AppKey 等），由自建网关读取请求头 `X-Rushi-Stt-App-Key`（若设置）。 */
   appKey?: string | null;
-  /** 讯飞 APISecret；会话内存透传，持久化走 AppData 受保护文件。 */
+  /** 本会话输入的 APISecret；已保存凭证使用 apiSecretId，由 Rust 解析。 */
   apiSecret?: string | null;
   /** 讯飞 `business.accent`；默认 mandarin。 */
   accent?: string | null;

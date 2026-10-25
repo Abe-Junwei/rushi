@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { invoke } from "@tauri-apps/api/core";
+vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 import {
   STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL,
   STT_ONLINE_PROVIDER_STORAGE_KEYS,
@@ -7,6 +9,9 @@ import {
   setSttOnlineApiSecretInMemory,
   tryBuildOnlineTranscribeBridgePayload,
   resolveShellNativeSttAdapterId,
+  probeExternalSttOnlineHealth,
+  getSttOnlineApiKeyFromMemory,
+  getSttOnlineApiSecretFromMemory,
 } from "./sttOnlineProviderContract";
 
 function mockLocalStorage(initial: Record<string, string>) {
@@ -35,6 +40,7 @@ function mockLocalStorage(initial: Record<string, string>) {
 
 describe("tryBuildOnlineTranscribeBridgePayload", () => {
   beforeEach(() => {
+    vi.mocked(invoke).mockReset();
     vi.stubGlobal("localStorage", mockLocalStorage({}));
     setSttOnlineApiKeyInMemory(null);
     setSttOnlineApiSecretInMemory(null);
@@ -48,6 +54,39 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
 
   it("returns null when session api key is missing", () => {
     expect(tryBuildOnlineTranscribeBridgePayload()).toBeNull();
+  });
+
+  it("builds a saved-credential payload after restart without reading secrets into JavaScript", () => {
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId, "iflytek-speed-asr");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey, "synthetic-app");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId, "iflytek-api-key");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId, "iflytek-api-secret");
+    const payload = tryBuildOnlineTranscribeBridgePayload();
+    expect(payload?.apiKeyId).toBe("iflytek-api-key");
+    expect(payload?.apiSecretId).toBe("iflytek-api-secret");
+    expect(payload?.authorization).toBeUndefined();
+    expect(payload?.apiSecret).toBeUndefined();
+  });
+
+  it.each(["openai", "iflytek-speed-asr"])("probes %s with saved references and no secret readback", async (provider) => {
+    vi.stubGlobal("__TAURI_INTERNALS__", {});
+    const keyId = provider === "openai" ? "default" : "iflytek-api-key";
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId, provider);
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId, keyId);
+    if (provider === "iflytek-speed-asr") localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId, "iflytek-api-secret");
+    vi.mocked(invoke).mockImplementation((command) => Promise.resolve(command === "stt_has_stored_api_key"
+      ? true : { state: "available", available: true }));
+    const result = await probeExternalSttOnlineHealth({ runtimeConfig: {
+      enabled: true, selectedProviderId: provider, appKey: "synthetic-app", apiKeyId: keyId,
+      ...(provider === "iflytek-speed-asr" ? { apiSecretId: "iflytek-api-secret" } : {}), timeoutMs: 5000,
+    } });
+    expect(result.available).toBe(true);
+    expect(invoke).toHaveBeenCalledWith(provider === "openai" ? "stt_probe_online_health" : "stt_probe_xunfei_credentials", {
+      req: expect.objectContaining({ apiKeyId: keyId }),
+    });
+    expect(vi.mocked(invoke).mock.calls.every(([command]) => command !== "stt_read_api_key")).toBe(true);
+    expect(getSttOnlineApiKeyFromMemory()).toBeUndefined();
+    expect(getSttOnlineApiSecretFromMemory()).toBeUndefined();
   });
 
   it("builds OpenAI native payload without custom endpoint when key present", () => {

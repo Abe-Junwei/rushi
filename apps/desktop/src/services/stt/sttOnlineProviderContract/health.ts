@@ -82,7 +82,7 @@ export async function probeExternalSttOnlineHealth(
   await ensureSttOnlineApiKeyForSession();
   await ensureSttOnlineApiSecretForSession();
   const apiKey = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!apiKey) {
+  if (!apiKey && !runtime.apiKeyId) {
     return {
       state: "unconfigured",
       available: false,
@@ -99,7 +99,7 @@ export async function probeExternalSttOnlineHealth(
         message: `请填写${def.persistedAppKeyFieldLabel ?? "应用标识"}。`,
       };
     }
-    if (def?.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim()) {
+    if (def?.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim() && !runtime.apiSecretId) {
       return {
         state: "unconfigured",
         available: false,
@@ -118,8 +118,10 @@ export async function probeExternalSttOnlineHealth(
       }
       return sttProbeXunfeiCredentials({
         appId: runtime.appKey?.trim() ?? "",
-        apiKey,
-        apiSecret: getSttOnlineApiSecretFromMemory()?.trim() ?? "",
+        apiKey: runtime.apiKeyId ? "" : apiKey ?? "",
+        apiKeyId: runtime.apiKeyId,
+        apiSecretId: runtime.apiSecretId,
+        apiSecret: runtime.apiSecretId ? "" : getSttOnlineApiSecretFromMemory()?.trim() ?? "",
         timeoutMs: capSttOnlineProbeTimeoutMs(runtime.timeoutMs),
       });
     }
@@ -154,6 +156,7 @@ export async function probeExternalSttOnlineHealth(
   }
 
   if (options.fetchImpl) {
+    if (!apiKey) return { state: "unconfigured", available: false, message: "已保存凭证须通过桌面壳使用。" };
     return probeExternalSttOnlineHealthViaFetch(options, runtime, endpoint, def, apiKey);
   }
 
@@ -167,11 +170,15 @@ export async function probeExternalSttOnlineHealth(
   }
 
   const headers: Record<string, string> = { accept: "application/json" };
-  if (def) Object.assign(headers, authHeaderForProbe(def, apiKey, runtime.selectedProviderId));
-  else headers.authorization = `Bearer ${apiKey}`;
+  if (!runtime.apiKeyId && apiKey) {
+    if (def) Object.assign(headers, authHeaderForProbe(def, apiKey, runtime.selectedProviderId));
+    else headers.authorization = `Bearer ${apiKey}`;
+  }
 
   try {
     return await sttProbeOnlineHealth({
+      apiKeyId: runtime.apiKeyId,
+      authStyle: runtime.selectedProviderId === "deepgram" ? "token" : def?.authStyle === "header" ? "raw" : "bearer",
       url: endpoint,
       headers,
       timeoutMs: capSttOnlineProbeTimeoutMs(runtime.timeoutMs),

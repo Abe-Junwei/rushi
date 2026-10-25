@@ -152,7 +152,7 @@ def _get_model(model_id: str, *, diarization_requested: bool = False) -> Any:
         model_arg = resolve_funasr_automodel_arg(model_id)
         kwargs: dict[str, Any] = {
             "model": model_arg,
-            "trust_remote_code": True,
+            "trust_remote_code": False,
             "device": device,
             **_funasr_hub_extra_kwargs(model_id, model_arg),
         }
@@ -191,10 +191,10 @@ def _get_model(model_id: str, *, diarization_requested: bool = False) -> Any:
         if is_funasr_nano_model(model_id):
             local_dir = Path(model_arg)
             if local_dir.is_dir():
-                from rushi_asr.funasr_nano_remote_code import funasr_nano_remote_code_ready
+                from rushi_asr.funasr_nano_remote_code import load_funasr_nano_remote_code
 
-                if funasr_nano_remote_code_ready(local_dir):
-                    kwargs["remote_code"] = str(local_dir / "model.py")
+                if (local_dir / "model.py").exists():
+                    load_funasr_nano_remote_code(local_dir)
                 else:
                     _ensure_funasr_nano_registered()
             else:

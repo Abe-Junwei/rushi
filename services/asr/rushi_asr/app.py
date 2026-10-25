@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 import shutil
 import tempfile
 from pathlib import Path
@@ -37,12 +38,12 @@ def _loopback_only(host: str) -> None:
 
 
 def _require_local_token(request: Request) -> None:
-    """Optional local token gate for mutating endpoints (set RUSHI_LOCAL_TOKEN to enable)."""
+    """Fail closed: every mutating endpoint requires a configured local token."""
     configured = os.environ.get("RUSHI_LOCAL_TOKEN", "").strip()
     if not configured:
-        return
+        raise HTTPException(status_code=503, detail="local_token_not_configured")
     token = request.headers.get(_TOKEN_HEADER, "").strip()
-    if token != configured:
+    if not secrets.compare_digest(token.encode(), configured.encode()):
         raise HTTPException(status_code=401, detail="invalid_local_token")
 
 
@@ -120,6 +121,11 @@ def create_app() -> FastAPI:
             "transcribe_cancel": "POST /v1/transcribe/cancel",
             "model_catalog": "GET /v1/models/catalog",
         }
+
+    @app.get("/v1/auth/check")
+    def auth_check(request: Request) -> dict[str, bool]:
+        _require_local_token(request)
+        return {"authenticated": True}
 
     @app.get("/health")
     def health() -> dict[str, object]:

@@ -282,7 +282,6 @@ pub fn run() {
             stt_online_api_key_cmd::stt_save_api_key,
             stt_online_api_key_cmd::stt_delete_api_key,
             stt_online_api_key_cmd::stt_has_stored_api_key,
-            stt_online_api_key_cmd::stt_read_api_key,
             postprocess_cmd::postprocess_auto_punctuate_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_refine_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_stage_b_proofread_cmd::postprocess_stage_b_proofread,

@@ -23,6 +23,10 @@ pub(crate) async fn fetch_online_transcribe_json(
     o: &OnlineTranscribeBridge,
     cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
+    let resolved = o
+        .resolve_credentials(&st.root)
+        .map_err(|e| record_transcribe_err(tl, e))?;
+    let o = &resolved;
     let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
     let dur = Duration::from_secs(timeout_s);
     match o.native_adapter.as_deref() {

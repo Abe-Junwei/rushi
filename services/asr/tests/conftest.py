@@ -13,3 +13,8 @@ def _clear_asr_model_env(monkeypatch: pytest.MonkeyPatch) -> None:
     """Developer shell exports must not change default-SKU test expectations."""
     for key in _ASR_ENV_KEYS:
         monkeypatch.delenv(key, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _local_token(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "test-local-token")

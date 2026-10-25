@@ -265,6 +265,7 @@ Invoke-RushiNativeChecked -FailMessage "pyinstaller failed" -Command {
     --hidden-import=funasr `
     --collect-all funasr `
     --collect-all jieba `
+    --collect-data rushi_asr `
     --collect-data modelscope `
     --collect-submodules modelscope `
     --collect-submodules hydra `

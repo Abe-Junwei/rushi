@@ -14,7 +14,7 @@ export function getSttOnlineApiKeyFromMemory(): string | undefined {
   return inMemorySttSecrets.apiKey;
 }
 
-/** 讯飞 APISecret；与 APIKey 同存 AppData 受保护文件，运行时注入会话内存。 */
+/** 讯飞 APISecret；与 APIKey 同存 AppData 受保护文件，仅保留用户本会话输入；已保存秘密由 Rust 按引用解析。 */
 export function setSttOnlineApiSecretInMemory(apiSecret: string | null | undefined): void {
   const t = apiSecret?.trim();
   if (t) inMemorySttSecrets.apiSecret = t;

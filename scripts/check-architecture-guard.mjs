@@ -559,6 +559,9 @@ function checkTauriProductionCsp() {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 CSP 须为对象格式并分域声明 directive');
     return;
   }
+  if (/(?:127\.0\.0\.1|localhost|\[::1\]):8741/.test(String(csp['connect-src'] ?? ''))) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 ASR 请求须走 Rust，connect-src 禁止直连侧车');
+  }
   if (cspDirectiveHasUnsafeInline(csp['script-src'])) {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 script-src 禁止 unsafe-inline（Tauri 构建时注入 hash/nonce）');
   }
@@ -607,6 +610,9 @@ function checkTauriInvokeAcl() {
     .map((line) => line.match(/::([a-z][a-z0-9_]*)$/)?.[1] ?? null)
     .filter(Boolean);
   const handlerSet = new Set(handlerCommands);
+  if (commands.includes('stt_read_api_key') || handlerSet.has('stt_read_api_key')) {
+    errors.push('apps/desktop/src-tauri: 禁止向渲染层读回已保存 STT 密钥；探测和转写须在 Rust 解析引用');
+  }
 
   for (const cmd of commands) {
     if (!handlerSet.has(cmd)) {

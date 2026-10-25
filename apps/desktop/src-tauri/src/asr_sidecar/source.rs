@@ -7,7 +7,10 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 use super::bundled::port::kill_loopback_listeners_on_port;
-use super::probe::{bundled_health_looks_like_rushi_asr, health_declares_local_token_required};
+use super::local_token::{
+    generate_local_token, resolve_local_token_for_request, set_managed_local_token,
+};
+use super::probe::bundled_health_looks_like_rushi_asr;
 use super::ASR_HEALTH_URL;
 use super::ASR_LOOPBACK_PORT;
 use crate::local_asr_language::read_language_pref;
@@ -119,7 +122,9 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         .open(&log_path)
         .map_err(|e| format!("无法写入侧车日志 {}：{e}", log_path.display()))?;
 
+    let token = resolve_local_token_for_request().unwrap_or_else(generate_local_token);
     let mut cmd = Command::new(&python);
+    cmd.env("RUSHI_LOCAL_TOKEN", &token);
     cmd.current_dir(&asr_dir)
         .arg("-m")
         .arg("rushi_asr")
@@ -133,21 +138,13 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
 
     append_source_log(app, &format!("INFO source_asr_spawn {}", python.display()));
     cmd.spawn().map_err(|e| format!("无法启动源码侧车：{e}"))?;
+    set_managed_local_token(Some(token));
 
     let attempts = (HEALTH_WAIT_MS / HEALTH_POLL_MS) as usize;
     for _ in 0..attempts {
         std::thread::sleep(Duration::from_millis(HEALTH_POLL_MS));
         if !bundled_health_looks_like_rushi_asr() {
             continue;
-        }
-        if health_declares_local_token_required(
-            &fetch_health_json().unwrap_or(serde_json::Value::Null),
-        ) {
-            return Err(dev_or_packaged_str(
-                "8741 侧车仍要求 local token（可能是旧 bundled 进程）。请完全退出应用后重新 npm run desktop:dev。",
-                "8741 侧车仍要求 local token（可能是旧进程）。请完全退出应用后重新打开，或在「环境 → 本机 ASR」点「重试内置侧车」。",
-            )
-            .into());
         }
         if let Some(expected) = expected_hub.as_deref() {
             if fetch_health_model_id().as_deref() == Some(expected) {
@@ -170,10 +167,6 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
             "或在「环境 → 本机 ASR」点「重试内置侧车」。",
         )
     ))
-}
-
-fn fetch_health_json() -> Option<serde_json::Value> {
-    crate::blocking_http::loopback_get_json(ASR_HEALTH_URL)
 }
 
 fn format_duration_ms(ms: u64) -> String {
