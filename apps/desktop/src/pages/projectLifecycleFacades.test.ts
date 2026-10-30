@@ -22,6 +22,7 @@ describe("projectLifecycleFacades contract", () => {
       loadProjectAfterImport: async () => {},
       refreshProjectHub: async () => {},
       openFileWrapped: async () => {},
+      openFileForBatch: async () => {},
       openLastEditorWorkspace: async () => {},
       openWorkspaceFile: async () => {},
       openingWorkspaceTarget: null,

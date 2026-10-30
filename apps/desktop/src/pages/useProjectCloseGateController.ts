@@ -58,6 +58,7 @@ export type ProjectCloseGateControllerApi = {
   ) => Promise<boolean>;
   refreshProjectHub: (id: string) => Promise<void>;
   openFileWrapped: (fileId: string) => Promise<void>;
+  openFileForBatch: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
   openWorkspaceFile: (projectId: string, fileId: string) => Promise<void>;
   openingWorkspaceTarget: WorkspaceFileTarget | null;
@@ -372,6 +373,7 @@ export function useProjectCloseGateController(
     refreshProjectHub: projectLoad.refreshProjectHub,
     runWithUnsavedNavigateGate,
     openFileWrapped,
+    openFileForBatch: openFileAfterImport,
     openLastEditorWorkspace,
     openWorkspaceFile,
     openingWorkspaceTarget,

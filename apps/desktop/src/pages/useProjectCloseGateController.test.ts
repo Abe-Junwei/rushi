@@ -112,6 +112,18 @@ describe("useProjectCloseGateController", () => {
     expect(args.openFile).not.toHaveBeenCalled();
   });
 
+  it("opens the next batch file without treating queue navigation as user navigation", async () => {
+    const args = baseArgs({ busy: true, busyReason: "batch_transcribe" });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.openFileForBatch("file-2");
+    });
+
+    expect(args.openFile).toHaveBeenCalledWith("file-2");
+    expect(result.current.transcribeNavBlockOpen).toBe(false);
+  });
+
   it("saveAndClose saves then proceeds navigate intent", async () => {
     const args = baseArgs({ dirty: makeDirty(true) });
     const { result } = renderHook(() => useProjectCloseGateController(args));

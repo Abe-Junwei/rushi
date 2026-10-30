@@ -24,7 +24,7 @@ function makeDeps(
 ) {
   const beginBusy = vi.fn();
   const endBusy = vi.fn();
-  const openFileWrapped = vi.fn(() => Promise.resolve());
+  const openFileForBatch = vi.fn(() => Promise.resolve());
   const cancelTranscribe = vi.fn(() => Promise.resolve());
   const executeTranscribeForBatch = vi.fn(
     (): Promise<ExecuteTranscribeResult> => Promise.resolve({ ok: true }),
@@ -40,7 +40,7 @@ function makeDeps(
       hasUnsavedSegmentChanges: () => false,
       beginBusy,
       endBusy,
-      openFileWrapped,
+      openFileForBatch,
       cancelTranscribe,
       executeTranscribeForBatch,
       localTranscribePreflight: () => null,
@@ -51,7 +51,7 @@ function makeDeps(
     },
     beginBusy,
     endBusy,
-    openFileWrapped,
+    openFileForBatch,
     executeTranscribeForBatch,
     setError,
     refreshProjectHub,
@@ -91,8 +91,8 @@ describe("useBatchTranscribeQueueController", () => {
     );
   });
 
-  it("passes explicit fileId even when openFileWrapped is used", async () => {
-    const { deps, executeTranscribeForBatch, openFileWrapped } = makeDeps({
+  it("opens each batch file through the unguarded batch navigation", async () => {
+    const { deps, executeTranscribeForBatch, openFileForBatch } = makeDeps({
       projectFiles: [
         file({ id: "f1", name: "a.wav", file_type: "paired" }),
         file({ id: "f2", name: "b.wav", file_type: "paired", updated_at_ms: 1 }),
@@ -110,8 +110,9 @@ describe("useBatchTranscribeQueueController", () => {
       await result.current.startBatchTranscribe();
     });
 
-    expect(openFileWrapped).toHaveBeenCalledWith("f1");
+    expect(openFileForBatch).toHaveBeenCalledWith("f1");
     expect(executeTranscribeForBatch).toHaveBeenCalledTimes(1);
     expect(result.current.batchQueueItems.find((i) => i.fileId === "f2")?.status).toBe("skipped");
   });
+
 });

@@ -35,7 +35,7 @@ type Deps = {
   hasUnsavedSegmentChanges: () => boolean;
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
-  openFileWrapped: (fileId: string) => Promise<void>;
+  openFileForBatch: (fileId: string) => Promise<void>;
   executeTranscribeForBatch: (opts: ExecuteTranscribeOptions) => Promise<ExecuteTranscribeResult>;
   cancelTranscribe: () => void | Promise<void>;
   localTranscribePreflight: LocalTranscribePreflight;
@@ -144,7 +144,7 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
             continue;
           }
 
-          await deps.openFileWrapped(item.fileId);
+          await deps.openFileForBatch(item.fileId);
           if (cancelRequestedRef.current) {
             stopped = true;
             break;

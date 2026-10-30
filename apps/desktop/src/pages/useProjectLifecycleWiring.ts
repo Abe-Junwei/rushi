@@ -174,7 +174,7 @@ export function useProjectLifecycleWiring(
     hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
     beginBusy,
     endBusy,
-    openFileWrapped: closeGate.openFileWrapped,
+    openFileForBatch: closeGate.openFileForBatch,
     executeTranscribeForBatch: transcribeJob.executeTranscribeForBatch,
     cancelTranscribe: transcribeJob.cancelTranscribe,
     localTranscribePreflight,
