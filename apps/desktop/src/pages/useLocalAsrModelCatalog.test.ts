@@ -69,4 +69,15 @@ describe("useLocalAsrModelCatalog applySelectedModel", () => {
     });
     expect(applyHubModelToSidecar).toHaveBeenCalled();
   });
+  it("audit: a missing root snapshot cannot overwrite known async capability", async () => {
+    const { result } = renderHook(() => useLocalAsrModelCatalog(vi.fn(() => Promise.resolve())));
+    await waitFor(() => expect(result.current.selectedHubModelId).toBeTruthy());
+    act(() => result.current.syncCatalogFromHealth({}, {
+      transcribe_async: "POST /v1/transcribe/async + GET /v1/transcribe/status",
+    }));
+    expect(result.current.sidecarAsyncTranscribeCapable).toBe(true);
+    act(() => result.current.syncCatalogFromHealth({}, null));
+    expect(result.current.sidecarAsyncTranscribeCapable).toBe(true);
+  });
+
 });

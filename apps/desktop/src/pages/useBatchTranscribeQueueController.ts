@@ -17,6 +17,7 @@ import type { ExecuteTranscribeOptions, ExecuteTranscribeResult } from "./useTra
 import type { LocalTranscribePreflight } from "./transcribeJobHelpers";
 import { resolveOnlineTranscribeSessionBlock } from "../services/stt/sttOnlineProviderContract";
 import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
+import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabilityCoordinator";
 
 function isBatchSharedEnvFailure(message: string | undefined): boolean {
   const text = message?.trim() ?? "";
@@ -125,6 +126,9 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
       }
     } else {
       await deps.softWakeBeforeLocalTranscribe?.();
+      // Match single-file execute: refresh coordinator after soft-wake so preflight
+      // reads GET / root (async capable), not a stale overlay default false.
+      await awaitEnvironmentCapabilityRefresh();
       const block = deps.localTranscribePreflight();
       if (block) {
         deps.setError(block);

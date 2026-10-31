@@ -194,9 +194,13 @@ pub fn note_ready_adopted(handle: &AppHandle) {
         snap.health_fresh = bundled_sidecar_is_fresh_build();
         snap.local_token_managed = super::local_token::resolve_local_token_for_request().is_some();
         snap.last_error_code = None;
-        snap.last_transition_ms = now_ms();
+        let now = now_ms();
+        snap.last_transition_ms = now;
+        // Soft-wake / adopt must reset idle clock or watchdog may stop immediately.
+        snap.last_activity_ms = now;
         sync_launch_report(handle, snap);
     });
+    warm::touch_global_activity_ms();
 }
 
 pub fn note_ready_spawned(
@@ -218,9 +222,12 @@ pub fn note_ready_spawned(
         snap.local_token_managed = super::local_token::resolve_local_token_for_request().is_some();
         snap.active_executable = active;
         snap.last_error_code = None;
-        snap.last_transition_ms = now_ms();
+        let now = now_ms();
+        snap.last_transition_ms = now;
+        snap.last_activity_ms = now;
         sync_launch_report(handle, snap);
     });
+    warm::touch_global_activity_ms();
 }
 
 pub fn note_warming(handle: &AppHandle, exe: &Path) {

@@ -19,7 +19,11 @@ import {
   type AsrHealthState,
 } from "./useAsrHealthPoll";
 import { useAsrModelCacheController } from "./useAsrModelCacheController";
-import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
+import {
+  readLastAsrHealthRefreshResultAfterDiagnostics,
+  refreshLocalAsrDiagnostics,
+} from "./refreshLocalAsrDiagnostics";
+import { sidecarSupportsTranscribeAsyncFromRoot } from "../services/asr/localAsrModelCatalog";
 import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 
 export type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
@@ -195,40 +199,47 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
 
   const modelMemoryState = useMemo(() => deriveModelMemoryState(asrCaps), [asrCaps]);
 
-  const asrPresentation = useMemo(
-    () =>
-      buildAsrEnvPresentation({
-        asrHealth,
-        asrHealthDetail: asrHealthDetailDisplay,
-        asrCaps,
-        selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
-        catalogStatus: localAsrModelCatalog.catalogStatus,
-        desktopModelsRoot: cacheCtrl.asrModelCacheInfo?.models_root ?? null,
-        sidecarModelsRoot: asrCaps?.rushi_models_root ?? null,
-        asrModelCacheBytes: cacheCtrl.asrModelCacheInfo?.total_bytes ?? 0,
-        sidecarAsyncTranscribeCapable: localAsrModelCatalog.sidecarAsyncTranscribeCapable,
-        prepareModelBusy: modelCtrl.prepareModelBusy,
-        prepareModelCancelling: modelCtrl.prepareModelCancelling,
-        prepareModelProgress: modelCtrl.prepareModelProgress,
-        modelMemoryState,
-        supervisor: supervisorSnap,
-      }),
-    [
+  const asrPresentation = useMemo(() => {
+    // Prefer last probed GET / over React overlay default false (same rule as coordinator).
+    const lastRoot = readLastAsrHealthRefreshResultAfterDiagnostics()?.rootJson;
+    const asyncFromRoot =
+      lastRoot !== undefined && lastRoot !== null
+        ? sidecarSupportsTranscribeAsyncFromRoot(lastRoot)
+        : undefined;
+    return buildAsrEnvPresentation({
       asrHealth,
-      asrHealthDetailDisplay,
+      asrHealthDetail: asrHealthDetailDisplay,
       asrCaps,
-      localAsrModelCatalog.selectedHubModelId,
-      localAsrModelCatalog.catalogStatus,
-      localAsrModelCatalog.sidecarAsyncTranscribeCapable,
-      cacheCtrl.asrModelCacheInfo?.models_root,
-      cacheCtrl.asrModelCacheInfo?.total_bytes,
-      modelCtrl.prepareModelBusy,
-      modelCtrl.prepareModelCancelling,
-      modelCtrl.prepareModelProgress,
+      selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
+      catalogStatus: localAsrModelCatalog.catalogStatus,
+      desktopModelsRoot: cacheCtrl.asrModelCacheInfo?.models_root ?? null,
+      sidecarModelsRoot: asrCaps?.rushi_models_root ?? null,
+      asrModelCacheBytes: cacheCtrl.asrModelCacheInfo?.total_bytes ?? 0,
+      sidecarAsyncTranscribeCapable:
+        asyncFromRoot !== undefined
+          ? asyncFromRoot
+          : localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+      prepareModelBusy: modelCtrl.prepareModelBusy,
+      prepareModelCancelling: modelCtrl.prepareModelCancelling,
+      prepareModelProgress: modelCtrl.prepareModelProgress,
       modelMemoryState,
-      supervisorSnap,
-    ],
-  );
+      supervisor: supervisorSnap,
+    });
+  }, [
+    asrHealth,
+    asrHealthDetailDisplay,
+    asrCaps,
+    localAsrModelCatalog.selectedHubModelId,
+    localAsrModelCatalog.catalogStatus,
+    localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+    cacheCtrl.asrModelCacheInfo?.models_root,
+    cacheCtrl.asrModelCacheInfo?.total_bytes,
+    modelCtrl.prepareModelBusy,
+    modelCtrl.prepareModelCancelling,
+    modelCtrl.prepareModelProgress,
+    modelMemoryState,
+    supervisorSnap,
+  ]);
 
   const retryBundledAsrSidecar = useCallback(async () => {
     if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {

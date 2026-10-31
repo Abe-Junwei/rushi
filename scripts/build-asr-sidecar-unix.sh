@@ -24,10 +24,38 @@ platform=${OS}-${ARCH}
 EOF
 }
 
-command -v python3 >/dev/null 2>&1 || {
-  echo "python3 not found" >&2
-  exit 1
+# FunASR/numba lock targets CPython >=3.10,<3.15 — prefer 3.12 (see script header).
+resolve_sidecar_python() {
+  local cands=(python3.12 python3.11 python3.13 python3.14)
+  local c ver major minor
+  for c in "${cands[@]}"; do
+    if command -v "$c" >/dev/null 2>&1; then
+      ver="$("$c" -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || true)"
+      major="${ver%%.*}"
+      minor="${ver#*.}"
+      if [[ "$major" == "3" && "$minor" -ge 10 && "$minor" -lt 15 ]]; then
+        echo "$c"
+        return 0
+      fi
+    fi
+  done
+  if command -v python3 >/dev/null 2>&1; then
+    ver="$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])' 2>/dev/null || true)"
+    major="${ver%%.*}"
+    minor="${ver#*.}"
+    if [[ "$major" == "3" && "$minor" -ge 10 && "$minor" -lt 15 ]]; then
+      echo python3
+      return 0
+    fi
+    echo "python3 is $ver; need >=3.10,<3.15 for sidecar (numba). Install python3.12." >&2
+    return 1
+  fi
+  echo "No suitable python3 found (need >=3.10,<3.15; prefer 3.12)." >&2
+  return 1
 }
+
+PY="$(resolve_sidecar_python)" || exit 1
+echo "Using Python for sidecar build: $PY ($("$PY" -V 2>&1))"
 
 OS="$(uname -s)"
 ARCH="$(uname -m)"
@@ -35,7 +63,7 @@ ARCH="$(uname -m)"
 build_stub() {
   echo "Building stub sidecar (no FunASR / lock)."
   rm -rf "$TMPVENV"
-  python3 -m venv "$TMPVENV"
+  "$PY" -m venv "$TMPVENV"
   # shellcheck source=/dev/null
   source "$TMPVENV/bin/activate"
   python -m pip install -U pip
@@ -69,7 +97,7 @@ build_funasr() {
   local ffdir="$ASR/third_party/ffmpeg/$ffmpeg_target"
 
   rm -rf "$TMPVENV"
-  python3 -m venv "$TMPVENV"
+  "$PY" -m venv "$TMPVENV"
   # shellcheck source=/dev/null
   source "$TMPVENV/bin/activate"
   python -m pip install -U pip setuptools wheel

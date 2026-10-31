@@ -35,6 +35,8 @@ export function buildEnvironmentCapabilityPresentation(input: {
   const catalogFromHealth = healthResult?.healthJson
     ? parseCatalogStatusFromHealth(healthResult.healthJson)
     : null;
+  // Prefer freshly probed GET / over React overlay: overlay defaults to false and
+  // setState lags behind await refresh — batch preflight was falsely「侧车版本过旧」.
   const sidecarAsyncFromRoot =
     healthResult?.rootJson !== undefined && healthResult.rootJson !== null
       ? sidecarSupportsTranscribeAsyncFromRoot(healthResult.rootJson)
@@ -50,7 +52,9 @@ export function buildEnvironmentCapabilityPresentation(input: {
     sidecarModelsRoot: healthResult?.caps?.rushi_models_root ?? null,
     asrModelCacheBytes: cacheOverlay?.asrModelCacheBytes ?? 0,
     sidecarAsyncTranscribeCapable:
-      asrOverlay?.sidecarAsyncTranscribeCapable ?? sidecarAsyncFromRoot,
+      sidecarAsyncFromRoot !== undefined
+        ? sidecarAsyncFromRoot
+        : asrOverlay?.sidecarAsyncTranscribeCapable,
     prepareModelBusy: asrOverlay?.prepareModelBusy,
     prepareModelCancelling: asrOverlay?.prepareModelCancelling,
     prepareModelProgress: asrOverlay?.prepareModelProgress,

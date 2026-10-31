@@ -84,11 +84,25 @@ async function persistPollFailureTimeline(
   error: unknown,
 ): Promise<void> {
   const jobId = refs.activeJobId.current;
-  if (!jobId || jobId === TRANSCRIBE_PENDING_JOB_ID || error instanceof TranscribeUserCancelledError) {
+  if (!jobId || jobId === TRANSCRIBE_PENDING_JOB_ID) {
     return;
   }
-  const message = error instanceof Error ? error.message : String(error);
+  const message =
+    error instanceof TranscribeUserCancelledError
+      ? "转写已取消"
+      : error instanceof Error
+        ? error.message
+        : String(error);
   await p1.recordTranscribeTimelinePollFailure(jobId, message).catch(() => null);
+}
+
+async function cancelAcceptedJobIfAny(
+  base: string,
+  refs: LocalTranscribeJobRunRefs,
+): Promise<void> {
+  const jobId = refs.activeJobId.current;
+  if (!jobId || jobId === TRANSCRIBE_PENDING_JOB_ID) return;
+  await bestEffortCancelSidecarJob(base, jobId);
 }
 
 export async function runLocalTranscribeJob(
@@ -119,6 +133,7 @@ export async function runLocalTranscribeJob(
     return { out, usedAsyncFallback: false };
   } catch (e) {
     if (!isTranscribeAsyncUnavailable(e)) {
+      await cancelAcceptedJobIfAny(base, refs);
       await persistPollFailureTimeline(refs, e);
       throw e;
     }

@@ -100,7 +100,8 @@ export function useAsrSetupHealthFlow({
       );
       const selection = deps.getSetupSelection();
       const modelSnap = await snapshotSelectedModelPrepare(selection);
-      if (modelSnap.ready || modelSnap.diskPrepared) {
+      // Require real funasr ready — disk cache alone must not claim「可用于转写」(stub).
+      if (modelSnap.ready && modelSnap.sidecarMatchesSelection) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) => {
           let next = patchStep(steps, "model", {
@@ -169,9 +170,7 @@ export function useAsrSetupHealthFlow({
 
       await deps.refreshAsrRuntimeInfo();
       const afterSnap = await snapshotSelectedModelPrepare(selection);
-      const transcribeReady =
-        (afterSnap.ready || afterSnap.diskPrepared) &&
-        afterSnap.sidecarMatchesSelection;
+      const transcribeReady = afterSnap.ready && afterSnap.sidecarMatchesSelection;
       if (transcribeReady) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) =>
@@ -182,9 +181,11 @@ export function useAsrSetupHealthFlow({
       } else {
         markPortConflictAcknowledged();
         setSetupMessage(
-          isDefaultBundledAsrTarget()
-            ? "已使用当前 8741 服务，但内置模型尚未完全复制完成，请重启应用或点「一键准备」。"
-            : "已使用当前 8741 服务，但模型尚未完全准备好，请继续完成模型下载。",
+          afterSnap.diskPrepared && !afterSnap.ready
+            ? "模型权重已在本地，但 ASR 仍为 stub 或未就绪。请「重试内置侧车」或重新安装/修复语音识别组件后再转写。"
+            : isDefaultBundledAsrTarget()
+              ? "已使用当前 8741 服务，但内置模型尚未完全复制完成，请重启应用或点「一键准备」。"
+              : "已使用当前 8741 服务，但模型尚未完全准备好，请继续完成模型下载。",
         );
         setSetupOutcome("blocked");
       }

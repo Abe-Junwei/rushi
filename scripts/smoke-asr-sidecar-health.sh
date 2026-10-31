@@ -51,13 +51,20 @@ if lsof -i ":$PORT" >/dev/null 2>&1; then
 fi
 
 cd "$WORKDIR"
-ASR_HOST=127.0.0.1 ASR_PORT="$PORT" "$EXE" >/tmp/rushi-sidecar-smoke.log 2>&1 &
+# Mutating routes require a configured local token (fail-closed); smoke supplies one.
+SMOKE_TOKEN="${RUSHI_SMOKE_LOCAL_TOKEN:-rushi-sidecar-smoke-token}"
+TOKEN_HEADER="x-rushi-local-token"
+ASR_HOST=127.0.0.1 ASR_PORT="$PORT" RUSHI_LOCAL_TOKEN="$SMOKE_TOKEN" \
+  "$EXE" >/tmp/rushi-sidecar-smoke.log 2>&1 &
 PID=$!
 cleanup() {
   kill "$PID" 2>/dev/null || true
   wait "$PID" 2>/dev/null || true
 }
 trap cleanup EXIT
+auth_curl() {
+  curl -s -H "${TOKEN_HEADER}: ${SMOKE_TOKEN}" "$@"
+}
 
 HEALTH_URL="http://127.0.0.1:${PORT}/health"
 HEALTH_TIMEOUT_SEC="${RUSHI_SMOKE_HEALTH_TIMEOUT_SEC:-45}"
@@ -127,12 +134,13 @@ print("smoke root OK: catalog + warmup + unload endpoints present")
 PY2
 
 WARMUP_URL="http://127.0.0.1:${PORT}/v1/models/warmup"
-WARMUP_CODE="$(curl -s -o /tmp/rushi-sidecar-smoke-warmup.json -w '%{http_code}' -X POST "$WARMUP_URL")"
+WARMUP_CODE="$(auth_curl -o /tmp/rushi-sidecar-smoke-warmup.json -w '%{http_code}' -X POST "$WARMUP_URL")"
 if [[ "$WARMUP_CODE" == "404" ]]; then
   echo "smoke: POST /v1/models/warmup returned 404 — rebuild sidecar from current services/asr (stale PyInstaller bundle)" >&2
   cat /tmp/rushi-sidecar-smoke-warmup.json >&2 || true
   exit 1
 fi
+# 503 still allowed when models are not cached on the smoke machine (no download).
 if [[ "$WARMUP_CODE" != "200" && "$WARMUP_CODE" != "503" ]]; then
   echo "smoke: unexpected warmup HTTP $WARMUP_CODE" >&2
   cat /tmp/rushi-sidecar-smoke-warmup.json >&2 || true
@@ -146,7 +154,7 @@ if [[ "$WARMUP_CODE" == "200" ]]; then
 fi
 
 UNLOAD_URL="http://127.0.0.1:${PORT}/v1/models/unload"
-UNLOAD_CODE="$(curl -s -o /tmp/rushi-sidecar-smoke-unload.json -w '%{http_code}' -X POST "$UNLOAD_URL")"
+UNLOAD_CODE="$(auth_curl -o /tmp/rushi-sidecar-smoke-unload.json -w '%{http_code}' -X POST "$UNLOAD_URL")"
 if [[ "$UNLOAD_CODE" == "404" ]]; then
   echo "smoke: POST /v1/models/unload returned 404 — rebuild sidecar from current services/asr" >&2
   cat /tmp/rushi-sidecar-smoke-unload.json >&2 || true

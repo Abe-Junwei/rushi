@@ -26,9 +26,6 @@ pub(crate) async fn save_transcribe_segments(
     drop(conn);
 
     let mut segments = parse_transcribe_segments_from_json(arr)?;
-    if segments.is_empty() {
-        append_desktop_log_line(st, "INFO transcribe zero_segments_ok");
-    }
     trim_adjacent_segment_overlaps(&mut segments);
     for (i, s) in segments.iter_mut().enumerate() {
         s.idx = i as i32;
@@ -43,6 +40,11 @@ pub(crate) async fn save_transcribe_segments(
             st,
             &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),
         );
+    }
+    // Transcribe save replaces all file segments; empty must not wipe prior copy.
+    if segments.is_empty() {
+        append_desktop_log_line(st, "WARN transcribe zero_segments_rejected");
+        return Err("转写未产出可用语段".to_string());
     }
     match open_db(st) {
         Ok(conn) => {
@@ -142,3 +144,7 @@ pub(crate) async fn save_transcribe_segments(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "save_audit_tests.rs"]
+mod audit_tests;

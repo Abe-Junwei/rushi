@@ -160,6 +160,7 @@ export type LocalAsrTranscribeReadyInput = {
   asrHealth: "checking" | "ok" | "error";
   asrCaps: {
     ffmpeg_ok?: boolean;
+    funasr_ready?: boolean;
     funasr_model_id?: string | null;
     funasr_loaded_model_id?: string | null;
     funasr_default_model_cached?: boolean;
@@ -168,6 +169,8 @@ export type LocalAsrTranscribeReadyInput = {
     ready_for_transcribe?: boolean;
     model_memory_matches_config?: boolean;
     selected_model_ready?: boolean;
+    /** Align with Rust local_transcribe_gate — stub never counts as ready. */
+    transcription_mode?: "funasr" | "stub" | string;
   } | null;
   selectedHubModelId?: string | null;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
@@ -202,10 +205,12 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
     if (asrCaps.selected_model_ready) {
       return { ready: true, sidecarMatchesSelection: true };
     }
-    // D4 on disk + sidecar aligned: allow transcribe / one-click success; model loads on first use
-    // when launch warmup is deferred (weights cached but not yet in memory).
+    // D4 on disk + sidecar aligned: allow when ready_for_transcribe (align Rust local_transcribe_gate).
     // Only when mode is already funasr (checked above) — cached + stub must stay blocked.
-    if (asrCaps.funasr_required_models_cached === true) {
+    if (
+      asrCaps.funasr_required_models_cached === true &&
+      asrCaps.ready_for_transcribe === true
+    ) {
       return { ready: true, sidecarMatchesSelection: true };
     }
     return { ready: false, sidecarMatchesSelection: true };

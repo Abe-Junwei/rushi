@@ -1,10 +1,14 @@
 import { useCallback, useRef } from "react";
 import { useAsrBridgeController } from "./useAsrBridgeController";
 import { useAsrSetupController } from "./useAsrSetupController";
-import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
+import {
+  getEnvironmentCapabilityBlockReason,
+  hasEnvironmentCapabilitySnapshot,
+} from "../services/environmentCapabilityCoordinator";
 import { isLocalRuntimeInstallRunning } from "../services/localRuntime/localRuntimeContract";
 import { computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
 import { softWakeIdleSidecar } from "../services/asr/localAsrSidecarSoftWake";
+import { toast } from "../services/ui/toast";
 import type { StepsFromReportOptions } from "./asrSetupState";
 
 /** ASR bridge + setup + local transcribe preflight (extracted from useProjectController). */
@@ -56,7 +60,12 @@ export function useProjectAsrBridgeStack() {
     if (runtimeInstallRunning) return;
     // Always consult supervisor inside softWake (no-op if not idle); do not gate on
     // React presentation — it can lag behind try_start / health refresh.
-    await softWakeIdleSidecar();
+    const wake = await softWakeIdleSidecar();
+    if (wake.status === "failed") {
+      toast.warning(`恢复侧车失败：${wake.message}`);
+    } else if (wake.status === "woke" && !wake.healthOk) {
+      toast.warning("侧车已拉起，但仍未通过健康检查。");
+    }
     await refreshAsrRuntimeInfo();
   }, [refreshAsrRuntimeInfo, runtimeInstallRunning]);
 
@@ -64,8 +73,11 @@ export function useProjectAsrBridgeStack() {
     if (runtimeInstallRunning) {
       return "本机 ASR 运行时安装中，暂不可转写。";
     }
-    // Prefer coordinator snapshot after awaitEnvironmentCapabilityRefresh (sync), then UI presentation.
-    return getEnvironmentCapabilityBlockReason() ?? asr.asrPresentation.blockReason;
+    // Snapshot null blockReason means ready — do not fall back to stale React presentation.
+    if (hasEnvironmentCapabilitySnapshot()) {
+      return getEnvironmentCapabilityBlockReason();
+    }
+    return asr.asrPresentation.blockReason;
   }, [asr.asrPresentation.blockReason, runtimeInstallRunning]);
 
   return {

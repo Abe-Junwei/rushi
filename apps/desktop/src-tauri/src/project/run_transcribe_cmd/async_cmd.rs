@@ -76,9 +76,20 @@ pub async fn project_transcribe_async_start(
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
         .to_string();
+    // Hold in-flight until Ok handoff; Drop releases on any Err before job_id is stored.
+    struct StartInFlightGuard {
+        armed: bool,
+    }
+    impl Drop for StartInFlightGuard {
+        fn drop(&mut self) {
+            if self.armed {
+                crate::asr_sidecar::warm::dec_transcribe_in_flight();
+            }
+        }
+    }
     crate::asr_sidecar::warm::inc_transcribe_in_flight();
+    let mut in_flight = StartInFlightGuard { armed: true };
     if let Err(e) = assert_local_asr_ready_for_transcribe(&st, &base).await {
-        crate::asr_sidecar::warm::dec_transcribe_in_flight();
         record_transcribe_err(&mut tl, e.clone());
         let _ = tl.persist(&st);
         return Err(e);
@@ -87,7 +98,11 @@ pub async fn project_transcribe_async_start(
     let diarization_requested = diarization_requested.unwrap_or(false);
     if diarization_requested {
         append_desktop_log_line(&st, "INFO speaker_model_prepare_start");
-        prepare_speaker_model(&st, &base, Duration::from_secs(30 * 60)).await?;
+        if let Err(e) = prepare_speaker_model(&st, &base, Duration::from_secs(30 * 60)).await {
+            record_transcribe_err(&mut tl, e.clone());
+            let _ = tl.persist(&st);
+            return Err(e);
+        }
         append_desktop_log_line(&st, "INFO speaker_model_prepare_done");
     }
     append_desktop_log_line(&st, "INFO transcribe_async_start");
@@ -104,7 +119,6 @@ pub async fn project_transcribe_async_start(
     {
         Ok(v) => v,
         Err(e) => {
-            crate::asr_sidecar::warm::dec_transcribe_in_flight();
             let _ = tl.persist(&st);
             return Err(e);
         }
@@ -112,7 +126,6 @@ pub async fn project_transcribe_async_start(
     let job_id = match v.get("job_id").and_then(|x| x.as_str()) {
         Some(id) => id,
         None => {
-            crate::asr_sidecar::warm::dec_transcribe_in_flight();
             record_transcribe_err(&mut tl, "侧车未返回 job_id".to_string());
             let _ = tl.persist(&st);
             return Err("侧车未返回 job_id".to_string());
@@ -120,6 +133,7 @@ pub async fn project_transcribe_async_start(
     };
     tl.set_job_id(job_id);
     store_active_timeline(job_id, tl);
+    in_flight.armed = false; // finalize / poll-fail path owns the count
     append_desktop_log_line(&st, &format!("INFO transcribe_async job_id={job_id}"));
     Ok(TranscribeAsyncStartOutcome {
         job_id: job_id.to_string(),

@@ -262,6 +262,22 @@ describe("localAsrModelCatalog", () => {
     expect(result.ready).toBe(true);
   });
 
+  it("computeLocalAsrTranscribeReady blocks D4 cache when ready_for_transcribe is false", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: false,
+        selected_model_ready: false,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(false);
+  });
+
   it("computeLocalAsrTranscribeReady blocks when selected_model_ready false and disk incomplete", () => {
     const result = computeLocalAsrTranscribeReady({
       asrHealth: "ok",

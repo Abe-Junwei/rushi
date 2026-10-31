@@ -105,6 +105,36 @@ describe("useAsrSetupController diagnose", () => {
     expect(result.current.setupMessage).toContain("FunASR 运行时尚未就绪");
   });
 
+  it("audit: cached disk cannot complete foreign-port setup in stub mode", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        status: "ok", service: "rushi-asr", ffmpeg_ok: true,
+        funasr_import_ok: true, funasr_model_configured: true,
+        funasr_ready: true, transcription_mode: "stub",
+        funasr_required_models_cached: true, funasr_active_model_cached: true,
+        funasr_default_model_cached: true, funasr_vad_model_cached: true,
+        selected_model_ready: false, ready_for_transcribe: false,
+        funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      }),
+    } as Response);
+    const prepareDefaultFunasrModel = vi.fn(() => Promise.resolve());
+    const { result } = renderHook(() => useAsrSetupController({
+      refreshAsrHealth: vi.fn(() => Promise.resolve()),
+      refreshAsrRuntimeInfo: vi.fn(() => Promise.resolve()),
+      prepareDefaultFunasrModel,
+      bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
+      getSetupSelection: () => ({
+        selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        catalogStatus: null,
+      }),
+    }));
+    await act(() => result.current.acceptForeignPortService());
+    expect(result.current.setupOutcome).toBe("blocked");
+    expect(result.current.setupSteps.find((step) => step.id === "done")?.status).not.toBe("ok");
+    expect(prepareDefaultFunasrModel).not.toHaveBeenCalled();
+  });
+
   it("coalesces parallel refreshSetupDiagnose into one Tauri call", async () => {
     asrSetupDiagnose.mockImplementation(
       () =>

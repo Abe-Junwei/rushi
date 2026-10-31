@@ -90,6 +90,11 @@ export function getEnvironmentCapabilityBlockReason(): string | null {
   return readStore().snapshot?.blockReason ?? null;
 }
 
+/** True when a refresh has written a snapshot (ready or blocked). */
+export function hasEnvironmentCapabilitySnapshot(): boolean {
+  return readStore().snapshot != null;
+}
+
 export function resetEnvironmentCapabilityCoordinatorForTests(): void {
   patchStore({
     snapshot: null,

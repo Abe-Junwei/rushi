@@ -102,8 +102,11 @@ export function useLocalAsrModelCatalog(
   const syncCatalogFromHealth = useCallback((healthJson: unknown, rootJson?: unknown) => {
     const root = rootJson ?? null;
     setSidecarCatalogCapable(sidecarSupportsModelCatalogAny(healthJson, root));
-    setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
-    setSidecarAsyncTranscribeCapable(sidecarSupportsTranscribeAsyncFromRoot(root));
+    // Only update root-derived flags when GET / succeeded — null root must not clobber true → false.
+    if (root != null) {
+      setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
+      setSidecarAsyncTranscribeCapable(sidecarSupportsTranscribeAsyncFromRoot(root));
+    }
     const parsed = parseCatalogStatusFromHealth(healthJson);
     if (parsed) setCatalogStatus(parsed);
   }, []);

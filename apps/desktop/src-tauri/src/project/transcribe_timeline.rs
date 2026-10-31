@@ -361,6 +361,8 @@ pub fn fail_and_persist_active_timeline(
         let code = infer_transcribe_error_code(message);
         rec.fail_stage(stage, code, message);
     }
+    // Async start held in-flight until finalize; poll fail/cancel never reaches finalize.
+    crate::asr_sidecar::warm::dec_transcribe_in_flight();
     rec.persist(st)
 }
 
