@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "command": "CURSOR_PLUGIN_ROOT=\"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory\" python3 \"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory/scripts/session_start.py\"",
+        "timeout": 15
+      }
+    ],
+    "stop": [
+      {
+        "command": "CURSOR_PLUGIN_ROOT=\"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory\" python3 \"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory/scripts/retain.py\"",
+        "timeout": 15
+      }
+    ],
+    "sessionEnd": [
+      {
+        "command": "CURSOR_PLUGIN_ROOT=\"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory\" python3 \"/Users/junwei/\u5f00\u53d1/Rushi/.cursor-plugin/hindsight-memory/scripts/retain.py\"",
+        "timeout": 15
+      }
+    ]
+  }
+}
