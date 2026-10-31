@@ -541,7 +541,10 @@ pub fn inject_track_revisions_flag(bytes: &[u8]) -> Result<Vec<u8>, String> {
             let mut file = archive
                 .by_index(i)
                 .map_err(|e| format!("读取 DOCX 条目失败: {e}"))?;
-            let name = file.name().to_string();
+            let name = file
+                .name()
+                .map_err(|e| format!("读取 DOCX 条目名失败: {e}"))?
+                .into_owned();
             let compression = file.compression();
             let options = SimpleFileOptions::default().compression_method(compression);
             let mut buf = Vec::new();

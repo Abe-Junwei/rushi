@@ -66,7 +66,7 @@ fn validate_library_archive(archive: &mut ZipArchive<File>) -> CommandResult<()>
         if file.is_dir() {
             continue;
         }
-        let name = file.name();
+        let name = file.name().map_err(CommandError::BundleZipEntry)?;
         if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
             return Err(CommandError::BundleUnsafeZipPath);
         }
