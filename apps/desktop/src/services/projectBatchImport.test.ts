@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  formatBatchImportSummaryMessage,
   importAudioPathsToProject,
   importDroppedPathsToProject,
   resolveDroppedFileKind,
@@ -59,5 +60,16 @@ describe("projectBatchImport", () => {
       nestInBatch: true,
     });
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  it("formatBatchImportSummaryMessage covers import/skip mixes", () => {
+    expect(formatBatchImportSummaryMessage({ imported: 0, skipped: 0 })).toBeNull();
+    expect(formatBatchImportSummaryMessage({ imported: 3, skipped: 0 })).toBe("已导入 3 个文件");
+    expect(formatBatchImportSummaryMessage({ imported: 0, skipped: 2 })).toBe(
+      "未导入新文件（跳过 2 个）",
+    );
+    expect(formatBatchImportSummaryMessage({ imported: 2, skipped: 1 })).toBe(
+      "已导入 2 个，跳过 1 个",
+    );
   });
 });

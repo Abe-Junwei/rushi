@@ -189,6 +189,7 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     duplicateImportConfirmOpen: lifecycle.duplicateImportConfirmOpen,
     duplicateImportChecking: lifecycle.duplicateImportChecking,
     duplicateImportCheck: lifecycle.duplicateImportCheck,
+    duplicateImportBatchMode: lifecycle.duplicateImportBatchMode,
     cancelDuplicateImport: lifecycle.cancelDuplicateImport,
     openExistingDuplicateImport: lifecycle.openExistingDuplicateImport,
     confirmDuplicateImportCopy: lifecycle.confirmDuplicateImportCopy,

@@ -11,6 +11,8 @@ export type WorkspaceFileTarget = {
 export type RecentWorkspaceFile = WorkspaceFileTarget & {
   name: string;
   fileType: string;
+  /** From FileSummary.created_at_ms when present. */
+  createdAtMs?: number;
   updatedAtMs: number;
   /** Hub-aligned FileSummary for meta + stage meter (from list_files). */
   summary: FileSummary;
@@ -73,6 +75,7 @@ export async function listRecentWorkspaceFiles(
           fileId: f.id,
           name: f.name,
           fileType: f.file_type,
+          ...(typeof f.created_at_ms === "number" ? { createdAtMs: f.created_at_ms } : {}),
           updatedAtMs: f.updated_at_ms,
           summary: f,
         }),

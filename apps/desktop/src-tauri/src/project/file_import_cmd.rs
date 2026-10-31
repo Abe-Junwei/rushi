@@ -60,7 +60,7 @@ fn list_stem_attach_candidates(
 ) -> Result<Vec<FileSummary>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, name, file_type, updated_at_ms FROM files \
+            "SELECT id, name, file_type, created_at_ms, updated_at_ms FROM files \
              WHERE project_id = ?1 AND file_type IN ('paired', 'audio_only') AND name = ?2 \
              ORDER BY updated_at_ms DESC",
         )
@@ -71,7 +71,8 @@ fn list_stem_attach_candidates(
                 id: r.get(0)?,
                 name: r.get(1)?,
                 file_type: r.get(2)?,
-                updated_at_ms: r.get(3)?,
+                created_at_ms: r.get(3)?,
+                updated_at_ms: r.get(4)?,
                 duration_sec: None,
                 segment_count: 0,
                 draft_count: 0,

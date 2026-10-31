@@ -3,6 +3,8 @@
 export interface ProjectSummary {
   id: string;
   name: string;
+  /** project_list 返回；缺省时排序回退到 updated_at_ms */
+  created_at_ms?: number;
   updated_at_ms: number;
   /** 来自 project_list；未返回时可由展开加载的文件数补全 */
   file_count?: number;
@@ -54,6 +56,8 @@ export interface FileSummary {
   id: string;
   name: string;
   file_type: string;
+  /** list_files / project_load 返回；缺省时排序回退到 updated_at_ms */
+  created_at_ms?: number;
   updated_at_ms: number;
   /** Cached media duration (seconds); null until probed / transcribed. */
   duration_sec?: number | null;

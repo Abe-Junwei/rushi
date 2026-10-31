@@ -15,6 +15,8 @@ type DuplicateImportConfirmDialogProps = {
   open: boolean;
   checking: boolean;
   check: ImportDuplicateCheck | null;
+  /** Batch path: cancel = skip this file; hide「打开已有」to avoid mid-batch jump. */
+  batchMode?: boolean;
   onCancel: () => void;
   onOpenExisting: () => void;
   onConfirmCopy: () => void;
@@ -24,13 +26,15 @@ export function DuplicateImportConfirmDialog({
   open,
   checking,
   check,
+  batchMode = false,
   onCancel,
   onOpenExisting,
   onConfirmCopy,
 }: DuplicateImportConfirmDialogProps) {
   if (!open && !checking) return null;
 
-  const canOpenExisting = check ? canOpenExistingDuplicate(check) : false;
+  const canOpenExisting = !batchMode && check ? canOpenExistingDuplicate(check) : false;
+  const cancelLabel = batchMode ? "跳过" : "取消";
 
   return (
     <DialogOverlay
@@ -75,7 +79,7 @@ export function DuplicateImportConfirmDialog({
             </p>
             <div className={COMPACT_DIALOG_LAYOUT.actionRow}>
               <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCancel}>
-                取消
+                {cancelLabel}
               </button>
               {canOpenExisting ? (
                 <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onOpenExisting}>

@@ -119,7 +119,7 @@ pub fn list_file_summaries(
         .prepare(
             // Effective content segment = not placeholder / whole-track fallback, and has
             // non-empty text (aligns with frontend segmentsHaveNonEmptyText for Hub truth).
-            "SELECT f.id, f.name, f.file_type, f.updated_at_ms, f.duration_sec, f.audio_path, \
+            "SELECT f.id, f.name, f.file_type, f.created_at_ms, f.updated_at_ms, f.duration_sec, f.audio_path, \
                     f.import_source_size, \
                     COALESCE(SUM(CASE WHEN COALESCE(s.kind, '') != 'placeholder' \
                       AND COALESCE(s.detail, '') != 'funasr_whole_track_fallback' \
@@ -147,12 +147,13 @@ pub fn list_file_summaries(
                 r.get::<_, String>(1)?,
                 r.get::<_, String>(2)?,
                 r.get::<_, i64>(3)?,
-                r.get::<_, Option<f64>>(4)?,
-                r.get::<_, Option<String>>(5)?,
-                r.get::<_, Option<i64>>(6)?,
-                r.get::<_, i64>(7)?,
+                r.get::<_, i64>(4)?,
+                r.get::<_, Option<f64>>(5)?,
+                r.get::<_, Option<String>>(6)?,
+                r.get::<_, Option<i64>>(7)?,
                 r.get::<_, i64>(8)?,
                 r.get::<_, i64>(9)?,
+                r.get::<_, i64>(10)?,
             ))
         })
         .map_err(|e| e.to_string())?;
@@ -162,6 +163,7 @@ pub fn list_file_summaries(
             id,
             name,
             file_type,
+            created_at_ms,
             updated_at_ms,
             duration_sec,
             audio_path,
@@ -178,6 +180,7 @@ pub fn list_file_summaries(
             id,
             name,
             file_type,
+            created_at_ms,
             updated_at_ms,
             duration_sec: duration_sec.filter(|d| d.is_finite() && *d > 0.0),
             segment_count,

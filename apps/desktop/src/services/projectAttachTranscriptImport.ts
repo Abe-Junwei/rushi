@@ -14,6 +14,8 @@ type HubDuplicateDeps = {
   openFile: (fileId: string) => Promise<void>;
   checkDuplicate: (projectId: string, srcPath: string) => Promise<ImportDuplicateCheck>;
   askDuplicateImport: (check: ImportDuplicateCheck) => Promise<DuplicateDecision>;
+  /** Batch import: skip without opening existing (avoids mid-batch navigation). */
+  nestInBatch?: boolean;
 };
 
 export async function confirmHubTextDuplicateIfNeeded(
@@ -30,6 +32,7 @@ export async function confirmHubTextDuplicateIfNeeded(
   const decision = await deps.askDuplicateImport(check);
   if (decision === "cancel") return false;
   if (decision === "open_existing") {
+    if (deps.nestInBatch) return false;
     const fileId = pickDuplicateOpenExistingFileId(check);
     if (fileId) await deps.openFile(fileId);
     return false;

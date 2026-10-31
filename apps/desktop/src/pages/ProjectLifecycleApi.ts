@@ -242,6 +242,7 @@ export interface ProjectLifecycleApi {
   duplicateImportConfirmOpen: boolean;
   duplicateImportChecking: boolean;
   duplicateImportCheck: import("../utils/projectImportDuplicate").ImportDuplicateCheck | null;
+  duplicateImportBatchMode: boolean;
   cancelDuplicateImport: () => void;
   openExistingDuplicateImport: () => void;
   confirmDuplicateImportCopy: () => void;

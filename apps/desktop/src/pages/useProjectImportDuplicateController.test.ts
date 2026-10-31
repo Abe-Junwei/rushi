@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useProjectImportDuplicateController } from "./useProjectImportDuplicateController";
 
 vi.mock("../services/ui/toast", () => ({
-  toast: { error: vi.fn() },
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn() },
 }));
 
 vi.mock("../tauri/fileApi", () => ({
@@ -164,6 +164,37 @@ describe("useProjectImportDuplicateController", () => {
     expect(loadProjectAfterImport).not.toHaveBeenCalled();
     expect(result.current.importProgress).toBeNull();
     expect(result.current.duplicateImportChecking).toBe(false);
+    expect(toast.success).toHaveBeenCalledWith("已导入 2 个文件");
+  });
+
+  it("batch duplicate prompt uses batch mode and skip does not open file", async () => {
+    vi.mocked(fileApi.checkProjectImportDuplicate).mockResolvedValue(duplicateCheck());
+    const { deps, openFile } = makeDeps();
+    const { result } = renderHook(() => useProjectImportDuplicateController(deps));
+
+    let importPromise: Promise<{ imported: number; skipped: number }>;
+    act(() => {
+      importPromise = result.current.importAudioPathsToProject(["/tmp/clip.wav"]);
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.duplicateImportConfirmOpen).toBe(true);
+    expect(result.current.duplicateImportBatchMode).toBe(true);
+
+    act(() => {
+      result.current.cancelDuplicateImport();
+    });
+
+    await act(async () => {
+      const out = await importPromise!;
+      expect(out).toEqual({ imported: 0, skipped: 1 });
+    });
+
+    expect(openFile).not.toHaveBeenCalled();
+    expect(toast.info).toHaveBeenCalledWith("未导入新文件（跳过 1 个）");
   });
 
   it("batch audio import does not flash duplicate-checking UI between files", async () => {
@@ -173,12 +204,7 @@ describe("useProjectImportDuplicateController", () => {
 
     vi.mocked(fileApi.checkProjectImportDuplicate).mockImplementation(async () => {
       checkingSnapshots.push(result.current.duplicateImportChecking);
-      return {
-        path_match_file_id: null,
-        content_match_file_id: null,
-        matched_by_path: false,
-        matched_by_content: false,
-      };
+      return { bySourcePath: [], byContentHash: [] };
     });
 
     await act(async () => {

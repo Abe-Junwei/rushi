@@ -10,7 +10,7 @@ pub fn project_list(state: State<DbState>) -> Result<Vec<ProjectSummary>, String
     let conn = open_db(state.deref())?;
     let mut stmt = conn
         .prepare(
-            "SELECT p.id, p.name, p.updated_at_ms, COUNT(f.id) as file_count \
+            "SELECT p.id, p.name, p.created_at_ms, p.updated_at_ms, COUNT(f.id) as file_count \
              FROM projects p LEFT JOIN files f ON p.id = f.project_id \
              GROUP BY p.id \
              ORDER BY p.updated_at_ms DESC",
@@ -21,8 +21,9 @@ pub fn project_list(state: State<DbState>) -> Result<Vec<ProjectSummary>, String
             Ok(ProjectSummary {
                 id: r.get(0)?,
                 name: r.get(1)?,
-                updated_at_ms: r.get(2)?,
-                file_count: r.get(3)?,
+                created_at_ms: r.get(2)?,
+                updated_at_ms: r.get(3)?,
+                file_count: r.get(4)?,
             })
         })
         .map_err(|e| e.to_string())?;

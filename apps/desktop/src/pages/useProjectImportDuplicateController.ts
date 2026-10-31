@@ -12,6 +12,7 @@ import {
   resolveTranscriptImport,
 } from "../services/projectAttachTranscriptImport";
 import {
+  formatBatchImportSummaryMessage,
   importAudioPathsToProject as importAudioPathsBatch,
   importDroppedPathsToProject as importDroppedPathsBatch,
   type BatchImportProgress,
@@ -33,6 +34,8 @@ export type ProjectImportDuplicateControllerApi = {
   duplicateImportConfirmOpen: boolean;
   duplicateImportChecking: boolean;
   duplicateImportCheck: ImportDuplicateCheck | null;
+  /** True while a batch import is waiting on the duplicate prompt. */
+  duplicateImportBatchMode: boolean;
   cancelDuplicateImport: () => void;
   openExistingDuplicateImport: () => void;
   confirmDuplicateImportCopy: () => void;
@@ -83,6 +86,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     null,
   );
   const [duplicateImportChecking, setDuplicateImportChecking] = useState(false);
+  const [duplicateImportBatchMode, setDuplicateImportBatchMode] = useState(false);
   const [importProgress, setImportProgress] = useState<BatchImportProgress | null>(null);
   const resolverRef = useRef<((decision: DuplicateImportDecision) => void) | null>(null);
   const importGateActiveRef = useRef(false);
@@ -92,6 +96,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     resolverRef.current?.(decision);
     resolverRef.current = null;
     setDuplicateImportCheck(null);
+    setDuplicateImportBatchMode(false);
   }, []);
 
   const cancelDuplicateImport = useCallback(() => {
@@ -106,12 +111,19 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     finishPrompt("import_copy");
   }, [finishPrompt]);
 
-  const askDuplicateImport = useCallback((check: ImportDuplicateCheck): Promise<DuplicateImportDecision> => {
-    return new Promise((resolve) => {
-      resolverRef.current = resolve;
-      setDuplicateImportCheck(check);
-    });
-  }, []);
+  const askDuplicateImport = useCallback(
+    (
+      check: ImportDuplicateCheck,
+      options?: { batchMode?: boolean },
+    ): Promise<DuplicateImportDecision> => {
+      return new Promise((resolve) => {
+        resolverRef.current = resolve;
+        setDuplicateImportBatchMode(Boolean(options?.batchMode));
+        setDuplicateImportCheck(check);
+      });
+    },
+    [],
+  );
 
   const runTranscriptImport = useCallback(
     (projectId: string, srcPath: string, targetFileId?: string | null) =>
@@ -137,7 +149,8 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
           projectFiles: deps.projectFiles,
           openFile: deps.openFile,
           checkDuplicate: fileApi.checkProjectImportDuplicate,
-          askDuplicateImport,
+          askDuplicateImport: (check) => askDuplicateImport(check, { batchMode: nest }),
+          nestInBatch: nest,
         });
       } finally {
         if (!nest) setDuplicateImportChecking(false);
@@ -215,9 +228,11 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
           if (!nest) setDuplicateImportChecking(false);
 
           if (hasImportDuplicate(check)) {
-            const decision = await askDuplicateImport(check);
+            const decision = await askDuplicateImport(check, { batchMode: nest });
             if (decision === "cancel") return false;
             if (decision === "open_existing") {
+              // Batch: skip only — opening would jump away mid-queue.
+              if (nest) return false;
               const fileId = pickDuplicateOpenExistingFileId(check);
               if (fileId) await deps.openFile(fileId);
               return false;
@@ -283,6 +298,16 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     [deps],
   );
 
+  const notifyBatchImportSummary = useCallback(
+    (result: { imported: number; skipped: number }) => {
+      const message = formatBatchImportSummaryMessage(result);
+      if (!message) return;
+      if (result.imported > 0) toast.success(message);
+      else toast.info(message);
+    },
+    [],
+  );
+
   const importAudioPathsToProject = useCallback(
     async (paths: string[]): Promise<{ imported: number; skipped: number }> => {
       const projectId = deps.currentProjectId;
@@ -295,9 +320,11 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
           onProgress,
         ),
       );
-      return { imported: result.imported, skipped: result.skipped ?? 0 };
+      const summary = { imported: result.imported, skipped: result.skipped ?? 0 };
+      notifyBatchImportSummary(summary);
+      return summary;
     },
-    [deps, importFileToProject, runBatchImport],
+    [deps, importFileToProject, notifyBatchImportSummary, runBatchImport],
   );
 
   const importDroppedPathsToProject = useCallback(
@@ -314,13 +341,18 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
           onProgress,
         ),
       );
-      return {
+      const summary = {
         imported: result.imported,
         skipped: result.skipped ?? 0,
         unsupported: "unsupported" in result ? (result.unsupported ?? 0) : 0,
       };
+      // Unsupported-only already toasted by EmptyProjectPanel; still summarize mixed outcomes.
+      if (!(summary.imported === 0 && summary.unsupported > 0 && summary.skipped === summary.unsupported)) {
+        notifyBatchImportSummary(summary);
+      }
+      return summary;
     },
-    [deps, importFileToProject, runBatchImport],
+    [deps, importFileToProject, notifyBatchImportSummary, runBatchImport],
   );
 
   const pickAndImportAudioPathsToProject = useCallback(async (): Promise<{
@@ -357,6 +389,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     duplicateImportConfirmOpen: duplicateImportCheck !== null,
     duplicateImportChecking,
     duplicateImportCheck,
+    duplicateImportBatchMode,
     cancelDuplicateImport,
     openExistingDuplicateImport,
     confirmDuplicateImportCopy,

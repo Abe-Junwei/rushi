@@ -16,6 +16,7 @@ pub struct ProjectSummary {
     pub id: String,
     pub name: String,
     pub file_count: i64,
+    pub created_at_ms: i64,
     pub updated_at_ms: i64,
 }
 
@@ -69,6 +70,7 @@ pub struct FileSummary {
     pub id: String,
     pub name: String,
     pub file_type: String,
+    pub created_at_ms: i64,
     pub updated_at_ms: i64,
     /// Cached media duration (seconds); null until probed / transcribed.
     pub duration_sec: Option<f64>,

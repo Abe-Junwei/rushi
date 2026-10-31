@@ -179,6 +179,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     duplicateImportConfirmOpen: importDuplicate.duplicateImportConfirmOpen,
     duplicateImportChecking: importDuplicate.duplicateImportChecking,
     duplicateImportCheck: importDuplicate.duplicateImportCheck,
+    duplicateImportBatchMode: importDuplicate.duplicateImportBatchMode,
     cancelDuplicateImport: importDuplicate.cancelDuplicateImport,
     openExistingDuplicateImport: importDuplicate.openExistingDuplicateImport,
     confirmDuplicateImportCopy: importDuplicate.confirmDuplicateImportCopy,

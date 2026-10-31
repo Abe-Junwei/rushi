@@ -9,6 +9,17 @@ export type BatchImportResult = {
   unsupported: number;
 };
 
+/** User-facing summary after multi-path import (duplicate skip / cancel counted in skipped). */
+export function formatBatchImportSummaryMessage(
+  result: Pick<BatchImportResult, "imported" | "skipped">,
+): string | null {
+  const { imported, skipped } = result;
+  if (imported <= 0 && skipped <= 0) return null;
+  if (imported > 0 && skipped <= 0) return `已导入 ${imported} 个文件`;
+  if (imported <= 0) return `未导入新文件（跳过 ${skipped} 个）`;
+  return `已导入 ${imported} 个，跳过 ${skipped} 个`;
+}
+
 /** 批量导入进度（current 从 1 起）。 */
 export type BatchImportProgress = {
   current: number;

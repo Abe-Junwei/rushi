@@ -225,6 +225,7 @@ export function ProjectPanelDialogs({
         open={c.duplicateImportConfirmOpen}
         checking={c.duplicateImportChecking}
         check={c.duplicateImportCheck}
+        batchMode={c.duplicateImportBatchMode}
         onCancel={c.cancelDuplicateImport}
         onOpenExisting={c.openExistingDuplicateImport}
         onConfirmCopy={c.confirmDuplicateImportCopy}
