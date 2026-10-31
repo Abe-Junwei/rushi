@@ -110,6 +110,8 @@ export function WelcomeView({
         </div>
       );
     }
+    // Idle recycle: warn light only — no home error banner.
+    if (c.asrPresentation.sidecarIdleSleeping) return null;
     if (c.asrPresentation.health !== "error") return null;
     return (
       <div className="shrink-0 px-8 pt-4 sm:px-10">

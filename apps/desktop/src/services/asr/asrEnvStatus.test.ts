@@ -204,6 +204,29 @@ describe("buildAsrEnvPresentation", () => {
     );
   });
 
+  it("blocks stub mode even when required models are on disk", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: false,
+        funasr_model_configured: true,
+        funasr_ready: false,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: false,
+        selected_model_ready: false,
+        transcription_mode: "stub",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(p.transcribeReady).toBe(false);
+    expect(p.chipOk).toBe(false);
+    expect(p.blockReason).toContain("占位引擎");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.ok).toBe(false);
+  });
+
   it("shows runtime install busy rows as 安装中", async () => {
     const base = await build({
       asrHealth: "ok",
@@ -255,11 +278,12 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.sidecarIdleSleeping).toBe(true);
     expect(p.tone).toBe("warn");
     expect(p.chipLabel).toBe("ASR 已休眠");
-    expect(p.bannerTitle).toBe("本机 ASR · 已休眠");
-    expect(p.bannerDetail).toContain("15 分钟");
-    expect(p.blockReason).toContain("已休眠");
-    expect(p.statusRows.find((r) => r.id === "env")?.text).toBe("已休眠");
-    expect(p.statusRows.find((r) => r.id === "ffmpeg")?.text).toBe("待侧车恢复后检测");
+    expect(p.bannerTitle).toBe("本机 ASR");
+    expect(p.bannerDetail).toBe("");
+    expect(p.blockReason).toBeNull();
+    expect(p.errorBannerMessage).toBe("");
+    expect(p.statusRows.find((r) => r.id === "env")?.text).toBe("—");
+    expect(p.statusRows.find((r) => r.id === "ffmpeg")?.text).toBe("—");
   });
 
   it("keeps fault presentation when stopped with lastErrorCode", async () => {

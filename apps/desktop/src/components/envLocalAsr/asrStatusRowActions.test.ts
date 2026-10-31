@@ -32,7 +32,7 @@ describe("resolveAsrStatusRowAction", () => {
   it("binds recover sidecar when idle sleeping", () => {
     const onRecoverSidecar = vi.fn();
     const action = resolveAsrStatusRowAction(
-      { id: "env", label: "环境", ok: false, text: "已休眠", warn: true },
+      { id: "env", label: "环境", ok: false, text: "—", warn: true },
       { health: "error", sidecarIdleSleeping: true, onRecoverSidecar },
     );
     expect(action?.label).toBe("恢复侧车");

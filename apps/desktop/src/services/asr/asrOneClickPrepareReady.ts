@@ -22,7 +22,11 @@ export async function finishOneClickIfAlreadyReady(
 ): Promise<boolean> {
   const readySnap = await snapshotSelectedModelPrepare(selection);
   // Loopback + UI selection are authoritative; diagnose snapshot may lag behind /health.
-  if ((!readySnap.ready && !readySnap.diskPrepared) || !readySnap.sidecarMatchesSelection) {
+  // Disk cache alone must not short-circuit when transcription_mode is still stub.
+  if (!readySnap.ready || !readySnap.sidecarMatchesSelection) {
+    return false;
+  }
+  if (report.health.transcriptionMode !== "funasr") {
     return false;
   }
   if (isDefaultBundledAsrTarget()) {

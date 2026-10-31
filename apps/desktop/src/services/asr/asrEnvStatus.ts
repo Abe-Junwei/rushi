@@ -43,12 +43,6 @@ import {
 import type { AsrSupervisorSnapshot } from "./asrSetupContract";
 import { idleStoppedAfterSuccess } from "./asrSupervisorPresentation";
 
-export const ASR_IDLE_SLEEP_BANNER_DETAIL =
-  "空闲约 15 分钟后已自动停止侧车以节省内存。点「重试检测」或开始转写会重新拉起；也可点「重试内置侧车」。";
-
-export const ASR_IDLE_SLEEP_BLOCK_REASON =
-  "本机 ASR 已休眠：点「重试检测」或开始转写即可恢复，无需重装。";
-
 type AsrEnvTone = "ok" | "warn" | "error" | "idle";
 
 export type { AsrEnvStatusRow };
@@ -163,6 +157,9 @@ function blockReasonFor(input: {
       sidecarAsyncTranscribeBlockReasonDev,
       sidecarAsyncTranscribeBlockReasonManaged,
     );
+  }
+  if (input.asrCaps.transcription_mode !== "funasr") {
+    return "本机 ASR 仍为占位引擎（stub），无法正式转写。请在环境页完成模型准备后再试。";
   }
   if (input.transcribeReady) return null;
   if (input.asrCaps.ffmpeg_ok !== true) {
@@ -319,6 +316,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     input.supervisor != null &&
     idleStoppedAfterSuccess(input.supervisor);
 
+  // Idle-stop: warn light + chip「已休眠」; no home/env essays; soft-wake on transcribe.
   const chipLabel = sidecarIdleSleeping
     ? "ASR 已休眠"
     : chipLabelFor({
@@ -351,7 +349,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
   const statusRows = sidecarIdleSleeping ? mapIdleSleepStatusRows(statusRowsRaw) : statusRowsRaw;
 
   const blockReason = sidecarIdleSleeping
-    ? ASR_IDLE_SLEEP_BLOCK_REASON
+    ? null
     : blockReasonFor({
         asrHealth: input.asrHealth,
         asrCaps: input.asrCaps,
@@ -376,14 +374,14 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
         ffmpegChipTitle: "FFmpeg 是否可用",
         statusRows,
         bannerTitle: sidecarIdleSleeping
-          ? "本机 ASR · 已休眠"
+          ? "本机 ASR"
           : bannerTitleFor({
               asrHealth: input.asrHealth,
               transcribeReady,
               sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
             }),
         bannerDetail: sidecarIdleSleeping
-          ? ASR_IDLE_SLEEP_BANNER_DETAIL
+          ? ""
           : bannerDetailFor({
               asrHealth: input.asrHealth,
               asrHealthDetail: input.asrHealthDetail,
@@ -401,7 +399,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
             ? input.asrHealthDetail.trim() || null
             : null,
         errorBannerMessage: sidecarIdleSleeping
-          ? ASR_IDLE_SLEEP_BLOCK_REASON
+          ? ""
           : input.asrHealth === "error" && blockReason
             ? blockReason
             : "无法连接本机 ASR，请检查服务是否在运行。",

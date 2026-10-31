@@ -172,12 +172,12 @@ export function mapRuntimeInstallBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatus
   });
 }
 
-/** Idle-stop: avoid cascading red "未检测到 / 不可用" while sidecar is intentionally down. */
+/** Idle-stop: warn rows without「已休眠」copy (top-bar light carries the signal). */
 export function mapIdleSleepStatusRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRow[] {
   return rows.map((row) => {
-    if (row.id === "env") return { ...row, ok: false, text: "已休眠", warn: true };
+    if (row.id === "env") return { ...row, ok: false, text: "—", warn: true };
     if (row.id === "ffmpeg" || row.id === "runtime" || row.id === "transcribe") {
-      return { ...row, ok: false, text: "待侧车恢复后检测", warn: true };
+      return { ...row, ok: false, text: "—", warn: true };
     }
     return row;
   });

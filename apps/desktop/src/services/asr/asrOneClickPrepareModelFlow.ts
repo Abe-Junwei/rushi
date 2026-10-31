@@ -182,14 +182,22 @@ export async function runAsrOneClickPrepareModelFlow(
   }
 
   const finalSnap = await snapshotSelectedModelPrepare(selection);
-  if (!finalSnap.ready && !finalSnap.diskPrepared || !finalSnap.sidecarMatchesSelection) {
+  // Require real funasr ready — disk cache alone must not claim「可用于转写」(stub / corrupt).
+  if (!finalSnap.ready || !finalSnap.sidecarMatchesSelection) {
     setSetupSteps((steps) =>
-      patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
+      patchStep(steps, "model", {
+        status: "error",
+        detail: finalSnap.diskPrepared
+          ? "模型已在缓存，但侧车仍为占位引擎"
+          : "模型尚未完全就绪",
+      }),
     );
     setSetupMessage(
-      isDefaultBundledAsrTarget()
-        ? "模型或侧车尚未完全准备好，请等待内置模型复制完成或重试侧车同步。"
-        : "模型或侧车尚未完全准备好，请完成模型下载或重试侧车同步。",
+      finalSnap.diskPrepared
+        ? "模型权重已在本地，但 ASR 仍为 stub（常见于内置侧车损坏）。请「重试内置侧车」或重新安装/修复语音识别组件后再转写。"
+        : isDefaultBundledAsrTarget()
+          ? "模型或侧车尚未完全准备好，请等待内置模型复制完成或重试侧车同步。"
+          : "模型或侧车尚未完全准备好，请完成模型下载或重试侧车同步。",
     );
     setSetupOutcome("blocked");
     return false;

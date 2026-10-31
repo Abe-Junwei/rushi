@@ -52,7 +52,9 @@ export function buildAsrCatalogPresentation(
   const prepareModelProgress = input.prepareModelProgress ?? 0;
   const modelsCached = selectedPrepare.cached;
   const modelsReady =
-    selectedPrepare.readyForTranscribe && selectedPrepare.sidecarMatchesSelection;
+    selectedPrepare.readyForTranscribe &&
+    selectedPrepare.sidecarMatchesSelection &&
+    input.asrCaps?.transcription_mode === "funasr";
   const partialCache =
     !modelsCached &&
     selectedPrepare.sidecarMatchesSelection &&

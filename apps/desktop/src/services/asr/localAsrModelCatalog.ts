@@ -190,6 +190,10 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   if (!sidecarMatchesSelection) {
     return { ready: false, sidecarMatchesSelection: false };
   }
+  // Align with Rust local_transcribe_gate: stub never counts as ready (disk cache alone is not enough).
+  if (asrCaps.transcription_mode !== "funasr") {
+    return { ready: false, sidecarMatchesSelection: true };
+  }
   if (!sidecarMemoryModelMatchesConfig(asrCaps)) {
     return { ready: false, sidecarMatchesSelection: true };
   }
@@ -200,6 +204,7 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
     }
     // D4 on disk + sidecar aligned: allow transcribe / one-click success; model loads on first use
     // when launch warmup is deferred (weights cached but not yet in memory).
+    // Only when mode is already funasr (checked above) — cached + stub must stay blocked.
     if (asrCaps.funasr_required_models_cached === true) {
       return { ready: true, sidecarMatchesSelection: true };
     }

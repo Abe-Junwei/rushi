@@ -161,11 +161,29 @@ describe("localAsrModelCatalog", () => {
         funasr_active_model_cached: true,
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
     expect(result.sidecarMatchesSelection).toBe(true);
     expect(result.ready).toBe(true);
+  });
+
+  it("computeLocalAsrTranscribeReady blocks stub even when models are cached", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: false,
+        selected_model_ready: false,
+        funasr_ready: false,
+        transcription_mode: "stub",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(false);
   });
 
   it("computeLocalAsrTranscribeReady ignores global ready when selected SKU is not ready", () => {
@@ -175,6 +193,7 @@ describe("localAsrModelCatalog", () => {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_active_model_cached: true,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       catalogStatus: [
         {
@@ -202,6 +221,7 @@ describe("localAsrModelCatalog", () => {
         funasr_model_id: "iic/SenseVoiceSmall",
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
@@ -216,6 +236,7 @@ describe("localAsrModelCatalog", () => {
         funasr_loaded_model_id: "custom/other-asr-model",
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
@@ -233,6 +254,7 @@ describe("localAsrModelCatalog", () => {
         ready_for_transcribe: true,
         model_memory_matches_config: false,
         selected_model_ready: false,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
@@ -250,6 +272,7 @@ describe("localAsrModelCatalog", () => {
         ready_for_transcribe: false,
         model_memory_matches_config: true,
         selected_model_ready: false,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
@@ -265,6 +288,7 @@ describe("localAsrModelCatalog", () => {
         funasr_required_models_cached: true,
         selected_model_ready: true,
         model_memory_matches_config: true,
+        transcription_mode: "funasr",
       },
       catalogStatus: [
         {

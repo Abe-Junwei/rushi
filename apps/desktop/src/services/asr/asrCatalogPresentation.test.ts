@@ -89,6 +89,37 @@ describe("buildAsrCatalogPresentation", () => {
     expect(presentation.progressTone).toBe("success");
   });
 
+  it("does not report modelsReady when transcription_mode is stub", () => {
+    const selected = DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
+    const presentation = buildAsrCatalogPresentation({
+      asrCaps: caps({
+        funasr_model_id: selected,
+        funasr_active_model_cached: true,
+        funasr_required_models_cached: true,
+        funasr_ready: false,
+        transcription_mode: "stub",
+      }),
+      catalogStatus: [
+        {
+          catalogId: "paraformer-long-vad-punc",
+          hubModelId: selected,
+          label: "Paraformer",
+          description: "",
+          diskHint: "",
+          recommendLongAudio: true,
+          cached: true,
+          active: true,
+          readyForTranscribe: true,
+        },
+      ],
+      selectedHubModelId: selected,
+    });
+
+    expect(presentation.modelsCached).toBe(true);
+    expect(presentation.modelsReady).toBe(false);
+    expect(presentation.progressTone).not.toBe("success");
+  });
+
   it("does not show 100% when only active_model is cached without required models", () => {
     const selected = DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
     const presentation = buildAsrCatalogPresentation({
