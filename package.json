@@ -2,7 +2,9 @@
   "name": "rushi",
   "private": true,
   "description": "如是我闻 — 本地中文录音转写与校对（桌面应用）",
-  "workspaces": ["apps/desktop"],
+  "workspaces": [
+    "apps/desktop"
+  ],
   "scripts": {
     "prepare": "cd apps/desktop && husky",
     "check:doc-links": "node scripts/check-internal-doc-links.mjs",
@@ -52,5 +54,8 @@
   "engines": {
     "node": ">=22",
     "npm": ">=10"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.5"
   }
 }

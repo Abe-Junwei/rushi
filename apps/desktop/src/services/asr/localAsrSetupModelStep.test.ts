@@ -80,6 +80,7 @@ const readyCaps = {
   funasr_active_model_cached: true,
   funasr_default_model_cached: true,
   funasr_vad_model_cached: true,
+  transcription_mode: "funasr",
 };
 
 describe("syncBundledSidecarToPreferredHub", () => {

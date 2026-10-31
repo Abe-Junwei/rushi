@@ -70,6 +70,14 @@ export default tseslint.config(
     },
   },
   {
+    // Standalone *.bench.ts under src/ is not wired into vitest configs; vitest 5
+    // leaves `bench` unresolved for type-aware lint → no-unsafe-call noise.
+    files: ["src/**/*.bench.ts"],
+    rules: {
+      "@typescript-eslint/no-unsafe-call": "off",
+    },
+  },
+  {
     // vitest mock spies (vi.fn) are object methods, so referencing them in
     // `expect(ctx.fillRect)` trips unbound-method — a known false positive for
     // mocking libraries. Relax it for test files only.
