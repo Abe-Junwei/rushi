@@ -170,7 +170,7 @@ export type LocalAsrTranscribeReadyInput = {
     model_memory_matches_config?: boolean;
     selected_model_ready?: boolean;
     /** Align with Rust local_transcribe_gate — stub never counts as ready. */
-    transcription_mode?: "funasr" | "stub" | string;
+    transcription_mode?: string;
   } | null;
   selectedHubModelId?: string | null;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
