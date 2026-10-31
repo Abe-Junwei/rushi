@@ -96,7 +96,7 @@ describe("WelcomeFileLedger", () => {
       ...sample,
       fileId: `f${i}`,
       name: `最近文件${i}`,
-      summary: { ...sample.summary!, id: `f${i}`, name: `最近文件${i}` },
+      summary: { ...sample.summary, id: `f${i}`, name: `最近文件${i}` },
     }));
     render(
       <WelcomeFileLedger
