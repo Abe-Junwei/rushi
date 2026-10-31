@@ -10,7 +10,7 @@
 
 | 文件 | 用途 |
 |------|------|
-| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.13.0` CPU + `funasr==1.3.16` + `modelscope==1.38.1`；不包含 `qwen-asr`） |
+| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.13.0` CPU + `funasr==1.4.16` + `modelscope==1.40.2`；不包含 `qwen-asr`） |
 | `requirements-sidecar-cpu-macos-x86_64.lock` | `-r` 引用 arm64 锁（同 pins，Intel 上解析 x86_64 轮子） |
 | `requirements-sidecar-cpu-win_amd64.lock` | `-r` 引用 arm64 锁（Windows CPU 侧车） |
 | `requirements-sidecar-cuda-win_amd64.lock` | `rushi-asr-sidecar-cuda.exe`：`torch*+cu126` + 其余与 CPU 锁一致 |

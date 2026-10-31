@@ -11,8 +11,8 @@ ASR_ROOT = Path(__file__).resolve().parents[1]
 CPU_LOCK = ASR_ROOT / "requirements-sidecar-cpu-macos-arm64.lock"
 CUDA_LOCK = ASR_ROOT / "requirements-sidecar-cuda-win_amd64.lock"
 EXPECTED_ASR_PINS = {
-    "funasr": "1.3.16",
-    "modelscope": "1.38.1",
+    "funasr": "1.4.16",
+    "modelscope": "1.40.2",
 }
 
 
