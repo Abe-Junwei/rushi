@@ -11,6 +11,7 @@ describe("localAsrTranscribePreflightMessage", () => {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       catalogStatus: [
@@ -38,6 +39,7 @@ describe("localAsrTranscribePreflightMessage", () => {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: "custom/other-asr-model",
       catalogStatus: [],
@@ -53,6 +55,7 @@ describe("localAsrTranscribePreflightMessage", () => {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
+        transcription_mode: "funasr",
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       catalogStatus: [],
