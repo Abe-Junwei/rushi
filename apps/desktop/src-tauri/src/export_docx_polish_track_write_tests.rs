@@ -22,8 +22,8 @@ fn dual_view_guard_checks_exact_text_and_sha256() {
 }
 
 fn decode_xml_text(text: &BytesText<'_>) -> String {
-    let decoded = text.decode().expect("text should decode");
-    quick_xml::escape::unescape(&decoded)
+    // quick-xml 0.42: BytesText is already UTF-8 &str via Deref.
+    quick_xml::escape::unescape(text.as_ref())
         .expect("text should unescape")
         .into_owned()
 }
@@ -35,11 +35,7 @@ fn decode_xml_ref(reference: &BytesRef<'_>) -> String {
     {
         return ch.to_string();
     }
-    match reference
-        .decode()
-        .expect("reference should decode")
-        .as_ref()
-    {
+    match reference.as_ref() {
         "amp" => "&".into(),
         "lt" => "<".into(),
         "gt" => ">".into(),
@@ -113,9 +109,9 @@ fn accepted_document_text(xml: &str) -> String {
             Event::Eof => break,
             Event::Start(e) => {
                 let name = e.name();
-                if name == QName(b"w:del") {
+                if name == QName("w:del") {
                     del_depth = del_depth.saturating_add(1);
-                } else if name == QName(b"w:t") && del_depth == 0 {
+                } else if name == QName("w:t") && del_depth == 0 {
                     in_text = true;
                 }
             }
@@ -127,9 +123,9 @@ fn accepted_document_text(xml: &str) -> String {
             }
             Event::End(e) => {
                 let name = e.name();
-                if name == QName(b"w:t") {
+                if name == QName("w:t") {
                     in_text = false;
-                } else if name == QName(b"w:del") {
+                } else if name == QName("w:del") {
                     del_depth = del_depth.saturating_sub(1);
                 }
             }
@@ -151,9 +147,9 @@ fn deleted_document_text(xml: &str) -> String {
             Event::Eof => break,
             Event::Start(e) => {
                 let name = e.name();
-                if name == QName(b"w:del") {
+                if name == QName("w:del") {
                     del_depth = del_depth.saturating_add(1);
-                } else if del_depth > 0 && (name == QName(b"w:t") || name == QName(b"w:delText")) {
+                } else if del_depth > 0 && (name == QName("w:t") || name == QName("w:delText")) {
                     in_del_text = true;
                 }
             }
@@ -165,9 +161,9 @@ fn deleted_document_text(xml: &str) -> String {
             }
             Event::End(e) => {
                 let name = e.name();
-                if name == QName(b"w:t") || name == QName(b"w:delText") {
+                if name == QName("w:t") || name == QName("w:delText") {
                     in_del_text = false;
-                } else if name == QName(b"w:del") {
+                } else if name == QName("w:del") {
                     del_depth = del_depth.saturating_sub(1);
                 }
             }
@@ -190,9 +186,9 @@ fn rejected_document_text(xml: &str) -> String {
             Event::Eof => break,
             Event::Start(e) => {
                 let name = e.name();
-                if name == QName(b"w:ins") {
+                if name == QName("w:ins") {
                     ins_depth = ins_depth.saturating_add(1);
-                } else if ins_depth == 0 && (name == QName(b"w:t") || name == QName(b"w:delText")) {
+                } else if ins_depth == 0 && (name == QName("w:t") || name == QName("w:delText")) {
                     in_text = true;
                 }
             }
@@ -204,9 +200,9 @@ fn rejected_document_text(xml: &str) -> String {
             }
             Event::End(e) => {
                 let name = e.name();
-                if name == QName(b"w:t") || name == QName(b"w:delText") {
+                if name == QName("w:t") || name == QName("w:delText") {
                     in_text = false;
-                } else if name == QName(b"w:ins") {
+                } else if name == QName("w:ins") {
                     ins_depth = ins_depth.saturating_sub(1);
                 }
             }
