@@ -29,8 +29,6 @@ import {
   registerProjectFilesCacheInvalidator,
   registerRecentWorkspaceFilesRefresh,
 } from "../services/projectFilesCacheBridge";
-import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
-
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
 import {
@@ -39,6 +37,7 @@ import {
   recentProjectIdsForScan,
   type RecentWorkspaceFile,
 } from "../services/lastWorkspace";
+import type { WelcomeLedgerSortMode } from "../utils/welcomeLedgerSort";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { useOnboardingChecklistController } from "../hooks/useOnboardingChecklistController";
 import { useWelcomeSearchController } from "../hooks/useWelcomeSearchController";
@@ -84,11 +83,11 @@ export function WelcomeView({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
+  const [ledgerSortMode, setLedgerSortMode] = useState<WelcomeLedgerSortMode>("updated");
   const onboarding = useOnboardingChecklistController();
   const welcomeSearch = useWelcomeSearchController(c);
   const onlineSttPresentation = useOnlineSttTopBarPresentation(c.sttOnlineRuntimeEpoch);
   const effectiveTranscribeSource = resolveEffectiveTranscribeSource(c.transcribeSource);
-  const projects = useMemo(() => sortWelcomeProjects(c.projects), [c.projects]);
   const projectTree = useWelcomeProjectTree(c);
 
   useEffect(() => {
@@ -299,10 +298,13 @@ export function WelcomeView({
                 busy={c.busy}
                 onOpenFile={(f) => void handleOpenRecentFile(f)}
                 search={welcomeSearch}
+                sortMode={ledgerSortMode}
+                onSortModeChange={setLedgerSortMode}
                 allFilesContent={
                   <WorkspaceProjectLibrary
                     controller={c}
-                    projects={projects}
+                    projects={c.projects}
+                    sortMode={ledgerSortMode}
                     expandedProjectId={projectTree.expandedProjectId}
                     projectFilesById={projectTree.projectFilesById}
                     loadingFilesById={projectTree.loadingFilesById}

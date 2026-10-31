@@ -594,7 +594,7 @@
   overflow: hidden;
 }
 
-/* 欢迎页「最近 / 所有」列表视口：占满 hero 下方剩余高度，超高分页、禁止滚动 */
+/* 欢迎页「最近 / 所有」列表视口：占满 hero 下方剩余高度；「所有」内部自滚 */
 .welcome-ledger-viewport {
   box-sizing: border-box;
   flex: 1 1 auto;
@@ -602,6 +602,45 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.welcome-ledger-scroll {
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.welcome-ledger-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1.25rem;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 150ms ease;
+  z-index: 1;
+}
+
+.welcome-ledger-fade.is-visible {
+  opacity: 1;
+}
+
+.welcome-ledger-fade-top {
+  top: 0;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--notion-bg) 50%, transparent),
+    transparent
+  );
+}
+
+.welcome-ledger-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(
+    to top,
+    color-mix(in srgb, var(--notion-bg) 50%, transparent),
+    transparent
+  );
 }
 
 /* Welcome / Hub：固定双栏 grid（CSS 真源，不依赖 Tailwind 扫描） */

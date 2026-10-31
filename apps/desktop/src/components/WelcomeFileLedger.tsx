@@ -1,26 +1,18 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import {
-  IconChevronLeft as ChevronLeft,
-  IconChevronRight as ChevronRight,
-} from "@tabler/icons-react";
-import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
-import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { useMemo, type ReactNode } from "react";
 import {
   WELCOME_LEDGER_DIVIDER_PT,
   WELCOME_LEDGER_INSET_X,
   WELCOME_LEDGER_TAB_GAP,
   WELCOME_LEDGER_TAB_MB,
 } from "../config/workspaceShellLayout";
-import { useViewportHeight } from "../hooks/useViewportHeight";
 import type { RecentWorkspaceFile } from "../services/lastWorkspace";
 import {
-  clampProjectLibraryPage,
-  projectLibraryPageCount,
-  sliceProjectLibraryPage,
-  welcomeRecentPageSizeForHeight,
-} from "../utils/projectLibraryPagination";
-import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+  sortRecentFilesByMode,
+  type WelcomeLedgerSortMode,
+} from "../utils/welcomeLedgerSort";
 import { WelcomeFileLedgerRow } from "./WelcomeFileLedgerRow";
+import { WelcomeLedgerScrollFrame } from "./WelcomeLedgerScrollFrame";
+import { WelcomeLedgerSortMenu } from "./WelcomeLedgerSortMenu";
 import {
   WELCOME_SEARCH_INPUT_CLASS,
   WelcomeSearchField,
@@ -40,14 +32,16 @@ type Props = {
   allFilesContent: ReactNode;
   /** 靠右、略窄 */
   search: WelcomeSearchController;
+  sortMode: WelcomeLedgerSortMode;
+  onSortModeChange: (mode: WelcomeLedgerSortMode) => void;
 };
 
 const TAB_BASE =
   "border-0 bg-transparent px-0 py-1 text-title font-medium transition-colors disabled:cursor-not-allowed";
 
 /**
- * 欢迎页文件 ledger：最近 / 所有（项目库）；搜索靠右。
- * 列表视口禁滚动；超可视高度分页。
+ * 欢迎页文件 ledger：最近 / 所有（项目库）；搜索靠右；排序入口在搜索左侧。
+ * 单页滚动 + 上下渐变（「所有」由项目库自带同一壳）。
  */
 export function WelcomeFileLedger({
   activeTab,
@@ -58,27 +52,13 @@ export function WelcomeFileLedger({
   onOpenFile,
   allFilesContent,
   search,
+  sortMode,
+  onSortModeChange,
 }: Props) {
-  const viewportRef = useRef<HTMLDivElement>(null);
-  const viewportH = useViewportHeight(viewportRef);
-  const [recentPage, setRecentPage] = useState(0);
-
-  const recentPageSize = welcomeRecentPageSizeForHeight(viewportH);
-  const recentPageCount = projectLibraryPageCount(files.length, recentPageSize);
-  const safeRecentPage = clampProjectLibraryPage(recentPage, files.length, recentPageSize);
-  const pageFiles = useMemo(
-    () => sliceProjectLibraryPage(files, safeRecentPage, recentPageSize),
-    [files, safeRecentPage, recentPageSize],
+  const sortedFiles = useMemo(
+    () => sortRecentFilesByMode(files, sortMode),
+    [files, sortMode],
   );
-  const showRecentPager = files.length > recentPageSize;
-
-  useEffect(() => {
-    setRecentPage((prev) => clampProjectLibraryPage(prev, files.length, recentPageSize));
-  }, [files.length, recentPageSize]);
-
-  useEffect(() => {
-    if (activeTab === "recent") setRecentPage(0);
-  }, [activeTab]);
 
   return (
     <section
@@ -120,7 +100,12 @@ export function WelcomeFileLedger({
             所有
           </button>
         </div>
-        <div className="ml-auto shrink-0">
+        <div className="ml-auto flex shrink-0 items-center gap-1">
+          <WelcomeLedgerSortMenu
+            value={sortMode}
+            onChange={onSortModeChange}
+            disabled={busy}
+          />
           <WelcomeSearchField
             search={search}
             disabled={busy}
@@ -129,20 +114,23 @@ export function WelcomeFileLedger({
         </div>
       </div>
 
-      <div ref={viewportRef} className="welcome-ledger-viewport" data-purpose="welcome-ledger-viewport">
+      <div className="welcome-ledger-viewport" data-purpose="welcome-ledger-viewport">
         {activeTab === "all" ? (
           allFilesContent
         ) : (
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <ul className="m-0 min-h-0 flex-1 list-none overflow-hidden p-0">
+          <WelcomeLedgerScrollFrame
+            contentKey={`${loading ? "loading" : "ready"}:${sortedFiles.length}:${sortMode}`}
+            purpose="welcome-recent-ledger-scroll"
+          >
+            <ul className="m-0 list-none p-0">
               {loading ? (
                 <li className={WELCOME_LEDGER_INSET_X}>
                   <p className="rounded-md bg-notion-sidebar/55 px-2.5 py-4 text-sm text-notion-text-muted">
                     正在加载最近文件…
                   </p>
                 </li>
-              ) : pageFiles.length > 0 ? (
-                pageFiles.map((f) => (
+              ) : sortedFiles.length > 0 ? (
+                sortedFiles.map((f) => (
                   <li key={f.fileId}>
                     <WelcomeFileLedgerRow file={f} busy={busy} onOpen={() => onOpenFile(f)} />
                   </li>
@@ -155,49 +143,7 @@ export function WelcomeFileLedger({
                 </li>
               )}
             </ul>
-            {showRecentPager ? (
-              <nav
-                className={`mt-auto flex shrink-0 items-center justify-end gap-2 border-t border-notion-border/70 py-2 ${WELCOME_LEDGER_INSET_X}`}
-                aria-label="最近文件翻页"
-              >
-                <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
-                  {`第 ${safeRecentPage + 1} / ${recentPageCount} 页`}
-                </span>
-                <button
-                  type="button"
-                  className={CONTROL_BTN_ICON_GHOST}
-                  disabled={busy || safeRecentPage <= 0}
-                  aria-label="上一页"
-                  title="上一页"
-                  onClick={() =>
-                    setRecentPage((p) => clampProjectLibraryPage(p - 1, files.length, recentPageSize))
-                  }
-                >
-                  <ChevronLeft
-                    className={LUCIDE_ICON_SIZE_MD}
-                    strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                    aria-hidden
-                  />
-                </button>
-                <button
-                  type="button"
-                  className={CONTROL_BTN_ICON_GHOST}
-                  disabled={busy || safeRecentPage >= recentPageCount - 1}
-                  aria-label="下一页"
-                  title="下一页"
-                  onClick={() =>
-                    setRecentPage((p) => clampProjectLibraryPage(p + 1, files.length, recentPageSize))
-                  }
-                >
-                  <ChevronRight
-                    className={LUCIDE_ICON_SIZE_MD}
-                    strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                    aria-hidden
-                  />
-                </button>
-              </nav>
-            ) : null}
-          </div>
+          </WelcomeLedgerScrollFrame>
         )}
       </div>
     </section>

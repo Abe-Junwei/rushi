@@ -94,6 +94,7 @@ export function resetTranscribeJobControllerTests(): void {
   vi.mocked(sttContract.isOnlineTranscribeReady).mockReturnValue(false);
   vi.mocked(sttContract.tryBuildOnlineTranscribeBridgePayload).mockReturnValue(null);
   vi.mocked(sttContract.ensureSttOnlineApiKeyForSession).mockResolvedValue(true);
+  vi.mocked(sttContract.resolveOnlineTranscribeSessionBlock).mockResolvedValue(null);
   vi.mocked(pushTranscribeHintsToToast).mockClear();
   vi.mocked(pushTranscribeResultToast).mockClear();
   vi.mocked(pushTranscribeDeliveryModeToast).mockClear();

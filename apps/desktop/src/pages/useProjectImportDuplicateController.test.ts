@@ -29,6 +29,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useProjectImportDuplicate
   const beginBusy = vi.fn();
   const endBusy = vi.fn();
   const loadProjectAfterImport = vi.fn(() => Promise.resolve());
+  const refreshProjectHub = vi.fn(() => Promise.resolve());
   const openFile = vi.fn(() => Promise.resolve());
   const runWithUnsavedNavigateGate = vi.fn(async (onProceed: () => void | Promise<void>) => {
     await onProceed();
@@ -46,6 +47,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useProjectImportDuplicate
       beginBusy,
       endBusy,
       loadProjectAfterImport,
+      refreshProjectHub,
       openFile,
       runWithUnsavedNavigateGate,
       setError,
@@ -54,6 +56,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useProjectImportDuplicate
     beginBusy,
     endBusy,
     loadProjectAfterImport,
+    refreshProjectHub,
     openFile,
     runWithUnsavedNavigateGate,
     setError,
@@ -115,7 +118,7 @@ describe("useProjectImportDuplicateController", () => {
 
   it("import copy begins busy only after user confirms duplicate", async () => {
     vi.mocked(fileApi.checkProjectImportDuplicate).mockResolvedValue(duplicateCheck());
-    const { deps, beginBusy, endBusy, loadProjectAfterImport } = makeDeps();
+    const { deps, beginBusy, endBusy, loadProjectAfterImport, refreshProjectHub } = makeDeps();
     const { result } = renderHook(() => useProjectImportDuplicateController(deps));
 
     let importPromise: Promise<boolean>;
@@ -138,7 +141,51 @@ describe("useProjectImportDuplicateController", () => {
     expect(beginBusy).toHaveBeenCalledWith("import");
     expect(endBusy).toHaveBeenCalled();
     expect(fileApi.importAudioToProject).toHaveBeenCalledWith("proj-1", "clip", "/tmp/clip.wav");
-    expect(loadProjectAfterImport).toHaveBeenCalledWith("proj-1");
+    expect(refreshProjectHub).toHaveBeenCalledWith("proj-1");
+    expect(loadProjectAfterImport).not.toHaveBeenCalled();
+  });
+
+  it("batch audio import keeps one busy session and refreshes hub without opening a file", async () => {
+    const { deps, beginBusy, endBusy, loadProjectAfterImport, refreshProjectHub } = makeDeps();
+    const { result } = renderHook(() => useProjectImportDuplicateController(deps));
+
+    await act(async () => {
+      const out = await result.current.importAudioPathsToProject([
+        "/tmp/a.mp3",
+        "/tmp/b.mp3",
+      ]);
+      expect(out).toEqual({ imported: 2, skipped: 0 });
+    });
+
+    expect(beginBusy).toHaveBeenCalledTimes(1);
+    expect(endBusy).toHaveBeenCalledTimes(1);
+    expect(fileApi.importAudioToProject).toHaveBeenCalledTimes(2);
+    expect(refreshProjectHub).toHaveBeenCalledWith("proj-1");
+    expect(loadProjectAfterImport).not.toHaveBeenCalled();
+    expect(result.current.importProgress).toBeNull();
+    expect(result.current.duplicateImportChecking).toBe(false);
+  });
+
+  it("batch audio import does not flash duplicate-checking UI between files", async () => {
+    const { deps } = makeDeps();
+    const { result } = renderHook(() => useProjectImportDuplicateController(deps));
+    const checkingSnapshots: boolean[] = [];
+
+    vi.mocked(fileApi.checkProjectImportDuplicate).mockImplementation(async () => {
+      checkingSnapshots.push(result.current.duplicateImportChecking);
+      return {
+        path_match_file_id: null,
+        content_match_file_id: null,
+        matched_by_path: false,
+        matched_by_content: false,
+      };
+    });
+
+    await act(async () => {
+      await result.current.importAudioPathsToProject(["/tmp/a.mp3", "/tmp/b.mp3"]);
+    });
+
+    expect(checkingSnapshots).toEqual([false, false]);
   });
 
   it("open existing duplicate opens file without importing", async () => {

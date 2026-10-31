@@ -8,6 +8,7 @@ import {
   setSttOnlineApiKeyInMemory,
   setSttOnlineApiSecretInMemory,
   tryBuildOnlineTranscribeBridgePayload,
+  resolveOnlineTranscribeSessionBlock,
   resolveShellNativeSttAdapterId,
   probeExternalSttOnlineHealth,
   getSttOnlineApiKeyFromMemory,
@@ -258,5 +259,30 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.appKey).toBe("app-xyz");
     expect(p?.nativeAdapter).toBeUndefined();
+  });
+});
+
+describe("resolveOnlineTranscribeSessionBlock", () => {
+  beforeEach(() => {
+    vi.mocked(invoke).mockReset();
+    vi.stubGlobal("localStorage", mockLocalStorage({}));
+    setSttOnlineApiKeyInMemory(null);
+    setSttOnlineApiSecretInMemory(null);
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setSttOnlineApiKeyInMemory(null);
+    setSttOnlineApiSecretInMemory(null);
+  });
+
+  it("reports lost local key when reference exists but storage is empty", async () => {
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId, "iflytek-api-key");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId, "iflytek-speed-asr");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey, "app");
+    localStorage.setItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId, "iflytek-api-secret");
+    vi.mocked(invoke).mockResolvedValue(false);
+    const block = await resolveOnlineTranscribeSessionBlock();
+    expect(block).toMatch(/本地密钥丢失/);
   });
 });

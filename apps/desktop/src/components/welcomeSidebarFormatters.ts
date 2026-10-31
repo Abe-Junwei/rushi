@@ -16,6 +16,7 @@ export const WELCOME_SIDEBAR_FILE_INDENT = "pl-14 pr-5";
 export const WELCOME_SIDEBAR_SECTION_INSET_X = "px-5";
 export const WELCOME_PROJECT_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} hover:bg-notion-sidebar-active`;
 
+/** @deprecated 使用 sortWelcomeProjectsByMode；默认仍按更新时间。 */
 export function sortWelcomeProjects(list: ProjectSummary[]): ProjectSummary[] {
   return [...list].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
 }

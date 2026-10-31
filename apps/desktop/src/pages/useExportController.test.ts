@@ -81,7 +81,6 @@ function makeDeps(overrides: Partial<ExportDeps> = {}): ExportDeps {
     flushSegmentTextDrafts: vi.fn(),
     beginBusy: vi.fn(),
     endBusy: vi.fn(),
-    applyDetail: vi.fn(),
     refreshProjects: vi.fn(async () => {}),
     ...overrides,
   };

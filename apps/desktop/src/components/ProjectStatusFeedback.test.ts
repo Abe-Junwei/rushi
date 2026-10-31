@@ -14,6 +14,13 @@ describe("ProjectBusyOverlay transcribe copy (R3t-B)", () => {
   });
 
   it("shows save-specific copy", () => {
+    const importCopy = busyOverlayCopy("import", null, {
+      importProgress: { current: 2, total: 5, kind: "audio" },
+    });
+    expect(importCopy.title).toBe("正在导入");
+    expect(importCopy.lead).toBe("正在导入 2/5 个音频");
+    expect(importCopy.progressValue).toBeCloseTo(0.4);
+
     const copy = busyOverlayCopy("save" satisfies BusyReason, null);
     expect(copy.title).toBe("正在保存");
     expect(copy.lead).toContain("本地数据库");

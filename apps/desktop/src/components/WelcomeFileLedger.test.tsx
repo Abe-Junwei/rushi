@@ -69,6 +69,8 @@ describe("WelcomeFileLedger", () => {
         loading={false}
         onOpenFile={onOpen}
         search={mockSearch()}
+        sortMode="updated"
+        onSortModeChange={vi.fn()}
         allFilesContent={<div>库内容</div>}
       />,
     );
@@ -76,14 +78,43 @@ describe("WelcomeFileLedger", () => {
     expect(screen.getByRole("tab", { name: "所有" }).getAttribute("aria-selected")).toBe("false");
     expect(screen.queryByRole("tab", { name: "星标" })).toBeNull();
     expect(screen.getByRole("searchbox", { name: "搜索文件与转写内容" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "排序" })).toBeTruthy();
     expect(screen.queryByText(/个文件/)).toBeNull();
     expect(screen.queryByText(/个项目/)).toBeNull();
     expect(screen.getByText("开示录音")).toBeTruthy();
     expect(screen.getByText("未转录")).toBeTruthy();
     expect(container.querySelector("ul")?.className).toMatch(/list-none/);
     expect(container.querySelector("[data-purpose='welcome-ledger-viewport']")).toBeTruthy();
+    expect(container.querySelector("[data-purpose='welcome-recent-ledger-scroll']")).toBeTruthy();
+    expect(screen.queryByLabelText("最近文件翻页")).toBeNull();
     const tablist = screen.getByRole("tablist");
     expect(tablist.className).toMatch(/gap-6/);
+  });
+
+  it("renders the full recent list without a pager", () => {
+    const many = Array.from({ length: 17 }, (_, i) => ({
+      ...sample,
+      fileId: `f${i}`,
+      name: `最近文件${i}`,
+      summary: { ...sample.summary!, id: `f${i}`, name: `最近文件${i}` },
+    }));
+    render(
+      <WelcomeFileLedger
+        activeTab="recent"
+        onTabChange={vi.fn()}
+        files={many}
+        loading={false}
+        onOpenFile={vi.fn()}
+        search={mockSearch()}
+        sortMode="updated"
+        onSortModeChange={vi.fn()}
+        allFilesContent={<div>库</div>}
+      />,
+    );
+    expect(screen.queryByLabelText("最近文件翻页")).toBeNull();
+    expect(screen.getByText("最近文件0")).toBeTruthy();
+    expect(screen.getByText("最近文件8")).toBeTruthy();
+    expect(screen.getByText("最近文件16")).toBeTruthy();
   });
 
   it("switches to all files and shows project library content", () => {
@@ -96,6 +127,8 @@ describe("WelcomeFileLedger", () => {
         loading={false}
         onOpenFile={vi.fn()}
         search={mockSearch()}
+        sortMode="updated"
+        onSortModeChange={vi.fn()}
         allFilesContent={<div>项目库面板</div>}
       />,
     );
@@ -105,5 +138,25 @@ describe("WelcomeFileLedger", () => {
 
     fireEvent.click(screen.getByRole("tab", { name: "最近" }));
     expect(onTabChange).toHaveBeenCalledWith("recent");
+  });
+
+  it("opens sort menu and reports name mode", () => {
+    const onSort = vi.fn();
+    render(
+      <WelcomeFileLedger
+        activeTab="recent"
+        onTabChange={vi.fn()}
+        files={[sample]}
+        loading={false}
+        onOpenFile={vi.fn()}
+        search={mockSearch()}
+        sortMode="updated"
+        onSortModeChange={onSort}
+        allFilesContent={<div />}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "排序" }));
+    fireEvent.click(screen.getByRole("menuitemradio", { name: "名称" }));
+    expect(onSort).toHaveBeenCalledWith("name");
   });
 });

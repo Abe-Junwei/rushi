@@ -30,7 +30,6 @@ function makeDeps(overrides: Partial<BundleImportConflictDeps> = {}): BundleImpo
     setError: vi.fn(),
     beginBusy: vi.fn(),
     endBusy: vi.fn(),
-    applyDetail: vi.fn(),
     refreshProjects: vi.fn(async () => {}),
     ...overrides,
   };
@@ -90,7 +89,7 @@ describe("useBundleImportConflictController", () => {
 
     expect(importExchangeBundleApply).toHaveBeenCalledWith("/tmp/clean.zip", []);
     expect(result.current.bundleImportConflictPending).toBeNull();
-    expect(deps.applyDetail).toHaveBeenCalledWith(project);
+    expect(deps.refreshProjects).toHaveBeenCalled();
     expect(toast.success).toHaveBeenCalledWith("已导入内容包");
   });
 

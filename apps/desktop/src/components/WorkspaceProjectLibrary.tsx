@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react";
 import {
-  IconChevronLeft as ChevronLeft,
   IconChevronRight as ChevronRight,
   IconFolderOpen as FolderOpen,
   IconNotebook as NotebookText,
@@ -27,19 +26,10 @@ import {
   PROJECT_LIBRARY_PROJECT_ID_ATTR,
   useProjectLibraryFileDrag,
 } from "../hooks/useProjectLibraryFileDrag";
-import { useViewportHeight } from "../hooks/useViewportHeight";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { formatHubFileAudioMetaLine } from "../utils/projectFileDisplay";
-import {
-  clampProjectLibraryPage,
-  projectLibraryFilePageSizeForHeight,
-  projectLibraryPageCount,
-  projectLibraryPageForId,
-  projectLibraryPageSizeForHeight,
-  sliceProjectLibraryPage,
-} from "../utils/projectLibraryPagination";
 import {
   buildProjectContextMenuItems,
   buildProjectFileContextMenuItems,
@@ -48,6 +38,12 @@ import {
   parseCopyDestProjectId,
   parseMoveDestProjectId,
 } from "../utils/projectWorkspaceContextMenuModel";
+import {
+  nextListId,
+  sortProjectFilesByMode,
+  sortWelcomeProjectsByMode,
+  type WelcomeLedgerSortMode,
+} from "../utils/welcomeLedgerSort";
 import { HoverRevealText } from "./HoverRevealText";
 import { HubFileStageMeter } from "./HubFileStageMeter";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -56,6 +52,7 @@ import {
   ProjectLibraryActionBar,
 } from "./ProjectLibraryActionBar";
 import { SegmentContextMenu } from "./SegmentContextMenu";
+import { WelcomeLedgerScrollFrame } from "./WelcomeLedgerScrollFrame";
 import {
   formatRecentProjectDate,
   formatRecentProjectName,
@@ -65,6 +62,12 @@ import {
   WELCOME_SIDEBAR_PROJECT_META,
   WELCOME_SIDEBAR_PROJECT_NAME,
 } from "./welcomeSidebarFormatters";
+
+const PROJECT_LIBRARY_FILE_ID_ATTR = "data-library-file-id";
+
+type PendingSelectAfterRename =
+  | { kind: "project"; nextId: string }
+  | { kind: "file"; nextId: string };
 
 const LIBRARY_FILE_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} text-notion-text-light opacity-0 transition-[color,background-color,opacity] group-hover:opacity-100 group-focus-within:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40`;
 
@@ -145,6 +148,7 @@ type CtxMenu =
 type Props = {
   controller: ProjectControllerApi;
   projects: ProjectSummary[];
+  sortMode: WelcomeLedgerSortMode;
   expandedProjectId: string | null;
   projectFilesById: Record<string, fileApi.FileSummary[]>;
   loadingFilesById: Record<string, boolean>;
@@ -152,10 +156,22 @@ type Props = {
   onToggleProjectExpanded: (projectId: string, isExpanded: boolean) => void;
 };
 
-/** 欢迎页「所有」：可展开项目树 + Hub 迁入动作 + 项目/文件右键 + 底部分页。 */
+function scrollLibraryRowIntoView(selector: string) {
+  const row = document.querySelector(selector);
+  if (row && typeof (row as HTMLElement).scrollIntoView === "function") {
+    try {
+      (row as HTMLElement).scrollIntoView({ block: "nearest" });
+    } catch {
+      /* jsdom */
+    }
+  }
+}
+
+/** 欢迎页「所有」：可展开项目树 + Hub 迁入动作 + 项目/文件右键；单页滚动 + 上下渐变。 */
 export function WorkspaceProjectLibrary({
   controller: c,
   projects,
+  sortMode,
   expandedProjectId,
   projectFilesById,
   loadingFilesById,
@@ -163,78 +179,90 @@ export function WorkspaceProjectLibrary({
   onToggleProjectExpanded,
 }: Props) {
   const [ctx, setCtx] = useState<CtxMenu | null>(null);
-  const [page, setPage] = useState(0);
-  const [filePage, setFilePage] = useState(0);
-  const rootRef = useRef<HTMLDivElement>(null);
-  const viewportH = useViewportHeight(rootRef);
-  const projectPageSize = projectLibraryPageSizeForHeight(viewportH);
-  const filePageSize = projectLibraryFilePageSizeForHeight(viewportH);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const pendingSelectRef = useRef<PendingSelectAfterRename | null>(null);
   const fileDrag = useProjectLibraryFileDrag({
     busy: c.busy,
     onMove: (args) => c.moveProjectFileNow(args),
   });
 
-  const pageCount = projectLibraryPageCount(projects.length, projectPageSize);
-  const safePage = clampProjectLibraryPage(page, projects.length, projectPageSize);
-  const pageProjects = useMemo(
-    () => sliceProjectLibraryPage(projects, safePage, projectPageSize),
-    [projects, safePage, projectPageSize],
+  const sortedProjects = useMemo(
+    () => sortWelcomeProjectsByMode(projects, sortMode),
+    [projects, sortMode],
   );
-  /** 展开时只渲染该项目，避免同页多项目 + 文件列表撑破视口 */
-  const visibleProjects = useMemo(() => {
-    if (!expandedProjectId) return pageProjects;
-    const hit = pageProjects.find((p) => p.id === expandedProjectId);
-    return hit ? [hit] : pageProjects;
-  }, [expandedProjectId, pageProjects]);
 
   const expandedFilesSorted = useMemo(() => {
     if (!expandedProjectId) return [] as fileApi.FileSummary[];
     const files = projectFilesById[expandedProjectId] ?? [];
-    return [...files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-  }, [expandedProjectId, projectFilesById]);
+    return sortProjectFilesByMode(files, sortMode);
+  }, [expandedProjectId, projectFilesById, sortMode]);
 
-  const filePageCount = projectLibraryPageCount(expandedFilesSorted.length, filePageSize);
-  const safeFilePage = clampProjectLibraryPage(
-    filePage,
+  const scrollContentKey = [
+    sortedProjects.length,
+    expandedProjectId ?? "",
     expandedFilesSorted.length,
-    filePageSize,
-  );
-  const pageFiles = useMemo(
-    () => sliceProjectLibraryPage(expandedFilesSorted, safeFilePage, filePageSize),
-    [expandedFilesSorted, safeFilePage, filePageSize],
-  );
-
-  const collapsedShowPager = projects.length > projectPageSize;
-  const expandedShowPager = Boolean(expandedProjectId) && expandedFilesSorted.length > filePageSize;
-  const showPager = expandedProjectId ? expandedShowPager : collapsedShowPager;
+    sortMode,
+    expandedProjectId ? !!loadingFilesById[expandedProjectId] : false,
+  ].join(":");
 
   useEffect(() => {
-    setPage((prev) => clampProjectLibraryPage(prev, projects.length, projectPageSize));
-  }, [projects.length, projectPageSize]);
+    if (c.isRenamingProject || c.renamingProjectFileId) return;
+    const pending = pendingSelectRef.current;
+    if (!pending) return;
+    pendingSelectRef.current = null;
+    if (pending.kind === "project") {
+      setSelectedProjectId(pending.nextId);
+      setSelectedFileId(null);
+    } else {
+      setSelectedFileId(pending.nextId);
+    }
+  }, [c.isRenamingProject, c.renamingProjectFileId, sortedProjects, expandedFilesSorted]);
 
   useEffect(() => {
-    setFilePage(0);
-  }, [expandedProjectId, filePageSize]);
+    if (selectedFileId) {
+      scrollLibraryRowIntoView(`[${PROJECT_LIBRARY_FILE_ID_ATTR}="${selectedFileId}"]`);
+      return;
+    }
+    if (selectedProjectId) {
+      scrollLibraryRowIntoView(
+        `[${PROJECT_LIBRARY_PROJECT_ID_ATTR}="${selectedProjectId}"]`,
+      );
+    }
+  }, [selectedProjectId, selectedFileId, sortedProjects, expandedFilesSorted]);
 
-  useEffect(() => {
-    setFilePage((prev) =>
-      clampProjectLibraryPage(prev, expandedFilesSorted.length, filePageSize),
+  const commitRenameProjectKeepingSelection = () => {
+    const id = c.renamingProjectId;
+    if (!id) {
+      c.commitRenameProject();
+      return;
+    }
+    const next = nextListId(
+      sortedProjects.map((p) => p.id),
+      id,
     );
-  }, [expandedFilesSorted.length, filePageSize]);
+    pendingSelectRef.current = next ? { kind: "project", nextId: next } : null;
+    c.commitRenameProject();
+  };
 
-  useEffect(() => {
-    if (!expandedProjectId) return;
-    const target = projectLibraryPageForId(
-      projects.map((p) => p.id),
-      expandedProjectId,
-      projectPageSize,
+  const commitRenameFileKeepingSelection = () => {
+    const id = c.renamingProjectFileId;
+    if (!id) {
+      c.commitRenameProjectFile();
+      return;
+    }
+    const next = nextListId(
+      expandedFilesSorted.map((f) => f.id),
+      id,
     );
-    setPage((prev) => (prev === target ? prev : target));
-  }, [expandedProjectId, projects, projectPageSize]);
+    pendingSelectRef.current = next ? { kind: "file", nextId: next } : null;
+    c.commitRenameProjectFile();
+  };
 
   const openProjectMenu = (e: ReactMouseEvent, projectId: string) => {
     e.preventDefault();
     e.stopPropagation();
+    setSelectedProjectId(projectId);
     setCtx({ kind: "project", projectId, x: e.clientX, y: e.clientY });
   };
 
@@ -246,6 +274,8 @@ export function WorkspaceProjectLibrary({
   ) => {
     e.preventDefault();
     e.stopPropagation();
+    setSelectedProjectId(projectId);
+    setSelectedFileId(fileId);
     setCtx({ kind: "file", projectId, fileId, fileName, x: e.clientX, y: e.clientY });
   };
 
@@ -267,7 +297,6 @@ export function WorkspaceProjectLibrary({
   if (projects.length === 0) {
     return (
       <div
-        ref={rootRef}
         className={`flex min-h-0 flex-1 flex-col items-center justify-center overflow-hidden py-10 text-center ${WELCOME_LEDGER_INSET_X}`}
         data-purpose="workspace-project-library"
       >
@@ -278,13 +307,12 @@ export function WorkspaceProjectLibrary({
   }
 
   return (
-    <div
-      ref={rootRef}
-      className="flex min-h-0 flex-1 flex-col overflow-hidden"
-      data-purpose="workspace-project-library"
-    >
-      <div className="min-h-0 flex-1 overflow-hidden">
-      {visibleProjects.map((p) => {
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden" data-purpose="workspace-project-library">
+      <WelcomeLedgerScrollFrame
+        contentKey={scrollContentKey}
+        purpose="workspace-project-library-scroll"
+      >
+      {sortedProjects.map((p) => {
         const isExpanded = expandedProjectId === p.id;
         const files = projectFilesById[p.id] ?? [];
         const loadingFiles = !!loadingFilesById[p.id];
@@ -306,21 +334,19 @@ export function WorkspaceProjectLibrary({
           <div
             key={p.id}
             {...{ [PROJECT_LIBRARY_PROJECT_ID_ATTR]: p.id }}
-            className={[
-              "group/project",
-              WORKSPACE_SIDEBAR_ROW_SURFACE,
-              isDropTarget
-                ? "bg-notion-sidebar-active ring-1 ring-inset ring-accent-action/35"
-                : "hover:bg-notion-sidebar-hover",
-            ].join(" ")}
+            className={WORKSPACE_SIDEBAR_ROW_SURFACE}
             onContextMenu={(e) => openProjectMenu(e, p.id)}
           >
             {isRenamingThis ? (
               <form
-                className={`flex items-center gap-2 ${WELCOME_LEDGER_ROW_Y} ${WELCOME_LEDGER_INSET_X}`}
+                className={`flex items-center gap-2 ${WELCOME_LEDGER_ROW_Y} ${WELCOME_LEDGER_INSET_X} ${
+                  isDropTarget
+                    ? "bg-notion-sidebar-hover ring-1 ring-inset ring-accent-action/35"
+                    : ""
+                }`}
                 onSubmit={(e) => {
                   e.preventDefault();
-                  c.commitRenameProject();
+                  commitRenameProjectKeepingSelection();
                 }}
               >
                 <input
@@ -331,7 +357,10 @@ export function WorkspaceProjectLibrary({
                   autoFocus
                   onChange={(e) => c.setRenameProjectDraft(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Escape") c.cancelRenameProject();
+                    if (e.key === "Escape") {
+                      pendingSelectRef.current = null;
+                      c.cancelRenameProject();
+                    }
                   }}
                 />
                 <button
@@ -345,20 +374,37 @@ export function WorkspaceProjectLibrary({
                   type="button"
                   className={`${CONTROL_BTN_LINK} shrink-0 text-label text-notion-text-muted`}
                   disabled={c.busy}
-                  onClick={() => c.cancelRenameProject()}
+                  onClick={() => {
+                    pendingSelectRef.current = null;
+                    c.cancelRenameProject();
+                  }}
                 >
                   取消
                 </button>
               </form>
             ) : (
-              <div className={`flex items-center gap-1 ${WELCOME_LEDGER_ROW_Y} ${WELCOME_LEDGER_INSET_X}`}>
+              <div
+                className={[
+                  "group/project flex items-center gap-1",
+                  WELCOME_LEDGER_ROW_Y,
+                  WELCOME_LEDGER_INSET_X,
+                  // Row-only hover (not the whole expanded project block).
+                  isDropTarget
+                    ? "bg-notion-sidebar-hover ring-1 ring-inset ring-accent-action/35"
+                    : "hover:bg-notion-sidebar-hover",
+                ].join(" ")}
+              >
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 appearance-none items-center gap-2 border-0 bg-transparent p-0 text-left disabled:opacity-40"
                   disabled={c.busy}
                   title={isExpanded ? `收起：${formatRecentProjectName(p.name)}` : `展开：${formatRecentProjectName(p.name)}`}
                   aria-expanded={isExpanded}
-                  onClick={() => onToggleProjectExpanded(p.id, isExpanded)}
+                  onClick={() => {
+                    setSelectedProjectId(p.id);
+                    setSelectedFileId(null);
+                    onToggleProjectExpanded(p.id, isExpanded);
+                  }}
                 >
                   <span className={WELCOME_PROJECT_ROW_ICON}>
                     <FolderOpen
@@ -432,9 +478,10 @@ export function WorkspaceProjectLibrary({
                   </p>
                 ) : files.length > 0 ? (
                   <ul className="m-0 list-none overflow-hidden p-0">
-                    {pageFiles.map((f) => (
+                    {expandedFilesSorted.map((f) => (
                         <li
                           key={f.id}
+                          {...{ [PROJECT_LIBRARY_FILE_ID_ATTR]: f.id }}
                           className={[
                             "group",
                             fileDrag.dragging?.fileId === f.id ? "opacity-50" : undefined,
@@ -443,6 +490,8 @@ export function WorkspaceProjectLibrary({
                             .join(" ")}
                           onPointerDown={(e) => {
                             if (c.renamingProjectFileId === f.id) return;
+                            setSelectedProjectId(p.id);
+                            setSelectedFileId(f.id);
                             fileDrag.beginFilePointerDrag(e, {
                               fileId: f.id,
                               projectId: p.id,
@@ -455,7 +504,7 @@ export function WorkspaceProjectLibrary({
                               className={`flex items-center gap-2 py-1.5 ${WELCOME_LEDGER_NESTED_FILE_INSET_X}`}
                               onSubmit={(e) => {
                                 e.preventDefault();
-                                c.commitRenameProjectFile();
+                                commitRenameFileKeepingSelection();
                               }}
                             >
                               <input
@@ -466,7 +515,10 @@ export function WorkspaceProjectLibrary({
                                 autoFocus
                                 onChange={(e) => c.setRenameProjectFileDraft(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === "Escape") c.cancelRenameProjectFile();
+                                  if (e.key === "Escape") {
+                                    pendingSelectRef.current = null;
+                                    c.cancelRenameProjectFile();
+                                  }
                                 }}
                               />
                               <button
@@ -480,7 +532,10 @@ export function WorkspaceProjectLibrary({
                                 type="button"
                                 className={`${CONTROL_BTN_LINK} shrink-0 text-label text-notion-text-muted`}
                                 disabled={c.busy}
-                                onClick={() => c.cancelRenameProjectFile()}
+                                onClick={() => {
+                                  pendingSelectRef.current = null;
+                                  c.cancelRenameProjectFile();
+                                }}
                               >
                                 取消
                               </button>
@@ -540,72 +595,7 @@ export function WorkspaceProjectLibrary({
           </div>
         );
       })}
-      </div>
-
-      {showPager ? (
-        <nav
-          className={`mt-auto flex shrink-0 items-center justify-end gap-2 border-t border-notion-border/70 py-2 ${WELCOME_LEDGER_INSET_X}`}
-          aria-label={expandedProjectId ? "项目文件翻页" : "项目列表翻页"}
-          data-purpose="project-library-pager"
-        >
-          <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
-            {`第 ${(expandedProjectId ? safeFilePage : safePage) + 1} / ${
-              expandedProjectId ? filePageCount : pageCount
-            } 页`}
-          </span>
-          <button
-            type="button"
-            className={CONTROL_BTN_ICON_GHOST}
-            disabled={
-              c.busy || (expandedProjectId ? safeFilePage <= 0 : safePage <= 0)
-            }
-            aria-label="上一页"
-            title="上一页"
-            onClick={() => {
-              if (expandedProjectId) {
-                setFilePage((p) =>
-                  clampProjectLibraryPage(p - 1, expandedFilesSorted.length, filePageSize),
-                );
-              } else {
-                setPage((p) => clampProjectLibraryPage(p - 1, projects.length, projectPageSize));
-              }
-            }}
-          >
-            <ChevronLeft
-              className={LUCIDE_ICON_SIZE_MD}
-              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-              aria-hidden
-            />
-          </button>
-          <button
-            type="button"
-            className={CONTROL_BTN_ICON_GHOST}
-            disabled={
-              c.busy ||
-              (expandedProjectId
-                ? safeFilePage >= filePageCount - 1
-                : safePage >= pageCount - 1)
-            }
-            aria-label="下一页"
-            title="下一页"
-            onClick={() => {
-              if (expandedProjectId) {
-                setFilePage((p) =>
-                  clampProjectLibraryPage(p + 1, expandedFilesSorted.length, filePageSize),
-                );
-              } else {
-                setPage((p) => clampProjectLibraryPage(p + 1, projects.length, projectPageSize));
-              }
-            }}
-          >
-            <ChevronRight
-              className={LUCIDE_ICON_SIZE_MD}
-              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-              aria-hidden
-            />
-          </button>
-        </nav>
-      ) : null}
+      </WelcomeLedgerScrollFrame>
 
       {ctx?.kind === "project" ? (
         <SegmentContextMenu

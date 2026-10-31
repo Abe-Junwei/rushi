@@ -180,6 +180,7 @@ export function useProjectLifecycleWiring(
     localTranscribePreflight,
     softWakeBeforeLocalTranscribe,
     transcribeSource: transcribeJob.transcribeSource,
+    onlineTranscribeReady: transcribeJob.onlineTranscribeReady,
     setError,
     refreshProjectHub: closeGate.refreshProjectHub,
   });
@@ -244,7 +245,6 @@ export function useProjectLifecycleWiring(
     beginBusy,
     endBusy,
     refreshProjects,
-    applyDetail,
   });
 
   const closeGateFacade = pickCloseGateLifecycleFacade(closeGate, dirty.hasUnsavedSegmentChanges);

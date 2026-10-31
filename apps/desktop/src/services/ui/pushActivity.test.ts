@@ -51,6 +51,20 @@ describe("pushActivity", () => {
     expect(item?.actionLabel).toBe("打开文件");
   });
 
+  it("avoids「完成」wording when every file failed", () => {
+    pushBatchTranscribeSummaryActivity({
+      projectId: "proj-1",
+      projectLabel: "访谈 A",
+      done: 0,
+      skipped: 0,
+      failed: 3,
+      stopped: false,
+      failedFiles: [{ fileId: "f1", fileName: "a.wav", detail: "密钥丢失" }],
+    });
+    expect(getActivityFeedSnapshot()[0]?.message).toMatch(/批量转写失败/);
+    expect(getActivityFeedSnapshot()[0]?.message).not.toMatch(/完成/);
+  });
+
   it("lists batch summary before failed file entries", () => {
     pushBatchTranscribeSummaryActivity({
       projectId: "proj-1",

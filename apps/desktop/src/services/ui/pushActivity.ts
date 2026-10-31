@@ -161,9 +161,11 @@ export function pushBatchTranscribeSummaryActivity(input: {
   const { done, skipped, failed, stopped } = input;
   const message = stopped
     ? `批量转写已停止：${done} 成功，${skipped} 跳过，${failed} 失败`
-    : `批量转写完成：${done} 成功，${skipped} 跳过，${failed} 失败`;
+    : done === 0 && failed > 0
+      ? `批量转写失败：${failed} 个文件未成功`
+      : `批量转写完成：${done} 成功，${skipped} 跳过，${failed} 失败`;
   return pushActivity({
-    variant: stopped ? "warning" : failed > 0 ? "warning" : "success",
+    variant: stopped || failed > 0 ? "warning" : "success",
     kind: "batch_transcribe",
     message,
     projectId: input.projectId,

@@ -83,9 +83,9 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
     }
   }
 
+  /** Soft Hub refresh: no busy overlay (avoids flash during/after import & batch). */
   async function refreshProjectHub(id: string) {
     deps.setError("");
-    deps.beginBusy("load");
     try {
       const detail = await p1.projectLoad(id);
       deps.applyDetail(detail);
@@ -98,8 +98,6 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
       deps.setCurrent(null);
       deps.performCloseFile();
       deps.setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      deps.endBusy();
     }
   }
 

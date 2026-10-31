@@ -11,7 +11,11 @@ import {
   confirmHubTextDuplicateIfNeeded,
   resolveTranscriptImport,
 } from "../services/projectAttachTranscriptImport";
-import { importAudioPathsToProject as importAudioPathsBatch } from "../services/projectBatchImport";
+import {
+  importAudioPathsToProject as importAudioPathsBatch,
+  importDroppedPathsToProject as importDroppedPathsBatch,
+  type BatchImportProgress,
+} from "../services/projectBatchImport";
 import { isTranscribeBusy } from "./closeGateDecision";
 import { useAttachImportTargetPrompt } from "./useAttachImportTargetPrompt";
 import type { BusyReason } from "./useProjectCrudController";
@@ -19,8 +23,10 @@ import type { BusyReason } from "./useProjectCrudController";
 type DuplicateImportDecision = "cancel" | "open_existing" | "import_copy";
 
 export type ImportFileToProjectOptions = {
-  /** 批量导入时跳过单次 reload，由调用方在末尾统一 loadProjectAfterImport */
+  /** 批量导入时跳过单次 reload，由调用方在末尾统一 refresh */
   skipReload?: boolean;
+  /** 外层已 beginBusy / 占门闩；内层不再 busy 闪烁 */
+  nestInBatch?: boolean;
 };
 
 export type ProjectImportDuplicateControllerApi = {
@@ -35,6 +41,7 @@ export type ProjectImportDuplicateControllerApi = {
   attachImportTargetStem: string | null;
   cancelAttachImportTarget: () => void;
   confirmAttachImportTarget: (fileId: string) => void;
+  importProgress: BatchImportProgress | null;
   importFileToProject: (
     kind: "audio" | "text",
     srcPath: string,
@@ -48,6 +55,9 @@ export type ProjectImportDuplicateControllerApi = {
   importAudioPathsToProject: (
     paths: string[],
   ) => Promise<{ imported: number; skipped: number }>;
+  importDroppedPathsToProject: (
+    paths: string[],
+  ) => Promise<{ imported: number; skipped: number; unsupported: number }>;
 };
 
 type Deps = {
@@ -59,6 +69,8 @@ type Deps = {
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   loadProjectAfterImport: (projectId: string, preferFileId?: string | null) => Promise<void>;
+  /** 批量导入结束后只刷 Hub，不自动打开文件（避免页面跳动）。 */
+  refreshProjectHub: (projectId: string) => Promise<void>;
   openFile: (fileId: string) => Promise<void>;
   runWithUnsavedNavigateGate: (
     onProceed: () => void | Promise<void>,
@@ -71,6 +83,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     null,
   );
   const [duplicateImportChecking, setDuplicateImportChecking] = useState(false);
+  const [importProgress, setImportProgress] = useState<BatchImportProgress | null>(null);
   const resolverRef = useRef<((decision: DuplicateImportDecision) => void) | null>(null);
   const importGateActiveRef = useRef(false);
   const attachTarget = useAttachImportTargetPrompt();
@@ -112,8 +125,13 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
   );
 
   const runHubTextDuplicateGate = useCallback(
-    async (projectId: string, srcPath: string): Promise<boolean> => {
-      setDuplicateImportChecking(true);
+    async (
+      projectId: string,
+      srcPath: string,
+      options?: { nestInBatch?: boolean },
+    ): Promise<boolean> => {
+      const nest = Boolean(options?.nestInBatch);
+      if (!nest) setDuplicateImportChecking(true);
       try {
         return await confirmHubTextDuplicateIfNeeded(projectId, srcPath, {
           projectFiles: deps.projectFiles,
@@ -122,7 +140,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
           askDuplicateImport,
         });
       } finally {
-        setDuplicateImportChecking(false);
+        if (!nest) setDuplicateImportChecking(false);
       }
     },
     [askDuplicateImport, deps.openFile, deps.projectFiles],
@@ -136,53 +154,65 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     ): Promise<boolean> => {
       const projectId = deps.currentProjectId;
       if (!projectId) return false;
+      const nest = Boolean(options?.nestInBatch);
 
       if (kind === "text" && deps.currentFileId && isTranscribeBusy(deps.busy, deps.busyReason)) {
         toast.error("转写进行中，请稍后再导入字幕。");
         return false;
       }
-      if (deps.busy || importGateActiveRef.current) {
+      if (!nest && (deps.busy || importGateActiveRef.current)) {
         toast.error("当前有任务进行中，请稍后再导入。");
         return false;
       }
 
+      const runBusy = async (work: () => Promise<boolean>): Promise<boolean> => {
+        if (nest) return work();
+        deps.beginBusy("import");
+        try {
+          return await work();
+        } finally {
+          deps.endBusy();
+        }
+      };
+
       if (kind === "text" && deps.currentFileId) {
-        importGateActiveRef.current = true;
+        if (!nest) importGateActiveRef.current = true;
         try {
           let imported = false;
           const proceeded = await deps.runWithUnsavedNavigateGate(async () => {
-            deps.beginBusy("import");
-            try {
+            imported = await runBusy(async () => {
               const { ok, fileId } = await runTranscriptImport(
                 projectId,
                 srcPath,
                 deps.currentFileId,
               );
-              if (!ok || !fileId) return;
+              if (!ok || !fileId) return false;
+              // Editor attach: reload same file. Hub imports use refresh only (no jump).
               if (!options?.skipReload) {
                 await deps.loadProjectAfterImport(projectId, fileId);
               }
-              imported = true;
-            } finally {
-              deps.endBusy();
-            }
+              return true;
+            });
           });
           return proceeded && imported;
         } catch (e) {
           deps.setError(e instanceof Error ? e.message : String(e));
           return false;
         } finally {
-          importGateActiveRef.current = false;
+          if (!nest) importGateActiveRef.current = false;
         }
       }
 
       const name = importFileDisplayName(srcPath, kind);
-      importGateActiveRef.current = true;
-      setDuplicateImportChecking(true);
+      if (!nest) {
+        importGateActiveRef.current = true;
+        // Batch keeps the import overlay; flipping this would flash the check dialog per file.
+        setDuplicateImportChecking(true);
+      }
       try {
         if (kind === "audio") {
           const check = await fileApi.checkProjectImportDuplicate(projectId, srcPath);
-          setDuplicateImportChecking(false);
+          if (!nest) setDuplicateImportChecking(false);
 
           if (hasImportDuplicate(check)) {
             const decision = await askDuplicateImport(check);
@@ -194,58 +224,103 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
             }
           }
 
-          deps.beginBusy("import");
-          try {
+          return runBusy(async () => {
             await fileApi.importAudioToProject(projectId, name, srcPath);
             if (!options?.skipReload) {
-              await deps.loadProjectAfterImport(projectId);
+              await deps.refreshProjectHub(projectId);
             }
             return true;
-          } finally {
-            deps.endBusy();
-          }
+          });
         }
 
-        setDuplicateImportChecking(false);
-        const duplicateOk = await runHubTextDuplicateGate(projectId, srcPath);
+        if (!nest) setDuplicateImportChecking(false);
+        const duplicateOk = await runHubTextDuplicateGate(projectId, srcPath, { nestInBatch: nest });
         if (!duplicateOk) return false;
-        deps.beginBusy("import");
-        try {
+        return runBusy(async () => {
           const { ok, fileId } = await runTranscriptImport(projectId, srcPath);
           if (!ok || !fileId) return false;
           if (!options?.skipReload) {
-            await deps.loadProjectAfterImport(projectId, fileId);
+            await deps.refreshProjectHub(projectId);
           }
           return true;
-        } finally {
-          deps.endBusy();
-        }
+        });
       } catch (e) {
         deps.setError(e instanceof Error ? e.message : String(e));
         return false;
       } finally {
         setDuplicateImportChecking(false);
-        importGateActiveRef.current = false;
+        if (!nest) importGateActiveRef.current = false;
       }
     },
     [askDuplicateImport, deps, runHubTextDuplicateGate, runTranscriptImport],
   );
 
-  const importAudioPathsToProject = useCallback(
-    async (paths: string[]): Promise<{ imported: number; skipped: number }> => {
+  const runBatchImport = useCallback(
+    async <T extends { imported: number }>(
+      paths: string[],
+      run: (
+        onProgress: (progress: BatchImportProgress) => void,
+      ) => Promise<T>,
+    ): Promise<T | { imported: 0; skipped: number; unsupported?: number }> => {
       const projectId = deps.currentProjectId;
-      if (!projectId || paths.length === 0) return { imported: 0, skipped: paths.length };
+      if (!projectId || paths.length === 0) {
+        return { imported: 0, skipped: paths.length };
+      }
       if (deps.busy || importGateActiveRef.current) {
         toast.error("当前有任务进行中，请稍后再导入。");
         return { imported: 0, skipped: paths.length };
       }
-      return importAudioPathsBatch(
-        importFileToProject,
-        paths,
-        async () => deps.loadProjectAfterImport(projectId),
-      );
+      importGateActiveRef.current = true;
+      deps.beginBusy("import");
+      try {
+        return await run((progress) => setImportProgress(progress));
+      } finally {
+        setImportProgress(null);
+        deps.endBusy();
+        importGateActiveRef.current = false;
+      }
     },
-    [deps, importFileToProject],
+    [deps],
+  );
+
+  const importAudioPathsToProject = useCallback(
+    async (paths: string[]): Promise<{ imported: number; skipped: number }> => {
+      const projectId = deps.currentProjectId;
+      if (!projectId) return { imported: 0, skipped: paths.length };
+      const result = await runBatchImport(paths, (onProgress) =>
+        importAudioPathsBatch(
+          importFileToProject,
+          paths,
+          async () => deps.refreshProjectHub(projectId),
+          onProgress,
+        ),
+      );
+      return { imported: result.imported, skipped: result.skipped ?? 0 };
+    },
+    [deps, importFileToProject, runBatchImport],
+  );
+
+  const importDroppedPathsToProject = useCallback(
+    async (
+      paths: string[],
+    ): Promise<{ imported: number; skipped: number; unsupported: number }> => {
+      const projectId = deps.currentProjectId;
+      if (!projectId) return { imported: 0, skipped: paths.length, unsupported: paths.length };
+      const result = await runBatchImport(paths, (onProgress) =>
+        importDroppedPathsBatch(
+          importFileToProject,
+          paths,
+          async () => deps.refreshProjectHub(projectId),
+          onProgress,
+        ),
+      );
+      return {
+        imported: result.imported,
+        skipped: result.skipped ?? 0,
+        unsupported: "unsupported" in result ? (result.unsupported ?? 0) : 0,
+      };
+    },
+    [deps, importFileToProject, runBatchImport],
   );
 
   const pickAndImportAudioPathsToProject = useCallback(async (): Promise<{
@@ -290,9 +365,11 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     attachImportTargetStem: attachTarget.attachImportTargetStem,
     cancelAttachImportTarget: attachTarget.cancelAttachImportTarget,
     confirmAttachImportTarget: attachTarget.confirmAttachImportTarget,
+    importProgress,
     importFileToProject,
     pickAndImportFileToProject,
     pickAndImportAudioPathsToProject,
     importAudioPathsToProject,
+    importDroppedPathsToProject,
   };
 }

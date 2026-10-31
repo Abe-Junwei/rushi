@@ -18,14 +18,17 @@ export function ProjectBusyOverlay({
   elapsedSec,
   transcribeProgress = null,
   exportPolishProgress = null,
+  importProgress = null,
 }: {
   reason: BusyReason | null;
   elapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
   exportPolishProgress?: { batch: number; total: number } | null;
+  importProgress?: import("../services/projectBatchImport").BatchImportProgress | null;
 }) {
   const busyCopy = busyOverlayCopy(reason, transcribeProgress, {
     exportPolishProgress: exportPolishProgress ?? undefined,
+    importProgress: importProgress ?? undefined,
     elapsedSec,
   });
 

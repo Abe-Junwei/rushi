@@ -2,8 +2,14 @@ import { ENV_NAV } from "../../../config/environmentNavCopy";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { isSttConnectionVerified } from "./connectionVerified";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
-import { hasSttOnlineApiKeyReference } from "./apiKeyStorage";
-import { hasSttOnlineApiSecretReference } from "./apiSecretStorage";
+import {
+  ensureSttOnlineApiKeyForSession,
+  hasSttOnlineApiKeyReference,
+} from "./apiKeyStorage";
+import {
+  ensureSttOnlineApiSecretForSession,
+  hasSttOnlineApiSecretReference,
+} from "./apiSecretStorage";
 import { getSttOnlineApiKeyFromMemory, getSttOnlineApiSecretFromMemory } from "./memorySecrets";
 import {
   resolveSttOnlinePresetTranscribeUrl,
@@ -169,4 +175,23 @@ export function resolveOnlineTranscribeBlock(): string | null {
     return `在线 STT：请到「${ENV_NAV.onlineStt}」补全 AppID、APISecret、APIKey 并保存。`;
   }
   return `在线 STT：请到「${ENV_NAV.onlineStt}」补全配置并保存。`;
+}
+
+/** Async: also verifies local key material still exists (banner「密钥异常」同源). */
+export async function resolveOnlineTranscribeSessionBlock(): Promise<string | null> {
+  const keyOk = await ensureSttOnlineApiKeyForSession();
+  if (!keyOk) {
+    if (hasSttOnlineApiKeyReference()) {
+      return `在线 STT：本地密钥丢失，请到「${ENV_NAV.onlineStt}」重新保存。`;
+    }
+    return resolveOnlineTranscribeBlock();
+  }
+  const secretOk = await ensureSttOnlineApiSecretForSession();
+  if (!secretOk) {
+    if (hasSttOnlineApiSecretReference()) {
+      return `在线 STT：本地 APISecret 丢失，请到「${ENV_NAV.onlineStt}」重新保存。`;
+    }
+    return resolveOnlineTranscribeBlock();
+  }
+  return resolveOnlineTranscribeBlock();
 }

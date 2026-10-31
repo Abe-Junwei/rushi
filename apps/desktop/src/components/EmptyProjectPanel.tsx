@@ -8,10 +8,10 @@ import { CONTROL_BTN_WORKSPACE_IMPORT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import { importDroppedPathsToProject } from "../services/projectBatchImport";
 import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { ProjectFilesHubHeader } from "./ProjectFilesHubHeader";
+import { formatImportProgressLead } from "./projectStatusFeedbackCopy";
 
 const DROP_IMPORT_UNSUPPORTED_MSG =
   "拖入失败：仅支持音频（.mp3/.wav/.m4a）或转录文本（.txt/.srt/.vtt）文件。";
@@ -78,13 +78,8 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
           void (async () => {
             const controller = controllerRef.current;
             try {
-              const projectId = controller.current?.id;
-              if (!projectId) return;
-              const result = await importDroppedPathsToProject(
-                controller.importFileToProject,
-                droppedPaths,
-                async () => controller.loadProjectAfterImport(projectId),
-              );
+              if (!controller.current?.id) return;
+              const result = await controller.importDroppedPathsToProject(droppedPaths);
               if (result.imported === 0 && result.unsupported > 0) {
                 toast.error(DROP_IMPORT_UNSUPPORTED_MSG);
               }
@@ -123,15 +118,17 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
   }, []);
 
   const statusMessage =
-    pendingImport === "audio"
-      ? "正在导入音频，请稍候..."
-      : pendingImport === "transcript"
-        ? "正在导入转录文本，请稍候..."
-        : pendingImport === "drop"
-          ? "正在处理拖入文件，请稍候..."
-          : c.busy
-            ? "正在处理任务，请稍候..."
-            : "";
+    c.busy && c.busyReason === "import" && c.importProgress
+      ? formatImportProgressLead(c.importProgress)
+      : pendingImport === "audio"
+        ? "正在导入音频，请稍候..."
+        : pendingImport === "transcript"
+          ? "正在导入转录文本，请稍候..."
+          : pendingImport === "drop"
+            ? "正在处理拖入文件，请稍候..."
+            : c.busy
+              ? "正在处理任务，请稍候..."
+              : "";
 
   return (
     <section

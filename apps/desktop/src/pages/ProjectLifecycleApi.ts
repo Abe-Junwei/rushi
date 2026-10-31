@@ -250,6 +250,7 @@ export interface ProjectLifecycleApi {
   attachImportTargetStem: string | null;
   cancelAttachImportTarget: () => void;
   confirmAttachImportTarget: (fileId: string) => void;
+  importProgress: import("../services/projectBatchImport").BatchImportProgress | null;
   importFileToProject: (
     kind: "audio" | "text",
     srcPath: string,
@@ -260,6 +261,9 @@ export interface ProjectLifecycleApi {
     options?: import("./useProjectImportDuplicateController").ImportFileToProjectOptions,
   ) => Promise<boolean>;
   pickAndImportAudioPathsToProject: () => Promise<{ imported: number; skipped: number }>;
+  importDroppedPathsToProject: (
+    paths: string[],
+  ) => Promise<{ imported: number; skipped: number; unsupported: number }>;
   batchQueueOpen: boolean;
   batchQueueItems: import("../services/batchTranscribeQueue").BatchQueueItem[];
   batchTranscribeRunning: boolean;

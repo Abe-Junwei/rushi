@@ -5,8 +5,7 @@ import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
 import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import {
-  ensureSttOnlineApiKeyForSession,
-  ensureSttOnlineApiSecretForSession,
+  resolveOnlineTranscribeSessionBlock,
   tryBuildOnlineTranscribeBridgePayload,
 } from "../services/stt/sttOnlineProviderContract";
 import type { ProjectDetail } from "../tauri/projectApi";
@@ -132,9 +131,13 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
       await awaitEnvironmentCapabilityRefresh();
     }
     const effectiveSource = resolveEffectiveTranscribeSource(transcribeSource);
-    if (effectiveSource === "online") {
-      await ensureSttOnlineApiKeyForSession();
-      await ensureSttOnlineApiSecretForSession();
+    // Batch parent already ran resolveOnlineTranscribeSessionBlock once.
+    if (effectiveSource === "online" && !opts?.batchChild) {
+      const sessionBlock = await resolveOnlineTranscribeSessionBlock();
+      if (sessionBlock) {
+        setError(sessionBlock);
+        return { ok: false, message: sessionBlock };
+      }
     }
     const targetFileId = opts?.fileId ?? currentFileId;
     const block = resolveTranscribeExecuteBlock({

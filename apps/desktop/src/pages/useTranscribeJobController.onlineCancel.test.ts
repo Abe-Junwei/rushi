@@ -22,6 +22,7 @@ describe("useTranscribeJobController online cancel", () => {
       nativeAdapter: "openaiAudio",
     });
     vi.mocked(sttContract.ensureSttOnlineApiKeyForSession).mockResolvedValue(true);
+    vi.mocked(sttContract.resolveOnlineTranscribeSessionBlock).mockResolvedValue(null);
     vi.spyOn(sttContract, "resolveOnlineTranscribeBlock").mockReturnValue(null);
   });
 

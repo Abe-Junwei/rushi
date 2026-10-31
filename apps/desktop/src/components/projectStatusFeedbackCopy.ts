@@ -89,12 +89,38 @@ function formatExportPolishBatchLabel(batch: number, total: number): string {
   return `第 ${batch}/${total} 批`;
 }
 
+export type ImportBusyProgress = {
+  current: number;
+  total: number;
+  kind: "audio" | "text" | "file";
+};
+
+function formatImportKindNoun(kind: ImportBusyProgress["kind"]): string {
+  switch (kind) {
+    case "audio":
+      return "音频";
+    case "text":
+      return "转录文本";
+    case "file":
+      return "文件";
+    default: {
+      const _exhaustive: never = kind;
+      return _exhaustive;
+    }
+  }
+}
+
+export function formatImportProgressLead(progress: ImportBusyProgress): string {
+  return `正在导入 ${progress.current}/${progress.total} 个${formatImportKindNoun(progress.kind)}`;
+}
+
 export function busyOverlayCopy(
   reason: BusyReason | null,
   transcribeProgress: TranscribeProgress | null,
   options?: {
     transcribeSource?: TranscribeSource;
     exportPolishProgress?: { batch: number; total: number };
+    importProgress?: ImportBusyProgress | null;
     elapsedSec?: number;
   },
 ): BusyOverlayCopy {
@@ -111,8 +137,21 @@ export function busyOverlayCopy(
       return { title: "正在创建项目", lead: "复制音频并写入数据库" };
     case "load":
       return { title: "正在加载项目", lead: "读取语段与媒体", detail: "完整识别可能需数分钟" };
-    case "import":
+    case "import": {
+      const progress = options?.importProgress;
+      if (progress && progress.total > 0) {
+        return {
+          title: "正在导入",
+          lead: formatImportProgressLead(progress),
+          detail: "请勿关闭应用",
+          progressValue:
+            progress.total > 1
+              ? Math.min(1, Math.max(0, progress.current / progress.total))
+              : null,
+        };
+      }
       return { title: "正在导入", lead: "请稍候" };
+    }
     case "delete":
       return { title: "正在删除项目", lead: "请稍候" };
     case "install_funasr":

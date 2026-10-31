@@ -8,11 +8,28 @@ vi.mock("../services/ui/pushActivity", () => ({
   pushBatchTranscribeSummaryActivity: vi.fn(),
 }));
 
+vi.mock("../services/ui/toast", () => ({
+  toast: { error: vi.fn(), success: vi.fn(), info: vi.fn(), warning: vi.fn() },
+}));
+
 vi.mock("../tauri/fileApi", () => ({
   loadFile: vi.fn(),
 }));
 
+vi.mock("../services/stt/sttOnlineProviderContract", () => ({
+  resolveOnlineTranscribeSessionBlock: vi.fn(() => Promise.resolve(null)),
+}));
+
+vi.mock("../services/stt/transcribeSourcePresentation", () => ({
+  resolveEffectiveTranscribeSource: vi.fn(
+    (source: "local" | "online", options?: { onlineReady?: boolean }) =>
+      options?.onlineReady === false ? "local" : source === "online" || options?.onlineReady ? "online" : source,
+  ),
+}));
+
 import { pushBatchTranscribeSummaryActivity } from "../services/ui/pushActivity";
+import { toast } from "../services/ui/toast";
+import { resolveOnlineTranscribeSessionBlock } from "../services/stt/sttOnlineProviderContract";
 import * as fileApi from "../tauri/fileApi";
 
 function file(partial: Partial<FileSummary> & Pick<FileSummary, "id" | "name" | "file_type">): FileSummary {
@@ -86,9 +103,60 @@ describe("useBatchTranscribeQueueController", () => {
     expect(pushBatchTranscribeSummaryActivity).toHaveBeenCalledWith(
       expect.objectContaining({
         projectId: "proj-1",
-        stopped: false,
+        stopped: true,
       }),
     );
+  });
+
+  it("aborts before queue when online session key is missing", async () => {
+    vi.mocked(resolveOnlineTranscribeSessionBlock).mockResolvedValueOnce(
+      "在线 STT：本地密钥丢失，请到「环境 → 在线 STT」重新保存。",
+    );
+    const { deps, executeTranscribeForBatch, beginBusy, setError } = makeDeps({
+      transcribeSource: "online",
+      onlineTranscribeReady: true,
+      projectFiles: [
+        file({ id: "f1", name: "a.wav", file_type: "paired" }),
+        file({ id: "f2", name: "b.wav", file_type: "paired", updated_at_ms: 1 }),
+      ],
+    });
+
+    const { result } = renderHook(() => useBatchTranscribeQueueController(deps));
+
+    await act(async () => {
+      await result.current.startBatchTranscribe();
+    });
+
+    expect(beginBusy).not.toHaveBeenCalled();
+    expect(executeTranscribeForBatch).not.toHaveBeenCalled();
+    expect(pushBatchTranscribeSummaryActivity).not.toHaveBeenCalled();
+    expect(setError).toHaveBeenCalledWith(expect.stringContaining("密钥丢失"));
+    expect(toast.error).toHaveBeenCalledWith(expect.stringContaining("密钥丢失"));
+    expect(result.current.batchTranscribeRunning).toBe(false);
+  });
+
+  it("stops remaining files after a shared env failure", async () => {
+    const { deps, executeTranscribeForBatch } = makeDeps({
+      projectFiles: [
+        file({ id: "f1", name: "a.wav", file_type: "paired" }),
+        file({ id: "f2", name: "b.wav", file_type: "paired", updated_at_ms: 1 }),
+      ],
+    });
+    executeTranscribeForBatch.mockResolvedValue({
+      ok: false,
+      message: "在线 STT：本地密钥丢失，请重新保存。",
+    });
+
+    const { result } = renderHook(() => useBatchTranscribeQueueController(deps));
+
+    await act(async () => {
+      await result.current.startBatchTranscribe();
+    });
+
+    expect(executeTranscribeForBatch).toHaveBeenCalledTimes(1);
+    // Newest-first: f2 runs first, then shared-env stop skips older f1.
+    expect(result.current.batchQueueItems.find((i) => i.fileId === "f2")?.status).toBe("failed");
+    expect(result.current.batchQueueItems.find((i) => i.fileId === "f1")?.status).toBe("skipped");
   });
 
   it("opens each batch file through the unguarded batch navigation", async () => {

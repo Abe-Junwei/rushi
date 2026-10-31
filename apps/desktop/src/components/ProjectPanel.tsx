@@ -208,6 +208,7 @@ export function ProjectPanel() {
           exportPolishProgress={
             c.busyReason === "export_polish" ? exportPolishProgress : null
           }
+          importProgress={c.busyReason === "import" ? c.importProgress : null}
         />
       ) : null}
 

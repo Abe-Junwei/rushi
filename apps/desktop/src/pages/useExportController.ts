@@ -88,7 +88,6 @@ export interface ExportDeps {
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   refreshProjects: () => Promise<void>;
-  applyDetail: (d: ProjectDetail) => void;
 }
 
 export function useExportController(deps: ExportDeps): ExportApi {
@@ -102,7 +101,6 @@ export function useExportController(deps: ExportDeps): ExportApi {
     beginBusy,
     endBusy,
     refreshProjects,
-    applyDetail,
   } = deps;
 
   const exportContextLabel = useCallback(() => {
@@ -454,7 +452,6 @@ export function useExportController(deps: ExportDeps): ExportApi {
     beginBusy,
     endBusy,
     refreshProjects,
-    applyDetail,
   });
 
   return {

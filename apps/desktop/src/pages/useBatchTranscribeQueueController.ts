@@ -15,6 +15,19 @@ import type { FileSummary } from "../tauri/projectTypes";
 import type { BusyReason } from "./useProjectCrudController";
 import type { ExecuteTranscribeOptions, ExecuteTranscribeResult } from "./useTranscribeJobExecute";
 import type { LocalTranscribePreflight } from "./transcribeJobHelpers";
+import { resolveOnlineTranscribeSessionBlock } from "../services/stt/sttOnlineProviderContract";
+import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
+
+function isBatchSharedEnvFailure(message: string | undefined): boolean {
+  const text = message?.trim() ?? "";
+  if (!text) return false;
+  return (
+    text.includes("在线 STT") ||
+    text.includes("本机 ASR") ||
+    text.includes("密钥") ||
+    text.includes("APISecret")
+  );
+}
 
 export type BatchTranscribeQueueControllerApi = {
   batchQueueOpen: boolean;
@@ -41,6 +54,7 @@ type Deps = {
   localTranscribePreflight: LocalTranscribePreflight;
   softWakeBeforeLocalTranscribe?: () => Promise<void>;
   transcribeSource: "local" | "online";
+  onlineTranscribeReady?: boolean;
   setError: (msg: string) => void;
   refreshProjectHub: (projectId: string) => Promise<void>;
 };
@@ -99,11 +113,22 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
       toast.error("请先保存当前语段修改，再开始批量转写。");
       return;
     }
-    if (deps.transcribeSource === "local") {
+    const effectiveSource = resolveEffectiveTranscribeSource(deps.transcribeSource, {
+      onlineReady: deps.onlineTranscribeReady,
+    });
+    if (effectiveSource === "online") {
+      const block = await resolveOnlineTranscribeSessionBlock();
+      if (block) {
+        deps.setError(block);
+        toast.error(block);
+        return;
+      }
+    } else {
       await deps.softWakeBeforeLocalTranscribe?.();
       const block = deps.localTranscribePreflight();
       if (block) {
         deps.setError(block);
+        toast.error(block);
         return;
       }
     }
@@ -164,6 +189,11 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
               detail: result.message,
             });
             setBatchQueueItems([...workingItems]);
+            // Shared env/key failure will hit every file — stop instead of toast-storm.
+            if (isBatchSharedEnvFailure(result.message)) {
+              stopped = true;
+              break;
+            }
             continue;
           }
           workingItems = patchBatchQueueItem(workingItems, item.fileId, { status: "done" });

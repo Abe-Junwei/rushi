@@ -45,13 +45,7 @@ export function WorkspaceFileRow({
   const metaColor = isSidebar ? "text-notion-text-light" : "text-notion-text-muted";
 
   return (
-    <div
-      className={[
-        WORKSPACE_FILE_ROW_CLASS,
-        selected ? "bg-notion-sidebar-active hover:bg-notion-sidebar-active" : "",
-      ].join(" ")}
-      onContextMenu={onContextMenu}
-    >
+    <div className={WORKSPACE_FILE_ROW_CLASS} onContextMenu={onContextMenu}>
       <button
         type="button"
         className={[

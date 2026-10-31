@@ -4,7 +4,7 @@ import {
   resolutionsFromDrafts,
   type BundleConflictDraft,
 } from "../components/BundleImportNameConflictDialog";
-import type { ExchangeBundleImportPreview, ProjectDetail } from "../tauri/projectApi";
+import type { ExchangeBundleImportPreview } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
@@ -25,14 +25,13 @@ export interface BundleImportConflictDeps {
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   refreshProjects: () => Promise<void>;
-  applyDetail: (d: ProjectDetail) => void;
 }
 
 /** Content-package import: pick → preview name conflicts → resolve (overwrite/rename) → apply. */
 export function useBundleImportConflictController(
   deps: BundleImportConflictDeps,
 ): BundleImportConflictApi {
-  const { setError, beginBusy, endBusy, refreshProjects, applyDetail } = deps;
+  const { setError, beginBusy, endBusy, refreshProjects } = deps;
 
   const [bundleImportConflictPending, setBundleImportConflictPending] =
     useState<ExchangeBundleImportPreview | null>(null);
@@ -42,7 +41,7 @@ export function useBundleImportConflictController(
 
   const finishBundleImportResult = useCallback(
     async (result: p1.ImportExchangeBundleResult) => {
-      applyDetail(result.project);
+      // 只刷新列表，不 applyDetail / 打开文件；用户自行点进项目。
       await refreshProjects();
       if (result.failedCount > 0) {
         const sample = result.failedLabels.slice(0, 3).join("；");
@@ -60,7 +59,7 @@ export function useBundleImportConflictController(
         toast.info(result.lexiconWarning);
       }
     },
-    [applyDetail, refreshProjects],
+    [refreshProjects],
   );
 
   const importProjectBundle = useCallback(async () => {

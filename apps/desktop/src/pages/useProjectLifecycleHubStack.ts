@@ -39,6 +39,7 @@ export function useProjectLifecycleHubStack(args: UseProjectLifecycleHubStackArg
     beginBusy: args.beginBusy,
     endBusy: args.endBusy,
     loadProjectAfterImport: args.closeGate.loadProjectAfterImport,
+    refreshProjectHub: args.closeGate.refreshProjectHub,
     openFile: args.closeGate.openFileWrapped,
     runWithUnsavedNavigateGate: args.closeGate.runWithUnsavedNavigateGate,
     setError: args.setError,

@@ -57,6 +57,7 @@ describe("WorkspaceProjectLibrary", () => {
       <WorkspaceProjectLibrary
         controller={mockController({ loadProject })}
         projects={projects}
+        sortMode="updated"
         expandedProjectId={null}
         projectFilesById={{}}
         loadingFilesById={{}}
@@ -74,6 +75,7 @@ describe("WorkspaceProjectLibrary", () => {
       <WorkspaceProjectLibrary
         controller={mockController()}
         projects={projects}
+        sortMode="updated"
         expandedProjectId="p1"
         projectFilesById={{ p1: [] }}
         loadingFilesById={{}}
@@ -99,6 +101,7 @@ describe("WorkspaceProjectLibrary", () => {
           current: null,
         })}
         projects={projects}
+        sortMode="updated"
         expandedProjectId={null}
         projectFilesById={{}}
         loadingFilesById={{}}
@@ -125,6 +128,7 @@ describe("WorkspaceProjectLibrary", () => {
           current: null,
         })}
         projects={projects}
+        sortMode="updated"
         expandedProjectId={null}
         projectFilesById={{}}
         loadingFilesById={{}}
@@ -139,39 +143,18 @@ describe("WorkspaceProjectLibrary", () => {
     expect(loadProject).toHaveBeenCalledWith("p1");
   });
 
-  it("paginates when projects exceed viewport-derived page size", () => {
-    // jsdom 视口高度为 0 → pageSize = FALLBACK(8)；17 项 → 3 页
+  it("renders the full project list without a pager", () => {
     const many = Array.from({ length: 17 }, (_, i) => ({
       id: `p${i}`,
       name: `项目${i}`,
       updated_at_ms: 1000 - i,
       file_count: 0,
     }));
-    render(
+    const { container } = render(
       <WorkspaceProjectLibrary
         controller={mockController()}
         projects={many}
-        expandedProjectId={null}
-        projectFilesById={{}}
-        loadingFilesById={{}}
-        onOpenProjectFile={vi.fn()}
-        onToggleProjectExpanded={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("第 1 / 3 页")).toBeTruthy();
-    expect(screen.getByTitle("展开：项目0")).toBeTruthy();
-    expect(screen.queryByTitle("展开：项目8")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-    expect(screen.getByText("第 2 / 3 页")).toBeTruthy();
-    expect(screen.getByTitle("展开：项目8")).toBeTruthy();
-    expect(screen.queryByTitle("展开：项目0")).toBeNull();
-  });
-
-  it("hides pager when projects fit on one page", () => {
-    render(
-      <WorkspaceProjectLibrary
-        controller={mockController()}
-        projects={projects}
+        sortMode="updated"
         expandedProjectId={null}
         projectFilesById={{}}
         loadingFilesById={{}}
@@ -180,5 +163,11 @@ describe("WorkspaceProjectLibrary", () => {
       />,
     );
     expect(screen.queryByLabelText("项目列表翻页")).toBeNull();
+    expect(screen.queryByLabelText("项目文件翻页")).toBeNull();
+    expect(container.querySelector("[data-purpose='project-library-pager']")).toBeNull();
+    expect(container.querySelector("[data-purpose='workspace-project-library-scroll']")).toBeTruthy();
+    expect(screen.getByTitle("展开：项目0")).toBeTruthy();
+    expect(screen.getByTitle("展开：项目8")).toBeTruthy();
+    expect(screen.getByTitle("展开：项目16")).toBeTruthy();
   });
 });
