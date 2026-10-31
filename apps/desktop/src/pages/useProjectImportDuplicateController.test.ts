@@ -202,9 +202,9 @@ describe("useProjectImportDuplicateController", () => {
     const { result } = renderHook(() => useProjectImportDuplicateController(deps));
     const checkingSnapshots: boolean[] = [];
 
-    vi.mocked(fileApi.checkProjectImportDuplicate).mockImplementation(async () => {
+    vi.mocked(fileApi.checkProjectImportDuplicate).mockImplementation(() => {
       checkingSnapshots.push(result.current.duplicateImportChecking);
-      return { bySourcePath: [], byContentHash: [] };
+      return Promise.resolve({ bySourcePath: [], byContentHash: [] });
     });
 
     await act(async () => {

@@ -64,12 +64,12 @@ export async function importDroppedPathsToProject(
 
   let imported = 0;
   let skipped = uniquePaths.length - jobs.length;
-  let unsupported = skipped;
+  const unsupported = skipped;
   const total = jobs.length;
   const mixed = jobs.some((j) => j.kind === "audio") && jobs.some((j) => j.kind === "transcript");
 
   for (let i = 0; i < jobs.length; i += 1) {
-    const job = jobs[i]!;
+    const job = jobs[i];
     onProgress?.({
       current: i + 1,
       total,
@@ -107,7 +107,7 @@ export async function importAudioPathsToProject(
   const total = uniquePaths.length;
 
   for (let i = 0; i < uniquePaths.length; i += 1) {
-    const srcPath = uniquePaths[i]!;
+    const srcPath = uniquePaths[i];
     onProgress?.({ current: i + 1, total, kind: "audio" });
     const importedOk = await importFileToProject("audio", srcPath, {
       skipReload: true,

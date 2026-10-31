@@ -482,13 +482,13 @@ fn patch_settings_track_and_markup(xml: Vec<u8>) -> Result<Vec<u8>, String> {
             .map_err(|e| format!("解析 settings.xml 失败: {e}"))?;
         match event {
             Event::Eof => break,
-            Event::Empty(e) if e.name() == QName(b"w:trackRevisions") => {
+            Event::Empty(e) if e.name() == QName("w:trackRevisions") => {
                 seen_track_revisions = true;
                 writer
                     .write_event(Event::Empty(track_revisions_element()))
                     .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
             }
-            Event::Start(e) if e.name() == QName(b"w:trackRevisions") => {
+            Event::Start(e) if e.name() == QName("w:trackRevisions") => {
                 seen_track_revisions = true;
                 reader
                     .read_to_end_into(e.name(), &mut Vec::new())
@@ -497,13 +497,13 @@ fn patch_settings_track_and_markup(xml: Vec<u8>) -> Result<Vec<u8>, String> {
                     .write_event(Event::Empty(track_revisions_element()))
                     .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
             }
-            Event::Empty(e) if e.name() == QName(b"w:revisionView") => {
+            Event::Empty(e) if e.name() == QName("w:revisionView") => {
                 seen_revision_view = true;
                 writer
                     .write_event(Event::Empty(e.into_owned()))
                     .map_err(|e| format!("写入 settings.xml 失败: {e}"))?;
             }
-            Event::End(e) if e.name() == QName(b"w:settings") => {
+            Event::End(e) if e.name() == QName("w:settings") => {
                 if !seen_track_revisions {
                     writer
                         .write_event(Event::Empty(track_revisions_element()))
@@ -541,7 +541,10 @@ pub fn inject_track_revisions_flag(bytes: &[u8]) -> Result<Vec<u8>, String> {
             let mut file = archive
                 .by_index(i)
                 .map_err(|e| format!("读取 DOCX 条目失败: {e}"))?;
-            let name = file.name().to_string();
+            let name = file
+                .name()
+                .map_err(|e| format!("读取 DOCX 条目名失败: {e}"))?
+                .into_owned();
             let compression = file.compression();
             let options = SimpleFileOptions::default().compression_method(compression);
             let mut buf = Vec::new();

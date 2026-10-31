@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./localAsrSetupModelStep", () => ({
   snapshotSelectedModelPrepare: vi.fn(),
-  syncBundledSidecarToPreferredHub: vi.fn(async () => true),
+  syncBundledSidecarToPreferredHub: vi.fn(() => Promise.resolve(true)),
 }));
 
 vi.mock("../../config/env", () => ({
@@ -69,7 +69,7 @@ describe("finishOneClickIfAlreadyReady", () => {
     });
     const setSetupOutcome = vi.fn();
     const result = await finishOneClickIfAlreadyReady(
-      { refreshAsrRuntimeInfo: vi.fn(async () => undefined) } as never,
+      { refreshAsrRuntimeInfo: vi.fn(() => Promise.resolve(undefined)) } as never,
       {
         setSetupSteps: vi.fn(),
         setSetupMessage: vi.fn(),
