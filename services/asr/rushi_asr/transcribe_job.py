@@ -93,13 +93,24 @@ def _run_job(
                 job.phase = "error"
                 job.message = result.error.message
                 return
-            # Final segments may differ from accumulated if non-windowed single shot
-            if result.diarization.status == "final" or len(result.segments) != len(job.segments):
-                job.segments = list(result.segments)
-                # Preview deltas deliberately omit provisional speaker labels.
-                # The desktop finalize command consumes the terminal `segments`.
-                if result.diarization.status != "final":
-                    job.pending_delta = list(result.segments)
+            # Final payload may differ from window deltas (diarization finalize / single-shot).
+            # Never clobber non-empty window progress with an empty final list — that used to
+            # mark phase=done with segments=[] after mid-job stub fallback, so desktop save
+            # rejected with「转写未产出可用语段」and restored the pre-job snapshot.
+            if result.segments:
+                if (
+                    result.diarization.status == "final"
+                    or len(result.segments) != len(job.segments)
+                ):
+                    job.segments = list(result.segments)
+                    # Preview deltas deliberately omit provisional speaker labels.
+                    # The desktop finalize command consumes the terminal `segments`.
+                    if result.diarization.status != "final":
+                        job.pending_delta = list(result.segments)
+            elif job.segments:
+                job.warnings.append(
+                    "transcribe_kept_window_segments: final payload empty; kept window progress"
+                )
             job.phase = "done"
             job.message = "ok"
     except TranscribeCancelledError:

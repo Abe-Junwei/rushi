@@ -98,6 +98,71 @@ def test_async_job_emits_window_deltas(monkeypatch: pytest.MonkeyPatch, tmp_path
     assert final["engine"] == "funasr+test"
 
 
+def test_async_job_keeps_window_segments_when_final_payload_empty(
+    tmp_path: Path,
+) -> None:
+    """Partial windows must survive an empty final result (stub / failed last window)."""
+    upload = tmp_path / "in.wav"
+    upload.write_bytes(b"wav")
+    work = tmp_path / "work-keep"
+    work.mkdir()
+
+    def fake_transcribe(
+        upload_path: Path,
+        work_dir: Path,
+        hotwords: str | None,
+        *,
+        on_window_done,
+        should_cancel,
+        on_phase,
+        on_windows_planned=None,
+        diarization_requested=False,
+    ):
+        from rushi_asr.schemas import TranscriptionResult
+
+        on_phase("transcribing", "transcribing")
+        if on_windows_planned:
+            on_windows_planned(3)
+        for i in range(1, 3):
+            on_window_done(
+                i,
+                3,
+                [
+                    TranscriptionSegment(
+                        start_sec=float(i),
+                        end_sec=float(i) + 1.0,
+                        text=f"w{i}",
+                    ),
+                ],
+            )
+        # Mimic mid-job FunASR failure → stub empty while deltas already landed.
+        return TranscriptionResult(
+            segments=[],
+            full_text="",
+            engine="stub",
+            duration_sec=900.0,
+            warnings=["funasr_skipped:funasr_generate_failed:boom"],
+            segmentation_mode="transcribe_windowed",
+        )
+
+    with patch("rushi_asr.transcribe_job._transcribe_with_progress", fake_transcribe):
+        started = start_transcribe_async(upload, work, None)
+    job_id = started["job_id"]
+
+    import time
+
+    deadline = time.time() + 5.0
+    while time.time() < deadline:
+        if transcribe_status(job_id)["phase"] in ("done", "error", "cancelled"):
+            break
+        time.sleep(0.05)
+
+    final = transcribe_status(job_id)
+    assert final["phase"] == "done"
+    assert [s["text"] for s in final["segments"]] == ["w1", "w2"]
+    assert any("transcribe_kept_window_segments" in w for w in final["warnings"])
+
+
 def test_async_job_plans_window_count_before_first_delta(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
 ) -> None:
