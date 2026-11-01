@@ -99,9 +99,9 @@ if body.get("funasr_ready") is not True:
     sys.exit(f"funasr_ready is not true: {body!r}")
 if body.get("version") in (None, "", "0+unknown"):
     sys.exit(f"sidecar package metadata missing: {body!r}")
-if body.get("funasr_version") != "1.3.16":
+if body.get("funasr_version") != "1.4.16":
     sys.exit(f"unexpected funasr_version: {body!r}")
-if body.get("modelscope_version") != "1.38.1":
+if body.get("modelscope_version") != "1.40.2":
     sys.exit(f"unexpected modelscope_version: {body!r}")
 if not body.get("torch_version"):
     sys.exit(f"torch package metadata missing: {body!r}")
