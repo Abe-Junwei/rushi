@@ -374,13 +374,13 @@ mod tests {
         let parsed = parse_export_lecture_optimize_json(&raw, &uids, &lines).unwrap();
         assert_eq!(parsed.punct_lines.len(), 3541);
         assert_eq!(parsed.protocol_stats.omitted_unchanged, 3505);
-        for index in 0..3541 {
+        for (index, line) in parsed.punct_lines.iter().enumerate() {
             let expected = if index % 101 == 0 {
                 format!("优化-{index}")
             } else {
                 format!("原文-{index}")
             };
-            assert_eq!(parsed.punct_lines[index], expected);
+            assert_eq!(line, &expected);
         }
     }
 }
