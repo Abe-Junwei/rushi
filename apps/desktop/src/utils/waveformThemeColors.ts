@@ -98,7 +98,11 @@ export function resolveCssColorExpression(
     !resolved ||
     resolved.includes("color-mix(") ||
     resolved.includes("var(") ||
-    (resolved === "rgba(0, 0, 0, 0)" && expression.includes("transparent") === false);
+    (resolved === "rgba(0, 0, 0, 0)" &&
+      (!expression.includes("transparent") ||
+        Array.from(expression.matchAll(/var\((--[\w-]+)\)/g)).some(
+          ([, name]) => !readCssColorVar(name, ""),
+        )));
   if (unresolved) {
     return fallback;
   }

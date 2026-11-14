@@ -17,8 +17,8 @@ import { WAVEFORM_EDGE_FOLLOW } from "../utils/waveformPlaybackScrollFollow";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
 
 /** Imperative playhead transform is a direct CSP-legal inline style write (setDirectLayoutStyle). */
-function playheadTransform(line: HTMLElement): string {
-  return line.style.transform ?? "";
+function playheadX(line: HTMLElement): number {
+  return Number.parseFloat(/^translate3d\(([-\d.]+)px,/.exec(line.style.transform)?.[1] ?? "");
 }
 
 function makePlayheadProps(overrides: Partial<ComponentProps<typeof WaveformViewportPlayhead>> = {}) {
@@ -45,7 +45,7 @@ describe("WaveformViewportPlayhead", () => {
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     expect(line).toBeTruthy();
-    expect(playheadTransform(line)).toContain("300.000px");
+    expect(playheadX(line)).toBe(300);
   });
 
   it("updates transform on tier scroll without React rerender", () => {
@@ -65,7 +65,7 @@ describe("WaveformViewportPlayhead", () => {
       flushTierScrollFrameForTests();
     });
     resetTierScrollFrameCoordinatorForTests();
-    expect(playheadTransform(line)).toContain("200.000px");
+    expect(playheadX(line)).toBe(200);
   });
 
   it("preserves subpixel playhead positioning in edge mode", () => {
@@ -84,7 +84,7 @@ describe("WaveformViewportPlayhead", () => {
     );
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
-    expect(playheadTransform(line)).toContain("333.333px");
+    expect(playheadX(line)).toBe(333.333);
   });
 
   it("absorbs scroll residual instead of hard-pinning center while playing", () => {
@@ -113,7 +113,7 @@ describe("WaveformViewportPlayhead", () => {
     );
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
-    expect(playheadTransform(line)).toContain("399.600px");
+    expect(playheadX(line)).toBe(399.6);
   });
 
   it("P0: hard-pins to viewport center while center-follow is driving", () => {
@@ -141,7 +141,7 @@ describe("WaveformViewportPlayhead", () => {
     );
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
-    expect(playheadTransform(line)).toContain("400.000px");
+    expect(playheadX(line)).toBe(400);
     clearPlaybackFollowDriving();
   });
 
@@ -170,8 +170,8 @@ describe("WaveformViewportPlayhead", () => {
     );
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
-    const expected = (800 * WAVEFORM_EDGE_FOLLOW.anchorFrac).toFixed(3);
-    expect(playheadTransform(line)).toContain(`${expected}px`);
+    const expected = 800 * WAVEFORM_EDGE_FOLLOW.anchorFrac;
+    expect(playheadX(line)).toBeCloseTo(expected, 3);
     clearPlaybackFollowDriving();
   });
 

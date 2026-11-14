@@ -56,7 +56,7 @@ describe("cspElementLayout", () => {
     setDirectLayoutStyle(el, { left: 12, width: 640, transform: "translate3d(4px, 0, 0)" });
     expect(el.style.getPropertyValue("left")).toBe("12px");
     expect(el.style.getPropertyValue("width")).toBe("640px");
-    expect(el.style.getPropertyValue("transform")).toBe("translate3d(4px, 0, 0)");
+    expect(el.style.getPropertyValue("transform")).toBe("translate3d(4px, 0px, 0px)");
     // Custom properties keep raw value; registry scope must stay empty.
     setDirectLayoutStyle(el, { "--x": "7px" });
     expect(el.style.getPropertyValue("--x")).toBe("7px");
@@ -69,7 +69,7 @@ describe("cspElementLayout", () => {
     const el = document.createElement("div");
     document.body.appendChild(el);
     setDirectLayoutStyle(el, { transform: "translate3d(4px, 0, 0)" });
-    expect(el.style.getPropertyValue("transform")).toBe("translate3d(4px, 0, 0)");
+    expect(el.style.getPropertyValue("transform")).toBe("translate3d(4px, 0px, 0px)");
     setDirectLayoutStyle(el, { transform: undefined });
     expect(el.style.getPropertyValue("transform")).toBe("");
     el.remove();
